@@ -17,17 +17,22 @@ export type SpecialNpcProfile = {
   divinityStageBackgroundUrl?: string;
 };
 
-const specialNpcProfileOverrides: Partial<Record<string, Partial<SpecialNpcProfile>>> = {
-  '维纳丝·珀菈·索伦蒂斯': {
+const specialNpcReferenceProfiles: Record<string, Omit<SpecialNpcProfile, 'name' | 'portraitKind'>> = {
+  special_npc_01_venus: {
+    imageUrl: characterImageMap['维纳丝·珀菈·索伦蒂斯'],
     visualTheme: 'venus',
     divinityVariant: 'venusCurtain',
     divinityStageBackgroundUrl: 'https://files.catbox.moe/3by4cx.png',
   },
-  '安娜斯塔西娅·佛罗伦丝·瓦雷利乌斯': {
+  special_npc_02_anastasia: {
+    imageUrl: characterImageMap['安娜斯塔西娅·佛罗伦丝·瓦雷利乌斯'],
     visualTheme: 'anastasia',
+    divinityVariant: 'default',
   },
-  '艾璃丝·赛瑞利亚': {
+  special_npc_03_iris: {
+    imageUrl: characterImageMap['艾璃丝·赛瑞利亚'],
     visualTheme: 'ailisi',
+    divinityVariant: 'default',
   },
 };
 
@@ -35,18 +40,32 @@ export function resolveSpecialNpcProfile(name: string): SpecialNpcProfile | null
   const rawImageUrl = characterImageMap[name];
   if (!rawImageUrl) return null;
 
-  const override = specialNpcProfileOverrides[name] ?? {};
-  const portraitMedia = normalizePortraitMediaUrlForBrowser(override.imageUrl ?? rawImageUrl);
+  const portraitMedia = normalizePortraitMediaUrlForBrowser(rawImageUrl);
   if (!portraitMedia) return null;
-  const divinityStageBackgroundUrl = override.divinityStageBackgroundUrl
-    ? normalizeImageUrlForBrowser(override.divinityStageBackgroundUrl)
-    : undefined;
   return {
     name,
     imageUrl: portraitMedia.url,
     portraitKind: portraitMedia.kind,
-    visualTheme: override.visualTheme ?? 'default',
-    divinityVariant: override.divinityVariant ?? 'default',
+    visualTheme: 'default',
+    divinityVariant: 'default',
+  };
+}
+
+export function resolveSpecialNpcReferenceProfile(reference: string, name: string): SpecialNpcProfile | null {
+  const profile = specialNpcReferenceProfiles[reference];
+  if (!profile) return null;
+
+  const portraitMedia = normalizePortraitMediaUrlForBrowser(profile.imageUrl);
+  if (!portraitMedia) return null;
+  const divinityStageBackgroundUrl = profile.divinityStageBackgroundUrl
+    ? normalizeImageUrlForBrowser(profile.divinityStageBackgroundUrl)
+    : undefined;
+
+  return {
+    ...profile,
+    name,
+    imageUrl: portraitMedia.url,
+    portraitKind: portraitMedia.kind,
     divinityStageBackgroundUrl,
   };
 }

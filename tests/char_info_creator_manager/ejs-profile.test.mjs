@@ -1,0 +1,167 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  buildManagedEjsBlock,
+  createEmptyProfile,
+  inspectManagedBlock,
+  MANAGED_BLOCK_END,
+  MANAGED_BLOCK_START,
+  upsertManagedEjsBlock,
+  validateProfile,
+} from '../../src/char_info_creator_manager/ejsProfile.ts';
+
+const profile = {
+  ...createEmptyProfile('傲雪'),
+  avatarUrl: 'https://files.catbox.moe/avatar.webp',
+  raceColor: '#A9DBC3',
+  tierColor: '#B7D9E8',
+  entranceQuote: '霜雪会记住每一道剑痕。',
+  gallery: [
+    { title: '霜原剑影', url: 'https://files.catbox.moe/main.webp' },
+    { title: '雪林巡行', url: 'https://files.catbox.moe/alternate.avif' },
+  ],
+};
+
+test('v2 生成区块只保留一份可读 profile 配置', () => {
+  const block = buildManagedEjsBlock(profile);
+  assert.ok(block.startsWith(MANAGED_BLOCK_START));
+  assert.ok(block.endsWith(MANAGED_BLOCK_END));
+  assert.match(block, /<%_\n\{\n/);
+  assert.match(block, /const profile = \{\n/);
+  assert.match(block, /"characterName": "傲雪"/);
+  assert.match(block, /"title": "霜原剑影"/);
+  assert.match(block, /const npcName = profile\.characterName;/);
+  assert.ok(block.includes('setLocalVar(`char_info_visuals[${JSON.stringify(npcName)}]`, {'));
+  assert.doesNotMatch(block, /char-info-ejs-builder:data:v1:/);
+  assert.doesNotMatch(block, /dryRun|merge:/);
+  assert.equal(block.split(profile.characterName).length - 1, 1);
+  assert.equal(block.split(profile.avatarUrl).length - 1, 1);
+  assert.equal(block.split(profile.entranceQuote).length - 1, 1);
+  profile.gallery.forEach(image => {
+    assert.equal(block.split(image.title).length - 1, 1);
+    assert.equal(block.split(image.url).length - 1, 1);
+  });
+  const scriptBody = block.slice(block.indexOf('<%_') + 3, block.indexOf('_%>'));
+  assert.doesNotThrow(() => new Function(scriptBody));
+
+  const inspection = inspectManagedBlock(block);
+  assert.equal(inspection.state, 'valid');
+  assert.deepEqual(inspection.profile, profile);
+});
+
+test('旧 v1 区块仍可读取，并在保存时自动迁移为 v2', () => {
+  const encodedProfile = Buffer.from(JSON.stringify(profile), 'utf8')
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+  const legacy = [
+    '<%# char-info-ejs-builder:start:v1 %>',
+    `<%# char-info-ejs-builder:data:v1:${encodedProfile} %>`,
+    '<%_',
+    '{',
+    '  const oldGeneratedCode = true;',
+    '}',
+    '_%>',
+    '<%# char-info-ejs-builder:end:v1 %>',
+    '角色原始内容',
+  ].join('\n');
+
+  const inspection = inspectManagedBlock(legacy);
+  assert.equal(inspection.state, 'valid');
+  assert.deepEqual(inspection.profile, profile);
+
+  const migrated = upsertManagedEjsBlock(legacy, profile);
+  assert.ok(migrated.startsWith(MANAGED_BLOCK_START));
+  assert.doesNotMatch(migrated, /char-info-ejs-builder:(?:start|data|end):v1/);
+  assert.match(migrated, /"characterName": "傲雪"/);
+  assert.match(migrated, /角色原始内容$/);
+});
+
+test('首次写入放在连续装饰器之后并保留原有 EJS', () => {
+  const original = '@@generate_before\n@@private\n<%_{\nconst oldValue = 1;\n_%>\n角色原始内容';
+  const updated = upsertManagedEjsBlock(original, profile);
+
+  assert.ok(updated.startsWith(`@@generate_before\n@@private\n${MANAGED_BLOCK_START}`));
+  assert.match(updated, /<%_\{\nconst oldValue = 1;\n_%>/);
+  assert.match(updated, /角色原始内容$/);
+});
+
+test('再次保存只替换受管理区块', () => {
+  const original = '<%_ const untouched = true; _%>\n角色原始内容';
+  const first = upsertManagedEjsBlock(original, profile);
+  const changed = {
+    ...profile,
+    entranceQuote: '剑锋所至，霜雪无声。',
+    gallery: [{ title: '新的主立绘', url: 'https://files.catbox.moe/new.webp' }],
+  };
+  const second = upsertManagedEjsBlock(first, changed);
+
+  assert.equal(second.split(MANAGED_BLOCK_START).length - 1, 1);
+  assert.match(second, /剑锋所至，霜雪无声。/);
+  assert.match(second, /<%_ const untouched = true; _%>\n角色原始内容$/);
+});
+
+test('未标记的旧版视觉 EJS 会阻止重复写入', () => {
+  const legacy = `<%_
+setLocalVar('char_info_visuals', {});
+setLocalVar('status.externalGalleries.partners', {});
+_%>`;
+
+  assert.throws(() => upsertManagedEjsBlock(legacy, profile), /未标记的旧版角色视觉 EJS/);
+});
+
+test('标记残缺时拒绝编辑', () => {
+  const malformed = `${MANAGED_BLOCK_START}\n<%_ const value = 1; _%>`;
+  const inspection = inspectManagedBlock(malformed);
+  assert.equal(inspection.state, 'malformed');
+  assert.throws(() => upsertManagedEjsBlock(malformed, profile));
+});
+
+test('不启用自定义颜色时不写入颜色变量', () => {
+  const defaultThemeProfile = {
+    ...createEmptyProfile('无色测试'),
+    gallery: [{ title: '主立绘', url: 'https://files.catbox.moe/default.webp' }],
+  };
+  const block = buildManagedEjsBlock(defaultThemeProfile);
+
+  assert.match(block, /"raceColor": ""/);
+  assert.match(block, /"tierColor": ""/);
+  assert.match(block, /profile\.raceColor \?/);
+  assert.match(block, /profile\.tierColor \?/);
+  assert.ok(block.includes('setLocalVar(`char_info_visuals[${JSON.stringify(npcName)}]`, {'));
+  const inspection = inspectManagedBlock(block);
+  assert.equal(inspection.state, 'valid');
+  assert.equal(inspection.profile.raceColor, '');
+  assert.equal(inspection.profile.tierColor, '');
+});
+
+test('角色姓名允许正常标点并通过 JSON.stringify 安全写入路径', () => {
+  const characterName = '维奥莱塔·马克西姆 "雪"[DX]';
+  const block = buildManagedEjsBlock({ ...profile, characterName });
+
+  assert.ok(block.includes(`"characterName": ${JSON.stringify(characterName)}`));
+  assert.ok(block.includes('const npcName = profile.characterName;'));
+  assert.ok(block.includes('setLocalVar(`char_info_visuals[${JSON.stringify(npcName)}]`, {'));
+});
+
+test('角色姓名拒绝控制字符、异常长度和危险保留键', () => {
+  assert.match(validateProfile({ ...profile, characterName: '坏\n名字' }).join('\n'), /控制字符/);
+  assert.match(validateProfile({ ...profile, characterName: '角'.repeat(81) }).join('\n'), /不能超过 80 个字符/);
+
+  for (const characterName of ['__proto__', 'prototype', 'constructor']) {
+    assert.match(validateProfile({ ...profile, characterName }).join('\n'), /系统保留名称/);
+  }
+});
+
+test('会截断 EJS 的模板分隔符会被拒绝', () => {
+  assert.match(validateProfile({ ...profile, entranceQuote: '危险 %> 台词' }).join('\n'), /EJS 模板分隔符/);
+  assert.match(
+    validateProfile({
+      ...profile,
+      gallery: [{ title: '危险 <% 标题', url: 'https://files.catbox.moe/main.webp' }],
+    }).join('\n'),
+    /EJS 模板分隔符/,
+  );
+});

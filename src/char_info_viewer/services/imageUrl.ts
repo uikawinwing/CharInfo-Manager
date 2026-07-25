@@ -43,11 +43,11 @@ export function normalizePortraitMediaUrlForBrowser(url: string): NormalizedPort
 
   const pathname = parsed.pathname.toLowerCase();
   const kind: PortraitMediaKind = /\.(mp4|webm)$/.test(pathname) ? 'video' : 'image';
-  const isAnimatedGif = /\.gif$/.test(pathname);
+  const shouldKeepOriginalImage = /\.(gif|apng|webp|avif)$/.test(pathname);
 
   return {
-    // 图片代理可能将动画 GIF 转为静态图片，也不能代理视频流。
-    url: kind === 'video' || isAnimatedGif ? trimmed : normalizeImageUrlForBrowser(trimmed),
+    // 图片代理可能压平动画帧，也不能代理视频流。
+    url: kind === 'video' || shouldKeepOriginalImage ? trimmed : normalizeImageUrlForBrowser(trimmed),
     kind,
   };
 }

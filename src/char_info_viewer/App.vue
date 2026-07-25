@@ -28,8 +28,7 @@
           <div class="yaml-error-title">系统定位到的出错行（请重点检查）</div>
           <pre class="yaml-error-pre"
             >{{ parseError.cleanedLine }}
-{{ parseError.caretLine }}</pre
-          >
+{{ parseError.caretLine }}</pre>
         </template>
 
         <details v-if="parseError.originalLine" class="yaml-error-details">
@@ -39,7 +38,29 @@
       </div>
     </div>
 
-    <div v-else-if="loadingSpecialNpc" class="loading-card">正在读取专属角色资料...</div>
+    <section
+      v-else-if="initializingViewer || loadingSpecialNpc"
+      class="viewer-loading-shell"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <div class="viewer-loading-portrait" aria-hidden="true">
+        <span class="viewer-loading-snowflake">◇</span>
+      </div>
+      <div class="viewer-loading-data">
+        <div class="viewer-loading-kicker">CHARACTER ARCHIVE</div>
+        <div class="viewer-loading-line is-title"></div>
+        <div class="viewer-loading-line is-subtitle"></div>
+        <div class="viewer-loading-flags" aria-hidden="true">
+          <span v-for="index in 5" :key="index"></span>
+        </div>
+        <div class="viewer-loading-resources" aria-hidden="true">
+          <span v-for="index in 3" :key="index"></span>
+        </div>
+        <p>{{ loadingSpecialNpc ? '正在读取专属角色资料…' : '正在建立角色档案…' }}</p>
+      </div>
+    </section>
 
     <template v-else-if="sheetData">
       <div v-if="looseParseWarning" class="parse-warning-card">
@@ -473,6 +494,7 @@ import {
 } from './services/characterViewModel';
 import { importToMvuVariables, mergeSpecialNpcIntoMvuData, saveToChatWorldbook } from './services/importService';
 import { createParticleEngine, type ParticleEngine } from './services/particleEngine';
+import { syncCharacterVisualsToStatusVariables } from './services/statusPartnerVisualSync';
 import { applyTheme, resolveCharacterVisualConfig, resolveTheme } from './services/themeService';
 import { parseCharacterYaml, parseCharacterYamlLoose } from './services/yamlParser';
 import { loadSpecialNpcCharacterReference, parseSpecialNpcCharacterReference } from './specialNpcCharacterData';
@@ -486,6 +508,7 @@ const originalYamlText = ref('');
 const parseMode = ref<'strict' | 'loose' | 'builtin'>('strict');
 const parseWarnings = ref<string[]>([]);
 const looseParsing = ref(false);
+const initializingViewer = ref(true);
 const loadingSpecialNpc = ref(false);
 const theme = ref<ThemeResolved | null>(null);
 const activeTab = ref<TabKey>('profile');
@@ -499,6 +522,7 @@ const importing = ref(false);
 const defaultImportButtonText = '📥';
 const importButtonText = ref(defaultImportButtonText);
 let importButtonResetTimer: ReturnType<typeof setTimeout> | null = null;
+let specialNpcAutoImportTimer: ReturnType<typeof setTimeout> | null = null;
 let specialNpcAutoImportStarted = false;
 
 const defaultParseErrorTips = [
@@ -652,7 +676,7 @@ async function initFromYaml() {
       applyParsedCharacterData(specialNpcData.data, 'builtin');
       await nextTick();
       setupParticleEngine();
-      void autoImportSpecialNpc(
+      scheduleSpecialNpcAutoImport(
         specialNpcData.injectData,
         specialNpcData.appearVariableName,
         specialNpcData.data.姓名 || specialNpcData.reference,
@@ -677,6 +701,14 @@ async function initFromYaml() {
   applyParsedCharacterData(parsed.data, parsed.mode ?? 'strict', parsed.warnings ?? []);
 
   nextTick(() => setupParticleEngine());
+}
+
+function scheduleSpecialNpcAutoImport(data: CharacterData, appearVariableName: string, characterName: string) {
+  if (specialNpcAutoImportTimer) clearTimeout(specialNpcAutoImportTimer);
+  specialNpcAutoImportTimer = setTimeout(() => {
+    specialNpcAutoImportTimer = null;
+    void autoImportSpecialNpc(data, appearVariableName, characterName);
+  }, 0);
 }
 
 async function autoImportSpecialNpc(data: CharacterData, appearVariableName: string, characterName: string) {
@@ -769,6 +801,10 @@ function flashImportButton(temp: string, duration = 1200) {
     clearTimeout(importButtonResetTimer);
     importButtonResetTimer = null;
   }
+  if (specialNpcAutoImportTimer) {
+    clearTimeout(specialNpcAutoImportTimer);
+    specialNpcAutoImportTimer = null;
+  }
   importButtonText.value = temp;
   importButtonResetTimer = setTimeout(() => {
     importButtonText.value = defaultImportButtonText;
@@ -795,6 +831,19 @@ async function onImportMvu() {
 
     importButtonText.value = '⏳';
     await importToMvuVariables(importData);
+    if (parseMode.value !== 'builtin' && sheetData.value) {
+      try {
+        const synced = syncCharacterVisualsToStatusVariables(sheetData.value);
+        if (synced) {
+          console.info('[CharInfo Viewer] Partner visuals synced to status variables', synced);
+        }
+      } catch (visualSyncError) {
+        console.warn('[CharInfo Viewer] Partner visual sync failed:', visualSyncError);
+        if (typeof toastr !== 'undefined') {
+          toastr.warning('角色已导入 MVU，但头像／图库同步到状态栏失败。');
+        }
+      }
+    }
     flashImportButton('✅', 1600);
   } catch (err: any) {
     console.error('MVU Import Error:', err);
@@ -842,7 +891,9 @@ function onKeydown(ev: KeyboardEvent) {
 }
 
 onMounted(() => {
-  void initFromYaml();
+  void initFromYaml().finally(() => {
+    initializingViewer.value = false;
+  });
   document.addEventListener('click', onDocumentClick);
   document.addEventListener('keydown', onKeydown);
 });
@@ -891,6 +942,176 @@ onBeforeUnmount(() => {
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.15);
   padding: 16px;
+}
+
+.viewer-loading-shell {
+  display: grid;
+  grid-template-columns: minmax(260px, 45%) minmax(0, 1fr);
+  width: min(100%, 1200px);
+  min-height: 680px;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid rgba(150, 221, 223, 0.45);
+  border-radius: 16px;
+  background: #11141d;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.025) inset,
+    0 18px 50px rgba(0, 0, 0, 0.34);
+}
+
+.viewer-loading-portrait {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 38% 32%, rgba(132, 213, 220, 0.18), transparent 38%),
+    linear-gradient(145deg, #162331, #0c1018 72%);
+}
+
+.viewer-loading-portrait::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 58%, #11141d);
+}
+
+.viewer-loading-snowflake {
+  color: rgba(157, 226, 226, 0.72);
+  font-size: clamp(34px, 6cqw, 72px);
+  text-shadow: 0 0 26px rgba(132, 213, 220, 0.48);
+  animation: viewer-loading-pulse 1.2s ease-in-out infinite alternate;
+}
+
+.viewer-loading-data {
+  display: flex;
+  min-width: 0;
+  padding: clamp(40px, 6cqw, 76px);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.viewer-loading-kicker {
+  color: rgba(155, 224, 224, 0.72);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.viewer-loading-line {
+  width: min(68%, 360px);
+  height: 12px;
+  margin-top: 18px;
+  border-radius: 999px;
+  background: rgba(214, 244, 244, 0.11);
+}
+
+.viewer-loading-line.is-title {
+  width: min(46%, 240px);
+  height: 30px;
+}
+
+.viewer-loading-line.is-subtitle {
+  width: min(58%, 310px);
+  margin-top: 12px;
+}
+
+.viewer-loading-flags {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(54px, 96px));
+  gap: 12px;
+  justify-content: center;
+  width: 100%;
+  margin-top: 54px;
+}
+
+.viewer-loading-flags span {
+  height: 90px;
+  border-top: 2px solid rgba(155, 224, 224, 0.35);
+  background: rgba(4, 7, 12, 0.42);
+  clip-path: polygon(0 0, 100% 0, 100% 84%, 50% 100%, 0 84%);
+}
+
+.viewer-loading-flags span:nth-child(n + 4) {
+  transform: translateX(56%);
+}
+
+.viewer-loading-resources {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(70px, 110px));
+  gap: 1px;
+  width: min(82%, 380px);
+  margin-top: 38px;
+  background: rgba(155, 224, 224, 0.14);
+}
+
+.viewer-loading-resources span {
+  height: 48px;
+  background: #11141d;
+}
+
+.viewer-loading-data p {
+  margin: 42px 0 0;
+  color: rgba(226, 241, 244, 0.66);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+
+@keyframes viewer-loading-pulse {
+  from {
+    opacity: 0.36;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 820px) {
+  .viewer-loading-shell {
+    display: flex;
+    min-height: 620px;
+    flex-direction: column;
+  }
+
+  .viewer-loading-portrait {
+    min-height: 350px;
+    flex: 1 1 auto;
+  }
+
+  .viewer-loading-portrait::after {
+    background: linear-gradient(180deg, transparent 62%, #11141d);
+  }
+
+  .viewer-loading-data {
+    flex: 0 0 auto;
+    padding: 28px 22px 34px;
+  }
+
+  .viewer-loading-line.is-title {
+    height: 24px;
+  }
+
+  .viewer-loading-flags {
+    display: none;
+  }
+
+  .viewer-loading-resources {
+    margin-top: 26px;
+  }
+
+  .viewer-loading-data p {
+    margin-top: 26px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .viewer-loading-snowflake {
+    animation: none;
+  }
 }
 
 .error-body {

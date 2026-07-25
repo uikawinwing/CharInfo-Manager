@@ -1,18 +1,16 @@
 import { characterStoryBookMap, type CharacterStoryBookLink } from '../characterStoryBookMap';
-import { resolveSpecialNpcProfile, resolveSpecialPortraitProfile, type SpecialNpcProfile } from '../specialNpcProfiles';
+import {
+  resolveSpecialNpcProfile,
+  resolveSpecialNpcReferenceProfile,
+  resolveSpecialPortraitProfile,
+  type SpecialNpcProfile,
+} from '../specialNpcProfiles';
 import type { CharacterData } from '../types';
 import { getSmartArray, hasArrayContent, hasText, normalizeDisplayText } from './common';
-import { normalizeImageUrlForBrowser } from './imageUrl';
+import { normalizeImageUrlForBrowser, normalizePortraitMediaUrlForBrowser } from './imageUrl';
 
 export type TabKey =
-  | 'profile'
-  | 'skills'
-  | 'equipment'
-  | 'inventory'
-  | 'divinity'
-  | 'characterStory'
-  | 'backstory'
-  | 'statusEffects';
+  'profile' | 'skills' | 'equipment' | 'inventory' | 'divinity' | 'characterStory' | 'backstory' | 'statusEffects';
 
 export type ViewTab = {
   key: TabKey;
@@ -60,6 +58,8 @@ export type CharacterViewModel = {
   backstoryText: string;
   entranceQuoteText: string;
   imageUrl: string;
+  imageUrls: string[];
+  randomizeInitialImage: boolean;
   layoutKind: CharacterLayoutKind;
   specialNpcProfile: SpecialNpcProfile | null;
   resourceBoxes: ResourceBox[];
@@ -320,10 +320,26 @@ export function statusEffectSource(item: ItemObject): string {
 
 type CharacterImageResolution = {
   url: string;
+  urls: string[];
+  randomizeInitialImage: boolean;
   source: 'special_portrait' | 'map' | 'data' | 'none';
 };
 
+function resolveConfiguredImageUrls(data: CharacterData): string[] {
+  if (!Array.isArray(data.__char_info_image_urls)) return [];
+
+  return data.__char_info_image_urls.reduce<string[]>((urls, candidate) => {
+    const normalized = normalizePortraitMediaUrlForBrowser(textFromUnknown(candidate))?.url ?? '';
+    if (normalized && !urls.includes(normalized)) urls.push(normalized);
+    return urls;
+  }, []);
+}
+
 function resolveSpecialNpcProfileForData(data: CharacterData, nameText: string): SpecialNpcProfile | null {
+  const reference = textFromUnknown(pickField(data, '__char_info_ref'));
+  const referenceProfile = resolveSpecialNpcReferenceProfile(reference, nameText);
+  if (referenceProfile) return referenceProfile;
+
   const explicitPortraitUrl = textFromUnknown(
     pickField(data, '特殊立绘', '角色图片', '立绘', '图片', 'portrait', 'image'),
   );
@@ -334,15 +350,33 @@ function resolveCharacterImage(
   data: CharacterData,
   specialNpcProfile: SpecialNpcProfile | null,
 ): CharacterImageResolution {
+  const isDxProfile = Boolean(textFromUnknown(pickField(data, '__char_info_ref')));
+  const configuredUrls = isDxProfile ? [] : resolveConfiguredImageUrls(data);
+
   if (specialNpcProfile) {
     const source = textFromUnknown(pickField(data, '特殊立绘')) ? 'special_portrait' : 'map';
-    return { url: specialNpcProfile.imageUrl, source };
+    const urls = configuredUrls.length > 0 ? configuredUrls : [specialNpcProfile.imageUrl];
+    return {
+      url: urls[0],
+      urls,
+      randomizeInitialImage: configuredUrls.length > 1 && data.__char_info_randomize_initial_image === true,
+      source,
+    };
   }
 
   const fromData = textFromUnknown(pickField(data, '角色图片', '立绘', '图片', 'portrait', 'image'));
-  if (fromData) return { url: normalizeImageUrlForBrowser(fromData), source: 'data' };
+  if (fromData) {
+    const url = normalizePortraitMediaUrlForBrowser(fromData)?.url ?? normalizeImageUrlForBrowser(fromData);
+    const urls = configuredUrls.length > 0 ? configuredUrls : [url];
+    return {
+      url: urls[0],
+      urls,
+      randomizeInitialImage: configuredUrls.length > 1 && data.__char_info_randomize_initial_image === true,
+      source: 'data',
+    };
+  }
 
-  return { url: '', source: 'none' };
+  return { url: '', urls: [], randomizeInitialImage: false, source: 'none' };
 }
 
 export function buildCharacterViewModel(data: CharacterData): CharacterViewModel {
@@ -427,6 +461,8 @@ export function buildCharacterViewModel(data: CharacterData): CharacterViewModel
     backstoryText,
     entranceQuoteText: normalizeDisplayText(pickField(data, '登场台词') || ''),
     imageUrl,
+    imageUrls: image.urls,
+    randomizeInitialImage: image.randomizeInitialImage,
     layoutKind: specialNpcProfile ? 'special_npc' : 'default',
     specialNpcProfile,
     resourceBoxes,

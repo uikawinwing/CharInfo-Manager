@@ -53,36 +53,78 @@
 </char_info>
 ```
 
-### 用一个占位符读取图片与主题色
+### 按姓名读取状态栏相册、主题色与登场台词
 
-世界书可把图片 URL、种族强调色和生命层级强调色写入同一个聊天变量对象：
+图片直接使用 Aoo 状态栏的聊天变量；`char_info_visuals`
+只保存查看器专用的主题色和登场台词。头像与全身立绘分开配置，避免把构图不合适的相册图片自动裁成头像：
 
 ```ejs
 <%_
+const characterName = '角色姓名';
+const avatarUrl = 'https://example.com/avatar-crop.webp';
+const galleryImages = [
+  { title: '主立绘', url: 'https://example.com/character-main.webp' },
+  { title: '日常服', url: 'https://example.com/character-alt.avif' },
+];
+
+setLocalVar(`char_info_visuals[${JSON.stringify(characterName)}]`, {
+  custom_racecolor: '#78C8F0',
+  custom_tiercolor: '#A855F7',
+  '登场台词': '用一句话留下角色的第一印象。',
+});
 setLocalVar(
-  'char_info_visual_example',
-  {
-    url: 'https://example.com/character.png',
-    custom_racecolor: '#78C8F0',
-    custom_tiercolor: '#A855F7',
-  },
-  { dryRun: true },
+  `status.externalAvatars.partners[${JSON.stringify(characterName)}].url`,
+  avatarUrl,
+);
+setLocalVar(
+  `status.externalGalleries.partners[${JSON.stringify(characterName)}].images`,
+  galleryImages,
 );
 _%>
 ```
 
-LLM 只需在 `<char_info>` 内原样输出：
+LLM 只需在 `<char_info>` 内准确输出姓名，不需要输出图片字段：
 
 ```yaml
-角色图片: '[[char_info_visual_example]]'
+姓名: 角色姓名
 ```
 
-查看器会直接读取当前聊天变量。颜色只接受
-`#RRGGBB`；缺失或无效时自动使用种族与生命层级的默认颜色。直接填写图片 URL 和旧版“占位符对应 URL 字符串”的方式仍然兼容。
+查看器会按姓名读取
+`status.externalGalleries.partners.<姓名>.images`。数组第一项固定作为主立绘；存在多张图片时，首页显示左右切换按钮。找不到有效相册时回退到无图普通版。状态栏头像只读取
+`status.externalAvatars.partners.<姓名>.url`，不会自动拿相册图片代替。
+
+共享给状态栏的动画建议使用动态 WebP 或 AVIF。查看器自身仍兼容静态图片、GIF、动态 WebP／AVIF，以及旧资料中的 MP4／WebM；Catbox 的动画图片与视频会保留原始 URL，避免图片代理压平动画帧或破坏视频流。
+
+`登场台词` 与两种颜色均可省略。颜色只接受
+`#RRGGBB`，缺失或无效时自动使用种族与生命层级的默认颜色。Aoo 状态栏会自行检查 HTTPS、图片扩展名与允许的图床域名。
+
+旧版
+`char_info_visuals[姓名].url/gallery`、`角色图片: '[[变量名]]'`、直接填写图片 URL，以及“占位符对应 URL字符串”的方式仍然兼容。旧版角色点击“导入到 MVU 变量”时，仅在状态栏尚无相册的情况下迁移图片；不会覆盖创作者或玩家已设置的头像与相册。
+
+豪华／DX 版不读取上述公版相册触发，只接受 `__char_info_ref: special_npc_...`，并从世界书禁用条目
+`char_info_special_profiles` 读取专属资料。
+
+### 角色视觉配置管理器
+
+`dist/char_info_creator_manager/index.js` 是供创作者使用的 Tavern
+Helper 后台脚本。导入并启用脚本后，点击脚本按钮“角色视觉配置管理器”，即可：
+
+- 读取酒馆中的全部世界书，并将当前角色卡绑定的主世界书与附加世界书置顶。
+- 在可搜索选择器中查找目标世界书，再读取其中的角色条目。
+- 在同一个搜索选择器中筛选角色条目；`[DLC][角色]` 前缀条目会优先显示。
+- 编辑姓名、头像、相册标题与 URL、主题色和登场台词。
+- 主题颜色默认关闭；不启用时不会写入自定义颜色，查看器会使用角色资料的默认主题。
+- 世界书条目标题只用于决定写入位置；变量键名始终使用表单内填写的真实角色姓名。
+- 将生成的 EJS 自动写入条目顶部；若条目使用 `@@` 装饰器，则写在连续装饰器之后。
+- 再次打开同一条目时直接读取 v2 区块内唯一的 `profile` 配置；保存时只替换管理器自己的标记区块。
+- 旧 v1 区块仍可读取，下一次保存时会自动升级成不含 Base64 配置副本的 v2 区块。
+
+管理器不会修改条目原有设定、其他 EJS、启用状态或世界书参数。检测到残缺标记、重复标记或未受管理的旧版视觉 EJS 时会锁定自动写入，避免重复执行或误删创作者代码。
 
 ## 开发说明
 
 - 源码入口在 `src/char_info_viewer`
+- 创作者管理器源码入口在 `src/char_info_creator_manager`
 - 构建产物在 `dist/char_info_viewer`
 
 常用命令：

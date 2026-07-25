@@ -159,33 +159,116 @@ function normalizeVisualConfigUrl(value: unknown): string | null {
   }
 }
 
+function normalizeVisualConfigGallery(value: unknown): string[] {
+  const candidates = Array.isArray(value) ? value : typeof value === 'string' ? value.split(/\r?\n/) : [];
+
+  return candidates.reduce<string[]>((urls, candidate) => {
+    const url = normalizeVisualConfigUrl(candidate);
+    if (url && !urls.includes(url)) urls.push(url);
+    return urls;
+  }, []);
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+function resolveCharacterName(data: CharacterData): string {
+  return typeof data.姓名 === 'string' ? data.姓名.trim() : '';
+}
+
+function resolveNamedVisualConfig(data: CharacterData, chatVariables: Record<string, unknown>): unknown {
+  const name = resolveCharacterName(data);
+  if (!name) return undefined;
+
+  return asRecord(chatVariables.char_info_visuals)?.[name];
+}
+
+function resolveNamedStatusGallery(data: CharacterData, chatVariables: Record<string, unknown>): string[] {
+  const name = resolveCharacterName(data);
+  if (!name) return [];
+
+  const status = asRecord(chatVariables.status);
+  const externalGalleries = asRecord(status?.externalGalleries);
+  const partners = asRecord(externalGalleries?.partners);
+  const partner = asRecord(partners?.[name]);
+  const images = partner?.images;
+  if (!Array.isArray(images)) return [];
+
+  return images.reduce<string[]>((urls, image) => {
+    const candidate = typeof image === 'string' ? image : asRecord(image)?.url;
+    const url = normalizeVisualConfigUrl(candidate);
+    if (url && !urls.includes(url)) urls.push(url);
+    return urls;
+  }, []);
+}
+
+function applyVisualAppearance(data: CharacterData, visualConfig: unknown): CharacterData {
+  const config = asRecord(visualConfig);
+  if (!config) return data;
+
+  const raceColor = normalizeCustomHexColor(config.custom_racecolor);
+  const tierColor = normalizeCustomHexColor(config.custom_tiercolor);
+  const entranceQuote = typeof config.登场台词 === 'string' ? config.登场台词.trim() : '';
+  if (!raceColor && !tierColor && !entranceQuote) return data;
+
+  const resolved = { ...data };
+  if (raceColor) resolved.custom_racecolor = raceColor;
+  if (tierColor) resolved.custom_tiercolor = tierColor;
+  if (entranceQuote) resolved.登场台词 = entranceQuote;
+  return resolved;
+}
+
+function applyImageUrls(data: CharacterData, imageUrls: string[], randomizeInitialImage: boolean): CharacterData {
+  return {
+    ...data,
+    角色图片: imageUrls[0],
+    __char_info_image_urls: imageUrls,
+    __char_info_randomize_initial_image: randomizeInitialImage && imageUrls.length > 1,
+  };
+}
+
+function applyVisualConfig(data: CharacterData, visualConfig: unknown, clearImageOnFailure: boolean): CharacterData {
+  const resolvedAppearance = applyVisualAppearance(data, visualConfig);
+  const fallback = clearImageOnFailure ? { ...resolvedAppearance, 角色图片: '' } : resolvedAppearance;
+
+  if (typeof visualConfig === 'string') {
+    const url = normalizeVisualConfigUrl(visualConfig);
+    return url ? applyImageUrls(resolvedAppearance, [url], false) : fallback;
+  }
+
+  const config = asRecord(visualConfig);
+  if (!config) return fallback;
+
+  const url = normalizeVisualConfigUrl(config.url);
+  const gallery = normalizeVisualConfigGallery(config.gallery);
+  const imageUrls = [url, ...gallery].reduce<string[]>((urls, candidate) => {
+    if (candidate && !urls.includes(candidate)) urls.push(candidate);
+    return urls;
+  }, []);
+  if (imageUrls.length === 0) return fallback;
+
+  return applyImageUrls(resolvedAppearance, imageUrls, !url);
+}
+
 export function resolveCharacterVisualConfig(
   data: CharacterData,
   chatVariables: Record<string, unknown>,
 ): CharacterData {
+  if (typeof data.__char_info_ref === 'string' && data.__char_info_ref.trim()) return data;
+
   const rawImage = typeof data.角色图片 === 'string' ? data.角色图片.trim() : '';
   const placeholder = rawImage.match(/^\[\[([a-z0-9][a-z0-9_-]*)\]\]$/i);
-  if (!placeholder) return data;
+  const namedVisualConfig = resolveNamedVisualConfig(data, chatVariables);
+  const styledData = namedVisualConfig === undefined ? data : applyVisualAppearance(data, namedVisualConfig);
 
-  const resolved: CharacterData = { ...data, 角色图片: '' };
-  const visualConfig = chatVariables[placeholder[1]];
+  if (placeholder) return applyVisualConfig(styledData, chatVariables[placeholder[1]], true);
+  if (rawImage) return styledData;
 
-  if (typeof visualConfig === 'string') {
-    resolved.角色图片 = normalizeVisualConfigUrl(visualConfig) ?? '';
-    return resolved;
-  }
+  const statusGallery = resolveNamedStatusGallery(data, chatVariables);
+  if (statusGallery.length > 0) return applyImageUrls(styledData, statusGallery, false);
 
-  if (!visualConfig || typeof visualConfig !== 'object' || Array.isArray(visualConfig)) return resolved;
-
-  const config = visualConfig as Record<string, unknown>;
-  const url = normalizeVisualConfigUrl(config.url);
-  const raceColor = normalizeCustomHexColor(config.custom_racecolor);
-  const tierColor = normalizeCustomHexColor(config.custom_tiercolor);
-
-  resolved.角色图片 = url ?? '';
-  if (raceColor) resolved.custom_racecolor = raceColor;
-  if (tierColor) resolved.custom_tiercolor = tierColor;
-  return resolved;
+  return namedVisualConfig === undefined ? styledData : applyVisualConfig(styledData, namedVisualConfig, false);
 }
 
 export function harmonizeAccent(

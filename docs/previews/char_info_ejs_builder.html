@@ -1,0 +1,1349 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:," />
+    <title>角色视觉 EJS 生成器 · Phase 1 Preview</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0d12;
+        --surface: #12151c;
+        --surface-raised: #181c25;
+        --surface-soft: #202531;
+        --border: #2b3140;
+        --border-strong: #3c4559;
+        --text: #f4f7fb;
+        --text-secondary: #aeb7c7;
+        --text-muted: #778195;
+        --primary: #75d5c6;
+        --primary-strong: #4db5a6;
+        --primary-soft: rgba(117, 213, 198, 0.12);
+        --danger: #ff7f8c;
+        --danger-soft: rgba(255, 127, 140, 0.12);
+        --warning: #f4c36a;
+        --warning-soft: rgba(244, 195, 106, 0.12);
+        --success: #77d39a;
+        --shadow: 0 22px 70px rgba(0, 0, 0, 0.3);
+        --radius-lg: 20px;
+        --radius-md: 14px;
+        --radius-sm: 10px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        min-width: 320px;
+        background: var(--bg);
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        color: var(--text);
+        background:
+          radial-gradient(circle at 8% 0%, rgba(117, 213, 198, 0.1), transparent 30rem),
+          radial-gradient(circle at 100% 12%, rgba(109, 130, 255, 0.08), transparent 32rem), var(--bg);
+        font-family:
+          Inter, "Noto Sans SC", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        line-height: 1.5;
+      }
+
+      button,
+      input,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        border: 0;
+      }
+
+      .app-shell {
+        width: min(1480px, calc(100% - 40px));
+        margin: 0 auto;
+        padding: 42px 0 56px;
+      }
+
+      .page-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 28px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 10px;
+        color: var(--primary);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        width: 22px;
+        height: 2px;
+        background: currentColor;
+        border-radius: 999px;
+        content: "";
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(28px, 3.6vw, 46px);
+        line-height: 1.12;
+        letter-spacing: -0.035em;
+      }
+
+      .header-copy {
+        max-width: 720px;
+        margin: 12px 0 0;
+        color: var(--text-secondary);
+        font-size: 15px;
+      }
+
+      .phase-badge {
+        flex: 0 0 auto;
+        padding: 9px 13px;
+        color: var(--primary);
+        background: var(--primary-soft);
+        border: 1px solid rgba(117, 213, 198, 0.26);
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: minmax(0, 1.06fr) minmax(420px, 0.94fr);
+        gap: 24px;
+        align-items: start;
+      }
+
+      .panel {
+        background: rgba(18, 21, 28, 0.92);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(16px);
+      }
+
+      .form-panel {
+        padding: 24px;
+      }
+
+      .output-panel {
+        position: sticky;
+        top: 20px;
+        overflow: hidden;
+      }
+
+      .section + .section {
+        margin-top: 26px;
+        padding-top: 26px;
+        border-top: 1px solid var(--border);
+      }
+
+      .section-heading {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .step-number {
+        display: grid;
+        flex: 0 0 30px;
+        width: 30px;
+        height: 30px;
+        place-items: center;
+        color: #071310;
+        background: var(--primary);
+        border-radius: 9px;
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h2 {
+        margin-bottom: 3px;
+        font-size: 17px;
+        line-height: 1.35;
+      }
+
+      .section-description {
+        margin-bottom: 0;
+        color: var(--text-muted);
+        font-size: 13px;
+      }
+
+      .field-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .field {
+        min-width: 0;
+      }
+
+      .field.full {
+        grid-column: 1 / -1;
+      }
+
+      .field-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 7px;
+        color: var(--text-secondary);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .required {
+        color: var(--primary);
+      }
+
+      .optional,
+      .counter {
+        color: var(--text-muted);
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .text-input,
+      .text-area,
+      .color-text {
+        width: 100%;
+        color: var(--text);
+        background: var(--surface-raised);
+        border: 1px solid var(--border-strong);
+        border-radius: var(--radius-sm);
+        outline: 0;
+        transition:
+          border-color 150ms ease,
+          box-shadow 150ms ease,
+          background 150ms ease;
+      }
+
+      .text-input,
+      .color-text {
+        min-height: 44px;
+        padding: 10px 12px;
+      }
+
+      .text-area {
+        min-height: 82px;
+        padding: 11px 12px;
+        resize: vertical;
+      }
+
+      .text-input::placeholder,
+      .text-area::placeholder {
+        color: #5f687a;
+      }
+
+      .text-input:focus,
+      .text-area:focus,
+      .color-text:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(117, 213, 198, 0.13);
+        background: #1a1f29;
+      }
+
+      .field-error {
+        display: none;
+        margin: 6px 0 0;
+        color: var(--danger);
+        font-size: 12px;
+      }
+
+      .field.has-error .text-input,
+      .field.has-error .text-area,
+      .gallery-card.has-error .text-input {
+        border-color: var(--danger);
+        box-shadow: 0 0 0 3px var(--danger-soft);
+      }
+
+      .field.has-error .field-error,
+      .gallery-card.has-error .field-error {
+        display: block;
+      }
+
+      .helper {
+        margin: 7px 0 0;
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+
+      .color-control {
+        display: grid;
+        grid-template-columns: 48px minmax(0, 1fr);
+        gap: 8px;
+      }
+
+      .color-picker {
+        width: 48px;
+        height: 44px;
+        padding: 4px;
+        background: var(--surface-raised);
+        border: 1px solid var(--border-strong);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+      }
+
+      .color-picker::-webkit-color-swatch-wrapper {
+        padding: 0;
+      }
+
+      .color-picker::-webkit-color-swatch {
+        border: 0;
+        border-radius: 6px;
+      }
+
+      .gallery-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .gallery-card {
+        display: grid;
+        grid-template-columns: 82px minmax(0, 1fr) auto;
+        gap: 14px;
+        align-items: start;
+        padding: 13px;
+        background: var(--surface-raised);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        transition:
+          border-color 150ms ease,
+          transform 150ms ease;
+      }
+
+      .gallery-card:hover {
+        border-color: var(--border-strong);
+      }
+
+      .image-preview {
+        position: relative;
+        display: grid;
+        width: 82px;
+        aspect-ratio: 3 / 4;
+        overflow: hidden;
+        place-items: center;
+        color: var(--text-muted);
+        background:
+          linear-gradient(135deg, rgba(117, 213, 198, 0.08), transparent 60%), var(--surface-soft);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-size: 20px;
+      }
+
+      .image-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .image-preview img[hidden] {
+        display: none;
+      }
+
+      .main-badge {
+        position: absolute;
+        top: 5px;
+        left: 5px;
+        padding: 3px 6px;
+        color: #071310;
+        background: var(--primary);
+        border-radius: 5px;
+        font-size: 10px;
+        font-weight: 900;
+      }
+
+      .gallery-fields {
+        display: grid;
+        gap: 10px;
+      }
+
+      .compact-label {
+        display: block;
+        margin-bottom: 5px;
+        color: var(--text-muted);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .gallery-actions {
+        display: grid;
+        grid-template-columns: repeat(2, 36px);
+        gap: 7px;
+      }
+
+      .icon-button {
+        display: grid;
+        width: 36px;
+        height: 36px;
+        place-items: center;
+        color: var(--text-secondary);
+        background: var(--surface-soft);
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        cursor: pointer;
+        transition:
+          color 150ms ease,
+          border-color 150ms ease,
+          background 150ms ease;
+      }
+
+      .icon-button:hover:not(:disabled) {
+        color: var(--text);
+        background: #2a3040;
+        border-color: var(--border-strong);
+      }
+
+      .icon-button.danger:hover:not(:disabled) {
+        color: var(--danger);
+        background: var(--danger-soft);
+        border-color: rgba(255, 127, 140, 0.42);
+      }
+
+      .icon-button:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+
+      .add-button,
+      .primary-button,
+      .secondary-button {
+        display: inline-flex;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px 15px;
+        border-radius: 10px;
+        font-weight: 800;
+        cursor: pointer;
+        transition:
+          transform 150ms ease,
+          background 150ms ease,
+          border-color 150ms ease,
+          opacity 150ms ease;
+      }
+
+      .add-button {
+        width: 100%;
+        margin-top: 12px;
+        color: var(--primary);
+        background: var(--primary-soft);
+        border: 1px dashed rgba(117, 213, 198, 0.4);
+      }
+
+      .add-button:hover {
+        background: rgba(117, 213, 198, 0.17);
+        border-color: var(--primary);
+      }
+
+      .primary-button {
+        color: #071310;
+        background: var(--primary);
+      }
+
+      .primary-button:hover:not(:disabled) {
+        background: #8de3d6;
+        transform: translateY(-1px);
+      }
+
+      .primary-button:disabled {
+        opacity: 0.38;
+        cursor: not-allowed;
+      }
+
+      .secondary-button {
+        color: var(--text-secondary);
+        background: transparent;
+        border: 1px solid var(--border-strong);
+      }
+
+      .secondary-button:hover {
+        color: var(--text);
+        background: var(--surface-soft);
+      }
+
+      .compatibility-note {
+        display: flex;
+        gap: 10px;
+        margin-top: 14px;
+        padding: 11px 12px;
+        color: var(--text-secondary);
+        background: var(--warning-soft);
+        border: 1px solid rgba(244, 195, 106, 0.2);
+        border-radius: 10px;
+        font-size: 12px;
+      }
+
+      .compatibility-note strong {
+        color: var(--warning);
+      }
+
+      .output-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 20px 22px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .output-title {
+        margin: 0 0 2px;
+        font-size: 16px;
+      }
+
+      .output-subtitle {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+
+      .status-pill {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 7px;
+        color: var(--text-muted);
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        background: var(--text-muted);
+        border-radius: 50%;
+      }
+
+      .status-pill.ready {
+        color: var(--success);
+      }
+
+      .status-pill.ready .status-dot {
+        background: var(--success);
+        box-shadow: 0 0 0 4px rgba(119, 211, 154, 0.1);
+      }
+
+      .status-pill.invalid {
+        color: var(--danger);
+      }
+
+      .status-pill.invalid .status-dot {
+        background: var(--danger);
+        box-shadow: 0 0 0 4px var(--danger-soft);
+      }
+
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1px;
+        background: var(--border);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .summary-item {
+        min-width: 0;
+        padding: 12px 15px;
+        background: var(--surface);
+      }
+
+      .summary-label {
+        display: block;
+        margin-bottom: 2px;
+        color: var(--text-muted);
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .summary-value {
+        display: block;
+        overflow: hidden;
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .code-wrap {
+        position: relative;
+        min-height: 500px;
+        background: #090b10;
+      }
+
+      pre {
+        min-height: 500px;
+        max-height: calc(100vh - 260px);
+        margin: 0;
+        overflow: auto;
+        padding: 20px 22px 26px;
+        color: #cbd5e5;
+        font-family: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 12px;
+        line-height: 1.7;
+        tab-size: 2;
+        white-space: pre;
+      }
+
+      .empty-output {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        padding: 40px;
+        place-items: center;
+        text-align: center;
+        pointer-events: none;
+      }
+
+      .empty-output[hidden] {
+        display: none;
+      }
+
+      .empty-icon {
+        display: grid;
+        width: 52px;
+        height: 52px;
+        margin: 0 auto 12px;
+        place-items: center;
+        color: var(--primary);
+        background: var(--primary-soft);
+        border: 1px solid rgba(117, 213, 198, 0.2);
+        border-radius: 15px;
+        font-size: 22px;
+      }
+
+      .empty-output h3 {
+        margin-bottom: 6px;
+        font-size: 15px;
+      }
+
+      .empty-output p {
+        max-width: 280px;
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+
+      .output-actions {
+        display: flex;
+        gap: 10px;
+        padding: 16px 18px;
+        border-top: 1px solid var(--border);
+      }
+
+      .output-actions .primary-button {
+        flex: 1;
+      }
+
+      .toast {
+        position: fixed;
+        right: 22px;
+        bottom: 22px;
+        z-index: 20;
+        max-width: min(360px, calc(100% - 32px));
+        padding: 12px 16px;
+        color: #071310;
+        background: var(--success);
+        border-radius: 11px;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
+        font-size: 13px;
+        font-weight: 800;
+        opacity: 0;
+        transform: translateY(12px);
+        pointer-events: none;
+        transition:
+          opacity 180ms ease,
+          transform 180ms ease;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      :focus-visible {
+        outline: 3px solid rgba(117, 213, 198, 0.4);
+        outline-offset: 2px;
+      }
+
+      @media (max-width: 1040px) {
+        .workspace {
+          grid-template-columns: 1fr;
+        }
+
+        .output-panel {
+          position: static;
+        }
+
+        pre {
+          max-height: 600px;
+        }
+      }
+
+      @media (max-width: 680px) {
+        .app-shell {
+          width: min(100% - 24px, 1480px);
+          padding: 24px 0 36px;
+        }
+
+        .page-header {
+          align-items: flex-start;
+          flex-direction: column;
+          margin-bottom: 20px;
+        }
+
+        .form-panel {
+          padding: 18px;
+        }
+
+        .field-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .field.full {
+          grid-column: auto;
+        }
+
+        .gallery-card {
+          grid-template-columns: 66px minmax(0, 1fr);
+          gap: 11px;
+          padding: 11px;
+        }
+
+        .image-preview {
+          width: 66px;
+        }
+
+        .gallery-actions {
+          grid-column: 1 / -1;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .icon-button {
+          width: 100%;
+          height: 40px;
+        }
+
+        .summary {
+          grid-template-columns: 1fr;
+        }
+
+        .summary-item + .summary-item {
+          border-top: 1px solid var(--border);
+        }
+
+        .code-wrap,
+        pre {
+          min-height: 420px;
+        }
+
+        pre {
+          padding: 16px;
+          font-size: 11px;
+        }
+
+        .output-actions {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .output-actions .primary-button,
+        .output-actions .secondary-button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">CharInfo Creator Tool</p>
+          <h1>角色视觉 EJS 生成器</h1>
+          <p class="header-copy">
+            填入角色的头像、立绘和主题颜色，工具会在本地生成可直接放入世界书的 EJS。无需手写变量路径。
+          </p>
+        </div>
+        <span class="phase-badge">Phase 1 · Browser Preview</span>
+      </header>
+
+      <div class="workspace">
+        <form class="panel form-panel" id="builder-form" novalidate>
+          <section class="section">
+            <div class="section-heading">
+              <span class="step-number">1</span>
+              <div>
+                <h2>角色资料</h2>
+                <p class="section-description">姓名负责把视觉配置和正确的角色资料连接起来。</p>
+              </div>
+            </div>
+
+            <div class="field-grid">
+              <div class="field" id="name-field">
+                <label class="field-label" for="character-name">
+                  <span>角色姓名 <span class="required">*</span></span>
+                </label>
+                <input
+                  class="text-input"
+                  id="character-name"
+                  name="character-name"
+                  type="text"
+                  autocomplete="off"
+                  placeholder="例如：傲雪"
+                />
+                <p class="field-error">请输入角色姓名。</p>
+              </div>
+
+              <div class="field" id="avatar-field">
+                <label class="field-label" for="avatar-url">
+                  <span>状态栏头像 URL</span>
+                  <span class="optional">选填</span>
+                </label>
+                <input
+                  class="text-input"
+                  id="avatar-url"
+                  name="avatar-url"
+                  type="url"
+                  inputmode="url"
+                  autocomplete="off"
+                  placeholder="https://…/avatar.webp"
+                />
+                <p class="field-error">请输入有效的 HTTPS 图片网址。</p>
+                <p class="helper">建议使用适合圆形裁切的头像图；留空时不会生成头像变量。</p>
+              </div>
+
+              <div class="field full">
+                <label class="field-label" for="entrance-quote">
+                  <span>登场台词</span>
+                  <span class="counter"><span id="quote-count">0</span>/60</span>
+                </label>
+                <textarea
+                  class="text-area"
+                  id="entrance-quote"
+                  name="entrance-quote"
+                  maxlength="60"
+                  placeholder="例如：霜雪会记住每一道剑痕。"
+                ></textarea>
+              </div>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="section-heading">
+              <span class="step-number">2</span>
+              <div>
+                <h2>主题颜色</h2>
+                <p class="section-description">分别控制种族视觉与阶层视觉，颜色会实时同步。</p>
+              </div>
+            </div>
+
+            <div class="field-grid">
+              <div class="field" id="race-color-field">
+                <label class="field-label" for="race-color-text">种族颜色</label>
+                <div class="color-control">
+                  <input
+                    class="color-picker"
+                    id="race-color-picker"
+                    type="color"
+                    value="#A9DBC3"
+                    aria-label="选择种族颜色"
+                  />
+                  <input
+                    class="color-text"
+                    id="race-color-text"
+                    type="text"
+                    value="#A9DBC3"
+                    maxlength="7"
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                </div>
+                <p class="field-error">颜色必须使用 #RRGGBB 格式。</p>
+              </div>
+
+              <div class="field" id="tier-color-field">
+                <label class="field-label" for="tier-color-text">阶层颜色</label>
+                <div class="color-control">
+                  <input
+                    class="color-picker"
+                    id="tier-color-picker"
+                    type="color"
+                    value="#B7D9E8"
+                    aria-label="选择阶层颜色"
+                  />
+                  <input
+                    class="color-text"
+                    id="tier-color-text"
+                    type="text"
+                    value="#B7D9E8"
+                    maxlength="7"
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                </div>
+                <p class="field-error">颜色必须使用 #RRGGBB 格式。</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="section-heading">
+              <span class="step-number">3</span>
+              <div>
+                <h2>角色相册</h2>
+                <p class="section-description">第一张是 CharInfo 默认主立绘；使用箭头调整显示顺序。</p>
+              </div>
+            </div>
+
+            <div class="gallery-list" id="gallery-list"></div>
+
+            <button class="add-button" id="add-image" type="button">
+              <span aria-hidden="true">＋</span>
+              添加一张图片
+            </button>
+
+            <div class="compatibility-note">
+              <span aria-hidden="true">ⓘ</span>
+              <span>
+                <strong>状态栏兼容建议：</strong>
+                使用 HTTPS，以及 PNG、JPG、JPEG、WebP 或 AVIF。其他格式仍可生成，但可能不会被状态栏接受。
+              </span>
+            </div>
+          </section>
+        </form>
+
+        <aside class="panel output-panel" aria-label="生成结果">
+          <div class="output-header">
+            <div>
+              <h2 class="output-title">生成结果</h2>
+              <p class="output-subtitle">内容会随表单自动更新</p>
+            </div>
+            <div class="status-pill invalid" id="output-status" role="status">
+              <span class="status-dot"></span>
+              <span id="output-status-text">等待填写</span>
+            </div>
+          </div>
+
+          <div class="summary">
+            <div class="summary-item">
+              <span class="summary-label">角色</span>
+              <span class="summary-value" id="summary-name">尚未填写</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">头像</span>
+              <span class="summary-value" id="summary-avatar">未设置</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">相册</span>
+              <span class="summary-value" id="summary-gallery">1 张</span>
+            </div>
+          </div>
+
+          <div class="code-wrap">
+            <pre id="code-output" aria-live="polite"></pre>
+            <div class="empty-output" id="empty-output">
+              <div>
+                <div class="empty-icon" aria-hidden="true">&lt;/&gt;</div>
+                <h3>填写必填项目后生成 EJS</h3>
+                <p>需要角色姓名，以及至少一张带有效 HTTPS 地址的主立绘。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="output-actions">
+            <button class="primary-button" id="copy-ejs" type="button" disabled>
+              <span aria-hidden="true">⧉</span>
+              复制 EJS
+            </button>
+            <button class="secondary-button" id="reset-form" type="button">清空表单</button>
+          </div>
+        </aside>
+      </div>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite">EJS 已复制到剪贴板</div>
+
+    <template id="gallery-item-template">
+      <article class="gallery-card">
+        <div class="image-preview">
+          <span class="preview-placeholder" aria-hidden="true">▧</span>
+          <img alt="" hidden />
+          <span class="main-badge" hidden>主立绘</span>
+        </div>
+
+        <div class="gallery-fields">
+          <div>
+            <label class="compact-label">图片标题</label>
+            <input class="text-input image-title" type="text" autocomplete="off" placeholder="例如：霜原剑影" />
+          </div>
+          <div>
+            <label class="compact-label">图片 URL</label>
+            <input
+              class="text-input image-url"
+              type="url"
+              inputmode="url"
+              autocomplete="off"
+              placeholder="https://…/portrait.webp"
+            />
+            <p class="field-error">请输入有效的 HTTPS 图片网址。</p>
+          </div>
+        </div>
+
+        <div class="gallery-actions" aria-label="图片排序操作">
+          <button class="icon-button move-up" type="button" title="上移" aria-label="上移">↑</button>
+          <button class="icon-button move-down" type="button" title="下移" aria-label="下移">↓</button>
+          <button class="icon-button danger remove-image" type="button" title="删除" aria-label="删除">×</button>
+        </div>
+      </article>
+    </template>
+
+    <script>
+      (() => {
+        "use strict";
+
+        const DEFAULTS = {
+          raceColor: "#A9DBC3",
+          tierColor: "#B7D9E8",
+        };
+        const HEX_PATTERN = /^#[0-9A-F]{6}$/;
+
+        const form = document.querySelector("#builder-form");
+        const nameInput = document.querySelector("#character-name");
+        const avatarInput = document.querySelector("#avatar-url");
+        const quoteInput = document.querySelector("#entrance-quote");
+        const quoteCount = document.querySelector("#quote-count");
+        const raceColorPicker = document.querySelector("#race-color-picker");
+        const raceColorText = document.querySelector("#race-color-text");
+        const tierColorPicker = document.querySelector("#tier-color-picker");
+        const tierColorText = document.querySelector("#tier-color-text");
+        const galleryList = document.querySelector("#gallery-list");
+        const galleryTemplate = document.querySelector("#gallery-item-template");
+        const addImageButton = document.querySelector("#add-image");
+        const codeOutput = document.querySelector("#code-output");
+        const emptyOutput = document.querySelector("#empty-output");
+        const outputStatus = document.querySelector("#output-status");
+        const outputStatusText = document.querySelector("#output-status-text");
+        const copyButton = document.querySelector("#copy-ejs");
+        const resetButton = document.querySelector("#reset-form");
+        const summaryName = document.querySelector("#summary-name");
+        const summaryAvatar = document.querySelector("#summary-avatar");
+        const summaryGallery = document.querySelector("#summary-gallery");
+        const toast = document.querySelector("#toast");
+
+        let generatedCode = "";
+        let toastTimer = null;
+
+        function isHttpsUrl(value) {
+          if (!value.trim()) return false;
+          try {
+            return new URL(value.trim()).protocol === "https:";
+          } catch {
+            return false;
+          }
+        }
+
+        function normalizeHex(value) {
+          const trimmed = value.trim().toUpperCase();
+          return trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
+        }
+
+        function jsString(value) {
+          return JSON.stringify(value);
+        }
+
+        function readGallery() {
+          return [...galleryList.querySelectorAll(".gallery-card")].map((card) => ({
+            title: card.querySelector(".image-title").value.trim(),
+            url: card.querySelector(".image-url").value.trim(),
+          }));
+        }
+
+        function makeGalleryTitle(index) {
+          return index === 0 ? "主立绘" : `备用立绘 ${index + 1}`;
+        }
+
+        function addGalleryItem(data = {}, focus = false) {
+          const fragment = galleryTemplate.content.cloneNode(true);
+          const card = fragment.querySelector(".gallery-card");
+          const titleInput = card.querySelector(".image-title");
+          const urlInput = card.querySelector(".image-url");
+          const image = card.querySelector("img");
+
+          titleInput.value = data.title || makeGalleryTitle(galleryList.children.length);
+          urlInput.value = data.url || "";
+
+          function updatePreview() {
+            const value = urlInput.value.trim();
+            if (!isHttpsUrl(value)) {
+              image.hidden = true;
+              image.removeAttribute("src");
+              card.querySelector(".preview-placeholder").hidden = false;
+              return;
+            }
+            image.hidden = false;
+            image.src = value;
+            image.alt = titleInput.value.trim() || "角色图片预览";
+            card.querySelector(".preview-placeholder").hidden = true;
+          }
+
+          image.addEventListener("error", () => {
+            image.hidden = true;
+            card.querySelector(".preview-placeholder").hidden = false;
+          });
+          image.addEventListener("load", () => {
+            image.hidden = false;
+            card.querySelector(".preview-placeholder").hidden = true;
+          });
+          urlInput.addEventListener("input", updatePreview);
+          titleInput.addEventListener("input", () => {
+            image.alt = titleInput.value.trim() || "角色图片预览";
+          });
+
+          card.querySelector(".move-up").addEventListener("click", () => {
+            const previous = card.previousElementSibling;
+            if (previous) galleryList.insertBefore(card, previous);
+            refresh();
+          });
+
+          card.querySelector(".move-down").addEventListener("click", () => {
+            const next = card.nextElementSibling;
+            if (next) galleryList.insertBefore(next, card);
+            refresh();
+          });
+
+          card.querySelector(".remove-image").addEventListener("click", () => {
+            if (galleryList.children.length <= 1) return;
+            card.remove();
+            refresh();
+          });
+
+          galleryList.appendChild(card);
+          updatePreview();
+          refresh();
+          if (focus) titleInput.focus();
+        }
+
+        function updateGalleryControls() {
+          const cards = [...galleryList.querySelectorAll(".gallery-card")];
+          cards.forEach((card, index) => {
+            card.querySelector(".main-badge").hidden = index !== 0;
+            card.querySelector(".move-up").disabled = index === 0;
+            card.querySelector(".move-down").disabled = index === cards.length - 1;
+            card.querySelector(".remove-image").disabled = cards.length === 1;
+          });
+        }
+
+        function setFieldError(fieldId, hasError) {
+          document.querySelector(`#${fieldId}`).classList.toggle("has-error", hasError);
+        }
+
+        function validate(showErrors = true) {
+          const nameValid = Boolean(nameInput.value.trim());
+          const avatarValid = !avatarInput.value.trim() || isHttpsUrl(avatarInput.value);
+          const raceColorValid = HEX_PATTERN.test(normalizeHex(raceColorText.value));
+          const tierColorValid = HEX_PATTERN.test(normalizeHex(tierColorText.value));
+          const cards = [...galleryList.querySelectorAll(".gallery-card")];
+          let galleryValid = cards.length > 0;
+
+          cards.forEach((card) => {
+            const urlValid = isHttpsUrl(card.querySelector(".image-url").value);
+            card.classList.toggle("has-error", showErrors && !urlValid);
+            galleryValid = galleryValid && urlValid;
+          });
+
+          setFieldError("name-field", showErrors && !nameValid);
+          setFieldError("avatar-field", showErrors && !avatarValid);
+          setFieldError("race-color-field", showErrors && !raceColorValid);
+          setFieldError("tier-color-field", showErrors && !tierColorValid);
+
+          return nameValid && avatarValid && raceColorValid && tierColorValid && galleryValid;
+        }
+
+        function buildEjs() {
+          const npcName = nameInput.value.trim();
+          const avatarUrl = avatarInput.value.trim();
+          const quote = quoteInput.value.trim();
+          const raceColor = normalizeHex(raceColorText.value);
+          const tierColor = normalizeHex(tierColorText.value);
+          const gallery = readGallery().map((item, index) => ({
+            title: item.title || makeGalleryTitle(index),
+            url: item.url,
+          }));
+
+          const lines = [
+            "<%_",
+            "{",
+            `  const npcName = ${jsString(npcName)};`,
+            "",
+          ];
+
+          if (avatarUrl) {
+            lines.push(`  const avatarUrl = ${jsString(avatarUrl)};`, "");
+          }
+
+          lines.push("  const galleryImages = [");
+          gallery.forEach((image) => {
+            lines.push(`    { title: ${jsString(image.title)}, url: ${jsString(image.url)} },`);
+          });
+          lines.push("  ];", "");
+          lines.push("  setLocalVar(");
+          lines.push("    'char_info_visuals',");
+          lines.push("    {");
+          lines.push("      [npcName]: {");
+          lines.push(`        custom_racecolor: ${jsString(raceColor)},`);
+          lines.push(`        custom_tiercolor: ${jsString(tierColor)},`);
+          if (quote) {
+            lines.push(`        '登场台词': ${jsString(quote)},`);
+          }
+          lines.push("      },");
+          lines.push("    },");
+          lines.push("    { merge: true, dryRun: true },");
+          lines.push("  );");
+
+          if (avatarUrl) {
+            lines.push("");
+            lines.push("  setLocalVar(");
+            lines.push("    `status.externalAvatars.partners[${JSON.stringify(npcName)}].url`,");
+            lines.push("    avatarUrl,");
+            lines.push("    { dryRun: true },");
+            lines.push("  );");
+          }
+
+          lines.push("");
+          lines.push("  setLocalVar(");
+          lines.push("    `status.externalGalleries.partners[${JSON.stringify(npcName)}].images`,");
+          lines.push("    galleryImages,");
+          lines.push("    { dryRun: true },");
+          lines.push("  );");
+          lines.push("}");
+          lines.push("_%>");
+
+          return lines.join("\n");
+        }
+
+        function updateSummary() {
+          summaryName.textContent = nameInput.value.trim() || "尚未填写";
+          summaryAvatar.textContent = avatarInput.value.trim() ? "已设置" : "未设置";
+          summaryGallery.textContent = `${galleryList.children.length} 张`;
+        }
+
+        function updateStatus(isValid) {
+          outputStatus.classList.toggle("ready", isValid);
+          outputStatus.classList.toggle("invalid", !isValid);
+          outputStatusText.textContent = isValid ? "可以复制" : "等待填写";
+        }
+
+        function refresh() {
+          updateGalleryControls();
+          updateSummary();
+          quoteCount.textContent = String(quoteInput.value.length);
+
+          const isValid = validate(true);
+          generatedCode = isValid ? buildEjs() : "";
+          codeOutput.textContent = generatedCode;
+          emptyOutput.hidden = isValid;
+          copyButton.disabled = !isValid;
+          updateStatus(isValid);
+        }
+
+        function syncColor(source, target) {
+          const value = normalizeHex(source.value);
+          source.value = value;
+          if (HEX_PATTERN.test(value)) target.value = value;
+          refresh();
+        }
+
+        async function copyGeneratedCode() {
+          if (!generatedCode) return;
+
+          try {
+            await navigator.clipboard.writeText(generatedCode);
+          } catch {
+            const textarea = document.createElement("textarea");
+            textarea.value = generatedCode;
+            textarea.style.position = "fixed";
+            textarea.style.opacity = "0";
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand("copy");
+            textarea.remove();
+          }
+
+          toast.classList.add("show");
+          window.clearTimeout(toastTimer);
+          toastTimer = window.setTimeout(() => toast.classList.remove("show"), 2200);
+        }
+
+        function resetForm() {
+          if (!window.confirm("确定清空当前填写的全部内容吗？")) return;
+
+          form.reset();
+          raceColorText.value = DEFAULTS.raceColor;
+          raceColorPicker.value = DEFAULTS.raceColor;
+          tierColorText.value = DEFAULTS.tierColor;
+          tierColorPicker.value = DEFAULTS.tierColor;
+          galleryList.replaceChildren();
+          addGalleryItem();
+          nameInput.focus();
+        }
+
+        form.addEventListener("input", refresh);
+        addImageButton.addEventListener("click", () => addGalleryItem({}, true));
+        copyButton.addEventListener("click", copyGeneratedCode);
+        resetButton.addEventListener("click", resetForm);
+        raceColorPicker.addEventListener("input", () => {
+          raceColorText.value = raceColorPicker.value.toUpperCase();
+          refresh();
+        });
+        tierColorPicker.addEventListener("input", () => {
+          tierColorText.value = tierColorPicker.value.toUpperCase();
+          refresh();
+        });
+        raceColorText.addEventListener("change", () => syncColor(raceColorText, raceColorPicker));
+        tierColorText.addEventListener("change", () => syncColor(tierColorText, tierColorPicker));
+
+        addGalleryItem();
+      })();
+    </script>
+  </body>
+</html>

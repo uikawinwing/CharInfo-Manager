@@ -19,6 +19,22 @@ type RegistryEntryLocation = {
   content: string;
 };
 
+type RegistryCacheEntry = {
+  promise: Promise<RegistryEntryLocation>;
+  expiresAt: number;
+};
+
+type RegistryCache = Map<string, RegistryCacheEntry>;
+
+type SharedRegistryCacheWindow = Window &
+  typeof globalThis & {
+    __CHAR_INFO_SPECIAL_NPC_REGISTRY_CACHE__?: RegistryCache;
+  };
+
+const sharedRegistryCacheKey = '__CHAR_INFO_SPECIAL_NPC_REGISTRY_CACHE__';
+const settledRegistryCacheLifetimeMs = 5000;
+const localRegistryCache: RegistryCache = new Map();
+
 export function parseSpecialNpcCharacterReference(source: string): SpecialNpcReference {
   const trimmedSource = source.trim();
   const wrappedMatch = trimmedSource.match(charInfoWrapperPattern);
@@ -45,7 +61,7 @@ export async function loadSpecialNpcCharacterReference(
 
   return {
     reference,
-    data: displayData,
+    data: { ...displayData, __char_info_ref: reference },
     injectData,
     appearVariableName,
   };
@@ -53,6 +69,30 @@ export async function loadSpecialNpcCharacterReference(
 
 async function findSpecialNpcRegistry(): Promise<RegistryEntryLocation> {
   const worldbookNames = getActiveWorldbookNames();
+  const cacheKey = [...worldbookNames].sort().join('\u0000');
+  const cache = getSharedRegistryCache();
+  const cached = cache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.promise;
+  if (cached) cache.delete(cacheKey);
+
+  const cacheEntry: RegistryCacheEntry = {
+    promise: Promise.resolve(null as unknown as RegistryEntryLocation),
+    expiresAt: Number.POSITIVE_INFINITY,
+  };
+  cacheEntry.promise = readSpecialNpcRegistry(worldbookNames)
+    .then(registry => {
+      cacheEntry.expiresAt = Date.now() + settledRegistryCacheLifetimeMs;
+      return registry;
+    })
+    .catch(error => {
+      if (cache.get(cacheKey) === cacheEntry) cache.delete(cacheKey);
+      throw error;
+    });
+  cache.set(cacheKey, cacheEntry);
+  return cacheEntry.promise;
+}
+
+async function readSpecialNpcRegistry(worldbookNames: string[]): Promise<RegistryEntryLocation> {
   const matches = (
     await Promise.all(
       worldbookNames.map(async worldbookName => {
@@ -77,6 +117,18 @@ async function findSpecialNpcRegistry(): Promise<RegistryEntryLocation> {
   }
 
   return matches[0];
+}
+
+function getSharedRegistryCache(): RegistryCache {
+  try {
+    const host = window.parent as SharedRegistryCacheWindow;
+    if (!host[sharedRegistryCacheKey]) {
+      host[sharedRegistryCacheKey] = new Map();
+    }
+    return host[sharedRegistryCacheKey];
+  } catch (_) {
+    return localRegistryCache;
+  }
 }
 
 function getActiveWorldbookNames(): string[] {

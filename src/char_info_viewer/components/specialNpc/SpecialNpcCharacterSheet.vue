@@ -5,10 +5,15 @@
       :class="{ 'is-overview-tab': isOverviewTab, 'is-detail-tab': !isOverviewTab, 'is-divinity-tab': isDivinityTab }"
     >
       <aside class="special-npc-portrait-pane">
+        <div v-if="!portraitLoaded && !portraitLoadFailed" class="special-npc-portrait-loading" role="status">
+          <span aria-hidden="true">◇</span>
+          <small>立绘载入中</small>
+        </div>
         <video
           v-if="isVideoPortrait && !portraitLoadFailed"
           :key="portraitMediaUrl"
           class="special-npc-portrait-video"
+          :class="{ 'is-loaded': portraitLoaded }"
           :src="portraitMediaUrl"
           :aria-label="vm.nameText"
           autoplay
@@ -16,15 +21,20 @@
           muted
           playsinline
           preload="metadata"
-          @error="portraitLoadFailed = true"
+          @loadeddata="onPortraitLoaded"
+          @error="onPortraitLoadError"
         ></video>
         <img
           v-else-if="!portraitLoadFailed"
           :key="portraitMediaUrl"
           class="special-npc-portrait-image"
+          :class="{ 'is-loaded': portraitLoaded }"
           :src="portraitMediaUrl"
           :alt="vm.nameText"
-          @error="portraitLoadFailed = true"
+          loading="lazy"
+          decoding="async"
+          @load="onPortraitLoaded"
+          @error="onPortraitLoadError"
         />
         <section v-else class="special-npc-portrait-failure" role="status">
           <strong>立绘无法加载</strong>
@@ -48,8 +58,19 @@
           <span class="special-npc-ailisi-toy-node node-one"></span>
           <span class="special-npc-ailisi-toy-node node-two"></span>
         </div>
-        <div v-if="isOverviewTab" class="special-npc-mobile-header-overlay">
-          <SpecialNpcHeader :vm="vm" :ornate="hasOrnateHeader" compact />
+        <div v-if="isOverviewTab && hasMultiplePortraits" class="special-npc-portrait-navigation">
+          <button type="button" aria-label="上一张立绘" @click="switchPortrait(-1)">‹</button>
+          <button type="button" aria-label="下一张立绘" @click="switchPortrait(1)">›</button>
+        </div>
+        <div v-if="isOverviewTab" class="special-npc-mobile-overview-overlay">
+          <blockquote v-if="vm.entranceQuoteText" class="special-npc-mobile-entrance-quote">
+            <span class="special-npc-mobile-quote-mark" aria-hidden="true">“</span>
+            <span class="special-npc-mobile-quote-text">{{ vm.entranceQuoteText }}</span>
+            <span class="special-npc-mobile-quote-mark" aria-hidden="true">”</span>
+          </blockquote>
+          <div class="special-npc-mobile-header-overlay">
+            <SpecialNpcHeader :vm="vm" :ornate="hasOrnateHeader" compact />
+          </div>
         </div>
       </aside>
 
@@ -163,6 +184,7 @@
 import { computed, ref, watch, watchEffect } from 'vue';
 
 import type { CharacterViewModel } from '../../services/characterViewModel';
+import { normalizePortraitMediaUrlForBrowser } from '../../services/imageUrl';
 import type { AttributeView, SpecialNpcTab, SpecialNpcTabKey } from './types';
 import SpecialNpcDivinityPanel from './SpecialNpcDivinityPanel.vue';
 import SpecialNpcHeader from './SpecialNpcHeader.vue';
@@ -192,18 +214,29 @@ defineEmits<{
 
 const activeSpecialTab = ref<SpecialNpcTabKey>('overview');
 const portraitLoadFailed = ref(false);
+const portraitLoaded = ref(false);
 const portraitRetryAttempt = ref(0);
-const isVideoPortrait = computed(() => props.vm.specialNpcProfile?.portraitKind === 'video');
+function resolveInitialPortraitIndex(): number {
+  if (props.vm.randomizeInitialImage && props.vm.imageUrls.length > 1) {
+    return Math.floor(Math.random() * props.vm.imageUrls.length);
+  }
+  return 0;
+}
+
+const activePortraitIndex = ref(resolveInitialPortraitIndex());
+const activePortraitUrl = computed(() => props.vm.imageUrls[activePortraitIndex.value] ?? props.vm.imageUrl);
+const hasMultiplePortraits = computed(() => props.vm.imageUrls.length > 1);
+const isVideoPortrait = computed(() => normalizePortraitMediaUrlForBrowser(activePortraitUrl.value)?.kind === 'video');
 const portraitMediaUrl = computed(() => {
-  if (portraitRetryAttempt.value === 0) return props.vm.imageUrl;
+  if (portraitRetryAttempt.value === 0) return activePortraitUrl.value;
 
   try {
-    const url = new URL(props.vm.imageUrl, window.location.href);
+    const url = new URL(activePortraitUrl.value, window.location.href);
     url.searchParams.set('_char_info_retry', String(portraitRetryAttempt.value));
     return url.href;
   } catch (_) {
-    const separator = props.vm.imageUrl.includes('?') ? '&' : '?';
-    return `${props.vm.imageUrl}${separator}_char_info_retry=${portraitRetryAttempt.value}`;
+    const separator = activePortraitUrl.value.includes('?') ? '&' : '?';
+    return `${activePortraitUrl.value}${separator}_char_info_retry=${portraitRetryAttempt.value}`;
   }
 });
 const tabs = computed<SpecialNpcTab[]>(() => {
@@ -299,13 +332,36 @@ function openCharacterStory(): void {
 
 function retryPortraitLoad(): void {
   portraitLoadFailed.value = false;
+  portraitLoaded.value = false;
   portraitRetryAttempt.value += 1;
 }
 
+function onPortraitLoaded(): void {
+  portraitLoaded.value = true;
+  portraitLoadFailed.value = false;
+}
+
+function onPortraitLoadError(): void {
+  portraitLoaded.value = false;
+  portraitLoadFailed.value = true;
+}
+
+function switchPortrait(offset: number): void {
+  const count = props.vm.imageUrls.length;
+  if (count < 2) return;
+
+  activePortraitIndex.value = (activePortraitIndex.value + offset + count) % count;
+  portraitLoadFailed.value = false;
+  portraitLoaded.value = false;
+  portraitRetryAttempt.value = 0;
+}
+
 watch(
-  () => props.vm.imageUrl,
+  () => props.vm.imageUrls.join('\n'),
   () => {
+    activePortraitIndex.value = resolveInitialPortraitIndex();
     portraitLoadFailed.value = false;
+    portraitLoaded.value = false;
     portraitRetryAttempt.value = 0;
   },
 );
@@ -653,16 +709,73 @@ watchEffect(() => {
   display: block;
   width: 100%;
   height: 100%;
+  opacity: 0;
   object-fit: cover;
   object-position: top center;
+  transition: opacity 180ms ease-out;
 }
 
 .special-npc-portrait-video {
   display: block;
   width: 100%;
   height: 100%;
+  opacity: 0;
   object-fit: cover;
   object-position: top center;
+  transition: opacity 180ms ease-out;
+}
+
+.special-npc-portrait-image.is-loaded,
+.special-npc-portrait-video.is-loaded {
+  opacity: 1;
+}
+
+.special-npc-portrait-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  color: rgba(var(--special-npc-soft-accent-rgb), 0.78);
+  text-align: center;
+  background:
+    radial-gradient(circle at 42% 36%, rgba(var(--special-npc-race-accent-rgb), 0.18), transparent 34%),
+    linear-gradient(145deg, rgba(22, 35, 49, 0.98), var(--special-npc-bg));
+}
+
+.special-npc-portrait-loading span {
+  font-size: clamp(28px, 5cqw, 54px);
+  text-shadow: 0 0 20px rgba(var(--special-npc-soft-accent-rgb), 0.38);
+  animation: special-npc-portrait-pulse 1.2s ease-in-out infinite alternate;
+}
+
+.special-npc-portrait-loading small {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+@keyframes special-npc-portrait-pulse {
+  from {
+    opacity: 0.35;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .special-npc-portrait-loading span {
+    animation: none;
+  }
+
+  .special-npc-portrait-image,
+  .special-npc-portrait-video {
+    transition: none;
+  }
 }
 
 .special-npc-theme-ailisi .special-npc-portrait-image,
@@ -815,6 +928,48 @@ watchEffect(() => {
   background: rgba(var(--special-npc-tier-accent-rgb), 0.18);
 }
 
+.special-npc-portrait-navigation {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  left: 14px;
+  z-index: 6;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.special-npc-portrait-navigation button {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid rgba(var(--special-npc-race-accent-rgb), 0.6);
+  border-radius: 50%;
+  background: rgba(7, 11, 18, 0.56);
+  color: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+  font:
+    400 30px/1 Georgia,
+    serif;
+  place-items: center;
+  pointer-events: auto;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.special-npc-portrait-navigation button:hover,
+.special-npc-portrait-navigation button:focus-visible {
+  border-color: var(--special-npc-tier-accent);
+  background: rgba(7, 11, 18, 0.78);
+  outline: none;
+  transform: scale(1.06);
+}
+
 .special-npc-theme-venus .special-npc-portrait-image,
 .special-npc-theme-venus .special-npc-portrait-video {
   border-radius: 8px;
@@ -886,6 +1041,7 @@ watchEffect(() => {
   transform: scale(-1);
 }
 
+.special-npc-mobile-overview-overlay,
 .special-npc-mobile-header-overlay {
   display: none;
 }
@@ -1617,12 +1773,58 @@ watchEffect(() => {
     display: none;
   }
 
-  .special-npc-mobile-header-overlay {
+  .special-npc-mobile-overview-overlay {
     position: absolute;
     right: 18px;
     bottom: 22px;
     left: 18px;
-    z-index: 2;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .special-npc-mobile-entrance-quote {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 38px;
+    margin: 0 8px;
+    padding: 7px 12px;
+    border: 1px solid rgba(var(--special-npc-race-accent-rgb), 0.48);
+    border-radius: 6px;
+    background: rgba(8, 12, 18, 0.58);
+    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.2);
+    color: rgba(255, 255, 255, 0.96);
+    font-family: 'LXGW WenKai Mono', 'Noto Serif SC', 'Songti SC', serif;
+    font-size: clamp(12px, 3.4cqw, 14px);
+    font-style: normal;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+    text-align: center;
+  }
+
+  .special-npc-mobile-quote-mark {
+    flex: 0 0 auto;
+    color: rgba(var(--special-npc-race-accent-rgb), 0.92);
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .special-npc-mobile-quote-text {
+    display: -webkit-box;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    white-space: pre-line;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .special-npc-mobile-header-overlay {
     display: block;
     padding: 10px 12px;
     border: 1px solid rgba(var(--special-npc-race-accent-rgb), 0.62);
@@ -1835,10 +2037,13 @@ watchEffect(() => {
     padding: 16px 14px 12px;
   }
 
-  .special-npc-mobile-header-overlay {
+  .special-npc-mobile-overview-overlay {
     right: 14px;
     bottom: 18px;
     left: 14px;
+  }
+
+  .special-npc-mobile-header-overlay {
     padding: 9px 10px;
   }
 

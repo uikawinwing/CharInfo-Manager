@@ -17,4 +17,3 @@ export type SpecialNpcTab = {
   key: SpecialNpcTabKey;
   label: string;
 };
-
