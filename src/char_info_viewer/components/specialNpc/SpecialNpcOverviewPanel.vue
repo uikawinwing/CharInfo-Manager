@@ -62,7 +62,7 @@ const emit = defineEmits<{
 </script>
 
 <style scoped>
-@import url("https://fontsapi.zeoseven.com/293/main/result.css");
+@import url('https://fontsapi.zeoseven.com/293/main/result.css');
 
 .special-npc-overview {
   display: flex;
@@ -452,12 +452,12 @@ const emit = defineEmits<{
 }
 
 :global(.special-npc-theme-anastasia .special-npc-entrance-quote),
-:global(.special-npc-theme-ailisi .special-npc-entrance-quote) {
+:global(.special-npc-theme-iris .special-npc-entrance-quote) {
   color: #31536d;
 }
 
 :global(.special-npc-theme-anastasia .special-npc-entrance-quote-text),
-:global(.special-npc-theme-ailisi .special-npc-entrance-quote-text) {
+:global(.special-npc-theme-iris .special-npc-entrance-quote-text) {
   text-shadow: none;
 }
 

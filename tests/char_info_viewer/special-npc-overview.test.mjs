@@ -21,7 +21,7 @@ test('special NPC overview renders the entrance quote only when display text exi
 });
 
 test('entrance quote keeps one lead ornament, subtle quotation marks, and a quiet closing line', () => {
-  assert.match(overviewSource, /@import url\("https:\/\/fontsapi\.zeoseven\.com\/293\/main\/result\.css"\);/);
+  assert.match(overviewSource, /@import url\(['"]https:\/\/fontsapi\.zeoseven\.com\/293\/main\/result\.css['"]\);/);
 
   const quoteRule = overviewSource.match(/\.special-npc-entrance-quote\s*\{[^}]*\}/)?.[0];
   assert.ok(quoteRule);
@@ -78,11 +78,11 @@ test('special and DX desktop headers share one readable title scale', () => {
   const anastasiaTitleRule = sheetSource.match(
     /\.special-npc-theme-anastasia :deep\(\.special-npc-header \.special-npc-name\)\s*\{[^}]*\}/,
   )?.[0];
-  const ailisiTitleRule = sheetSource.match(
-    /\.special-npc-theme-ailisi :deep\(\.special-npc-header \.special-npc-name\)\s*\{[^}]*\}/,
+  const irisTitleRule = sheetSource.match(
+    /\.special-npc-theme-iris :deep\(\.special-npc-header \.special-npc-name\)\s*\{[^}]*\}/,
   )?.[0];
   assert.ok(anastasiaTitleRule);
-  assert.ok(ailisiTitleRule);
+  assert.ok(irisTitleRule);
   assert.doesNotMatch(anastasiaTitleRule, /font-size:/);
-  assert.doesNotMatch(ailisiTitleRule, /font-size:/);
+  assert.doesNotMatch(irisTitleRule, /font-size:/);
 });

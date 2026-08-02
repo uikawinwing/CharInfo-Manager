@@ -2,7 +2,7 @@ import type { CharacterData } from '../types';
 import { getSmartArray, normalizeDisplayText, parseAttributeValue } from './common';
 import { normalizeCharacterDataKeys } from './yamlParser';
 
-export type MessageVariableScope = { type: 'message'; message_id: number | 'latest' };
+export type MessageVariableScope = { type: 'message'; message_id: number };
 
 type TavernApiLike = {
   getOrCreateChatWorldbook?: (chat: 'current', desiredName: string) => Promise<string>;
@@ -204,7 +204,7 @@ function statusEffectsToMap(input: unknown): Record<string, Record<string, any>>
 
 export function mergeCharacterIntoMvuData(data: CharacterData, currentVars: Mvu.MvuData): string {
   const normalizedData = normalizeCharacterDataKeys(data);
-  const charName = normalizedData.姓名 || 'Unknown';
+  const charName = normalizedData.姓名 || '未命名角色';
   const backpack = mergeNamedMaps(
     arrayToMap(normalizedData.背包, 'backpack'),
     arrayToMap(normalizedData.道具, 'backpack'),
@@ -246,7 +246,10 @@ export function mergeCharacterIntoMvuData(data: CharacterData, currentVars: Mvu.
       },
       要素: arrayToMap(normalizedData.登神长阶?.要素 || normalizedData.要素, 'divinity'),
       权能: arrayToMap(normalizedData.登神长阶?.权能 || normalizedData.权能, 'divinity'),
-      法则: arrayToMap(normalizedData.登神长阶?.法则 || normalizedData.法则, 'divinity'),
+      法则: mergeNamedMaps(
+        arrayToMap(normalizedData.法则, 'divinity'),
+        arrayToMap(normalizedData.登神长阶?.法则, 'divinity'),
+      ),
     },
     命定契约: false,
     好感度: 0,
@@ -270,10 +273,7 @@ export function mergeCharacterIntoMvuData(data: CharacterData, currentVars: Mvu.
   return charName;
 }
 
-export async function importToMvuVariables(
-  data: CharacterData,
-  targetScope: MessageVariableScope = { type: 'message', message_id: 'latest' },
-): Promise<void> {
+export async function importToMvuVariables(data: CharacterData, targetScope: MessageVariableScope): Promise<void> {
   await waitGlobalInitialized('Mvu');
   const currentVars = Mvu.getMvuData(targetScope);
   mergeCharacterIntoMvuData(data, currentVars);
@@ -309,7 +309,7 @@ export async function saveToChatWorldbook(data: CharacterData, originalYaml: str
   }
 
   const normalizedData = normalizeCharacterDataKeys(data);
-  const characterName = normalizedData.姓名 || 'Unknown';
+  const characterName = normalizedData.姓名 || '未命名角色';
   const shortName = characterName.split(/[·\s]/)[0];
   const lorebookKey = shortName && shortName.trim().length > 0 ? shortName : characterName;
   const content = formatWorldbookContent(originalYaml);

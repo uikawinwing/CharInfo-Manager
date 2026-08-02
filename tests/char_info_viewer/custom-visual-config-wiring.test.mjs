@@ -13,6 +13,6 @@ test('查看器在建立视图和主题前解析聊天变量视觉配置', () =>
   assert.match(appSource, /getVariables\(\{\s*type:\s*'chat'\s*\}\)/);
   assert.match(
     appSource,
-    /const resolvedData = resolveCharacterVisualConfig\([\s\S]*?sheetData\.value = resolvedData;[\s\S]*?resolveTheme\(resolvedData\)/,
+    /const resolvedData = await resolveCharacterVisualConfigWithExtensions\([\s\S]*?sheetData\.value =[\s\S]*?props\.entranceQuoteOverride === undefined[\s\S]*?resolveTheme\(resolvedData\)/,
   );
 });

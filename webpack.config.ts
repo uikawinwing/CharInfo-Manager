@@ -460,7 +460,6 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
           // globs: ['src/panel/component/*.vue'],
           resolvers: [VueUseComponentsResolver(), VueUseDirectiveResolver()],
         }),
-        new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 }),
         new webpack.DefinePlugin({
           __VUE_OPTIONS_API__: false,
           __VUE_PROD_DEVTOOLS__: process.env.CI !== 'true',

@@ -24,3 +24,12 @@ test('special NPC chooses image or video from the currently selected portrait UR
   assert.match(source, /normalizePortraitMediaUrlForBrowser\(activePortraitUrl\.value\)\?\.kind === 'video'/);
   assert.doesNotMatch(source, /specialNpcProfile\?\.portraitKind === 'video'/);
 });
+
+test('同一张立绘加载失败时会按 sources 顺序切换备用图床', () => {
+  const source = fs.readFileSync(componentPath, 'utf8');
+
+  assert.match(source, /activePortraitSourceIndex/);
+  assert.match(source, /activePortraitSources/);
+  assert.match(source, /activePortraitSourceIndex\.value < activePortraitSources\.value\.length - 1/);
+  assert.match(source, /activePortraitSourceIndex\.value \+= 1/);
+});

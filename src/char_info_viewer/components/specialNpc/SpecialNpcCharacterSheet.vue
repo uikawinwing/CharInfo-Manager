@@ -50,13 +50,13 @@
           <span class="special-npc-portrait-deco-corner bottom-left"></span>
           <span class="special-npc-portrait-deco-corner bottom-right"></span>
         </div>
-        <div v-if="isAilisiTheme" class="special-npc-ailisi-portrait-deco" aria-hidden="true">
-          <span class="special-npc-ailisi-bubble bubble-one"></span>
-          <span class="special-npc-ailisi-bubble bubble-two"></span>
-          <span class="special-npc-ailisi-bubble bubble-three"></span>
-          <span class="special-npc-ailisi-bubble bubble-four"></span>
-          <span class="special-npc-ailisi-toy-node node-one"></span>
-          <span class="special-npc-ailisi-toy-node node-two"></span>
+        <div v-if="isIrisTheme" class="special-npc-iris-portrait-deco" aria-hidden="true">
+          <span class="special-npc-iris-bubble bubble-one"></span>
+          <span class="special-npc-iris-bubble bubble-two"></span>
+          <span class="special-npc-iris-bubble bubble-three"></span>
+          <span class="special-npc-iris-bubble bubble-four"></span>
+          <span class="special-npc-iris-toy-node node-one"></span>
+          <span class="special-npc-iris-toy-node node-two"></span>
         </div>
         <div v-if="isOverviewTab && hasMultiplePortraits" class="special-npc-portrait-navigation">
           <button type="button" aria-label="上一张立绘" @click="switchPortrait(-1)">‹</button>
@@ -75,14 +75,14 @@
       </aside>
 
       <section class="special-npc-data-pane">
-        <div v-if="isAilisiTheme && isOverviewTab" class="special-npc-ailisi-header-deco" aria-hidden="true">
-          <span class="special-npc-ailisi-jellyfish">
+        <div v-if="isIrisTheme && isOverviewTab" class="special-npc-iris-header-deco" aria-hidden="true">
+          <span class="special-npc-iris-jellyfish">
             <i class="jellyfish-dome"></i>
             <i class="jellyfish-tentacle tentacle-one"></i>
             <i class="jellyfish-tentacle tentacle-two"></i>
             <i class="jellyfish-tentacle tentacle-three"></i>
           </span>
-          <span class="special-npc-ailisi-toy-blocks"><i></i><i></i><i></i><i></i></span>
+          <span class="special-npc-iris-toy-blocks"><i></i><i></i><i></i><i></i></span>
         </div>
         <SpecialNpcHeader v-if="isOverviewTab" class="special-npc-desktop-header" :vm="vm" :ornate="hasOrnateHeader" />
 
@@ -167,14 +167,15 @@
           :active-tab="activeSpecialTab"
           :importing="importing"
           :import-button-text="importButtonText"
+          :show-import-action="!readOnly"
           @set-tab="activeSpecialTab = $event"
           @toggle-import-menu="$emit('toggleImportMenu')"
         />
       </section>
 
-      <div id="import-action-menu" :class="{ show: showImportMenu }">
-        <button type="button" :disabled="importing" @click="$emit('importMvu')">导入到 MVU 变量</button>
-        <button type="button" :disabled="importing" @click="$emit('importWorldbook')">导入到 聊天世界书</button>
+      <div v-if="!readOnly" class="import-action-menu" :class="{ show: showImportMenu }">
+        <button type="button" :disabled="importing" @click="$emit('importMvu')">导入到角色状态</button>
+        <button type="button" :disabled="importing" @click="$emit('importWorldbook')">导入到聊天世界书</button>
       </div>
     </main>
   </div>
@@ -202,6 +203,7 @@ const props = defineProps<{
   importing: boolean;
   importButtonText: string;
   showImportMenu: boolean;
+  readOnly: boolean;
 }>();
 
 defineEmits<{
@@ -224,8 +226,14 @@ function resolveInitialPortraitIndex(): number {
 }
 
 const activePortraitIndex = ref(resolveInitialPortraitIndex());
-const activePortraitUrl = computed(() => props.vm.imageUrls[activePortraitIndex.value] ?? props.vm.imageUrl);
-const hasMultiplePortraits = computed(() => props.vm.imageUrls.length > 1);
+const activePortraitSourceIndex = ref(0);
+const activePortraitSources = computed(
+  () =>
+    props.vm.imageSourceGroups[activePortraitIndex.value] ??
+    [props.vm.imageUrls[activePortraitIndex.value] ?? props.vm.imageUrl].filter(Boolean),
+);
+const activePortraitUrl = computed(() => activePortraitSources.value[activePortraitSourceIndex.value] ?? '');
+const hasMultiplePortraits = computed(() => props.vm.imageSourceGroups.length > 1 || props.vm.imageUrls.length > 1);
 const isVideoPortrait = computed(() => normalizePortraitMediaUrlForBrowser(activePortraitUrl.value)?.kind === 'video');
 const portraitMediaUrl = computed(() => {
   if (portraitRetryAttempt.value === 0) return activePortraitUrl.value;
@@ -262,12 +270,12 @@ const isDivinityTab = computed(() => activeSpecialTab.value === 'divinity');
 const activeSpecialTabTitle = computed(() => tabs.value.find(tab => tab.key === activeSpecialTab.value)?.label ?? '');
 const isVenusTheme = computed(() => props.vm.specialNpcProfile?.visualTheme === 'venus');
 const isAnastasiaTheme = computed(() => props.vm.specialNpcProfile?.visualTheme === 'anastasia');
-const isAilisiTheme = computed(() => props.vm.specialNpcProfile?.visualTheme === 'ailisi');
+const isIrisTheme = computed(() => props.vm.specialNpcProfile?.visualTheme === 'iris');
 const hasOrnateHeader = computed(() => isVenusTheme.value || isAnastasiaTheme.value);
 const themeClass = computed(() => ({
   'special-npc-theme-venus': isVenusTheme.value,
   'special-npc-theme-anastasia': isAnastasiaTheme.value,
-  'special-npc-theme-ailisi': isAilisiTheme.value,
+  'special-npc-theme-iris': isIrisTheme.value,
 }));
 const themeStyle = computed(() => {
   if (isVenusTheme.value) return venusPortraitCssVars;
@@ -314,7 +322,7 @@ function openCharacterStory(): void {
 
   const widget = getCalendarFloatWidget();
   if (!widget) {
-    showCharacterStoryWarning('未检测到月历悬浮球，请先启用 calendar_float 脚本。');
+    showCharacterStoryWarning('未检测到月历功能，请先启用月历。');
     return;
   }
 
@@ -327,12 +335,13 @@ function openCharacterStory(): void {
   }
 
   widget.open?.();
-  showCharacterStoryWarning('月历悬浮球版本未提供读本跳转接口，请更新 calendar_float。');
+  showCharacterStoryWarning('当前月历不支持打开该读本，请更新月历功能后重试。');
 }
 
 function retryPortraitLoad(): void {
   portraitLoadFailed.value = false;
   portraitLoaded.value = false;
+  activePortraitSourceIndex.value = 0;
   portraitRetryAttempt.value += 1;
 }
 
@@ -343,6 +352,11 @@ function onPortraitLoaded(): void {
 
 function onPortraitLoadError(): void {
   portraitLoaded.value = false;
+  if (activePortraitSourceIndex.value < activePortraitSources.value.length - 1) {
+    activePortraitSourceIndex.value += 1;
+    portraitRetryAttempt.value = 0;
+    return;
+  }
   portraitLoadFailed.value = true;
 }
 
@@ -351,15 +365,17 @@ function switchPortrait(offset: number): void {
   if (count < 2) return;
 
   activePortraitIndex.value = (activePortraitIndex.value + offset + count) % count;
+  activePortraitSourceIndex.value = 0;
   portraitLoadFailed.value = false;
   portraitLoaded.value = false;
   portraitRetryAttempt.value = 0;
 }
 
 watch(
-  () => props.vm.imageUrls.join('\n'),
+  () => JSON.stringify(props.vm.imageSourceGroups),
   () => {
     activePortraitIndex.value = resolveInitialPortraitIndex();
+    activePortraitSourceIndex.value = 0;
     portraitLoadFailed.value = false;
     portraitLoaded.value = false;
     portraitRetryAttempt.value = 0;
@@ -425,7 +441,7 @@ watchEffect(() => {
   --special-npc-soft-accent-rgb: 95, 143, 168;
 }
 
-.special-npc-wrapper.special-npc-theme-ailisi {
+.special-npc-wrapper.special-npc-theme-iris {
   color-scheme: light;
   isolation: isolate;
   color: #17324a;
@@ -485,7 +501,7 @@ watchEffect(() => {
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-.special-npc-theme-ailisi .special-npc-shell {
+.special-npc-theme-iris .special-npc-shell {
   border-color: rgba(49, 83, 109, 0.58);
   border-radius: 14px;
   background:
@@ -596,7 +612,7 @@ watchEffect(() => {
   padding: 14px;
 }
 
-.special-npc-theme-ailisi .special-npc-portrait-pane {
+.special-npc-theme-iris .special-npc-portrait-pane {
   padding: 12px;
   overflow: hidden;
   background: #a8c8c7;
@@ -778,8 +794,8 @@ watchEffect(() => {
   }
 }
 
-.special-npc-theme-ailisi .special-npc-portrait-image,
-.special-npc-theme-ailisi .special-npc-portrait-video {
+.special-npc-theme-iris .special-npc-portrait-image,
+.special-npc-theme-iris .special-npc-portrait-video {
   border: 1px solid rgba(237, 255, 251, 0.88);
   border-radius: 10px;
   object-position: 50% 48%;
@@ -787,7 +803,7 @@ watchEffect(() => {
   filter: saturate(0.98) contrast(1.02);
 }
 
-.special-npc-theme-ailisi .special-npc-portrait-pane::after {
+.special-npc-theme-iris .special-npc-portrait-pane::after {
   z-index: 2;
   inset: 12px;
   border-radius: 10px;
@@ -796,7 +812,7 @@ watchEffect(() => {
     linear-gradient(90deg, rgba(131, 220, 203, 0.1), transparent 26%, transparent 74%, rgba(169, 140, 232, 0.12));
 }
 
-.special-npc-ailisi-portrait-deco {
+.special-npc-iris-portrait-deco {
   position: absolute;
   inset: 12px;
   z-index: 4;
@@ -806,7 +822,7 @@ watchEffect(() => {
   pointer-events: none;
 }
 
-.special-npc-ailisi-bubble {
+.special-npc-iris-bubble {
   position: absolute;
   width: var(--bubble-size);
   aspect-ratio: 1;
@@ -816,7 +832,7 @@ watchEffect(() => {
   box-shadow: inset -3px -4px 9px rgba(131, 220, 203, 0.24);
 }
 
-.special-npc-ailisi-bubble::after {
+.special-npc-iris-bubble::after {
   content: '';
   position: absolute;
   top: 20%;
@@ -827,31 +843,31 @@ watchEffect(() => {
   background: rgba(255, 255, 255, 0.78);
 }
 
-.special-npc-ailisi-bubble.bubble-one {
+.special-npc-iris-bubble.bubble-one {
   top: 8%;
   left: 7%;
   --bubble-size: 42px;
 }
 
-.special-npc-ailisi-bubble.bubble-two {
+.special-npc-iris-bubble.bubble-two {
   top: 16%;
   right: 8%;
   --bubble-size: 28px;
 }
 
-.special-npc-ailisi-bubble.bubble-three {
+.special-npc-iris-bubble.bubble-three {
   bottom: 12%;
   left: 10%;
   --bubble-size: 24px;
 }
 
-.special-npc-ailisi-bubble.bubble-four {
+.special-npc-iris-bubble.bubble-four {
   right: 10%;
   bottom: 19%;
   --bubble-size: 48px;
 }
 
-.special-npc-ailisi-toy-node {
+.special-npc-iris-toy-node {
   position: absolute;
   width: 14px;
   aspect-ratio: 1;
@@ -861,13 +877,13 @@ watchEffect(() => {
   box-shadow: 0 2px 6px rgba(23, 50, 74, 0.24);
 }
 
-.special-npc-ailisi-toy-node.node-one {
+.special-npc-iris-toy-node.node-one {
   top: 18px;
   left: 18px;
   transform: rotate(16deg);
 }
 
-.special-npc-ailisi-toy-node.node-two {
+.special-npc-iris-toy-node.node-two {
   right: 18px;
   bottom: 18px;
   background: #a98ce8;
@@ -1201,7 +1217,7 @@ watchEffect(() => {
   text-shadow: none;
 }
 
-.special-npc-theme-ailisi .special-npc-data-pane {
+.special-npc-theme-iris .special-npc-data-pane {
   color: #17324a;
   background-color: #dcefeb;
   background-image:
@@ -1218,12 +1234,12 @@ watchEffect(() => {
     auto;
 }
 
-.special-npc-theme-ailisi .special-npc-data-pane > * {
+.special-npc-theme-iris .special-npc-data-pane > * {
   position: relative;
   z-index: 2;
 }
 
-.special-npc-ailisi-header-deco {
+.special-npc-iris-header-deco {
   position: absolute !important;
   top: 26px;
   right: 34px;
@@ -1236,14 +1252,14 @@ watchEffect(() => {
   pointer-events: none;
 }
 
-.special-npc-ailisi-jellyfish {
+.special-npc-iris-jellyfish {
   position: relative;
   width: 58px;
   height: 68px;
   color: #7258ba;
 }
 
-.special-npc-ailisi-jellyfish .jellyfish-dome {
+.special-npc-iris-jellyfish .jellyfish-dome {
   position: absolute;
   top: 5px;
   left: 6px;
@@ -1256,7 +1272,7 @@ watchEffect(() => {
   box-shadow: inset 7px 5px 0 rgba(255, 255, 255, 0.42);
 }
 
-.special-npc-ailisi-jellyfish .jellyfish-dome::after {
+.special-npc-iris-jellyfish .jellyfish-dome::after {
   content: '';
   position: absolute;
   top: 8px;
@@ -1267,7 +1283,7 @@ watchEffect(() => {
   background: #f078a6;
 }
 
-.special-npc-ailisi-jellyfish .jellyfish-tentacle {
+.special-npc-iris-jellyfish .jellyfish-tentacle {
   position: absolute;
   top: 35px;
   width: 8px;
@@ -1276,29 +1292,29 @@ watchEffect(() => {
   border-radius: 50%;
 }
 
-.special-npc-ailisi-jellyfish .tentacle-one {
+.special-npc-iris-jellyfish .tentacle-one {
   left: 15px;
   transform: rotate(8deg);
 }
 
-.special-npc-ailisi-jellyfish .tentacle-two {
+.special-npc-iris-jellyfish .tentacle-two {
   left: 27px;
   transform: rotate(-9deg);
 }
 
-.special-npc-ailisi-jellyfish .tentacle-three {
+.special-npc-iris-jellyfish .tentacle-three {
   left: 39px;
   transform: rotate(11deg);
 }
 
-.special-npc-ailisi-toy-blocks {
+.special-npc-iris-toy-blocks {
   display: grid;
   grid-template-columns: repeat(2, 18px);
   gap: 6px;
   transform: rotate(8deg);
 }
 
-.special-npc-ailisi-toy-blocks i {
+.special-npc-iris-toy-blocks i {
   width: 18px;
   aspect-ratio: 1;
   border: 2px solid #42a996;
@@ -1307,42 +1323,42 @@ watchEffect(() => {
   box-shadow: 2px 2px 0 rgba(169, 140, 232, 0.28);
 }
 
-.special-npc-ailisi-toy-blocks i:nth-child(2),
-.special-npc-ailisi-toy-blocks i:nth-child(3) {
+.special-npc-iris-toy-blocks i:nth-child(2),
+.special-npc-iris-toy-blocks i:nth-child(3) {
   border-color: #be4f79;
   background: #fbe7ef;
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-header .special-npc-name) {
+.special-npc-theme-iris :deep(.special-npc-header .special-npc-name) {
   color: #17324a;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-header .special-npc-level),
-.special-npc-theme-ailisi :deep(.special-npc-header .special-npc-tier) {
+.special-npc-theme-iris :deep(.special-npc-header .special-npc-level),
+.special-npc-theme-iris :deep(.special-npc-header .special-npc-tier) {
   color: #7258ba;
   text-shadow: none;
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-header .special-npc-subtitle) {
+.special-npc-theme-iris :deep(.special-npc-header .special-npc-subtitle) {
   color: #31536d;
   text-shadow: none;
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-page-title) {
+.special-npc-theme-iris :deep(.special-npc-page-title) {
   color: #17324a;
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-page-title-line) {
+.special-npc-theme-iris :deep(.special-npc-page-title-line) {
   background: linear-gradient(90deg, transparent, #42a996, #a98ce8, transparent);
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-page-title h2) {
+.special-npc-theme-iris :deep(.special-npc-page-title h2) {
   color: #17324a;
   text-shadow: none;
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-attribute) {
+.special-npc-theme-iris :deep(.special-npc-attribute) {
   border: 1px solid #85b7b0;
   border-radius: 18px 18px 42% 42% / 18px 18px 22% 22%;
   background: linear-gradient(180deg, #f9fcfb 0%, #e6f4f1 58%, #bfe8df 100%);
@@ -1353,7 +1369,7 @@ watchEffect(() => {
     inset 0 0 0 4px rgba(255, 255, 255, 0.5);
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-attribute::before) {
+.special-npc-theme-iris :deep(.special-npc-attribute::before) {
   content: '';
   position: absolute;
   top: 0;
@@ -1364,16 +1380,16 @@ watchEffect(() => {
   background: #83dccb;
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-attribute-name) {
+.special-npc-theme-iris :deep(.special-npc-attribute-name) {
   color: #17324a;
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-attribute-total) {
+.special-npc-theme-iris :deep(.special-npc-attribute-total) {
   color: #be4f79;
   text-shadow: none;
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-resources::before) {
+.special-npc-theme-iris :deep(.special-npc-resources::before) {
   top: 50%;
   right: 11%;
   bottom: auto;
@@ -1383,11 +1399,11 @@ watchEffect(() => {
   background: #a98ce8;
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-resources::after) {
+.special-npc-theme-iris :deep(.special-npc-resources::after) {
   display: none;
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-resource) {
+.special-npc-theme-iris :deep(.special-npc-resource) {
   border: 1px solid #88b8b1;
   border-radius: 46% 54% 51% 49% / 51% 44% 56% 49%;
   background: rgba(247, 251, 250, 0.95);
@@ -1396,22 +1412,22 @@ watchEffect(() => {
     0 7px 12px rgba(23, 50, 74, 0.1);
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-resource:not(:last-child)::after) {
+.special-npc-theme-iris :deep(.special-npc-resource:not(:last-child)::after) {
   display: none;
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-resource-name) {
+.special-npc-theme-iris :deep(.special-npc-resource-name) {
   color: #7258ba;
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-resource-value) {
+.special-npc-theme-iris :deep(.special-npc-resource-value) {
   color: #17324a;
   text-shadow: none;
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-profile-card),
-.special-npc-theme-ailisi :deep(.special-npc-text-block),
-.special-npc-theme-ailisi :deep(.special-npc-list-item) {
+.special-npc-theme-iris :deep(.special-npc-profile-card),
+.special-npc-theme-iris :deep(.special-npc-text-block),
+.special-npc-theme-iris :deep(.special-npc-list-item) {
   border: 1px solid #a6c3c0;
   border-radius: 10px;
   background: rgba(247, 251, 250, 0.95);
@@ -1419,54 +1435,54 @@ watchEffect(() => {
   box-shadow: 0 8px 18px rgba(23, 50, 74, 0.1);
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-text-block h3),
-.special-npc-theme-ailisi :deep(.special-npc-list-item h3) {
+.special-npc-theme-iris :deep(.special-npc-text-block h3),
+.special-npc-theme-iris :deep(.special-npc-list-item h3) {
   color: #17324a;
   text-shadow: none;
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-list-item-header) {
+.special-npc-theme-iris :deep(.special-npc-list-item-header) {
   border-bottom-color: rgba(66, 169, 150, 0.26);
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-tag) {
+.special-npc-theme-iris :deep(.special-npc-tag) {
   border-color: #a7c5c1;
   background: #fff;
   color: #31536d;
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-effect-item),
-.special-npc-theme-ailisi :deep(.special-npc-effect-text),
-.special-npc-theme-ailisi :deep(.special-npc-description),
-.special-npc-theme-ailisi :deep(.special-npc-line),
-.special-npc-theme-ailisi :deep(.special-npc-text-block p) {
+.special-npc-theme-iris :deep(.special-npc-effect-item),
+.special-npc-theme-iris :deep(.special-npc-effect-text),
+.special-npc-theme-iris :deep(.special-npc-description),
+.special-npc-theme-iris :deep(.special-npc-line),
+.special-npc-theme-iris :deep(.special-npc-text-block p) {
   color: #31536d;
   text-shadow: none;
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-tabs) {
+.special-npc-theme-iris :deep(.special-npc-tabs) {
   border: 1px solid #9abbb7;
   border-radius: 8px;
   background: rgba(247, 251, 250, 0.96);
   box-shadow: 0 7px 16px rgba(23, 50, 74, 0.1);
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-tab-button) {
+.special-npc-theme-iris :deep(.special-npc-tab-button) {
   color: #31536d;
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-tab-button:hover),
-.special-npc-theme-ailisi :deep(.special-npc-tab-button.active) {
+.special-npc-theme-iris :deep(.special-npc-tab-button:hover),
+.special-npc-theme-iris :deep(.special-npc-tab-button.active) {
   background: #d9f0ea;
   color: #17324a;
 }
 
-.special-npc-theme-ailisi :deep(.special-npc-tab-button.active::after) {
+.special-npc-theme-iris :deep(.special-npc-tab-button.active::after) {
   background: #f078a6;
 }
 
-.special-npc-theme-ailisi .special-npc-story-block,
-.special-npc-theme-ailisi .special-npc-story-link-block {
+.special-npc-theme-iris .special-npc-story-block,
+.special-npc-theme-iris .special-npc-story-link-block {
   border-color: #a6c3c0;
   border-radius: 10px;
   background: rgba(247, 251, 250, 0.95);
@@ -1474,28 +1490,28 @@ watchEffect(() => {
   box-shadow: 0 8px 18px rgba(23, 50, 74, 0.1);
 }
 
-.special-npc-theme-ailisi .special-npc-story-block h3,
-.special-npc-theme-ailisi .special-npc-story-link-copy h3 {
+.special-npc-theme-iris .special-npc-story-block h3,
+.special-npc-theme-iris .special-npc-story-link-copy h3 {
   color: #17324a;
   text-shadow: none;
 }
 
-.special-npc-theme-ailisi .special-npc-story-block p,
-.special-npc-theme-ailisi .special-npc-story-link-copy p {
+.special-npc-theme-iris .special-npc-story-block p,
+.special-npc-theme-iris .special-npc-story-link-copy p {
   color: #31536d;
 }
 
-.special-npc-theme-ailisi #import-action-menu {
+.special-npc-theme-iris .import-action-menu {
   border-color: #9abbb7;
   background: rgba(247, 251, 250, 0.98);
   box-shadow: 0 12px 30px rgba(23, 50, 74, 0.2);
 }
 
-.special-npc-theme-ailisi #import-action-menu button {
+.special-npc-theme-iris .import-action-menu button {
   color: #17324a;
 }
 
-.special-npc-theme-ailisi #import-action-menu button:hover:not(:disabled) {
+.special-npc-theme-iris .import-action-menu button:hover:not(:disabled) {
   border-color: rgba(66, 169, 150, 0.34);
   background: #e4f3ef;
 }
@@ -1678,7 +1694,7 @@ watchEffect(() => {
   transform: translateY(-1px);
 }
 
-#import-action-menu {
+.import-action-menu {
   position: absolute;
   right: 14px;
   bottom: 62px;
@@ -1694,11 +1710,11 @@ watchEffect(() => {
   -webkit-backdrop-filter: blur(8px);
 }
 
-#import-action-menu.show {
+.import-action-menu.show {
   display: block;
 }
 
-#import-action-menu button {
+.import-action-menu button {
   width: 100%;
   padding: 10px;
   border: 1px solid transparent;
@@ -1710,12 +1726,12 @@ watchEffect(() => {
   text-align: left;
 }
 
-#import-action-menu button:disabled {
+.import-action-menu button:disabled {
   opacity: 0.6;
   cursor: wait;
 }
 
-#import-action-menu button:hover:not(:disabled) {
+.import-action-menu button:hover:not(:disabled) {
   border-color: rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.08);
 }
@@ -1977,7 +1993,7 @@ watchEffect(() => {
     text-shadow: none;
   }
 
-  .special-npc-theme-ailisi .special-npc-mobile-header-overlay {
+  .special-npc-theme-iris .special-npc-mobile-header-overlay {
     max-height: 24%;
     padding: 10px 12px;
     overflow: hidden;
@@ -1988,7 +2004,7 @@ watchEffect(() => {
     -webkit-backdrop-filter: none;
   }
 
-  .special-npc-theme-ailisi .special-npc-mobile-header-overlay :deep(.special-npc-name) {
+  .special-npc-theme-iris .special-npc-mobile-header-overlay :deep(.special-npc-name) {
     max-width: 100%;
     color: #17324a;
     font-size: clamp(18px, 6cqw, 24px);
@@ -1998,24 +2014,24 @@ watchEffect(() => {
     overflow-wrap: anywhere;
   }
 
-  .special-npc-theme-ailisi .special-npc-mobile-header-overlay :deep(.special-npc-level),
-  .special-npc-theme-ailisi .special-npc-mobile-header-overlay :deep(.special-npc-tier) {
+  .special-npc-theme-iris .special-npc-mobile-header-overlay :deep(.special-npc-level),
+  .special-npc-theme-iris .special-npc-mobile-header-overlay :deep(.special-npc-tier) {
     color: #7258ba;
     font-size: 10px;
   }
 
-  .special-npc-theme-ailisi .special-npc-mobile-header-overlay :deep(.special-npc-subtitle) {
+  .special-npc-theme-iris .special-npc-mobile-header-overlay :deep(.special-npc-subtitle) {
     color: #31536d;
     font-size: 10px;
     line-height: 1.3;
     text-shadow: none;
   }
 
-  .special-npc-theme-ailisi :deep(.special-npc-attribute) {
+  .special-npc-theme-iris :deep(.special-npc-attribute) {
     border-radius: 12px 12px 42% 42% / 12px 12px 22% 22%;
   }
 
-  .special-npc-theme-ailisi .special-npc-ailisi-header-deco {
+  .special-npc-theme-iris .special-npc-iris-header-deco {
     display: none;
   }
 }
@@ -2100,47 +2116,47 @@ watchEffect(() => {
     margin-top: 6px;
   }
 
-  .special-npc-theme-ailisi :deep(.special-npc-list-item) {
+  .special-npc-theme-iris :deep(.special-npc-list-item) {
     margin-bottom: 12px;
     padding: 15px;
   }
 
-  .special-npc-theme-ailisi :deep(.special-npc-list-item-header) {
+  .special-npc-theme-iris :deep(.special-npc-list-item-header) {
     gap: 6px;
     margin-bottom: 10px;
     padding-bottom: 8px;
   }
 
-  .special-npc-theme-ailisi :deep(.special-npc-list-item h3) {
+  .special-npc-theme-iris :deep(.special-npc-list-item h3) {
     font-size: 17px;
     line-height: 1.3;
   }
 
-  .special-npc-theme-ailisi :deep(.special-npc-list-item-type) {
+  .special-npc-theme-iris :deep(.special-npc-list-item-type) {
     padding: 3px 10px;
     font-size: 12px;
   }
 
-  .special-npc-theme-ailisi :deep(.special-npc-tags) {
+  .special-npc-theme-iris :deep(.special-npc-tags) {
     gap: 6px;
     margin-bottom: 10px;
   }
 
-  .special-npc-theme-ailisi :deep(.special-npc-tag) {
+  .special-npc-theme-iris :deep(.special-npc-tag) {
     padding: 3px 8px;
     font-size: 11px;
   }
 
-  .special-npc-theme-ailisi :deep(.special-npc-effect-item),
-  .special-npc-theme-ailisi :deep(.special-npc-effect-text),
-  .special-npc-theme-ailisi :deep(.special-npc-description),
-  .special-npc-theme-ailisi :deep(.special-npc-line),
-  .special-npc-theme-ailisi :deep(.special-npc-text-block p) {
+  .special-npc-theme-iris :deep(.special-npc-effect-item),
+  .special-npc-theme-iris :deep(.special-npc-effect-text),
+  .special-npc-theme-iris :deep(.special-npc-description),
+  .special-npc-theme-iris :deep(.special-npc-line),
+  .special-npc-theme-iris :deep(.special-npc-text-block p) {
     font-size: 14px;
     line-height: 1.55;
   }
 
-  #import-action-menu {
+  .import-action-menu {
     right: 10px;
     bottom: 56px;
     min-width: 170px;

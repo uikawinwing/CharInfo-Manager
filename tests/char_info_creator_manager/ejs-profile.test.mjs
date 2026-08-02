@@ -18,8 +18,11 @@ const profile = {
   tierColor: '#B7D9E8',
   entranceQuote: '霜雪会记住每一道剑痕。',
   gallery: [
-    { title: '霜原剑影', url: 'https://files.catbox.moe/main.webp' },
-    { title: '雪林巡行', url: 'https://files.catbox.moe/alternate.avif' },
+    {
+      title: '霜原剑影',
+      sources: ['https://files.catbox.moe/main.webp', 'https://i.ibb.co/main-mirror.webp'],
+    },
+    { title: '雪林巡行', sources: ['https://files.catbox.moe/alternate.avif'] },
   ],
 };
 
@@ -32,7 +35,14 @@ test('v2 生成区块只保留一份可读 profile 配置', () => {
   assert.match(block, /"characterName": "傲雪"/);
   assert.match(block, /"title": "霜原剑影"/);
   assert.match(block, /const npcName = profile\.characterName;/);
-  assert.ok(block.includes('setLocalVar(`char_info_visuals[${JSON.stringify(npcName)}]`, {'));
+  assert.ok(block.includes('setLocalVar(`char_info.profiles[${JSON.stringify(npcName)}]`, {'));
+  assert.match(block, /schema_version: 1/);
+  assert.match(
+    block,
+    /gallery: profile\.gallery\.map\(image => \(\{ title: image\.title, sources: image\.sources \}\)\)/,
+  );
+  assert.match(block, /status\.externalAvatars\.partners/);
+  assert.doesNotMatch(block, /status\.externalGalleries\.partners/);
   assert.doesNotMatch(block, /char-info-ejs-builder:data:v1:/);
   assert.doesNotMatch(block, /dryRun|merge:/);
   assert.equal(block.split(profile.characterName).length - 1, 1);
@@ -40,7 +50,9 @@ test('v2 生成区块只保留一份可读 profile 配置', () => {
   assert.equal(block.split(profile.entranceQuote).length - 1, 1);
   profile.gallery.forEach(image => {
     assert.equal(block.split(image.title).length - 1, 1);
-    assert.equal(block.split(image.url).length - 1, 1);
+    image.sources.forEach(source => {
+      assert.equal(block.split(source).length - 1, 1);
+    });
   });
   const scriptBody = block.slice(block.indexOf('<%_') + 3, block.indexOf('_%>'));
   assert.doesNotThrow(() => new Function(scriptBody));
@@ -79,6 +91,28 @@ test('旧 v1 区块仍可读取，并在保存时自动迁移为 v2', () => {
   assert.match(migrated, /角色原始内容$/);
 });
 
+test('旧 v2 单 URL 图片会在读取时迁移为 sources 数组', () => {
+  const legacyV2Profile = {
+    ...profile,
+    gallery: [{ title: '旧主立绘', url: 'https://files.catbox.moe/legacy.webp' }],
+  };
+  const legacyV2Block = [
+    MANAGED_BLOCK_START,
+    '<%_',
+    '{',
+    `  const profile = ${JSON.stringify(legacyV2Profile, null, 2).replace(/\n/g, '\n  ')};`,
+    '}',
+    '_%>',
+    MANAGED_BLOCK_END,
+  ].join('\n');
+
+  const inspection = inspectManagedBlock(legacyV2Block);
+  assert.equal(inspection.state, 'valid');
+  assert.deepEqual(inspection.profile.gallery, [
+    { title: '旧主立绘', sources: ['https://files.catbox.moe/legacy.webp'] },
+  ]);
+});
+
 test('首次写入放在连续装饰器之后并保留原有 EJS', () => {
   const original = '@@generate_before\n@@private\n<%_{\nconst oldValue = 1;\n_%>\n角色原始内容';
   const updated = upsertManagedEjsBlock(original, profile);
@@ -94,7 +128,7 @@ test('再次保存只替换受管理区块', () => {
   const changed = {
     ...profile,
     entranceQuote: '剑锋所至，霜雪无声。',
-    gallery: [{ title: '新的主立绘', url: 'https://files.catbox.moe/new.webp' }],
+    gallery: [{ title: '新的主立绘', sources: ['https://files.catbox.moe/new.webp'] }],
   };
   const second = upsertManagedEjsBlock(first, changed);
 
@@ -112,6 +146,34 @@ _%>`;
   assert.throws(() => upsertManagedEjsBlock(legacy, profile), /未标记的旧版角色视觉 EJS/);
 });
 
+test('未标记的自有 char_info.profiles 写入会阻止重复写入', () => {
+  const ownProfilePathOnly = `<%_
+setLocalVar('char_info.profiles["傲雪"]', { gallery: [] });
+_%>`;
+
+  assert.throws(() => upsertManagedEjsBlock(ownProfilePathOnly, profile), /未标记的旧版角色视觉 EJS/);
+});
+
+test('单独残留的旧 CharInfo 或 externalGalleries 写入也会阻止叠加新区块', () => {
+  const legacyViewerOnly = `<%_
+setLocalVar('char_info_visuals["傲雪"]', { gallery: [] });
+_%>`;
+  const legacyGalleryOnly = `<%_
+setLocalVar('status.externalGalleries.partners["傲雪"].images', []);
+_%>`;
+
+  assert.throws(() => upsertManagedEjsBlock(legacyViewerOnly, profile), /未标记的旧版角色视觉 EJS/);
+  assert.throws(() => upsertManagedEjsBlock(legacyGalleryOnly, profile), /未标记的旧版角色视觉 EJS/);
+});
+
+test('单独存在的状态栏头像桥接不会阻止新增 CharInfo 视觉配置', () => {
+  const avatarBridgeOnly = `<%_
+setLocalVar('status.externalAvatars.partners["傲雪"].url', 'https://files.catbox.moe/avatar.webp');
+_%>`;
+
+  assert.doesNotThrow(() => upsertManagedEjsBlock(avatarBridgeOnly, profile));
+});
+
 test('标记残缺时拒绝编辑', () => {
   const malformed = `${MANAGED_BLOCK_START}\n<%_ const value = 1; _%>`;
   const inspection = inspectManagedBlock(malformed);
@@ -122,7 +184,7 @@ test('标记残缺时拒绝编辑', () => {
 test('不启用自定义颜色时不写入颜色变量', () => {
   const defaultThemeProfile = {
     ...createEmptyProfile('无色测试'),
-    gallery: [{ title: '主立绘', url: 'https://files.catbox.moe/default.webp' }],
+    gallery: [{ title: '主立绘', sources: ['https://files.catbox.moe/default.webp'] }],
   };
   const block = buildManagedEjsBlock(defaultThemeProfile);
 
@@ -130,11 +192,20 @@ test('不启用自定义颜色时不写入颜色变量', () => {
   assert.match(block, /"tierColor": ""/);
   assert.match(block, /profile\.raceColor \?/);
   assert.match(block, /profile\.tierColor \?/);
-  assert.ok(block.includes('setLocalVar(`char_info_visuals[${JSON.stringify(npcName)}]`, {'));
+  assert.ok(block.includes('setLocalVar(`char_info.profiles[${JSON.stringify(npcName)}]`, {'));
   const inspection = inspectManagedBlock(block);
   assert.equal(inspection.state, 'valid');
   assert.equal(inspection.profile.raceColor, '');
   assert.equal(inspection.profile.tierColor, '');
+});
+
+test('头像为空时受管理 EJS 不会清空已有状态栏头像', () => {
+  const block = buildManagedEjsBlock({
+    ...profile,
+    avatarUrl: '',
+  });
+
+  assert.match(block, /if \(profile\.avatarUrl\) \{\s*setLocalVar\(\s*`status\.externalAvatars\.partners/);
 });
 
 test('角色姓名允许正常标点并通过 JSON.stringify 安全写入路径', () => {
@@ -143,7 +214,7 @@ test('角色姓名允许正常标点并通过 JSON.stringify 安全写入路径'
 
   assert.ok(block.includes(`"characterName": ${JSON.stringify(characterName)}`));
   assert.ok(block.includes('const npcName = profile.characterName;'));
-  assert.ok(block.includes('setLocalVar(`char_info_visuals[${JSON.stringify(npcName)}]`, {'));
+  assert.ok(block.includes('setLocalVar(`char_info.profiles[${JSON.stringify(npcName)}]`, {'));
 });
 
 test('角色姓名拒绝控制字符、异常长度和危险保留键', () => {
@@ -160,7 +231,14 @@ test('会截断 EJS 的模板分隔符会被拒绝', () => {
   assert.match(
     validateProfile({
       ...profile,
-      gallery: [{ title: '危险 <% 标题', url: 'https://files.catbox.moe/main.webp' }],
+      gallery: [{ title: '危险 <% 标题', sources: ['https://files.catbox.moe/main.webp'] }],
+    }).join('\n'),
+    /EJS 模板分隔符/,
+  );
+  assert.match(
+    validateProfile({
+      ...profile,
+      gallery: [{ title: '主立绘', sources: ['https://files.catbox.moe/danger-%>.webp'] }],
     }).join('\n'),
     /EJS 模板分隔符/,
   );

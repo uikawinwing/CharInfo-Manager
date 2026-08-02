@@ -1,4 +1,4 @@
-import { load } from 'js-yaml';
+import { JSON_SCHEMA, load } from 'js-yaml';
 import type { CharacterData, FriendlyYamlError, ParseResult } from '../types';
 
 const KEY_ALIAS_TO_SIMPLIFIED: Record<string, string> = {
@@ -93,13 +93,7 @@ function prepareYaml(yamlStr: string): PreparedYaml {
   if (!yamlStr) return { cleaned: '', source: '', lineOffset: 0 };
 
   const unwrapped = unwrapCharacterInfoWrapper(yamlStr);
-  const normalized = unwrapped.source
-    .replace(/\u00A0/g, ' ')
-    .replace(/\t/g, '  ')
-    .replace(/】/g, ']')
-    .replace(/【/g, '[');
-
-  const lines = normalized.split('\n');
+  const lines = unwrapped.source.replace(/\r\n/g, '\n').split('\n');
   const sensitiveKeys = [
     '身份',
     '身分',
@@ -138,40 +132,45 @@ function prepareYaml(yamlStr: string): PreparedYaml {
   ];
   const attrKeys = ['力量', '敏捷', '体质', '體質', '智力', '精神'];
 
-  const cleanedLines = lines.map(line => {
+  let blockScalarIndent: number | null = null;
+  const cleanedLines = lines.map(originalLine => {
+    let line = originalLine;
+    if (blockScalarIndent !== null) {
+      if (!line.trim()) return line;
+      if (lineIndent(line) > blockScalarIndent || !isKeyLikeLine(line)) return line;
+      blockScalarIndent = null;
+    }
+
     line = line.replace(/^(\s*)(-\s*)?([-\w\u4e00-\u9fa5]+)\s*：/, (_m, indent, dash, key) => {
-      return `${indent}${dash || ''}${key}:`;
+      return `${indent.replace(/\t/g, '  ')}${dash || ''}${key}:`;
     });
 
     const match = line.match(/^(\s*)(-\s*)?([-\w\u4e00-\u9fa5]+)\s*:\s*(.*)$/);
     if (!match) return line;
 
-    const indent = match[1];
+    const indent = match[1].replace(/\t/g, '  ');
     const dash = match[2] || '';
     const key = match[3];
-    let val = match[4].trim();
+    const value = match[4].trim();
 
-    if (!val) return line;
-    if (val.startsWith('|') || val.startsWith('>')) return line;
-
-    if (attrKeys.some(k => key.includes(k))) {
-      if ((/[+=]/.test(val) || val.includes('{')) && !/^["'].*["']$/.test(val)) {
-        val = val.replace(/"/g, '\\"');
-        return `${indent}${dash}${key}: "${val}"`;
-      }
+    if (!value) return line;
+    if (/^[|>][+-]?\d*$/.test(value)) {
+      blockScalarIndent = indent.length + dash.length;
+      return line;
     }
 
-    const isSensitive = sensitiveKeys.some(k => key.includes(k));
-    const hasDangerousChars = /[{}[\]]/.test(val);
-    const hasQuoteInside = val.includes('"');
-    const isFullyQuoted = /^["'].*["']$/.test(val);
+    const isFullyQuoted = /^["'].*["']$/.test(value);
+    const isCollection = isYamlCollectionValue(value);
+    const isTypedScalar = /^(?:null|true|false|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)$/.test(value);
+    const shouldQuoteAttribute = attrKeys.some(k => key.includes(k)) && (/[+=]/.test(value) || value.includes('{'));
+    const shouldQuoteValue =
+      sensitiveKeys.some(k => key.includes(k)) || /[{}[\]]/.test(value) || value.includes('"') || shouldQuoteAttribute;
 
-    if ((isSensitive || hasDangerousChars || hasQuoteInside) && !isFullyQuoted) {
-      val = val.replace(/"/g, '\\"');
-      return `${indent}${dash}${key}: "${val}"`;
+    if (shouldQuoteValue && !isFullyQuoted && !isCollection && !isTypedScalar) {
+      return `${indent}${dash}${key}: ${JSON.stringify(value)}`;
     }
 
-    return line;
+    return `${indent}${dash}${key}: ${match[4]}`;
   });
 
   return {
@@ -179,6 +178,17 @@ function prepareYaml(yamlStr: string): PreparedYaml {
     source: unwrapped.source,
     lineOffset: unwrapped.lineOffset,
   };
+}
+
+function isYamlCollectionValue(value: string): boolean {
+  if (!/^[{[]/.test(value.trim())) return false;
+
+  try {
+    const parsed = load(value, { schema: JSON_SCHEMA });
+    return Array.isArray(parsed) || (!!parsed && typeof parsed === 'object');
+  } catch {
+    return false;
+  }
 }
 
 export function cleanYaml(yamlStr: string): string {
@@ -347,6 +357,11 @@ function lineIndent(line: string): number {
   return line.match(/^ */)?.[0].length ?? 0;
 }
 
+function rewriteLineIndent(line: string, indent: number): string {
+  const leadingSpaces = line.match(/^ */)?.[0].length ?? 0;
+  return ' '.repeat(Math.max(0, indent)) + line.slice(leadingSpaces);
+}
+
 function isKeyLikeLine(line: string): boolean {
   const match = line.match(/^\s*(?:-\s*)?([^\s：:][^：:]{0,24}?)\s*[：:](?:\s|$)/);
   if (!match) return false;
@@ -388,7 +403,7 @@ export function repairBlockScalarIndentation(yamlStr: string): { text: string; c
       const indent = line.match(/^ */)?.[0].length ?? 0;
       if (indent > effectiveIndent) break;
       if (isKeyLikeLine(line)) break;
-      lines[j] = ' '.repeat(Math.max(targetIndent, indent + delta)) + line.trimStart();
+      lines[j] = rewriteLineIndent(line, Math.max(targetIndent, indent + delta));
       changed = true;
       j++;
     }
@@ -451,7 +466,7 @@ function repairNamedListIndentation(lines: string[]): boolean {
       if (delta !== 0) {
         for (let j = itemIndex; j < itemEnd; j++) {
           if (!lines[j].trim()) continue;
-          lines[j] = ' '.repeat(Math.max(0, lineIndent(lines[j]) + delta)) + lines[j].trimStart();
+          lines[j] = rewriteLineIndent(lines[j], lineIndent(lines[j]) + delta);
         }
         changed = true;
       }
@@ -466,7 +481,7 @@ function repairNamedListIndentation(lines: string[]): boolean {
 
         if (NAMED_LIST_FIELD_KEYS.has(mapped.key)) {
           if (mapped.indent !== fieldIndent) {
-            lines[j] = ' '.repeat(fieldIndent) + lines[j].trimStart();
+            lines[j] = rewriteLineIndent(lines[j], fieldIndent);
             changed = true;
           }
           if (!mapped.value.trim()) nestedParentIndent = fieldIndent;
@@ -569,7 +584,7 @@ function quoteValuesWithExtraMappingColon(lines: string[]): boolean {
  */
 export function repairCommonYamlStructure(yamlStr: string): { text: string; changed: boolean } {
   const { source } = unwrapCharacterInfoWrapper(yamlStr);
-  const lines = source.replace(/\r\n/g, '\n').replace(/\t/g, '  ').split('\n');
+  const lines = source.replace(/\r\n/g, '\n').split('\n');
   let changed = false;
 
   changed = repairNamedListIndentation(lines) || changed;
@@ -692,24 +707,8 @@ function parseLooseKVBlock(lines: string[], keys: readonly string[]): Record<str
 }
 
 export function parseCharacterYamlLoose(yamlText: string): ParseResult {
-  // 先修补能可靠判断的常见格式错误；严格解析成功后才采用，避免破坏原文语义
-  const repaired = repairCommonYamlStructure(yamlText);
-  if (repaired.changed) {
-    const strictRetry = parseCharacterYaml(repaired.text);
-    if (strictRetry.success) {
-      return {
-        success: true,
-        data: strictRetry.data,
-        mode: 'loose',
-        warnings: [
-          '三角老师帮你修好了常见的列表或多行文本格式问题，内容应该是完整的～不过导入聊天世界书时保存的仍是原文，建议顺手把原文格式也改正哦。',
-        ],
-      };
-    }
-  }
-
-  const prepared = prepareYaml(yamlText);
-  const sections = extractLooseSections(prepared.source);
+  const { source } = unwrapCharacterInfoWrapper(yamlText);
+  const sections = extractLooseSections(source);
   const data: CharacterData = {};
 
   for (const [key, lines] of Object.entries(sections)) {
@@ -750,9 +749,9 @@ export function parseCharacterYamlLoose(yamlText: string): ParseResult {
     return {
       success: false,
       error: {
-        message: '三角老师这次没能修好，原始资料可能缺少关键内容。',
+        message: '无法自动修复，原始资料可能缺少关键内容。',
         tips: [
-          '宽松读取至少需要识别到姓名、一个基础字段（等级/种族/生命层级）和一段档案文本。',
+          '至少需要识别到姓名、一个基础字段（等级/种族/生命层级）和一段档案文本。',
           '请确认关键字仍写成类似 "姓名:"、"性格:"、"外貌特质:" 的格式。',
           '如果内容被其他脚本改到完全没有键名，仍然需要手动修正原文。',
         ],
@@ -764,22 +763,62 @@ export function parseCharacterYamlLoose(yamlText: string): ParseResult {
     success: true,
     data: normalizedData,
     mode: 'loose',
-    warnings: ['宝宝，你看看我修好了沒？部分列表、装备、技能或登神长阶结构可能无法完整恢复，导入前记得先检查内容～'],
+    warnings: ['部分列表、装备、技能或登神长阶结构可能无法完整恢复，导入前请检查内容。'],
   };
 }
 
 export function parseCharacterYaml(yamlText: string): ParseResult {
   const prepared = prepareYaml(yamlText);
   try {
-    const parsedData = load(prepared.cleaned) as CharacterData | null;
-    if (!parsedData) throw new Error('解析结果为空');
+    return { success: true, data: parseStrictCharacterData(prepared.source), mode: 'strict' };
+  } catch (exactError) {
+    let lastError = exactError;
+    let attemptedYaml = prepared.source;
 
-    const normalizedData = normalizeCharacterDataKeys(parsedData);
-    return { success: true, data: normalizedData, mode: 'strict' };
-  } catch (err) {
+    if (prepared.cleaned !== prepared.source) {
+      try {
+        return { success: true, data: parseStrictCharacterData(prepared.cleaned), mode: 'strict' };
+      } catch (compatibilityError) {
+        lastError = compatibilityError;
+        attemptedYaml = prepared.cleaned;
+      }
+    }
+
+    const repaired = repairCommonYamlStructure(prepared.source);
+    if (repaired.changed) {
+      try {
+        return { success: true, data: parseStrictCharacterData(repaired.text), mode: 'strict' };
+      } catch (repairError) {
+        lastError = repairError;
+        attemptedYaml = repaired.text;
+      }
+
+      const repairedCompatible = prepareYaml(repaired.text).cleaned;
+      if (repairedCompatible !== repaired.text) {
+        try {
+          return { success: true, data: parseStrictCharacterData(repairedCompatible), mode: 'strict' };
+        } catch (repairCompatibilityError) {
+          lastError = repairCompatibilityError;
+          attemptedYaml = repairedCompatible;
+        }
+      }
+    }
+
     return {
       success: false,
-      error: buildFriendlyYamlError(err, yamlText, prepared.cleaned, prepared.lineOffset),
+      error: buildFriendlyYamlError(lastError, yamlText, attemptedYaml, prepared.lineOffset),
     };
   }
+}
+
+function parseStrictCharacterData(yamlText: string): CharacterData {
+  const parsedData = load(yamlText, { schema: JSON_SCHEMA });
+  if (!isPlainObject(parsedData)) throw new Error('角色资料的根节点必须是普通对象。');
+  return normalizeCharacterDataKeys(parsedData as CharacterData);
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }

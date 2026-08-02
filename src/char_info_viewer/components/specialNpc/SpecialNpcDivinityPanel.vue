@@ -35,7 +35,7 @@
       v-else
       class="special-npc-divinity-spell-quote"
       type="button"
-      aria-controls="special-npc-divinity-content"
+      :aria-controls="contentId"
       :aria-expanded="skillPopupOpen"
       @click="skillPopupOpen = !skillPopupOpen"
     >
@@ -44,8 +44,12 @@
       <span class="spell-quote-icon" aria-hidden="true">⌄</span>
     </button>
 
-    <div id="special-npc-divinity-content" class="special-npc-divinity-content" :aria-hidden="!skillPopupOpen">
-      <article v-for="(section, index) in sections" :key="`${section.kind}-${section.title}-${index}`" class="stage-skill">
+    <div :id="contentId" class="special-npc-divinity-content" :aria-hidden="!skillPopupOpen">
+      <article
+        v-for="(section, index) in sections"
+        :key="`${section.kind}-${section.title}-${index}`"
+        class="stage-skill"
+      >
         <div class="stage-skill-header">
           <span class="special-npc-divinity-keyword">{{ section.kind }}</span>
           <div class="stage-skill-title-group">
@@ -60,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
 
 import type { CharacterViewModel } from '../../services/characterViewModel';
 import type { SpecialNpcProfile } from '../../specialNpcProfiles';
@@ -70,6 +74,7 @@ import { venusNameFrameCssVars } from './venusAssets';
 
 const props = defineProps<{ vm: CharacterViewModel; profile: SpecialNpcProfile | null }>();
 
+const contentId = useId();
 const curtainOpen = ref(false);
 const skillPopupOpen = ref(false);
 const title = computed(() => props.vm.divinityGodTitle || '煌海梦幻大剧场');
@@ -148,9 +153,8 @@ watch(
   width: clamp(88px, 24cqw, 132px);
   height: clamp(26px, 7cqw, 36px);
   background: var(--stage-frame-url) center / contain no-repeat;
-  filter:
-    brightness(0) saturate(100%) invert(87%) sepia(34%) saturate(595%) hue-rotate(354deg) brightness(104%) contrast(94%)
-    drop-shadow(0 0 8px rgba(var(--stage-gold-rgb), 0.22));
+  filter: brightness(0) saturate(100%) invert(87%) sepia(34%) saturate(595%) hue-rotate(354deg) brightness(104%)
+    contrast(94%) drop-shadow(0 0 8px rgba(var(--stage-gold-rgb), 0.22));
 }
 
 .special-npc-divinity-frame::before {
@@ -175,8 +179,20 @@ watch(
 .curtain-valance {
   position: absolute;
   background:
-    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent 12% 18%, rgba(0, 0, 0, 0.22) 24%, transparent 34%),
-    repeating-linear-gradient(90deg, rgba(89, 10, 34, 0.95) 0 18px, rgba(138, 18, 52, 0.96) 18px 36px, rgba(55, 7, 27, 0.98) 36px 54px),
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.08),
+      transparent 12% 18%,
+      rgba(0, 0, 0, 0.22) 24%,
+      transparent 34%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(89, 10, 34, 0.95) 0 18px,
+      rgba(138, 18, 52, 0.96) 18px 36px,
+      rgba(55, 7, 27, 0.98) 36px 54px
+    ),
     linear-gradient(180deg, rgba(var(--stage-gold-rgb), 0.18), rgba(93, 8, 36, 0.98) 34%, rgba(24, 3, 15, 0.98));
   box-shadow:
     inset 0 0 28px rgba(0, 0, 0, 0.42),
@@ -212,7 +228,12 @@ watch(
   border-bottom: 1px solid rgba(var(--stage-gold-rgb), 0.34);
   background:
     radial-gradient(ellipse at 50% 100%, rgba(255, 238, 172, 0.18), transparent 56%),
-    repeating-linear-gradient(90deg, rgba(63, 8, 30, 0.98) 0 28px, rgba(129, 16, 50, 0.98) 28px 56px, rgba(46, 5, 23, 0.98) 56px 84px);
+    repeating-linear-gradient(
+      90deg,
+      rgba(63, 8, 30, 0.98) 0 28px,
+      rgba(129, 16, 50, 0.98) 28px 56px,
+      rgba(46, 5, 23, 0.98) 56px 84px
+    );
   transition:
     height 0.8s cubic-bezier(0.2, 0.75, 0.22, 1),
     opacity 0.8s ease;
@@ -265,9 +286,8 @@ watch(
   height: clamp(22px, 5cqw, 32px);
   background: var(--stage-frame-url) center / contain no-repeat;
   opacity: 0.72;
-  filter:
-    brightness(0) saturate(100%) invert(87%) sepia(34%) saturate(595%) hue-rotate(354deg) brightness(104%) contrast(94%)
-    drop-shadow(0 0 7px rgba(var(--stage-gold-rgb), 0.22));
+  filter: brightness(0) saturate(100%) invert(87%) sepia(34%) saturate(595%) hue-rotate(354deg) brightness(104%)
+    contrast(94%) drop-shadow(0 0 7px rgba(var(--stage-gold-rgb), 0.22));
 }
 
 .special-npc-divinity-open-button,

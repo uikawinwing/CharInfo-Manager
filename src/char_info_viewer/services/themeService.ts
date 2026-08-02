@@ -1,4 +1,5 @@
 import type { CharacterData, ThemeResolved } from '../types';
+import { resolveGalleryExtension } from './galleryPackService.ts';
 
 export const raceColorMap: Record<string, string> = {
   神祗: '#FFFFFF',
@@ -159,13 +160,19 @@ function normalizeVisualConfigUrl(value: unknown): string | null {
   }
 }
 
-function normalizeVisualConfigGallery(value: unknown): string[] {
+function normalizeVisualConfigGallery(value: unknown): string[][] {
   const candidates = Array.isArray(value) ? value : typeof value === 'string' ? value.split(/\r?\n/) : [];
 
-  return candidates.reduce<string[]>((urls, candidate) => {
-    const url = normalizeVisualConfigUrl(candidate);
-    if (url && !urls.includes(url)) urls.push(url);
-    return urls;
+  return candidates.reduce<string[][]>((groups, candidate) => {
+    const record = asRecord(candidate);
+    const sourceCandidates = Array.isArray(record?.sources) ? record.sources : [record?.url ?? candidate];
+    const sources = sourceCandidates.reduce<string[]>((urls, sourceCandidate) => {
+      const source = normalizeVisualConfigUrl(sourceCandidate);
+      if (source && !urls.includes(source)) urls.push(source);
+      return urls;
+    }, []);
+    if (sources.length > 0 && !groups.some(group => group[0] === sources[0])) groups.push(sources);
+    return groups;
   }, []);
 }
 
@@ -181,26 +188,11 @@ function resolveNamedVisualConfig(data: CharacterData, chatVariables: Record<str
   const name = resolveCharacterName(data);
   if (!name) return undefined;
 
+  const charInfo = asRecord(chatVariables.char_info);
+  const profiles = asRecord(charInfo?.profiles);
+  if (profiles && Object.hasOwn(profiles, name)) return profiles[name];
+
   return asRecord(chatVariables.char_info_visuals)?.[name];
-}
-
-function resolveNamedStatusGallery(data: CharacterData, chatVariables: Record<string, unknown>): string[] {
-  const name = resolveCharacterName(data);
-  if (!name) return [];
-
-  const status = asRecord(chatVariables.status);
-  const externalGalleries = asRecord(status?.externalGalleries);
-  const partners = asRecord(externalGalleries?.partners);
-  const partner = asRecord(partners?.[name]);
-  const images = partner?.images;
-  if (!Array.isArray(images)) return [];
-
-  return images.reduce<string[]>((urls, image) => {
-    const candidate = typeof image === 'string' ? image : asRecord(image)?.url;
-    const url = normalizeVisualConfigUrl(candidate);
-    if (url && !urls.includes(url)) urls.push(url);
-    return urls;
-  }, []);
 }
 
 function applyVisualAppearance(data: CharacterData, visualConfig: unknown): CharacterData {
@@ -219,11 +211,17 @@ function applyVisualAppearance(data: CharacterData, visualConfig: unknown): Char
   return resolved;
 }
 
-function applyImageUrls(data: CharacterData, imageUrls: string[], randomizeInitialImage: boolean): CharacterData {
+function applyImageSourceGroups(
+  data: CharacterData,
+  imageSourceGroups: string[][],
+  randomizeInitialImage: boolean,
+): CharacterData {
+  const imageUrls = imageSourceGroups.map(sources => sources[0]);
   return {
     ...data,
     角色图片: imageUrls[0],
     __char_info_image_urls: imageUrls,
+    __char_info_image_source_groups: imageSourceGroups,
     __char_info_randomize_initial_image: randomizeInitialImage && imageUrls.length > 1,
   };
 }
@@ -234,7 +232,7 @@ function applyVisualConfig(data: CharacterData, visualConfig: unknown, clearImag
 
   if (typeof visualConfig === 'string') {
     const url = normalizeVisualConfigUrl(visualConfig);
-    return url ? applyImageUrls(resolvedAppearance, [url], false) : fallback;
+    return url ? applyImageSourceGroups(resolvedAppearance, [[url]], false) : fallback;
   }
 
   const config = asRecord(visualConfig);
@@ -242,13 +240,14 @@ function applyVisualConfig(data: CharacterData, visualConfig: unknown, clearImag
 
   const url = normalizeVisualConfigUrl(config.url);
   const gallery = normalizeVisualConfigGallery(config.gallery);
-  const imageUrls = [url, ...gallery].reduce<string[]>((urls, candidate) => {
-    if (candidate && !urls.includes(candidate)) urls.push(candidate);
-    return urls;
+  const imageSourceGroups = [url ? [url] : null, ...gallery].reduce<string[][]>((groups, candidate) => {
+    if (candidate && !groups.some(group => group[0] === candidate[0])) groups.push(candidate);
+    return groups;
   }, []);
-  if (imageUrls.length === 0) return fallback;
+  if (imageSourceGroups.length === 0) return fallback;
 
-  return applyImageUrls(resolvedAppearance, imageUrls, !url);
+  const isVersionedProfile = Number(config.schema_version) >= 1;
+  return applyImageSourceGroups(resolvedAppearance, imageSourceGroups, !url && !isVersionedProfile);
 }
 
 export function resolveCharacterVisualConfig(
@@ -265,10 +264,29 @@ export function resolveCharacterVisualConfig(
   if (placeholder) return applyVisualConfig(styledData, chatVariables[placeholder[1]], true);
   if (rawImage) return styledData;
 
-  const statusGallery = resolveNamedStatusGallery(data, chatVariables);
-  if (statusGallery.length > 0) return applyImageUrls(styledData, statusGallery, false);
-
   return namedVisualConfig === undefined ? styledData : applyVisualConfig(styledData, namedVisualConfig, false);
+}
+
+export async function resolveCharacterVisualConfigWithExtensions(
+  data: CharacterData,
+  chatVariables: Record<string, unknown>,
+): Promise<CharacterData> {
+  if (typeof data.__char_info_ref === 'string' && data.__char_info_ref.trim()) return data;
+
+  const rawImage = typeof data.角色图片 === 'string' ? data.角色图片.trim() : '';
+  const placeholder = rawImage.match(/^\[\[([a-z0-9][a-z0-9_-]*)\]\]$/i);
+  const namedVisualConfig = resolveNamedVisualConfig(data, chatVariables);
+  const extendedVisualConfig =
+    namedVisualConfig === undefined ? undefined : await resolveGalleryExtension(namedVisualConfig);
+  const styledData =
+    extendedVisualConfig === undefined ? data : applyVisualAppearance(data, extendedVisualConfig);
+
+  if (placeholder) return applyVisualConfig(styledData, chatVariables[placeholder[1]], true);
+  if (rawImage) return styledData;
+
+  return extendedVisualConfig === undefined
+    ? styledData
+    : applyVisualConfig(styledData, extendedVisualConfig, false);
 }
 
 export function harmonizeAccent(

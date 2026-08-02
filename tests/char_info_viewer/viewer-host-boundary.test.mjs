@@ -1,0 +1,63 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import test from 'node:test';
+
+const repoRoot = new URL('../../', import.meta.url);
+const appSource = await readFile(new URL('src/char_info_viewer/App.vue', repoRoot), 'utf8');
+const runtimeEntrySource = await readFile(new URL('src/char_info_viewer_runtime/index.ts', repoRoot), 'utf8');
+const specialSheetSource = await readFile(
+  new URL('src/char_info_viewer/components/specialNpc/SpecialNpcCharacterSheet.vue', repoRoot),
+  'utf8',
+);
+const divinityPanelSource = await readFile(
+  new URL('src/char_info_viewer/components/specialNpc/SpecialNpcDivinityPanel.vue', repoRoot),
+  'utf8',
+);
+const runtimeSource = await readFile(new URL('src/char_info_viewer_runtime/runtime.ts', repoRoot), 'utf8');
+const runtimeRootSource = await readFile(new URL('src/char_info_viewer_runtime/RuntimeRoot.vue', repoRoot), 'utf8');
+const nativeMountSource = await readFile(
+  new URL('src/char_info_viewer_runtime/nativeMessageMount.ts', repoRoot),
+  'utf8',
+);
+
+test('viewer requires immutable YAML and message context from the script host', () => {
+  assert.match(appSource, /defineProps<\{[\s\S]*?yamlText: string;[\s\S]*?messageId: number;[\s\S]*?\}>/);
+  assert.match(appSource, /const yamlText = props\.yamlText\.trim\(\)/);
+  assert.doesNotMatch(appSource, /data-source|\$1|props\.yamlText !== undefined/);
+  assert.match(appSource, /message_id: props\.messageId/);
+  assert.match(appSource, /'viewer-root-embedded': props\.embedded/);
+});
+
+test('viewer scopes theme variables to its own card root', () => {
+  assert.match(appSource, /ref="viewerRootRef"/);
+  assert.match(appSource, /if \(viewerRootRef\.value\) applyTheme\(theme\.value, viewerRootRef\.value\)/);
+});
+
+test('multiple cards do not repeat static viewer element ids in the host document', () => {
+  assert.doesNotMatch(appSource, /id="(?:particle-canvas|import-action-(?:btn|menu))"/);
+  assert.doesNotMatch(specialSheetSource, /id="import-action-menu"/);
+  assert.match(divinityPanelSource, /const contentId = useId\(\)/);
+  assert.match(divinityPanelSource, /:aria-controls="contentId"/);
+});
+
+test('vNext runtime mounts cards into the native message without replacing Tavern Helper output', () => {
+  assert.equal(runtimeSource.match(/\bcreateApp\(/g)?.length, 1);
+  assert.doesNotMatch(runtimeSource, /createElement\(['"]iframe['"]\)|<iframe|srcdoc/i);
+  assert.match(runtimeSource, /createScriptIdDiv\(\)\.addClass\('char-info-runtime-root'\)\.appendTo\('body'\)/);
+  assert.match(runtimeSource, /destroyTeleportedStyle = teleportStyle\(\)\.destroy/);
+  assert.match(runtimeSource, /window\.parent\.document\.querySelector/);
+  assert.doesNotMatch(runtimeSource, /mutation\.target instanceof Element/);
+  assert.match(runtimeSource, /mountCharInfoCardHosts\(sourceElement, projection\.cards\)/);
+  assert.doesNotMatch(runtimeSource, /formatAsDisplayedMessage|adaptDisplayedMessageHtml|SOURCE_HIDDEN_CLASS/);
+  assert.doesNotMatch(runtimeRootSource, /\bv-html\b|char-info-runtime-text|char-info-runtime-source-hidden/);
+  assert.match(nativeMountSource, /getCharInfoBoundaryTexts/);
+  assert.match(nativeMountSource, /range\.setStartBefore\(startTopLevel\)/);
+  assert.match(nativeMountSource, /range\.setEndAfter\(endTopLevel\)/);
+  assert.doesNotMatch(nativeMountSource, /getCharInfoVisibleText|createSafeRange\(root, visibleText\)/);
+});
+
+test('runtime replaces an older loaded instance instead of duplicating cards and observers', () => {
+  assert.match(runtimeEntrySource, /hostWindow\.CHAR_INFO_VIEWER_RUNTIME\?\.stop\(\)/);
+  assert.match(runtimeEntrySource, /hostWindow\.CHAR_INFO_VIEWER_RUNTIME = nextRuntime/);
+  assert.match(runtimeEntrySource, /delete hostWindow\.CHAR_INFO_VIEWER_RUNTIME/);
+});

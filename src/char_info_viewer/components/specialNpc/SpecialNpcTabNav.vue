@@ -26,6 +26,7 @@
     </div>
 
     <button
+      v-if="showImportAction"
       class="special-npc-nav-save-button"
       :disabled="importing"
       type="button"
@@ -47,6 +48,7 @@ const props = defineProps<{
   activeTab: SpecialNpcTabKey;
   importing: boolean;
   importButtonText: string;
+  showImportAction: boolean;
 }>();
 
 defineEmits<{

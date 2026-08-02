@@ -4,6 +4,7 @@ import type { CharacterData } from './types';
 const specialNpcRegistryEntryName = 'char_info_special_profiles';
 const specialNpcReferencePattern = /^__char_info_ref\s*:\s*([a-z0-9][a-z0-9_-]*)\s*$/i;
 const charInfoWrapperPattern = /^<char_info>\s*([\s\S]*?)\s*<\/char_info>$/i;
+const charInfoBlockPattern = /<char_info\s*>[\s\S]*?<\/char_info\s*>/gi;
 
 export type SpecialNpcReference = { kind: 'not_reference' } | { kind: 'reference'; reference: string };
 
@@ -41,6 +42,15 @@ export function parseSpecialNpcCharacterReference(source: string): SpecialNpcRef
   const referenceSource = wrappedMatch ? wrappedMatch[1].trim() : trimmedSource;
   const match = referenceSource.match(specialNpcReferencePattern);
   return match ? { kind: 'reference', reference: match[1] } : { kind: 'not_reference' };
+}
+
+export function messageContainsSpecialNpcCharacterReference(message: string, expectedReference: string): boolean {
+  charInfoBlockPattern.lastIndex = 0;
+  for (const match of message.matchAll(charInfoBlockPattern)) {
+    const parsed = parseSpecialNpcCharacterReference(match[0]);
+    if (parsed.kind === 'reference' && parsed.reference === expectedReference) return true;
+  }
+  return false;
 }
 
 export async function loadSpecialNpcCharacterReference(

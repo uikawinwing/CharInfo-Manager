@@ -1,6 +1,12 @@
+import {
+  normalizeGalleryExtensionReference,
+  validateGalleryExtensionReference,
+  type GalleryExtensionReference,
+} from '../char_info_shared/galleryPack.ts';
+
 export interface GalleryImage {
   title: string;
-  url: string;
+  sources: string[];
 }
 
 export interface CharacterVisualProfile {
@@ -10,7 +16,18 @@ export interface CharacterVisualProfile {
   tierColor: string;
   entranceQuote: string;
   gallery: GalleryImage[];
+  galleryExtension?: GalleryExtensionReference;
 }
+
+type StoredGalleryImage = {
+  title?: unknown;
+  sources?: unknown;
+  url?: unknown;
+};
+
+type StoredCharacterVisualProfile = Omit<CharacterVisualProfile, 'gallery'> & {
+  gallery: StoredGalleryImage[];
+};
 
 export type ManagedBlockInspection =
   | { state: 'absent' }
@@ -20,6 +37,7 @@ export type ManagedBlockInspection =
 
 export const DEFAULT_RACE_COLOR = '#A9DBC3';
 export const DEFAULT_TIER_COLOR = '#B7D9E8';
+export const CHAR_INFO_PROFILE_SCHEMA_VERSION = 1;
 export const MANAGED_BLOCK_START = '<%# char-info-ejs-builder:start:v2 %>';
 export const MANAGED_BLOCK_END = '<%# char-info-ejs-builder:end:v2 %>';
 
@@ -54,7 +72,7 @@ export function createEmptyProfile(characterName = ''): CharacterVisualProfile {
     raceColor: '',
     tierColor: '',
     entranceQuote: '',
-    gallery: [{ title: '主立绘', url: '' }],
+    gallery: [{ title: '主立绘', sources: [''] }],
   };
 }
 
@@ -99,13 +117,38 @@ export function validateProfile(profile: CharacterVisualProfile): string[] {
 
   profile.gallery.forEach((image, index) => {
     validateEjsSafeText(errors, `第 ${index + 1} 张立绘标题`, image.title);
-    validateEjsSafeText(errors, `第 ${index + 1} 张立绘 URL`, image.url);
-    if (!isHttpsUrl(image.url)) errors.push(`第 ${index + 1} 张立绘必须使用有效的 HTTPS URL。`);
+    const sources = readGallerySources(image);
+    if (sources.length === 0) {
+      errors.push(`第 ${index + 1} 张立绘至少需要一个有效的 HTTPS URL。`);
+      return;
+    }
+    sources.forEach((source, sourceIndex) => {
+      validateEjsSafeText(errors, `第 ${index + 1} 张立绘的第 ${sourceIndex + 1} 个 URL`, source);
+      if (!isHttpsUrl(source)) {
+        errors.push(`第 ${index + 1} 张立绘的第 ${sourceIndex + 1} 个 URL 必须使用有效的 HTTPS URL。`);
+      }
+    });
   });
+  if (profile.galleryExtension) {
+    errors.push(...validateGalleryExtensionReference(profile.galleryExtension));
+  }
   return errors;
 }
 
-export function normalizeProfile(profile: CharacterVisualProfile): CharacterVisualProfile {
+function readGallerySources(image: StoredGalleryImage): string[] {
+  const candidates = Array.isArray(image.sources) ? image.sources : [image.url];
+  return candidates.reduce<string[]>((sources, candidate) => {
+    if (typeof candidate !== 'string') return sources;
+    const source = candidate.trim();
+    if (source && !sources.includes(source)) sources.push(source);
+    return sources;
+  }, []);
+}
+
+export function normalizeProfile(
+  profile: CharacterVisualProfile | StoredCharacterVisualProfile,
+): CharacterVisualProfile {
+  const galleryExtension = normalizeGalleryExtensionReference(profile.galleryExtension);
   return {
     characterName: profile.characterName.trim(),
     avatarUrl: profile.avatarUrl.trim(),
@@ -113,20 +156,23 @@ export function normalizeProfile(profile: CharacterVisualProfile): CharacterVisu
     tierColor: profile.tierColor.trim() ? normalizeHex(profile.tierColor) : '',
     entranceQuote: profile.entranceQuote.trim(),
     gallery: profile.gallery.map((image, index) => ({
-      title: image.title.trim() || (index === 0 ? '主立绘' : `备用立绘 ${index + 1}`),
-      url: image.url.trim(),
+      title:
+        (typeof image.title === 'string' ? image.title.trim() : '') ||
+        (index === 0 ? '主立绘' : `备用立绘 ${index + 1}`),
+      sources: readGallerySources(image),
     })),
+    ...(galleryExtension ? { galleryExtension } : {}),
   };
 }
 
-function decodeLegacyProfile(value: string): CharacterVisualProfile {
+function decodeLegacyProfile(value: string): StoredCharacterVisualProfile {
   const base64 = value
     .replace(/-/g, '+')
     .replace(/_/g, '/')
     .padEnd(Math.ceil(value.length / 4) * 4, '=');
   const binary = atob(base64);
   const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
-  return JSON.parse(new TextDecoder().decode(bytes)) as CharacterVisualProfile;
+  return JSON.parse(new TextDecoder().decode(bytes)) as StoredCharacterVisualProfile;
 }
 
 function countOccurrences(content: string, target: string): number {
@@ -140,7 +186,7 @@ function countOccurrences(content: string, target: string): number {
   return count;
 }
 
-function extractV2Profile(block: string): CharacterVisualProfile {
+function extractV2Profile(block: string): StoredCharacterVisualProfile {
   const assignment = 'const profile =';
   if (countOccurrences(block, assignment) !== 1) {
     throw new Error('v2 区块必须包含且只包含一份 profile 配置。');
@@ -194,7 +240,7 @@ function extractV2Profile(block: string): CharacterVisualProfile {
     throw new Error('v2 profile 配置末尾缺少分号。');
   }
 
-  return JSON.parse(block.slice(objectStart, objectEnd)) as CharacterVisualProfile;
+  return JSON.parse(block.slice(objectStart, objectEnd)) as StoredCharacterVisualProfile;
 }
 
 export function inspectManagedBlock(content: string): ManagedBlockInspection {
@@ -233,7 +279,7 @@ export function inspectManagedBlock(content: string): ManagedBlockInspection {
   const block = content.slice(start, end);
 
   try {
-    let rawProfile: CharacterVisualProfile;
+    let rawProfile: StoredCharacterVisualProfile;
     if (isV2) {
       rawProfile = extractV2Profile(block);
     } else {
@@ -263,10 +309,11 @@ export function inspectManagedBlock(content: string): ManagedBlockInspection {
 
 export function hasUnmanagedVisualEjs(content: string): boolean {
   if (inspectManagedBlock(content).state !== 'absent') return false;
-  const hasViewerVisuals = content.includes('char_info_visuals');
-  const hasStatusVisuals =
-    content.includes('status.externalAvatars.partners') || content.includes('status.externalGalleries.partners');
-  return hasViewerVisuals && hasStatusVisuals;
+  return (
+    content.includes('char_info.profiles') ||
+    content.includes('char_info_visuals') ||
+    content.includes('status.externalGalleries.partners')
+  );
 }
 
 export function buildManagedEjsBlock(input: CharacterVisualProfile): string {
@@ -281,22 +328,24 @@ export function buildManagedEjsBlock(input: CharacterVisualProfile): string {
     lines.push(`  ${line}${index === remainingLines.length - 1 ? ';' : ''}`);
   });
   lines.push('', '  const npcName = profile.characterName;', '');
-  lines.push('  setLocalVar(`char_info_visuals[${JSON.stringify(npcName)}]`, {');
+  lines.push('  setLocalVar(`char_info.profiles[${JSON.stringify(npcName)}]`, {');
+  lines.push(`    schema_version: ${CHAR_INFO_PROFILE_SCHEMA_VERSION},`);
   lines.push('    ...(profile.raceColor ? { custom_racecolor: profile.raceColor } : {}),');
   lines.push('    ...(profile.tierColor ? { custom_tiercolor: profile.tierColor } : {}),');
   lines.push("    ...(profile.entranceQuote ? { '登场台词': profile.entranceQuote } : {}),");
+  lines.push('    gallery: profile.gallery.map(image => ({ title: image.title, sources: image.sources })),');
+  if (profile.galleryExtension) {
+    lines.push('    gallery_extension: profile.galleryExtension,');
+  }
   lines.push('  });', '');
 
-  lines.push('  setLocalVar(');
-  lines.push('    `status.externalAvatars.partners[${JSON.stringify(npcName)}].url`,');
-  lines.push('    profile.avatarUrl,');
-  lines.push('  );');
+  lines.push('  if (profile.avatarUrl) {');
+  lines.push('    setLocalVar(');
+  lines.push('      `status.externalAvatars.partners[${JSON.stringify(npcName)}].url`,');
+  lines.push('      profile.avatarUrl,');
+  lines.push('    );');
+  lines.push('  }');
 
-  lines.push('');
-  lines.push('  setLocalVar(');
-  lines.push('    `status.externalGalleries.partners[${JSON.stringify(npcName)}].images`,');
-  lines.push('    profile.gallery,');
-  lines.push('  );');
   lines.push('}');
   lines.push('_%>');
   lines.push(MANAGED_BLOCK_END);

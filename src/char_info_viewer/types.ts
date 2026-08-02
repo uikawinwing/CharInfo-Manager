@@ -21,6 +21,7 @@ export interface CharacterData {
   custom_tiercolor?: string;
   __char_info_ref?: string;
   __char_info_image_urls?: string[];
+  __char_info_image_source_groups?: string[][];
   __char_info_randomize_initial_image?: boolean;
 
   属性?: Partial<Record<'力量' | '敏捷' | '体质' | '智力' | '精神', string | number>>;

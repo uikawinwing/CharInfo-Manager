@@ -76,6 +76,20 @@ export default [
       '@typescript-eslint/no-unused-vars': 'off',
     },
   },
+  {
+    files: ['tests/**/*.{cjs,mjs}'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+      'import-x/no-nodejs-modules': 'off',
+    },
+  },
   eslintConfigPrettier,
-  globalIgnores(['dist/**', 'node_modules/**', 'eslint.config.mjs', 'postcss.config.js', 'webpack.config.ts']),
+  globalIgnores([
+    'dist/**',
+    'node_modules/**',
+    'eslint.config.mjs',
+    'postcss.config.js',
+    'webpack.config.ts',
+    'tavern_sync.mjs',
+  ]),
 ];

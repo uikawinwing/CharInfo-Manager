@@ -7,6 +7,7 @@ import {
 } from '../specialNpcProfiles';
 import type { CharacterData } from '../types';
 import { getSmartArray, hasArrayContent, hasText, normalizeDisplayText } from './common';
+import { prioritizeImageSourceGroups } from './imageSourcePriority';
 import { normalizeImageUrlForBrowser, normalizePortraitMediaUrlForBrowser } from './imageUrl';
 
 export type TabKey =
@@ -59,6 +60,7 @@ export type CharacterViewModel = {
   entranceQuoteText: string;
   imageUrl: string;
   imageUrls: string[];
+  imageSourceGroups: string[][];
   randomizeInitialImage: boolean;
   layoutKind: CharacterLayoutKind;
   specialNpcProfile: SpecialNpcProfile | null;
@@ -137,6 +139,23 @@ export function asNamedObjectArray(input: unknown): ItemObject[] {
         名称: textFromUnknown(item.名称) || name,
       } as ItemObject;
     });
+}
+
+function mergeNamedObjectArrays(primary: unknown, legacy: unknown): ItemObject[] {
+  const merged = new Map<string, ItemObject>();
+  const unnamed: ItemObject[] = [];
+
+  [...asNamedObjectArray(legacy), ...asNamedObjectArray(primary)].forEach(item => {
+    const name = textFromUnknown(item.名称);
+    if (!name) {
+      unnamed.push(item);
+      return;
+    }
+
+    merged.set(name, { ...merged.get(name), ...item, 名称: name });
+  });
+
+  return [...unnamed, ...merged.values()];
 }
 
 function parseNamedEffectLine(line: string): EffectEntry | null {
@@ -321,6 +340,7 @@ export function statusEffectSource(item: ItemObject): string {
 type CharacterImageResolution = {
   url: string;
   urls: string[];
+  sourceGroups: string[][];
   randomizeInitialImage: boolean;
   source: 'special_portrait' | 'map' | 'data' | 'none';
 };
@@ -332,6 +352,23 @@ function resolveConfiguredImageUrls(data: CharacterData): string[] {
     const normalized = normalizePortraitMediaUrlForBrowser(textFromUnknown(candidate))?.url ?? '';
     if (normalized && !urls.includes(normalized)) urls.push(normalized);
     return urls;
+  }, []);
+}
+
+function resolveConfiguredImageSourceGroups(data: CharacterData): string[][] {
+  if (!Array.isArray(data.__char_info_image_source_groups)) {
+    return resolveConfiguredImageUrls(data).map(url => [url]);
+  }
+
+  return data.__char_info_image_source_groups.reduce<string[][]>((groups, candidates) => {
+    if (!Array.isArray(candidates)) return groups;
+    const sources = candidates.reduce<string[]>((urls, candidate) => {
+      const normalized = normalizePortraitMediaUrlForBrowser(textFromUnknown(candidate))?.url ?? '';
+      if (normalized && !urls.includes(normalized)) urls.push(normalized);
+      return urls;
+    }, []);
+    if (sources.length > 0 && !groups.some(group => group[0] === sources[0])) groups.push(sources);
+    return groups;
   }, []);
 }
 
@@ -351,7 +388,8 @@ function resolveCharacterImage(
   specialNpcProfile: SpecialNpcProfile | null,
 ): CharacterImageResolution {
   const isDxProfile = Boolean(textFromUnknown(pickField(data, '__char_info_ref')));
-  const configuredUrls = isDxProfile ? [] : resolveConfiguredImageUrls(data);
+  const configuredSourceGroups = isDxProfile ? [] : resolveConfiguredImageSourceGroups(data);
+  const configuredUrls = configuredSourceGroups.map(sources => sources[0]);
 
   if (specialNpcProfile) {
     const source = textFromUnknown(pickField(data, '特殊立绘')) ? 'special_portrait' : 'map';
@@ -359,6 +397,7 @@ function resolveCharacterImage(
     return {
       url: urls[0],
       urls,
+      sourceGroups: configuredSourceGroups.length > 0 ? configuredSourceGroups : urls.map(url => [url]),
       randomizeInitialImage: configuredUrls.length > 1 && data.__char_info_randomize_initial_image === true,
       source,
     };
@@ -371,16 +410,20 @@ function resolveCharacterImage(
     return {
       url: urls[0],
       urls,
+      sourceGroups: configuredSourceGroups.length > 0 ? configuredSourceGroups : urls.map(url => [url]),
       randomizeInitialImage: configuredUrls.length > 1 && data.__char_info_randomize_initial_image === true,
       source: 'data',
     };
   }
 
-  return { url: '', urls: [], randomizeInitialImage: false, source: 'none' };
+  return { url: '', urls: [], sourceGroups: [], randomizeInitialImage: false, source: 'none' };
 }
 
-export function buildCharacterViewModel(data: CharacterData): CharacterViewModel {
-  const nameText = normalizeDisplayText(pickField(data, '姓名') || 'Unknown');
+export function buildCharacterViewModel(
+  data: CharacterData,
+  imageSourcePriority: readonly string[] = [],
+): CharacterViewModel {
+  const nameText = normalizeDisplayText(pickField(data, '姓名') || '未知角色');
   const backstoryText = normalizeDisplayText(pickField(data, '背景故事') || '');
   const resourceObj = (pickField(data, '资源', '资源') || {}) as Record<string, unknown>;
   const resourceBoxes: ResourceBox[] = [
@@ -415,12 +458,14 @@ export function buildCharacterViewModel(data: CharacterData): CharacterViewModel
       : null;
   const divinityElements = asNamedObjectArray(divinityRoot.要素 || data.要素);
   const divinityPowers = asNamedObjectArray(divinityRoot.权能 || data.权能);
-  const divinityLaws = asNamedObjectArray(divinityRoot.法则 || data.法则);
+  const divinityLaws = mergeNamedObjectArrays(divinityRoot.法则, data.法则);
   const skills = asNamedObjectArray(data.技能);
   const equipments = asNamedObjectArray(data.装备);
   const specialNpcProfile = resolveSpecialNpcProfileForData(data, nameText);
   const image = resolveCharacterImage(data, specialNpcProfile);
-  const imageUrl = image.url;
+  const imageSourceGroups = prioritizeImageSourceGroups(image.sourceGroups, imageSourcePriority);
+  const imageUrls = imageSourceGroups.map(sources => sources[0]);
+  const imageUrl = imageUrls[0] ?? image.url;
   const storyBookLink = characterStoryBookMap[nameText] ?? null;
   const hasDivinity =
     hasText(divinityGodTitle) ||
@@ -446,7 +491,7 @@ export function buildCharacterViewModel(data: CharacterData): CharacterViewModel
     nameText,
     levelText: normalizeDisplayText(pickField(data, '等级', '等级') ?? '?'),
     raceText: normalizeDisplayText(pickField(data, '种族', '种族') || '其他'),
-    tierText: normalizeDisplayText(pickField(data, '生命层级', '生命层级') || 'Unknown'),
+    tierText: normalizeDisplayText(pickField(data, '生命层级', '生命层级') || '未知层级'),
     identityText: getSmartArray(pickField(data, '身份')).join(' / ') || '-',
     classText: getSmartArray(pickField(data, '职业', '职业')).join(' / ') || '-',
     personalityText: Array.isArray(pickField(data, '性格'))
@@ -461,7 +506,8 @@ export function buildCharacterViewModel(data: CharacterData): CharacterViewModel
     backstoryText,
     entranceQuoteText: normalizeDisplayText(pickField(data, '登场台词') || ''),
     imageUrl,
-    imageUrls: image.urls,
+    imageUrls,
+    imageSourceGroups,
     randomizeInitialImage: image.randomizeInitialImage,
     layoutKind: specialNpcProfile ? 'special_npc' : 'default',
     specialNpcProfile,

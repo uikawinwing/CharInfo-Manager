@@ -6,7 +6,7 @@ import {
 } from './services/imageUrl';
 
 export type SpecialNpcDivinityVariant = 'default' | 'venusCurtain';
-export type SpecialNpcVisualTheme = 'default' | 'venus' | 'anastasia' | 'ailisi';
+export type SpecialNpcVisualTheme = 'default' | 'venus' | 'anastasia' | 'iris';
 
 export type SpecialNpcProfile = {
   name: string;
@@ -31,7 +31,7 @@ const specialNpcReferenceProfiles: Record<string, Omit<SpecialNpcProfile, 'name'
   },
   special_npc_03_iris: {
     imageUrl: characterImageMap['艾璃丝·赛瑞利亚'],
-    visualTheme: 'ailisi',
+    visualTheme: 'iris',
     divinityVariant: 'default',
   },
 };

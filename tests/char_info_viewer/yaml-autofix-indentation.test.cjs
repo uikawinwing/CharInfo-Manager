@@ -1,4 +1,6 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const test = require('node:test');
 
 const {
@@ -61,15 +63,15 @@ const AOXUE_SAMPLE = `<char_info>
         被动常驻。自身免疫一切常规严寒影响。
 </char_info>`;
 
-test('块标量内容缺缩进时严格解析失败', () => {
+test('自动解析会补上顶格块标量缩进', () => {
   const strict = parseCharacterYaml(AOXUE_SAMPLE);
-  assert.equal(strict.success, false);
+  assert.equal(strict.success, true);
 });
 
 test('自动修复能补上顶格块标量缩进并保留完整结构', () => {
-  const loose = parseCharacterYamlLoose(AOXUE_SAMPLE);
+  const loose = parseCharacterYaml(AOXUE_SAMPLE);
   assert.equal(loose.success, true);
-  assert.equal(loose.mode, 'loose');
+  assert.equal(loose.mode, 'strict');
   assert.equal(loose.data.姓名, '傲雪');
   assert.match(String(loose.data.性格), /极为纯粹的剑痴/);
   assert.equal(Array.isArray(loose.data.技能), true);
@@ -111,7 +113,7 @@ test('多行顶格块内容整段归入块标量而不吞掉后续键', () => {
     '背景故事: |',
     '  正常故事',
   ].join('\n');
-  const loose = parseCharacterYamlLoose(multi);
+  const loose = parseCharacterYaml(multi);
   assert.equal(loose.success, true);
   assert.equal(loose.data.性格, '第一行顶格内容。\n第二行顶格内容。\n');
   assert.equal(loose.data.喜爱, '正常内容\n');
@@ -132,8 +134,7 @@ test('列表项内块标量缺缩进同样可修复', () => {
     '    未多缩进的效果行',
     '    描述: 之后的描述',
   ].join('\n');
-  assert.equal(parseCharacterYaml(listCase).success, false);
-  const loose = parseCharacterYamlLoose(listCase);
+  const loose = parseCharacterYaml(listCase);
   assert.equal(loose.success, true);
   assert.equal(loose.data.技能[0].效果, '未多缩进的效果行\n');
   assert.equal(loose.data.技能[0].描述, '之后的描述');
@@ -155,8 +156,7 @@ test('同一资料列表内漂移的命名条目会对齐并完整保留', () =>
     '      品质: 稀有',
   ].join('\n');
 
-  assert.equal(parseCharacterYaml(broken).success, false);
-  const loose = parseCharacterYamlLoose(broken);
+  const loose = parseCharacterYaml(broken);
   assert.equal(loose.success, true);
   assert.equal(loose.data.技能.length, 2);
   assert.equal(loose.data.技能[0].名称, '技能A');
@@ -179,8 +179,7 @@ test('命名列表项的兄弟字段缩进漂移时会统一到字段层级', ()
     '    描述: 完整保留。',
   ].join('\n');
 
-  assert.equal(parseCharacterYaml(broken).success, false);
-  const loose = parseCharacterYamlLoose(broken);
+  const loose = parseCharacterYaml(broken);
   assert.equal(loose.success, true);
   assert.equal(loose.data.技能.length, 1);
   assert.equal(loose.data.技能[0].品质, '史诗');
@@ -203,8 +202,7 @@ test('内联多行文本溢出时升级为块标量并保留后续复杂结构',
     '    品质: 史诗',
   ].join('\n');
 
-  assert.equal(parseCharacterYaml(broken).success, false);
-  const loose = parseCharacterYamlLoose(broken);
+  const loose = parseCharacterYaml(broken);
   assert.equal(loose.success, true);
   assert.equal(String(loose.data.性格).trimEnd(), '第一行。\n第二行顶格继续。\n第三行顶格继续。');
   assert.equal(loose.data.技能.length, 1);
@@ -226,8 +224,7 @@ test('普通字段值含第二个映射冒号时加引号且不误伤 URL', () =
     '    品质: 史诗',
   ].join('\n');
 
-  assert.equal(parseCharacterYaml(broken).success, false);
-  const loose = parseCharacterYamlLoose(broken);
+  const loose = parseCharacterYaml(broken);
   assert.equal(loose.success, true);
   assert.equal(loose.data.自定义说明, '动作: 1200 SP');
   assert.equal(loose.data.资料地址, 'https://example.com/a:b');
@@ -248,7 +245,7 @@ test('双冒号修补不会改写块标量内的正文', () => {
     '  品质: 史诗',
   ].join('\n');
 
-  const loose = parseCharacterYamlLoose(broken);
+  const loose = parseCharacterYaml(broken);
   assert.equal(loose.success, true);
   assert.equal(String(loose.data.性格).trimEnd(), '她提醒: 动作: 1200 SP');
 });
@@ -268,7 +265,7 @@ test('列表字段内已有嵌套对象时不会被拉平成兄弟字段', () =>
     '    描述: 嵌套说明。',
   ].join('\n');
 
-  const loose = parseCharacterYamlLoose(broken);
+  const loose = parseCharacterYaml(broken);
   assert.equal(loose.success, true);
   assert.equal(loose.data.技能[0].效果.描述, '嵌套说明。');
 });
@@ -280,4 +277,83 @@ test('无法修补的资料仍回退到宽松提取', () => {
   const loose = parseCharacterYamlLoose(broken);
   assert.equal(loose.success, true);
   assert.equal(loose.mode, 'loose');
+});
+
+test('安娜资料会在自动解析中保留完整技能、装备、道具和登神要素', () => {
+  const anna = fs
+    .readFileSync(path.join(__dirname, '../../anna.sample.txt'), 'utf8')
+    .replace('<inject var>', '<char_info>')
+    .replace('</inject var>', '</char_info>');
+  const parsed = parseCharacterYaml(anna);
+
+  assert.equal(parsed.success, true);
+  assert.equal(parsed.mode, 'strict');
+  assert.equal(parsed.data.技能.length, 4);
+  assert.equal(parsed.data.装备.length, 3);
+  assert.equal(parsed.data.道具.length, 1);
+  assert.equal(parsed.data.登神长阶.要素.length, 1);
+});
+
+test('自动兼容不会改写块标量正文中的方括号或 Tab', () => {
+  const source = [
+    '姓名: 正文保留',
+    '等级: 14',
+    '种族: 人类',
+    '性格: |',
+    '  \t【原样保留】',
+    '背景故事: |',
+    '  普通故事。',
+  ].join('\n');
+  const parsed = parseCharacterYaml(source);
+
+  assert.equal(parsed.success, true);
+  assert.equal(parsed.data.性格, '\t【原样保留】\n');
+});
+
+test('合法数组、数字和日期样式扩展字段保持原有数据类型', () => {
+  const source = [
+    '姓名: 类型保留',
+    '等级: 14',
+    '种族: 人类',
+    '身份: [冒险者, 学者]',
+    '活动日期: 2026-08-01',
+  ].join('\n');
+  const parsed = parseCharacterYaml(source);
+
+  assert.equal(parsed.success, true);
+  assert.deepEqual(parsed.data.身份, ['冒险者', '学者']);
+  assert.equal(parsed.data.等级, 14);
+  assert.equal(parsed.data.活动日期, '2026-08-01');
+});
+
+test('进入自动兼容路径后仍保留数字和合法数组类型', () => {
+  const source = [
+    '姓名: 类型保留',
+    '等级: 14',
+    '种族: 人类',
+    '身份: [冒险者, 学者]',
+    '自定义说明: 动作: 1200 SP',
+  ].join('\n');
+  const parsed = parseCharacterYaml(source);
+
+  assert.equal(parsed.success, true);
+  assert.equal(parsed.data.等级, 14);
+  assert.deepEqual(parsed.data.身份, ['冒险者', '学者']);
+  assert.equal(parsed.data.自定义说明, '动作: 1200 SP');
+});
+
+test('根节点为数组或标量时拒绝解析', () => {
+  assert.equal(parseCharacterYaml('- 姓名: 不应接受').success, false);
+  assert.equal(parseCharacterYaml('只是一段文本').success, false);
+});
+
+test('自动解析失败后，手动读取只抢救基础资料', () => {
+  const source = ['姓名: 手动恢复', '等级: 2', '种族: 人类', '性格', '背景故事: 一段可恢复的资料'].join('\n');
+
+  assert.equal(parseCharacterYaml(source).success, false);
+  const rescued = parseCharacterYamlLoose(source);
+  assert.equal(rescued.success, true);
+  assert.equal(rescued.mode, 'loose');
+  assert.equal(rescued.data.姓名, '手动恢复');
+  assert.equal(rescued.data.技能, undefined);
 });

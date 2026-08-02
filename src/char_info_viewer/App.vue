@@ -1,35 +1,43 @@
 <template>
-  <div class="viewer-root" :class="{ 'special-npc-viewer-root': shouldShowSpecialNpcLayout }">
+  <div
+    ref="viewerRootRef"
+    class="viewer-root"
+    :class="{
+      'viewer-root-embedded': props.embedded,
+      'special-npc-viewer-root': shouldShowSpecialNpcLayout,
+      'viewer-effects-disabled': !props.effectsEnabled,
+    }"
+  >
     <div v-if="parseError" class="error-card">
       <h3>⚠️ 资料暂时无法显示</h3>
       <div class="error-body">
-        <div v-if="parseErrorTips.length > 0" class="yaml-fix-box">
-          <div class="yaml-fix-title">宝宝别急，三角老师带你一步步排查</div>
-          <ul class="yaml-fix-list">
-            <li v-for="tip in parseErrorTips" :key="tip">{{ tip }}</li>
-          </ul>
-        </div>
-
         <div class="yaml-rescue-box">
           <button class="yaml-rescue-button" type="button" :disabled="looseParsing" @click="tryLooseParse">
-            {{ looseParsing ? '三角老师修复中...' : '点我召唤' }}
+            {{ looseParsing ? '正在尝试修复…' : '尝试自动修复' }}
           </button>
+          <p>将尝试恢复基础资料；技能、装备等复杂内容可能无法完整保留。</p>
         </div>
 
         <details class="yaml-error-details">
-          <summary>查看技术信息（可选）</summary>
+          <summary>查看错误详情（可选）</summary>
           <div class="yaml-error-row yaml-error-sub"><b>错误信息：</b>{{ parseError.message }}</div>
           <div v-if="parseError.line !== undefined" class="yaml-error-row">
             <b>定位：</b>第 {{ (parseError.line ?? 0) + 1 }} 行，第 {{ (parseError.column ?? 0) + 1 }} 列
           </div>
-        </details>
-
-        <template v-if="parseError.cleanedLine">
-          <div class="yaml-error-title">系统定位到的出错行（请重点检查）</div>
-          <pre class="yaml-error-pre"
-            >{{ parseError.cleanedLine }}
+          <template v-if="parseError.cleanedLine">
+            <div class="yaml-error-title">发现问题的行</div>
+            <pre class="yaml-error-pre"
+              >{{ parseError.cleanedLine }}
 {{ parseError.caretLine }}</pre>
-        </template>
+          </template>
+
+          <div v-if="parseErrorTips.length > 0" class="yaml-fix-box">
+            <div class="yaml-fix-title">手动检查</div>
+            <ul class="yaml-fix-list">
+              <li v-for="tip in parseErrorTips" :key="tip">{{ tip }}</li>
+            </ul>
+          </div>
+        </details>
 
         <details v-if="parseError.originalLine" class="yaml-error-details">
           <summary>查看你输入的原始内容（可选）</summary>
@@ -74,6 +82,7 @@
         :importing="importing"
         :import-button-text="importButtonText"
         :show-import-menu="showImportMenu"
+        :read-only="props.readOnly"
         @toggle-attribute-formula="toggleAttributeFormula"
         @toggle-import-menu="toggleImportMenu"
         @import-mvu="onImportMvu"
@@ -106,7 +115,7 @@
         </div>
 
         <div ref="bgLayerRef" class="card-background-layer">
-          <canvas id="particle-canvas" ref="canvasRef"></canvas>
+          <canvas v-if="props.effectsEnabled" ref="canvasRef" class="particle-canvas"></canvas>
         </div>
 
         <div class="sheet-content-wrapper">
@@ -445,12 +454,12 @@
             </section>
           </div>
 
-          <button id="import-action-btn" :disabled="importing" @click.stop="toggleImportMenu">
+          <button v-if="!props.readOnly" class="import-action-btn" :disabled="importing" @click.stop="toggleImportMenu">
             {{ importButtonText }}
           </button>
-          <div id="import-action-menu" :class="{ show: showImportMenu }">
-            <button type="button" :disabled="importing" @click="onImportMvu">导入到 MVU 变量</button>
-            <button type="button" :disabled="importing" @click="onImportWorldbook">导入到 聊天世界书</button>
+          <div v-if="!props.readOnly" class="import-action-menu" :class="{ show: showImportMenu }">
+            <button type="button" :disabled="importing" @click="onImportMvu">导入到角色状态</button>
+            <button type="button" :disabled="importing" @click="onImportWorldbook">导入到聊天世界书</button>
           </div>
         </div>
       </div>
@@ -462,7 +471,7 @@
 
 <script setup lang="ts">
 import { waitUntil } from 'async-wait-until';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 
 import {
   ATTRIBUTE_KEYS,
@@ -494,13 +503,37 @@ import {
 } from './services/characterViewModel';
 import { importToMvuVariables, mergeSpecialNpcIntoMvuData, saveToChatWorldbook } from './services/importService';
 import { createParticleEngine, type ParticleEngine } from './services/particleEngine';
-import { syncCharacterVisualsToStatusVariables } from './services/statusPartnerVisualSync';
-import { applyTheme, resolveCharacterVisualConfig, resolveTheme } from './services/themeService';
+import { enqueueSpecialNpcImport } from './services/specialNpcImportQueue';
+import { applyTheme, resolveCharacterVisualConfigWithExtensions, resolveTheme } from './services/themeService';
 import { parseCharacterYaml, parseCharacterYamlLoose } from './services/yamlParser';
-import { loadSpecialNpcCharacterReference, parseSpecialNpcCharacterReference } from './specialNpcCharacterData';
+import {
+  loadSpecialNpcCharacterReference,
+  messageContainsSpecialNpcCharacterReference,
+  parseSpecialNpcCharacterReference,
+} from './specialNpcCharacterData';
 import type { CharacterData, FriendlyYamlError, ThemeResolved } from './types';
 import SpecialNpcCharacterSheet from './components/specialNpc/SpecialNpcCharacterSheet.vue';
 
+const props = withDefaults(
+  defineProps<{
+    yamlText: string;
+    messageId: number;
+    embedded?: boolean;
+    readOnly?: boolean;
+    effectsEnabled?: boolean;
+    imageSourcePriority?: string[];
+    entranceQuoteOverride?: string;
+  }>(),
+  {
+    embedded: false,
+    readOnly: false,
+    effectsEnabled: true,
+    imageSourcePriority: () => [],
+    entranceQuoteOverride: undefined,
+  },
+);
+
+const viewerRootRef = ref<HTMLElement | null>(null);
 const sheetData = ref<CharacterData | null>(null);
 const mvuImportData = ref<CharacterData | null>(null);
 const parseError = ref<FriendlyYamlError | null>(null);
@@ -523,21 +556,25 @@ const defaultImportButtonText = '📥';
 const importButtonText = ref(defaultImportButtonText);
 let importButtonResetTimer: ReturnType<typeof setTimeout> | null = null;
 let specialNpcAutoImportTimer: ReturnType<typeof setTimeout> | null = null;
+let specialNpcAutoImportEventListener: EventOnReturn | null = null;
+let specialNpcGenerationEndedEventListener: EventOnReturn | null = null;
 let specialNpcAutoImportStarted = false;
+let specialNpcAutoImportDisposed = false;
+let listenerDocument: Document | null = null;
 
 const defaultParseErrorTips = [
-  '1. 检查一下有没有正则/脚本会影响正文排版？←体感最多是这个',
-  '2. 会不会是上一行或本行缺少冒号？确认格式是“键: 值”',
-  '3. 如果值里有半角冒号 :、[方括号]或“引号”，把整段值用"英文双引"号包住',
-  '4. 如果这是多行文本，键后面写 "|"，然后下一行开始要统一空两格（缩进两个空格）',
-  '5. 试完还是不行吗？宝宝别急，你可以召唤三角老师，我尝试隔空帮你修一下好了（但我不保证修好！）',
+  '1. 确认每行都使用“键: 值”格式。',
+  '2. 检查上一行或本行是否缺少冒号。',
+  '3. 值中包含冒号、方括号或引号时，请用英文双引号包住整段内容。',
+  '4. 多行文本请在键后写“|”，后续内容统一缩进两个空格。',
+  '5. 自动修复仍未成功时，请检查资料是否缺少姓名或其他必填内容。',
 ];
 
 const parseErrorTips = computed(() => defaultParseErrorTips);
 const looseParseWarning = computed(() =>
   parseMode.value === 'loose'
     ? parseWarnings.value[0] ||
-      '宝宝，你看看我修好了沒？部分列表、装备、技能或登神长阶结构可能无法完整恢复，导入前记得先检查内容～'
+      '部分列表、装备、技能或登神长阶结构可能无法完整恢复，导入前请检查内容。'
     : '',
 );
 
@@ -556,17 +593,19 @@ const wrapperClasses = computed(() => ({
   'high-tier': tierNumber.value >= 5,
 }));
 
-const vm = computed(() => (sheetData.value ? buildCharacterViewModel(sheetData.value) : null));
+const vm = computed(() =>
+  sheetData.value ? buildCharacterViewModel(sheetData.value, props.imageSourcePriority) : null,
+);
 const isSpecialNpcLayout = computed(() => vm.value?.layoutKind === 'special_npc');
 const specialNpcFallbackActive = ref(false);
 const shouldShowSpecialNpcLayout = computed(() => isSpecialNpcLayout.value && !specialNpcFallbackActive.value);
 const isPortraitLayout = computed(() => false);
 const isPortraitDetailTab = computed(() => isPortraitLayout.value && activeTab.value !== 'profile');
 const portraitImageUrl = computed(() => vm.value?.imageUrl || '');
-const nameText = computed(() => vm.value?.nameText || 'Unknown');
+const nameText = computed(() => vm.value?.nameText || '未知角色');
 const levelText = computed(() => vm.value?.levelText || '?');
 const raceText = computed(() => vm.value?.raceText || '其他');
-const tierText = computed(() => vm.value?.tierText || 'Unknown');
+const tierText = computed(() => vm.value?.tierText || '未知层级');
 const identityText = computed(() => vm.value?.identityText || '-');
 const classText = computed(() => vm.value?.classText || '-');
 const personalityText = computed(() => vm.value?.personalityText || '');
@@ -637,7 +676,7 @@ function detectIOSSafari(): boolean {
 }
 
 function setupParticleEngine() {
-  if (!canvasRef.value || !bgLayerRef.value || !theme.value) return;
+  if (!props.effectsEnabled || !canvasRef.value || !bgLayerRef.value || !theme.value) return;
   engine?.destroy();
   engine = createParticleEngine({
     canvas: canvasRef.value,
@@ -649,9 +688,19 @@ function setupParticleEngine() {
   engine.start();
 }
 
+watch(
+  () => props.effectsEnabled,
+  async enabled => {
+    engine?.destroy();
+    engine = null;
+    if (!enabled) return;
+    await nextTick();
+    setupParticleEngine();
+  },
+);
+
 async function initFromYaml() {
-  const scriptElement = document.getElementById('data-source');
-  const yamlText = scriptElement?.textContent?.trim() || '';
+  const yamlText = props.yamlText.trim();
 
   originalYamlText.value = yamlText;
   sheetData.value = null;
@@ -663,7 +712,7 @@ async function initFromYaml() {
   loadingSpecialNpc.value = false;
 
   if (!yamlText) {
-    parseError.value = { message: '未检测到 YAML 数据（#data-source 为空）。' };
+    parseError.value = { message: '未检测到 YAML 数据。' };
     return;
   }
 
@@ -673,13 +722,14 @@ async function initFromYaml() {
     try {
       const specialNpcData = await loadSpecialNpcCharacterReference(specialNpcReference.reference);
       mvuImportData.value = specialNpcData.injectData;
-      applyParsedCharacterData(specialNpcData.data, 'builtin');
+      await applyParsedCharacterData(specialNpcData.data, 'builtin');
       await nextTick();
       setupParticleEngine();
       scheduleSpecialNpcAutoImport(
         specialNpcData.injectData,
         specialNpcData.appearVariableName,
         specialNpcData.data.姓名 || specialNpcData.reference,
+        specialNpcData.reference,
       );
     } catch (err: any) {
       const message = err?.message || String(err);
@@ -698,27 +748,53 @@ async function initFromYaml() {
     return;
   }
 
-  applyParsedCharacterData(parsed.data, parsed.mode ?? 'strict', parsed.warnings ?? []);
+  await applyParsedCharacterData(parsed.data, parsed.mode ?? 'strict', parsed.warnings ?? []);
 
   nextTick(() => setupParticleEngine());
 }
 
-function scheduleSpecialNpcAutoImport(data: CharacterData, appearVariableName: string, characterName: string) {
+function scheduleSpecialNpcAutoImport(
+  data: CharacterData,
+  appearVariableName: string,
+  characterName: string,
+  reference: string,
+) {
   if (specialNpcAutoImportTimer) clearTimeout(specialNpcAutoImportTimer);
   specialNpcAutoImportTimer = setTimeout(() => {
     specialNpcAutoImportTimer = null;
-    void autoImportSpecialNpc(data, appearVariableName, characterName);
+    void autoImportSpecialNpc(data, appearVariableName, characterName, reference);
   }, 0);
 }
 
-async function autoImportSpecialNpc(data: CharacterData, appearVariableName: string, characterName: string) {
+function readActiveSwipeId(messageId: number): number | null {
+  const message = getChatMessages(messageId, { include_swipes: true })[0];
+  return message ? message.swipe_id : null;
+}
+
+function isSpecialNpcImportContextCurrent(chatId: string, swipeId: number, reference: string): boolean {
+  if (specialNpcAutoImportDisposed || SillyTavern.getCurrentChatId() !== chatId) return false;
+  if (readActiveSwipeId(props.messageId) !== swipeId) return false;
+
+  const message = getChatMessages(props.messageId)[0];
+  return Boolean(message && messageContainsSpecialNpcCharacterReference(message.message, reference));
+}
+
+async function autoImportSpecialNpc(
+  data: CharacterData,
+  appearVariableName: string,
+  characterName: string,
+  reference: string,
+) {
   if (specialNpcAutoImportStarted) return;
   specialNpcAutoImportStarted = true;
-  let eventListener: EventOnReturn | null = null;
 
   try {
     await waitGlobalInitialized('Mvu');
-    const targetScope = { type: 'message', message_id: getCurrentMessageId() } as const;
+    const chatId = SillyTavern.getCurrentChatId();
+    const swipeId = readActiveSwipeId(props.messageId);
+    if (swipeId === null || !isSpecialNpcImportContextCurrent(chatId, swipeId, reference)) return;
+
+    const targetScope = { type: 'message', message_id: props.messageId } as const;
     let successToastShown = false;
 
     const mergeIntoFinalVariables = (variables: Mvu.MvuData) => {
@@ -727,18 +803,44 @@ async function autoImportSpecialNpc(data: CharacterData, appearVariableName: str
       return result;
     };
 
-    eventListener = eventMakeLast(Mvu.events.VARIABLE_UPDATE_ENDED, variables => {
-      mergeIntoFinalVariables(variables);
+    const mvuUpdateReached = new Promise<void>(resolve => {
+      specialNpcAutoImportEventListener = eventOn(Mvu.events.BEFORE_MESSAGE_UPDATE, context => {
+        if (!isSpecialNpcImportContextCurrent(chatId, swipeId, reference)) return;
+        if (!messageContainsSpecialNpcCharacterReference(context.message_content, reference)) return;
+
+        resolve();
+      });
+    });
+    const targetGenerationEnded = new Promise<void>(resolve => {
+      specialNpcGenerationEndedEventListener = eventOn(tavern_events.GENERATION_ENDED, messageId => {
+        if (messageId !== props.messageId) return;
+        if (!isSpecialNpcImportContextCurrent(chatId, swipeId, reference)) return;
+        resolve();
+      });
     });
 
-    await waitUntil(() => _.has(Mvu.getMvuData(targetScope), 'stat_data'));
+    await Promise.race([
+      Promise.all([mvuUpdateReached, targetGenerationEnded]),
+      new Promise<'fallback'>(resolve => setTimeout(() => resolve('fallback'), 1000)),
+    ]);
+    if (!isSpecialNpcImportContextCurrent(chatId, swipeId, reference)) return;
 
-    const currentVariables = Mvu.getMvuData(targetScope);
-    if (mergeIntoFinalVariables(currentVariables) === 'imported') {
-      await Mvu.replaceMvuData(currentVariables, targetScope);
-    }
-    eventListener.stop();
-    eventListener = null;
+    await waitUntil(
+      () =>
+        !isSpecialNpcImportContextCurrent(chatId, swipeId, reference) ||
+        _.has(Mvu.getMvuData(targetScope), 'stat_data'),
+    );
+    if (!isSpecialNpcImportContextCurrent(chatId, swipeId, reference)) return;
+
+    const queueKey = `${chatId}\u0000${props.messageId}\u0000${swipeId}`;
+    await enqueueSpecialNpcImport(queueKey, async () => {
+      if (!isSpecialNpcImportContextCurrent(chatId, swipeId, reference)) return;
+      const currentVariables = Mvu.getMvuData(targetScope);
+      if (mergeIntoFinalVariables(currentVariables) === 'imported') {
+        await Mvu.replaceMvuData(currentVariables, targetScope);
+      }
+    });
+    if (!isSpecialNpcImportContextCurrent(chatId, swipeId, reference)) return;
 
     const verifiedVariables = Mvu.getMvuData(targetScope);
     const characterInserted = _.has(verifiedVariables, `stat_data.关系列表.${characterName}`);
@@ -747,21 +849,35 @@ async function autoImportSpecialNpc(data: CharacterData, appearVariableName: str
       throw new Error('MVU 写入后的读回验证失败。');
     }
   } catch (err: any) {
-    eventListener?.stop();
     console.error('[CharInfo Viewer] Special NPC auto import failed:', err);
     if (typeof toastr !== 'undefined') toastr.error(`特殊角色自动注入失败：${err?.message || String(err)}`);
+  } finally {
+    specialNpcAutoImportEventListener?.stop();
+    specialNpcAutoImportEventListener = null;
+    specialNpcGenerationEndedEventListener?.stop();
+    specialNpcGenerationEndedEventListener = null;
   }
 }
 
-function applyParsedCharacterData(data: CharacterData, mode: 'strict' | 'loose' | 'builtin', warnings: string[] = []) {
-  const resolvedData = resolveCharacterVisualConfig(data, getVariables({ type: 'chat' }));
-  sheetData.value = resolvedData;
+async function applyParsedCharacterData(
+  data: CharacterData,
+  mode: 'strict' | 'loose' | 'builtin',
+  warnings: string[] = [],
+) {
+  const resolvedData = await resolveCharacterVisualConfigWithExtensions(data, getVariables({ type: 'chat' }));
+  sheetData.value =
+    props.entranceQuoteOverride === undefined
+      ? resolvedData
+      : {
+          ...resolvedData,
+          登场台词: props.entranceQuoteOverride,
+        };
   specialNpcFallbackActive.value = false;
   parseError.value = null;
   parseMode.value = mode;
   parseWarnings.value = warnings;
   theme.value = resolveTheme(resolvedData);
-  applyTheme(theme.value);
+  if (viewerRootRef.value) applyTheme(theme.value, viewerRootRef.value);
 }
 
 function useSpecialNpcFallback() {
@@ -780,7 +896,7 @@ async function tryLooseParse() {
       return;
     }
 
-    applyParsedCharacterData(parsed.data, parsed.mode ?? 'loose', parsed.warnings ?? []);
+    await applyParsedCharacterData(parsed.data, parsed.mode ?? 'loose', parsed.warnings ?? []);
     await nextTick();
     setupParticleEngine();
   } finally {
@@ -820,30 +936,17 @@ async function onImportMvu() {
 
   try {
     const ok = window.confirm(
-      `确定要将角色 "${importData.姓名 || 'Unknown'}" 导入到 MVU 变量系统(关系列表)吗？\n如果已存在同名角色，将会覆盖其数据。`,
+      `确定要将角色 "${importData.姓名 || '未命名角色'}" 导入到角色状态吗？\n如果已存在同名角色，将会覆盖其数据。`,
     );
     if (!ok) return;
 
     if (parseMode.value === 'loose') {
-      const looseOk = window.confirm('当前资料来自宽松读取，可能缺少技能、装备或嵌套结构。确认检查无误后再导入？');
+      const looseOk = window.confirm('当前资料由基础资料恢复而来，可能缺少技能、装备或嵌套内容。确认检查无误后再导入？');
       if (!looseOk) return;
     }
 
     importButtonText.value = '⏳';
-    await importToMvuVariables(importData);
-    if (parseMode.value !== 'builtin' && sheetData.value) {
-      try {
-        const synced = syncCharacterVisualsToStatusVariables(sheetData.value);
-        if (synced) {
-          console.info('[CharInfo Viewer] Partner visuals synced to status variables', synced);
-        }
-      } catch (visualSyncError) {
-        console.warn('[CharInfo Viewer] Partner visual sync failed:', visualSyncError);
-        if (typeof toastr !== 'undefined') {
-          toastr.warning('角色已导入 MVU，但头像／图库同步到状态栏失败。');
-        }
-      }
-    }
+    await importToMvuVariables(importData, { type: 'message', message_id: props.messageId });
     flashImportButton('✅', 1600);
   } catch (err: any) {
     console.error('MVU Import Error:', err);
@@ -861,13 +964,13 @@ async function onImportWorldbook() {
 
   try {
     if (parseMode.value === 'loose') {
-      const looseOk = window.confirm('当前资料来自宽松读取，原始 YAML 可能仍有格式错误。确认仍要保存到聊天世界书？');
+      const looseOk = window.confirm('当前资料由基础资料恢复而来，原始资料可能仍有格式错误。确认仍要保存到聊天世界书？');
       if (!looseOk) return;
     }
 
     importButtonText.value = '⏳';
     console.info('[CharInfo Viewer] Chat worldbook import started', {
-      characterName: sheetData.value.姓名 || 'Unknown',
+      characterName: sheetData.value.姓名 || '未命名角色',
       yamlLength: originalYamlText.value.length,
     });
     const result = await saveToChatWorldbook(sheetData.value, originalYamlText.value);
@@ -894,19 +997,30 @@ onMounted(() => {
   void initFromYaml().finally(() => {
     initializingViewer.value = false;
   });
-  document.addEventListener('click', onDocumentClick);
-  document.addEventListener('keydown', onKeydown);
+  listenerDocument = viewerRootRef.value?.ownerDocument ?? null;
+  listenerDocument?.addEventListener('click', onDocumentClick);
+  listenerDocument?.addEventListener('keydown', onKeydown);
 });
 
 onBeforeUnmount(() => {
+  specialNpcAutoImportDisposed = true;
   engine?.destroy();
   engine = null;
   if (importButtonResetTimer) {
     clearTimeout(importButtonResetTimer);
     importButtonResetTimer = null;
   }
-  document.removeEventListener('click', onDocumentClick);
-  document.removeEventListener('keydown', onKeydown);
+  if (specialNpcAutoImportTimer) {
+    clearTimeout(specialNpcAutoImportTimer);
+    specialNpcAutoImportTimer = null;
+  }
+  specialNpcAutoImportEventListener?.stop();
+  specialNpcAutoImportEventListener = null;
+  specialNpcGenerationEndedEventListener?.stop();
+  specialNpcGenerationEndedEventListener = null;
+  listenerDocument?.removeEventListener('click', onDocumentClick);
+  listenerDocument?.removeEventListener('keydown', onKeydown);
+  listenerDocument = null;
 });
 </script>
 
@@ -932,6 +1046,11 @@ onBeforeUnmount(() => {
 
 .viewer-root.special-npc-viewer-root {
   min-height: 0;
+}
+
+.viewer-root.viewer-root-embedded {
+  min-height: 0;
+  padding: 12px 0 24px;
 }
 
 .loading-card,
@@ -1331,7 +1450,7 @@ onBeforeUnmount(() => {
     radial-gradient(circle at 50% 48%, transparent 58%, rgba(0, 0, 0, 0.33) 100%);
 }
 
-#particle-canvas {
+.particle-canvas {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -1965,7 +2084,7 @@ onBeforeUnmount(() => {
   background: rgba(255, 255, 255, 0.05);
 }
 
-#import-action-btn {
+.import-action-btn {
   position: absolute;
   bottom: 15px;
   left: 50%;
@@ -1982,18 +2101,18 @@ onBeforeUnmount(() => {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
 }
 
-#import-action-btn:disabled {
+.import-action-btn:disabled {
   opacity: 0.7;
   cursor: wait;
 }
 
-#import-action-btn:hover:not(:disabled) {
+.import-action-btn:hover:not(:disabled) {
   background: rgba(60, 60, 60, 0.92);
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
   border-color: #fff;
 }
 
-#import-action-menu {
+.import-action-menu {
   position: absolute;
   bottom: 55px;
   left: 50%;
@@ -2010,11 +2129,11 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-#import-action-menu.show {
+.import-action-menu.show {
   display: block;
 }
 
-#import-action-menu button {
+.import-action-menu button {
   width: 100%;
   background: transparent;
   border: 1px solid transparent;
@@ -2026,12 +2145,12 @@ onBeforeUnmount(() => {
   font-size: 0.95rem;
 }
 
-#import-action-menu button:disabled {
+.import-action-menu button:disabled {
   opacity: 0.6;
   cursor: wait;
 }
 
-#import-action-menu button:hover:not(:disabled) {
+.import-action-menu button:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.12);
 }
@@ -2219,18 +2338,18 @@ onBeforeUnmount(() => {
     padding: 10px;
   }
 
-  #import-action-btn {
+  .import-action-btn {
     bottom: 10px;
     font-size: 1.05rem;
     padding: 7px 10px;
   }
 
-  #import-action-menu {
+  .import-action-menu {
     bottom: 46px;
     min-width: 170px;
   }
 
-  #import-action-menu button {
+  .import-action-menu button {
     padding: 8px;
     font-size: 0.9rem;
   }
