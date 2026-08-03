@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="data:," />
-    <title>角色视觉 EJS 生成器 · Phase 1 Preview</title>
+    <title>角色视觉配置生成器</title>
     <style>
       :root {
         color-scheme: dark;
@@ -798,13 +798,13 @@
     <main class="app-shell">
       <header class="page-header">
         <div>
-          <p class="eyebrow">CharInfo Creator Tool</p>
-          <h1>角色视觉 EJS 生成器</h1>
+          <p class="eyebrow">角色视觉配置</p>
+          <h1>角色视觉配置生成器</h1>
           <p class="header-copy">
             填入角色的头像、立绘和主题颜色，工具会在本地生成可直接放入世界书的 EJS。无需手写变量路径。
           </p>
         </div>
-        <span class="phase-badge">Phase 1 · Browser Preview</span>
+        <span class="phase-badge">配置工具</span>
       </header>
 
       <div class="workspace">
@@ -1221,23 +1221,24 @@
             lines.push(`  const avatarUrl = ${jsString(avatarUrl)};`, "");
           }
 
-          lines.push("  const galleryImages = [");
+          lines.push("  const gallery = [");
           gallery.forEach((image) => {
-            lines.push(`    { title: ${jsString(image.title)}, url: ${jsString(image.url)} },`);
+            lines.push(
+              `    { title: ${jsString(image.title)}, sources: [${jsString(image.url)}] },`,
+            );
           });
           lines.push("  ];", "");
           lines.push("  setLocalVar(");
-          lines.push("    'char_info_visuals',");
+          lines.push("    `char_info.profiles[${JSON.stringify(npcName)}]`,");
           lines.push("    {");
-          lines.push("      [npcName]: {");
+          lines.push("      schema_version: 1,");
           lines.push(`        custom_racecolor: ${jsString(raceColor)},`);
           lines.push(`        custom_tiercolor: ${jsString(tierColor)},`);
           if (quote) {
-            lines.push(`        '登场台词': ${jsString(quote)},`);
+            lines.push(`      '登场台词': ${jsString(quote)},`);
           }
-          lines.push("      },");
+          lines.push("      gallery,");
           lines.push("    },");
-          lines.push("    { merge: true, dryRun: true },");
           lines.push("  );");
 
           if (avatarUrl) {
@@ -1245,16 +1246,8 @@
             lines.push("  setLocalVar(");
             lines.push("    `status.externalAvatars.partners[${JSON.stringify(npcName)}].url`,");
             lines.push("    avatarUrl,");
-            lines.push("    { dryRun: true },");
             lines.push("  );");
           }
-
-          lines.push("");
-          lines.push("  setLocalVar(");
-          lines.push("    `status.externalGalleries.partners[${JSON.stringify(npcName)}].images`,");
-          lines.push("    galleryImages,");
-          lines.push("    { dryRun: true },");
-          lines.push("  );");
           lines.push("}");
           lines.push("_%>");
 

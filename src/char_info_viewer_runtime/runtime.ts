@@ -2,6 +2,7 @@ import { createPinia } from 'pinia';
 import { createApp, markRaw, reactive, type App } from 'vue';
 
 import { createScriptIdDiv, teleportStyle } from '@util/script';
+import { createCreatorManagerOverlay } from '../char_info_creator_manager/overlay';
 import { projectCharInfoMessage } from '../char_info_viewer/runtime/charInfoMessage';
 import { selectRecentMessageIds } from '../char_info_viewer/runtime/recentMessages';
 import RuntimeRoot from './RuntimeRoot.vue';
@@ -25,17 +26,11 @@ const DIRTY_BATCH_SIZE = 3;
 const DIRTY_FLUSH_DELAY_MS = 20;
 const LIBRARY_HOST_CLASS = 'char-info-library-host';
 const LEGACY_CURRENT_LIBRARY_BUTTON_NAME = '角色资料库';
-const WORLDBOOK_LIBRARY_BUTTON_NAME = '世界书角色库';
 const CREATOR_BUTTON_NAME = '角色视觉编辑器';
 const LEGACY_CREATOR_BUTTON_NAME = '角色视觉编辑';
 const SETTINGS_HOST_CLASS = 'char-info-settings-host';
 const SETTINGS_BUTTON_NAME = 'CharInfo 设置';
 const RUNTIME_MANAGER_OWNER_KEY = '__charInfoWorldbookManagerOwner';
-
-type CreatorManagerOverlay = {
-  open(): void;
-  close(): void;
-};
 
 type MountedMessage = {
   messageId: number;
@@ -70,9 +65,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     settings: readRuntimeSettings(getVariables({ type: 'script' })),
     settingsView: null,
   });
-  let worldbookManager: CreatorManagerOverlay | null = null;
-  let worldbookManagerLoad: Promise<CreatorManagerOverlay> | null = null;
-  let managerOpenRevision = 0;
+  const worldbookManager = createCreatorManagerOverlay('library');
   const mountedMessages = new Map<number, MountedMessage>();
   const activeFloorIds = new Set<number>();
   const dirtyMessageIds = new Set<number>();
@@ -109,25 +102,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     state.library.viewerOpen = false;
   };
 
-  const loadWorldbookManager = (): Promise<CreatorManagerOverlay> => {
-    if (worldbookManager) return Promise.resolve(worldbookManager);
-    if (!worldbookManagerLoad) {
-      worldbookManagerLoad = import('../char_info_creator_manager/overlay')
-        .then(({ createCreatorManagerOverlay }) => {
-          worldbookManager = createCreatorManagerOverlay('library');
-          return worldbookManager;
-        })
-        .catch(error => {
-          worldbookManagerLoad = null;
-          throw error;
-        });
-    }
-    return worldbookManagerLoad;
-  };
-
   const closeWorldbookManager = () => {
-    managerOpenRevision += 1;
-    worldbookManager?.close();
+    worldbookManager.close();
   };
 
   const resetLibraryForChat = () => {
@@ -282,15 +258,11 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     if (!started) return;
     closeLibrary();
     closeSettings();
-    const openRevision = ++managerOpenRevision;
-    void loadWorldbookManager()
-      .then(manager => {
-        if (!started || managerOpenRevision !== openRevision) return;
-        manager.open();
-      })
-      .catch(error => {
-        console.error('[CharInfo Runtime] 世界书角色库加载失败：', error);
-      });
+    try {
+      worldbookManager.open();
+    } catch (error) {
+      console.error('[CharInfo Runtime] 世界书角色库打开失败：', error);
+    }
   };
 
   const openSettings = () => {
@@ -559,6 +531,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         onRefreshLibrary: () => void refreshLibrary(),
         onOpenLibraryList: openLibraryList,
         onOpenLibraryCharacter: openLibraryCharacter,
+        onOpenWorldbookLibrary: openWorldbookLibrary,
         onMoveLibraryButton: updateLibraryButtonPosition,
         onOpenSettings: openSettings,
         onCloseSettings: closeSettings,
@@ -573,11 +546,10 @@ export function createCharInfoRuntime(): CharInfoRuntime {
             button.name !== CREATOR_BUTTON_NAME &&
             button.name !== LEGACY_CREATOR_BUTTON_NAME &&
             button.name !== LEGACY_CURRENT_LIBRARY_BUTTON_NAME &&
+            button.name !== '世界书角色库' &&
             button.name !== SETTINGS_BUTTON_NAME,
         ),
       );
-      appendInexistentScriptButtons([{ name: WORLDBOOK_LIBRARY_BUTTON_NAME, visible: true }]);
-      listen(getButtonEvent(WORLDBOOK_LIBRARY_BUTTON_NAME), openWorldbookLibrary);
       bindEvents();
       observeMessageDom();
       scanRecentFloors();

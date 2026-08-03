@@ -6,20 +6,20 @@ const appSource = readFileSync(new URL('../../src/char_info_creator_manager/App.
 const indexSource = readFileSync(new URL('../../src/char_info_creator_manager/index.ts', import.meta.url), 'utf8');
 const overlaySource = readFileSync(new URL('../../src/char_info_creator_manager/overlay.ts', import.meta.url), 'utf8');
 const runtimeSource = readFileSync(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
+const runtimeRootSource = readFileSync(new URL('../../src/char_info_viewer_runtime/RuntimeRoot.vue', import.meta.url), 'utf8');
 
-test('世界书角色库与视觉编辑器共用一个 QR 入口和同一管理器', () => {
-  assert.match(indexSource, /世界书角色库/);
-  assert.match(indexSource, /const manager = createCreatorManagerOverlay\('library'\)/);
-  assert.match(indexSource, /'角色视觉编辑器', '角色视觉编辑', '角色资料库', 'CharInfo 设置'/);
-  assert.match(indexSource, /const RUNTIME_MANAGER_OWNER_KEY = '__charInfoWorldbookManagerOwner'/);
-  assert.match(indexSource, /if \(isOwnedByRuntime\(\)\) return;/);
-  assert.doesNotMatch(indexSource, /createCreatorManagerOverlay\('editor'\)/);
-  assert.match(overlaySource, /initialView/);
+test('世界书角色库只从当前角色悬浮面板进入，并由运行时独占管理器', () => {
+  assert.match(indexSource, /'世界书角色库', '角色视觉编辑器', '角色视觉编辑', '角色资料库', 'CharInfo 设置'/);
+  assert.doesNotMatch(indexSource, /createCreatorManagerOverlay/);
+  assert.doesNotMatch(indexSource, /appendInexistentScriptButtons/);
   assert.match(runtimeSource, /const RUNTIME_MANAGER_OWNER_KEY = '__charInfoWorldbookManagerOwner'/);
   assert.match(runtimeSource, /setManagerOwnership\('runtime'\)/);
   assert.match(runtimeSource, /setManagerOwnership\(null\)/);
-  assert.match(runtimeSource, /import\('\.\.\/char_info_creator_manager\/overlay'\)/);
-  assert.doesNotMatch(runtimeSource, /createCreatorManagerOverlay\('editor'\)/);
+  assert.match(runtimeSource, /import \{ createCreatorManagerOverlay \} from '\.\.\/char_info_creator_manager\/overlay';/);
+  assert.doesNotMatch(runtimeSource, /import\('\.\.\/char_info_creator_manager\/overlay'\)/);
+  assert.doesNotMatch(runtimeSource, /appendInexistentScriptButtons/);
+  assert.match(runtimeRootSource, /aria-label="打开世界书角色库"[\s\S]*?@click="props\.onOpenWorldbookLibrary"/);
+  assert.match(overlaySource, /initialView/);
   assert.match(appSource, /class="manager-view-switch"/);
   assert.match(appSource, /@click="switchManagerView\('library'\)"/);
   assert.match(appSource, /@click="switchManagerView\('editor'\)"/);
@@ -40,10 +40,20 @@ test('世界书角色库在独立页面提供搜索、筛选、启停与查看�
   const libraryPageSource = appSource.slice(libraryPageStart, libraryPageEnd);
 
   assert.ok(libraryPageStart >= 0 && libraryPageEnd > libraryPageStart);
-  assert.match(libraryPageSource, /搜索角色姓名、条目名或种族/);
+  assert.match(libraryPageSource, /搜索角色、条目名或种族/);
   assert.match(libraryPageSource, /character-library-filter-buttons/);
   assert.match(libraryPageSource, /toggleCharacterEntry/);
   assert.match(libraryPageSource, /openCharacterDetails/);
+});
+
+test('世界书角色库采用参考图的三段式桌面工具栏与四列紧凑卡片', () => {
+  assert.match(appSource, /class="dialog-header"\s*:class="\{ 'library-header': viewMode === 'library' \}"/);
+  assert.match(appSource, /class="library-header-worldbook"/);
+  assert.match(appSource, /class="library-search-field"/);
+  assert.match(appSource, /class="character-library-control-row"/);
+  assert.match(appSource, /找到 \{\{ visibleCharacterEntries\.length \}\} 个角色/);
+  assert.match(appSource, /class="character-cover-silhouette"/);
+  assert.match(appSource, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
 });
 
 test('管理器弹窗固定在手机可视视口，不混入页面滚动坐标', () => {

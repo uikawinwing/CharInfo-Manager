@@ -11,13 +11,39 @@
       :aria-hidden="detailCharacter ? 'true' : undefined"
       :inert="detailCharacter ? true : undefined"
     >
-      <header class="dialog-header">
+      <header class="dialog-header" :class="{ 'library-header': viewMode === 'library' }">
         <div class="header-title">
+          <svg v-if="viewMode === 'library'" class="library-title-icon" aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M4 5.5 10.4 7v12L4 17.4V5.5Zm16 0L13.6 7v12l6.4-1.6V5.5ZM12 8.6v10.3" />
+            <path d="M6.5 9.2 9 10m6.5 0 2.5-.8m-11.5 4 2.5.8m6.5 0 2.5-.8" />
+          </svg>
           <h1 id="manager-title">{{ viewMode === 'library' ? '世界书角色库' : '角色视觉编辑器' }}</h1>
           <span class="phase-badge">
             {{ viewMode === 'library' ? worldbookCharacterEntries.length : `${activeStep}/${steps.length}` }}
           </span>
         </div>
+
+        <div v-if="viewMode === 'library'" class="library-header-worldbook">
+          <label>
+            <span>世界书</span>
+            <select v-model="selectedWorldbookName" :disabled="loadingWorldbooks || worldbooks.length === 0">
+              <option v-for="worldbook in worldbooks" :key="worldbook" :value="worldbook">
+                {{ worldbook }}{{ isCharacterWorldbook(worldbook) ? '（当前角色）' : '' }}
+              </option>
+            </select>
+          </label>
+          <button
+            class="icon-button library-refresh-button"
+            type="button"
+            title="重新读取角色库"
+            aria-label="重新读取角色库"
+            :disabled="loadingWorldbooks || loadingEntries"
+            @click="loadWorldbooks"
+          >
+            ↻
+          </button>
+        </div>
+
         <div class="header-actions">
           <div class="manager-view-switch" role="group" aria-label="切换角色管理工具">
             <button
@@ -616,43 +642,22 @@
       </div>
 
       <section v-else class="library-page">
-        <div class="library-worldbook-actions">
-          <label class="field">
-            <span class="field-label">角色世界书</span>
-            <select v-model="selectedWorldbookName" :disabled="loadingWorldbooks || worldbooks.length === 0">
-              <option v-for="worldbook in worldbooks" :key="worldbook" :value="worldbook">
-                {{ worldbook }}{{ isCharacterWorldbook(worldbook) ? '（当前角色）' : '' }}
-              </option>
-            </select>
-          </label>
-          <button
-            class="icon-button"
-            type="button"
-            title="重新读取角色库"
-            aria-label="重新读取角色库"
-            :disabled="loadingWorldbooks || loadingEntries"
-            @click="loadWorldbooks"
-          >
-            ↻
-          </button>
-        </div>
-
         <div v-if="worldbookCharacterEntries.length > 0" class="character-library">
-          <div class="character-library-heading">
-            <b>{{ visibleCharacterEntries.length }} / {{ worldbookCharacterEntries.length }} 显示</b>
-          </div>
-
           <div class="character-library-toolbar">
-            <input
-              v-model="characterSearch"
-              type="search"
-              autocomplete="off"
-              placeholder="搜索角色姓名、条目名或种族"
-              aria-label="搜索角色封面库"
-            />
+            <label class="library-search-field">
+              <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.7" cy="10.7" r="6.4" /><path d="m16 16 4 4" /></svg>
+              <input
+                v-model="characterSearch"
+                type="search"
+                autocomplete="off"
+                placeholder="搜索角色、条目名或种族"
+                aria-label="搜索角色封面库"
+              />
+            </label>
 
-            <div class="character-library-filter-row">
+            <div class="character-library-control-row">
               <div class="character-library-filter-buttons" role="group" aria-label="筛选角色状态">
+                <span class="character-library-control-label">状态</span>
                 <button
                   v-for="option in characterLibraryFilterOptions"
                   :key="option.value"
@@ -671,25 +676,25 @@
                   <option v-for="race in availableCharacterRaces" :key="race" :value="race">{{ race }}</option>
                 </select>
               </label>
-            </div>
-
-            <div class="character-library-view-options">
-              <div class="character-library-layout-switch" role="group" aria-label="选择角色库显示方式">
-                <button
-                  type="button"
-                  :aria-pressed="characterLibraryLayout === 'compact'"
-                  @click="characterLibraryLayout = 'compact'"
-                >
-                  紧凑列表
-                </button>
-                <button
-                  type="button"
-                  :aria-pressed="characterLibraryLayout === 'cards'"
-                  @click="characterLibraryLayout = 'cards'"
-                >
-                  图片卡片
-                </button>
-              </div>
+              <div class="character-library-view-options">
+                <div class="character-library-layout-switch" role="group" aria-label="选择角色库显示方式">
+                  <button
+                    type="button"
+                    :aria-pressed="characterLibraryLayout === 'compact'"
+                    @click="characterLibraryLayout = 'compact'"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" /></svg>
+                    <span>紧凑列表</span>
+                  </button>
+                  <button
+                    type="button"
+                    :aria-pressed="characterLibraryLayout === 'cards'"
+                    @click="characterLibraryLayout = 'cards'"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx=".8" /><rect x="14" y="4" width="6" height="6" rx=".8" /><rect x="4" y="14" width="6" height="6" rx=".8" /><rect x="14" y="14" width="6" height="6" rx=".8" /></svg>
+                    <span>图片卡片</span>
+                  </button>
+                </div>
 
               <label v-if="characterLibraryLayout === 'cards'" class="character-card-columns">
                 <span>每行显示</span>
@@ -700,16 +705,12 @@
                   </option>
                 </select>
               </label>
-            </div>
+              </div>
 
-            <div class="character-library-summary">
-              <span :aria-label="`${enabledCharacterCount} 个角色已启用`" title="已启用"
-                >✓ {{ enabledCharacterCount }}</span
-              >
-              <span :aria-label="`${encounteredCharacterCount} 个角色已遇到`" title="当前聊天已遇到"
-                >◉ {{ encounteredCharacterCount }}</span
-              >
-              <span v-if="loadingEncounteredCharacters" aria-label="正在读取角色资料">…</span>
+              <div class="character-library-summary" aria-live="polite">
+                找到 {{ visibleCharacterEntries.length }} 个角色
+                <span v-if="loadingEncounteredCharacters" aria-label="正在读取角色资料">…</span>
+              </div>
             </div>
           </div>
 
@@ -747,7 +748,12 @@
                   referrerpolicy="no-referrer"
                   @error="onCharacterCoverError(character)"
                 />
-                <span v-else class="character-cover-placeholder" aria-hidden="true">未配置图片</span>
+                <span v-else class="character-cover-placeholder" aria-hidden="true">
+                  <svg class="character-cover-silhouette" viewBox="0 0 80 96">
+                    <path d="M40 48c12.4 0 22-10.2 22-22.8S52.4 2.5 40 2.5 18 12.7 18 25.2 27.6 48 40 48Z" />
+                    <path d="M8.5 94v-8.1c0-19.9 14.1-32.7 31.5-32.7s31.5 12.8 31.5 32.7V94H8.5Z" />
+                  </svg>
+                </span>
               </button>
 
               <div class="character-library-card-copy">
@@ -2466,9 +2472,88 @@ button {
 
 .library-page {
   min-height: 0;
-  padding: 28px 34px 36px;
+  padding: 12px 22px 28px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-color: rgb(74 90 112 / 88%) rgb(10 15 23 / 76%);
+  scrollbar-width: thin;
+}
+
+.library-page::-webkit-scrollbar {
+  width: 8px;
+}
+
+.library-page::-webkit-scrollbar-track {
+  background: rgb(10 15 23 / 76%);
+}
+
+.library-page::-webkit-scrollbar-thumb {
+  background: rgb(74 90 112 / 88%);
+  border: 2px solid rgb(10 15 23 / 76%);
+  border-radius: 999px;
+}
+
+.library-header {
+  display: grid;
+  min-height: 84px;
+  padding: 12px 28px;
+  grid-template-columns: minmax(250px, 1fr) minmax(320px, 430px) minmax(290px, 1fr);
+  gap: 26px;
+}
+
+.library-title-icon {
+  width: 31px;
+  height: 31px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: var(--primary);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.library-header-worldbook {
+  display: flex;
+  min-width: 0;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.library-header-worldbook label {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.library-header-worldbook label > span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.library-header-worldbook select {
+  width: 100%;
+  min-height: 40px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.library-header .header-actions {
+  justify-content: flex-end;
+}
+
+.library-header .manager-view-switch button {
+  min-width: 112px;
+  min-height: 40px;
+  justify-content: center;
+}
+
+.library-header .close-button,
+.library-refresh-button {
+  width: 42px;
+  height: 42px;
 }
 
 .library-worldbook-actions {
@@ -2752,72 +2837,91 @@ h2 {
 }
 
 .character-library {
-  margin: 18px 0;
-  padding: 15px;
-  background: rgb(119 214 199 / 4%);
-  border: 1px solid rgb(119 214 199 / 22%);
-  border-radius: 14px;
-}
-
-.character-library-heading {
-  display: flex;
-  margin-bottom: 12px;
-  align-items: flex-start;
-  justify-content: flex-end;
-  gap: 16px;
-}
-
-.character-library-heading > div {
-  min-width: 0;
-}
-
-.character-library-heading small,
-.character-library-feedback {
-  display: block;
-  margin-top: 4px;
-  color: var(--text-muted);
-  font-size: 11px;
-}
-
-.character-library-heading b {
-  flex: 0 0 auto;
-  color: var(--primary);
-  font-size: 11px;
+  margin: 0;
 }
 
 .character-library-toolbar {
   display: flex;
-  margin-bottom: 13px;
+  margin-bottom: 18px;
   flex-direction: column;
-  gap: 9px;
+  gap: 18px;
 }
 
-.character-library-toolbar > input {
-  min-height: 40px;
-}
-
-.character-library-filter-row {
+.library-search-field {
   display: flex;
+  min-height: 48px;
+  padding: 0 13px;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
+  background: linear-gradient(90deg, rgb(23 33 49 / 96%), rgb(20 28 42 / 92%));
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.library-search-field:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-soft);
+}
+
+.library-search-field svg {
+  width: 21px;
+  height: 21px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-linecap: round;
+  stroke-width: 1.8;
+}
+
+.library-search-field input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font-size: 14px;
+}
+
+.library-search-field input::placeholder {
+  color: #7d8799;
+}
+
+.character-library-control-row {
+  display: grid;
+  align-items: center;
+  grid-template-columns: minmax(360px, 1fr) minmax(220px, 290px) auto minmax(132px, auto);
+  gap: 18px;
 }
 
 .character-library-filter-buttons {
   display: flex;
   min-width: 0;
-  flex-wrap: wrap;
-  gap: 6px;
+  padding: 6px 10px;
+  align-items: center;
+  gap: 8px;
+  background: rgb(18 28 43 / 70%);
+  border: 1px solid rgb(40 57 81 / 58%);
+  border-radius: 8px;
+}
+
+.character-library-control-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .character-library-filter-buttons button {
-  min-height: 34px;
-  padding: 7px 10px;
+  min-height: 32px;
+  padding: 6px 15px;
   color: var(--text-secondary);
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  font-size: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-size: 12px;
   cursor: pointer;
 }
 
@@ -2830,33 +2934,49 @@ h2 {
 
 .character-library-view-options {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px 12px;
+  gap: 8px;
 }
 
 .character-library-layout-switch {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  padding: 4px;
+  gap: 2px;
+  background: rgb(18 28 43 / 72%);
+  border: 1px solid rgb(40 57 81 / 58%);
+  border-radius: 8px;
 }
 
 .character-library-layout-switch button {
+  display: inline-flex;
   min-height: 34px;
-  padding: 7px 10px;
+  padding: 7px 13px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   color: var(--text-secondary);
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 12px;
   cursor: pointer;
 }
 
+.character-library-layout-switch svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
 .character-library-layout-switch button[aria-pressed='true'] {
-  color: #071310;
-  background: var(--primary);
-  border-color: var(--primary);
+  color: var(--primary);
+  background: rgb(27 61 65 / 62%);
+  border-color: rgb(65 207 198 / 58%);
+  box-shadow: inset 0 0 0 1px rgb(65 207 198 / 15%);
   font-weight: 800;
 }
 
@@ -2878,47 +2998,55 @@ h2 {
 
 .character-race-filter {
   display: flex;
-  flex: 0 0 auto;
+  min-width: 0;
   align-items: center;
   gap: 7px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
+}
+
+.character-race-filter > span {
+  white-space: nowrap;
 }
 
 .character-race-filter select {
-  width: auto;
-  min-width: 120px;
-  min-height: 34px;
-  padding: 6px 30px 6px 9px;
-  font-size: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 7px 32px 7px 12px;
+  font-size: 12px;
 }
 
 .character-library-summary {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px 12px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .character-library-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 
 .character-library-card {
   display: grid;
   min-width: 0;
-  padding: 8px;
+  min-height: 104px;
+  padding: 10px;
   align-items: center;
-  grid-template-columns: 58px minmax(0, 1fr) auto;
+  grid-template-columns: 74px minmax(0, 1fr) auto;
   gap: 10px;
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  border-radius: 11px;
+  background: linear-gradient(145deg, rgb(22 34 50 / 96%), rgb(18 28 43 / 96%));
+  border: 1px solid rgb(42 59 83 / 80%);
+  border-radius: 8px;
   transition:
     border-color 160ms ease,
+    box-shadow 160ms ease,
     opacity 160ms ease;
 }
 
@@ -2928,7 +3056,7 @@ h2 {
 }
 
 .character-library-card.encountered:not(.selected) {
-  border-color: rgb(120 213 156 / 30%);
+  border-color: rgb(65 207 198 / 38%);
 }
 
 .character-library-card.disabled {
@@ -2937,13 +3065,13 @@ h2 {
 
 .character-cover-button {
   display: grid;
-  width: 58px;
-  height: 72px;
+  width: 74px;
+  height: 82px;
   padding: 0;
   overflow: hidden;
   place-items: center;
   color: var(--text-muted);
-  background: var(--surface-soft);
+  background: linear-gradient(145deg, #26364b, #1b283a);
   border: 0;
   border-radius: 8px;
   cursor: pointer;
@@ -2956,11 +3084,22 @@ h2 {
 }
 
 .character-cover-placeholder {
-  padding: 8px;
-  color: var(--text-muted);
-  font-size: 10px;
-  line-height: 1.4;
-  text-align: center;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  padding: 6px;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+  color: #abb5c3;
+  background: linear-gradient(145deg, #2a3a4f, #1d2b3d);
+}
+
+.character-cover-silhouette {
+  width: 51px;
+  height: 61px;
+  fill: #b7c0cc;
+  filter: drop-shadow(0 5px 7px rgb(0 0 0 / 24%));
 }
 
 .character-library-card-copy {
@@ -2978,7 +3117,9 @@ h2 {
 }
 
 .character-library-card-copy strong {
-  font-size: 13px;
+  color: #e4eaf1;
+  font-size: 14px;
+  font-weight: 800;
 }
 
 .character-library-card-copy small {
@@ -2997,7 +3138,7 @@ h2 {
   padding: 2px 5px;
   overflow: hidden;
   color: var(--text-muted);
-  background: var(--surface-soft);
+  background: rgb(11 19 31 / 52%);
   border-radius: 5px;
   font-size: 9px;
   font-style: normal;
@@ -3011,8 +3152,8 @@ h2 {
 }
 
 .character-library-card-meta i.visual-missing {
-  color: var(--warning);
-  background: rgb(232 175 93 / 10%);
+  color: #a4afbe;
+  background: rgb(142 157 179 / 10%);
 }
 
 .character-entry-toggle {
@@ -3044,7 +3185,7 @@ h2 {
 }
 
 .character-entry-toggle[aria-checked='true'] span {
-  background: #071310;
+  background: #f4fffd;
   transform: translateX(16px);
 }
 
@@ -3073,7 +3214,7 @@ h2 {
 }
 
 .character-library-grid.image-card-view {
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 14px;
 }
 
@@ -3882,6 +4023,29 @@ pre {
     padding: 17px;
   }
 
+  .library-header {
+    grid-template-columns: minmax(170px, 1fr) minmax(230px, 330px) auto;
+    gap: 14px;
+  }
+
+  .library-header .manager-view-switch button {
+    min-width: auto;
+  }
+
+  .character-library-control-row {
+    grid-template-columns: minmax(300px, 1fr) minmax(190px, 240px) auto;
+    gap: 12px;
+  }
+
+  .character-library-summary {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+
+  .character-library-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .phase-badge {
     display: none;
   }
@@ -4144,9 +4308,43 @@ pre {
     width: 100%;
   }
 
-  .character-library-filter-row {
-    align-items: stretch;
-    flex-direction: column;
+  .library-page {
+    padding: 14px;
+  }
+
+  .library-header {
+    display: flex;
+    min-height: 0;
+    padding: 13px 14px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .library-header .header-title {
+    flex: 1 1 auto;
+  }
+
+  .library-header-worldbook {
+    order: 3;
+    width: 100%;
+  }
+
+  .library-header .header-actions {
+    flex: 0 0 auto;
+  }
+
+  .library-header .manager-view-switch button {
+    min-width: 0;
+    padding: 6px 8px;
+  }
+
+  .library-header .manager-view-switch svg {
+    display: none;
+  }
+
+  .character-library-control-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .character-library-view-options {
@@ -4165,6 +4363,10 @@ pre {
   .character-library-grid.image-card-view.card-columns-5,
   .character-library-grid.image-card-view.card-columns-6 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .character-library-grid {
+    grid-template-columns: 1fr;
   }
 
   .character-race-filter {

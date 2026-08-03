@@ -190,9 +190,25 @@ function resolveNamedVisualConfig(data: CharacterData, chatVariables: Record<str
 
   const charInfo = asRecord(chatVariables.char_info);
   const profiles = asRecord(charInfo?.profiles);
-  if (profiles && Object.hasOwn(profiles, name)) return profiles[name];
+  const profile = profiles && Object.hasOwn(profiles, name) ? profiles[name] : undefined;
+  const legacyProfile = asRecord(chatVariables.char_info_visuals)?.[name];
+  const profileRecord = asRecord(profile);
+  const legacyRecord = asRecord(legacyProfile);
 
-  return asRecord(chatVariables.char_info_visuals)?.[name];
+  if (profileRecord && legacyRecord) {
+    const mergedProfile = { ...profileRecord };
+    if (mergedProfile.custom_racecolor === undefined) {
+      mergedProfile.custom_racecolor = legacyRecord.custom_racecolor;
+    }
+    if (mergedProfile.custom_tiercolor === undefined) {
+      mergedProfile.custom_tiercolor = legacyRecord.custom_tiercolor;
+    }
+    if (mergedProfile.登场台词 === undefined) mergedProfile.登场台词 = legacyRecord.登场台词;
+    return mergedProfile;
+  }
+  if (profileRecord) return profileRecord;
+  if (legacyRecord) return legacyRecord;
+  return profile ?? legacyProfile;
 }
 
 function applyVisualAppearance(data: CharacterData, visualConfig: unknown): CharacterData {

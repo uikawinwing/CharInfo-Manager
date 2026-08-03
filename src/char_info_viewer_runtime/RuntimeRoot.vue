@@ -58,7 +58,21 @@
           @pointerup="endListWindowDrag"
           @pointercancel="cancelListWindowDrag"
         >
-          <h2 id="char-info-list-title">当前角色</h2>
+          <div class="char-info-library-list-title">
+            <h2 id="char-info-list-title">当前角色</h2>
+            <button
+              class="char-info-worldbook-library-action"
+              type="button"
+              aria-label="打开世界书角色库"
+              title="世界书角色库"
+              @click="props.onOpenWorldbookLibrary"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M4.5 5.5A2.5 2.5 0 0 1 7 3h5v17H7a2.5 2.5 0 0 0-2.5 2.5V5.5Z" />
+                <path d="M19.5 5.5A2.5 2.5 0 0 0 17 3h-5v17h5a2.5 2.5 0 0 1 2.5 2.5V5.5Z" />
+              </svg>
+            </button>
+          </div>
           <div class="char-info-library-list-actions">
             <button type="button" aria-label="查看器设置" title="设置" @click="onOpenSettings">
               <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -292,6 +306,7 @@ const props = defineProps<{
   onRefreshLibrary: () => void;
   onOpenLibraryList: () => void;
   onOpenLibraryCharacter: (name: string) => void;
+  onOpenWorldbookLibrary: () => void;
   onMoveLibraryButton: (position: { left: number; top: number }) => void;
   onOpenSettings: () => void;
   onCloseSettings: () => void;
@@ -979,6 +994,47 @@ onBeforeUnmount(() => {
   margin: 0;
   font-family: Georgia, 'Noto Serif SC', serif;
   font-size: 1.28rem;
+}
+
+.char-info-library-list-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.char-info-worldbook-library-action {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  padding: 8px;
+  place-items: center;
+  border: 1px solid rgba(232, 210, 171, 0.24);
+  border-radius: 9px;
+  background: rgba(217, 184, 122, 0.1);
+  color: #ead19c;
+  cursor: pointer;
+}
+
+.char-info-worldbook-library-action:hover {
+  border-color: rgba(240, 207, 142, 0.6);
+  background: rgba(217, 184, 122, 0.2);
+}
+
+.char-info-worldbook-library-action:focus-visible {
+  outline: 2px solid #f0cf8e;
+  outline-offset: 2px;
+}
+
+.char-info-worldbook-library-action svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
 }
 
 .char-info-library-list-actions {

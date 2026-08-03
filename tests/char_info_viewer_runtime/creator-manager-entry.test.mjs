@@ -20,28 +20,25 @@ const creatorManagerEntrySource = await readFile(
   new URL('../../src/char_info_creator_manager/index.ts', import.meta.url),
   'utf8',
 );
-const webpackSource = await readFile(new URL('../../webpack.config.ts', import.meta.url), 'utf8');
 
-test('主 CharInfo 运行脚本只保留世界书角色库 QR 入口，设置入口位于当前角色菜单', () => {
-  assert.match(runtimeSource, /const WORLDBOOK_LIBRARY_BUTTON_NAME = '世界书角色库'/u);
-  assert.match(
-    runtimeSource,
-    /appendInexistentScriptButtons\(\[\{ name: WORLDBOOK_LIBRARY_BUTTON_NAME, visible: true \}\]\)/u,
-  );
-  assert.match(runtimeSource, /listen\(getButtonEvent\(WORLDBOOK_LIBRARY_BUTTON_NAME\), openWorldbookLibrary\)/u);
+test('主 CharInfo 运行脚本将世界书角色库入口放入当前角色菜单', () => {
+  assert.doesNotMatch(runtimeSource, /appendInexistentScriptButtons/u);
+  assert.doesNotMatch(runtimeSource, /getButtonEvent\('世界书角色库'\)/u);
   assert.match(runtimeSource, /setManagerOwnership\('runtime'\)/u);
   assert.match(runtimeSource, /setManagerOwnership\(null\)/u);
-  assert.match(creatorManagerEntrySource, /if \(isOwnedByRuntime\(\)\) return;/u);
-  assert.doesNotMatch(runtimeSource, /listen\(getButtonEvent\(CREATOR_BUTTON_NAME\)/u);
-  assert.doesNotMatch(runtimeSource, /listen\(getButtonEvent\(SETTINGS_BUTTON_NAME\)/u);
-  assert.match(runtimeRootSource, /aria-label="查看器设置"[\s\S]*?@click="onOpenSettings"/u);
+  assert.match(creatorManagerEntrySource, /'世界书角色库'/u);
+  assert.doesNotMatch(creatorManagerEntrySource, /createCreatorManagerOverlay/u);
+  assert.match(runtimeRootSource, /aria-label="打开世界书角色库"[\s\S]*?@click="props\.onOpenWorldbookLibrary"/u);
 });
 
 test('角色视觉编辑器通过独立全屏 iframe 打开，避免 ST 层级和滚动污染', () => {
   assert.match(runtimeSource, /worldbookManager/u);
-  assert.match(runtimeSource, /import\('\.\.\/char_info_creator_manager\/overlay'\)/u);
-  assert.doesNotMatch(runtimeSource, /import \{ createCreatorManagerOverlay \}/u);
-  assert.match(runtimeSource, /if \(!started \|\| managerOpenRevision !== openRevision\) return;/u);
+  assert.match(
+    runtimeSource,
+    /import \{ createCreatorManagerOverlay \} from '\.\.\/char_info_creator_manager\/overlay';/u,
+  );
+  assert.doesNotMatch(runtimeSource, /import\('\.\.\/char_info_creator_manager\/overlay'\)/u);
+  assert.doesNotMatch(runtimeSource, /worldbookManagerLoad|managerOpenRevision/u);
   assert.match(runtimeSource, /tavern_events\.CHAT_CHANGED[\s\S]*?closeWorldbookManager\(\);/u);
   assert.match(runtimeSource, /stop\(\) \{[\s\S]*?closeWorldbookManager\(\);/u);
   assert.doesNotMatch(runtimeSource, /creatorEditor/u);
@@ -58,11 +55,9 @@ test('角色视觉编辑器通过独立全屏 iframe 打开，避免 ST 层级�
   assert.match(overlaySource, /removeEventListener\('scroll'/u);
 });
 
-test('运行时允许异步 manager 保持独立 chunk 并相对加载', () => {
-  assert.match(webpackSource, /chunkFilename: `\$\{script_filepath\.name\}\.\[contenthash\]\.chunk\.js`/u);
-  assert.match(webpackSource, /asyncChunks: true/u);
-  assert.match(webpackSource, /publicPath: ''/u);
-  assert.doesNotMatch(webpackSource, /LimitChunkCountPlugin/u);
+test('世界书管理器打进主运行脚本，不依赖浏览器无法解析的裸 chunk 路径', () => {
+  assert.match(runtimeSource, /const worldbookManager = createCreatorManagerOverlay\('library'\)/u);
+  assert.doesNotMatch(runtimeSource, /Promise<CreatorManagerOverlay>|\.then\(manager =>/u);
 });
 
 test('Creator Manager 样式不修改 ST 宿主页的 html 或 body', () => {
@@ -110,10 +105,7 @@ test('当前聊天资料库由悬浮入口打开角色列表，并完整显示�
     runtimeRootSource,
     /@media \(max-width: 720px\) \{[\s\S]*?\.char-info-library-viewer \{[\s\S]*?overflow-y: auto;/u,
   );
-  assert.match(
-    runtimeRootSource,
-    /\.char-info-library-viewer \.special-npc-shell \{[\s\S]*?height: 216\.4251cqw !important;/u,
-  );
+  assert.match(runtimeRootSource, /\.char-info-library-viewer \.special-npc-shell \{[\s\S]*?height: 216\.4251cqw !important;/u);
   assert.match(
     runtimeRootSource,
     /\.char-info-library-viewer \.special-npc-portrait-image,[\s\S]*?\.char-info-library-viewer \.portrait-image \{[\s\S]*?object-fit: contain;/u,

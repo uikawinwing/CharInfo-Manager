@@ -115,7 +115,7 @@ LLM 只需在 `<char_info>` 内准确输出姓名，不需要输出图片字段�
 
 ### 世界书角色库与角色视觉编辑器
 
-主运行脚本 `dist/char_info_viewer_runtime/index.js` 会注册“世界书角色库”入口；打开后可在同一个全屏管理界面中切换“世界书角色库”和“角色视觉编辑器”。
+主运行脚本 `dist/char_info_viewer_runtime/index.js` 会在当前聊天角色悬浮列表标题旁提供书本按钮；点击后打开全屏管理界面，并可在其中切换“世界书角色库”和“角色视觉编辑器”。不再依赖酒馆脚本栏里的 QR 按钮。
 
 从 v3.1 升级时，请移除旧的 CharInfo 正则／`$1` iframe 入口和独立的
 `dist/char_info_creator_manager/index.js`，只保留 `dist/char_info_viewer_runtime/index.js`。旧管理器脚本在检测到新版运行脚本后不会再打开窗口，避免重复；但它不再是新版安装所需组件，应在下次编辑脚本列表时删除。

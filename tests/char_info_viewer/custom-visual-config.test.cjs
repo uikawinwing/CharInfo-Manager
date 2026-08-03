@@ -72,6 +72,35 @@ test('没有角色图片字段时按姓名读取 CharInfo 自有资料，并读�
   assert.equal(data.登场台词, '霜雪会记住每一道剑痕。');
 });
 
+test('新版资料只有图库时继承旧版同名角色的颜色与登场台词', () => {
+  const data = resolveCharacterVisualConfig(
+    { 姓名: '傲雪', 种族: '龙裔', 生命层级: '第四层级' },
+    {
+      char_info: {
+        profiles: {
+          傲雪: {
+            schema_version: 1,
+            gallery: [{ title: '新版主立绘', sources: ['https://example.com/new.png'] }],
+          },
+        },
+      },
+      char_info_visuals: {
+        傲雪: {
+          url: 'https://example.com/legacy.png',
+          custom_racecolor: '#A9DBC3',
+          custom_tiercolor: '#B7D9E8',
+          登场台词: '霜雪会记住每一道剑痕。',
+        },
+      },
+    },
+  );
+
+  assert.equal(data.角色图片, 'https://example.com/new.png');
+  assert.equal(data.custom_racecolor, '#A9DBC3');
+  assert.equal(data.custom_tiercolor, '#B7D9E8');
+  assert.equal(data.登场台词, '霜雪会记住每一道剑痕。');
+});
+
 test('CharInfo 自有资料的第一张相册图片固定作为主立绘', () => {
   const data = resolveCharacterVisualConfig(
     { 姓名: '傲雪' },
