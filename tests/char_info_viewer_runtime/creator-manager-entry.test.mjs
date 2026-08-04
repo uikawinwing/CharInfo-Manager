@@ -62,8 +62,8 @@ test('角色视觉编辑器通过独立全屏 iframe 打开，避免 ST 层级�
   );
   assert.doesNotMatch(runtimeSource, /import\('\.\.\/char_info_creator_manager\/overlay'\)/u);
   assert.doesNotMatch(runtimeSource, /worldbookManagerLoad|managerOpenRevision/u);
-  assert.match(runtimeSource, /tavern_events\.CHAT_CHANGED[\s\S]*?closeWorldbookManager\(\);/u);
-  assert.match(runtimeSource, /stop\(\) \{[\s\S]*?closeWorldbookManager\(\);/u);
+  assert.match(runtimeSource, /tavern_events\.CHAT_CHANGED[\s\S]*?destroyWorldbookManager\(\);/u);
+  assert.match(runtimeSource, /stop\(\) \{[\s\S]*?destroyWorldbookManager\(\);/u);
   assert.doesNotMatch(runtimeSource, /creatorEditor/u);
   assert.doesNotMatch(runtimeSource, /worldbookLibrary/u);
 
@@ -76,6 +76,34 @@ test('角色视觉编辑器通过独立全屏 iframe 打开，避免 ST 层级�
   assert.match(overlaySource, /teleportStyle\(iframeDocument\.head\)/u);
   assert.match(overlaySource, /visualViewport/u);
   assert.match(overlaySource, /removeEventListener\('scroll'/u);
+});
+
+test('世界书角色库关闭后复用已挂载界面，聊天切换与运行时停止才彻底销毁', () => {
+  assert.match(overlaySource, /destroy\(\): void;/u);
+  assert.match(
+    overlaySource,
+    /const close = \(\) => \{[\s\S]*?managerViewportCleanup\?\.\(\);[\s\S]*?\$managerOverlay\?\.hide\(\);[\s\S]*?\};/u,
+  );
+  assert.doesNotMatch(
+    overlaySource.match(/const close = \(\) => \{[\s\S]*?\n {2}\};/u)?.[0] ?? '',
+    /unmount\(\)|teleportedStyle\?\.destroy\(\)|\.remove\(\)/u,
+  );
+  assert.match(
+    overlaySource,
+    /const destroy = \(\) => \{[\s\S]*?mountedApp\?\.unmount\(\);[\s\S]*?teleportedStyle\?\.destroy\(\);[\s\S]*?\$managerOverlay\?\.remove\(\);/u,
+  );
+  assert.match(
+    overlaySource,
+    /if \(\$managerOverlay\) \{[\s\S]*?\$managerOverlay\.show\(\);[\s\S]*?startManagerViewportSync\(\);[\s\S]*?return;/u,
+  );
+
+  assert.match(runtimeSource, /const destroyWorldbookManager = \(\) => \{\s*worldbookManager\.destroy\(\);\s*\};/u);
+  assert.match(
+    runtimeSource,
+    /tavern_events\.CHAT_CHANGED[\s\S]*?destroyWorldbookManager\(\);[\s\S]*?resetLibraryForChat\(\);/u,
+  );
+  assert.match(runtimeSource, /stop\(\) \{[\s\S]*?destroyWorldbookManager\(\);/u);
+  assert.match(runtimeSource, /onOpenCurrentChatLibrary:[\s\S]*?worldbookManager\.close\(\);[\s\S]*?openLibraryList\(\);/u);
 });
 
 test('世界书管理器打进主运行脚本，不依赖浏览器无法解析的裸 chunk 路径', () => {

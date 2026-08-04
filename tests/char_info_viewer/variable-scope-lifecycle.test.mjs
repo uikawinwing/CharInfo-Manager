@@ -88,7 +88,62 @@ test('角色库的 MVU 更新事件只触发刷新，资料始终重新读取 la
   );
 });
 
+test('角色库首屏完成条目读取和一次 Vue 绘制后才读取当前聊天角色，所有世界书切换路径共用单次读取', () => {
+  const selectWorldbookSource = creatorManagerSource.match(
+    /function selectWorldbook\(worldbookName: string\) \{([\s\S]*?)\n\}/u,
+  )?.[1];
+  const loadWorldbooksSource = creatorManagerSource.match(
+    /async function loadWorldbooks\(\) \{([\s\S]*?)\n\}\n\nasync function loadEntries/u,
+  )?.[1];
+  const selectedWorldbookWatcherSource = creatorManagerSource.match(
+    /watch\(selectedWorldbookName, worldbookName => \{([\s\S]*?)\n\}\);\nwatch\(selectedEntryUid/u,
+  )?.[1];
+
+  assert.match(creatorManagerSource, /let selectedWorldbookEntriesLoad: Promise<void> = Promise\.resolve\(\);/u);
+  assert.doesNotMatch(selectWorldbookSource ?? '', /loadEntries\(/u);
+  assert.match(loadWorldbooksSource ?? '', /selectWorldbook\(worldbooks\.value\[0\]\);[\s\S]*?await nextTick\(\);[\s\S]*?await selectedWorldbookEntriesLoad;/u);
+  assert.match(
+    loadWorldbooksSource ?? '',
+    /loadingWorldbooks\.value = false;[\s\S]*?await nextTick\(\);[\s\S]*?requestAnimationFrame\(\(\) => \{[\s\S]*?requestAnimationFrame\(resolve\);[\s\S]*?void loadEncounteredCharacterData\(\);/u,
+  );
+  assert.match(selectedWorldbookWatcherSource ?? '', /selectedWorldbookEntriesLoad = loadEntries\(worldbookName\);/u);
+  assert.match(creatorManagerSource, /<select[^>]*v-model="selectedWorldbookName"/u);
+});
+
+test('快速切换世界书时只采纳最新条目请求，过期成功或失败不得覆盖结果或结束加载', () => {
+  const loadEntriesSource = creatorManagerSource.match(
+    /async function loadEntries\(worldbookName: string\) \{([\s\S]*?)\n\}\n\nasync function loadSelectedEntryProfile/u,
+  )?.[1] ?? '';
+
+  assert.match(creatorManagerSource, /let entriesLoadRevision = 0;/u);
+  assert.match(loadEntriesSource, /const loadRevision = \+\+entriesLoadRevision;/u);
+  assert.match(
+    loadEntriesSource,
+    /const loadedEntries = await getWorldbook\(worldbookName\);\s*if \(loadRevision !== entriesLoadRevision \|\| selectedWorldbookName\.value !== worldbookName\) return;\s*entries\.value = loadedEntries;/u,
+  );
+  assert.match(
+    loadEntriesSource,
+    /catch \(error\) \{\s*if \(loadRevision !== entriesLoadRevision \|\| selectedWorldbookName\.value !== worldbookName\) return;\s*entries\.value = \[\];/u,
+  );
+  assert.match(
+    loadEntriesSource,
+    /finally \{\s*if \(loadRevision === entriesLoadRevision\) loadingEntries\.value = false;/u,
+  );
+});
+
 test('聊天 DOM 观察器使用 SillyTavern 宿主页的构造器，避免 iframe realm 失配', () => {
   assert.match(viewerRuntimeSource, /new window\.parent\.MutationObserver\(/);
   assert.doesNotMatch(viewerRuntimeSource, /new MutationObserver\(/);
+});
+
+test('聊天 DOM 观察器在无已挂载卡片时先于 mutations 遍历返回', () => {
+  const observerCallback = viewerRuntimeSource.match(
+    /mutationObserver = new window\.parent\.MutationObserver\(mutations => \{([\s\S]*?)\n {4}\}\);/u,
+  )?.[1] ?? '';
+  const earlyReturnIndex = observerCallback.indexOf('if (mountedMessages.size === 0) return;');
+  const mutationTraversalIndex = observerCallback.indexOf('mutations.forEach');
+
+  assert.ok(earlyReturnIndex >= 0);
+  assert.ok(mutationTraversalIndex >= 0);
+  assert.ok(earlyReturnIndex < mutationTraversalIndex);
 });

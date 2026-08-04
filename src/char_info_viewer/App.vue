@@ -1053,6 +1053,15 @@ onBeforeUnmount(() => {
   padding: 12px 0 24px;
 }
 
+.viewer-effects-disabled :where(*):not(img):not(video) {
+  animation: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
 .loading-card,
 .error-card {
   max-width: 720px;

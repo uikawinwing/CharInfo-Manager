@@ -9,6 +9,7 @@ const MANAGER_IFRAME_SRCDOC =
 export type CreatorManagerOverlay = {
   open(): void;
   close(): void;
+  destroy(): void;
 };
 
 export type CreatorManagerView = 'editor' | 'library';
@@ -61,6 +62,11 @@ export function createCreatorManagerOverlay(
 
   const close = () => {
     managerViewportCleanup?.();
+    $managerOverlay?.hide();
+  };
+
+  const destroy = () => {
+    close();
     mountedApp?.unmount();
     mountedApp = null;
     teleportedStyle?.destroy();
@@ -71,7 +77,11 @@ export function createCreatorManagerOverlay(
   };
 
   const open = () => {
-    if ($managerOverlay) return;
+    if ($managerOverlay) {
+      $managerOverlay.show();
+      startManagerViewportSync();
+      return;
+    }
 
     const hostWindow = getHostWindow();
     const hostDocument = hostWindow.document;
@@ -127,5 +137,5 @@ export function createCreatorManagerOverlay(
     startManagerViewportSync();
   };
 
-  return { open, close };
+  return { open, close, destroy };
 }

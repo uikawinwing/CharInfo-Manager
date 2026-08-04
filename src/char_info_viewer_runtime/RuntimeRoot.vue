@@ -256,7 +256,10 @@
           </label>
 
           <label class="char-info-settings-switch">
-            <strong>粒子特效</strong>
+            <span>
+              <strong>视觉特效</strong>
+              <small>关闭可降低手机负担。</small>
+            </span>
             <input v-model="effectsEnabledDraft" type="checkbox" @change="applySettings" />
           </label>
 

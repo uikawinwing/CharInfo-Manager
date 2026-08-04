@@ -676,6 +676,32 @@
             </label>
 
             <div class="character-library-control-row">
+              <div class="mobile-character-library-filter">
+                <button
+                  class="mobile-character-library-filter-trigger"
+                  type="button"
+                  aria-haspopup="menu"
+                  :aria-expanded="mobileCharacterLibraryFilterOpen"
+                  @click="mobileCharacterLibraryFilterOpen = !mobileCharacterLibraryFilterOpen"
+                >
+                  <span>状态</span>
+                  <strong>{{ activeCharacterLibraryFilterLabel }}</strong>
+                  <span aria-hidden="true">⌄</span>
+                </button>
+                <div v-if="mobileCharacterLibraryFilterOpen" class="mobile-character-library-filter-menu" role="menu">
+                  <button
+                    v-for="option in characterLibraryFilterOptions"
+                    :key="option.value"
+                    type="button"
+                    role="menuitemradio"
+                    :aria-checked="characterLibraryFilter === option.value"
+                    @click="setMobileCharacterLibraryFilter(option.value)"
+                  >
+                    {{ option.label }}
+                  </button>
+                </div>
+              </div>
+
               <div class="character-library-filter-buttons" role="group" aria-label="筛选角色状态">
                 <span class="character-library-control-label">状态</span>
                 <button
@@ -1041,6 +1067,8 @@ const entryPickerOpen = ref(false);
 const highlightedEntryIndex = ref(-1);
 const loadingWorldbooks = ref(false);
 const loadingEntries = ref(false);
+let selectedWorldbookEntriesLoad: Promise<void> = Promise.resolve();
+let entriesLoadRevision = 0;
 const loadError = ref('');
 const characterToggleMessage = ref('');
 const characterCoverSourceIndexes = reactive<Record<number, number>>({});
@@ -1049,6 +1077,7 @@ const encounteredCharacters = ref<EncounteredCharacterRecord[]>([]);
 const loadingEncounteredCharacters = ref(false);
 const characterSearch = ref('');
 const characterLibraryFilter = ref<CharacterLibraryFilter>('all');
+const mobileCharacterLibraryFilterOpen = ref(false);
 const characterRaceFilter = ref('all');
 const characterLibraryLayout = ref<CharacterLibraryLayout>('compact');
 const characterLibraryCardColumns = ref<'auto' | number>('auto');
@@ -1430,11 +1459,16 @@ function editDetailCharacter() {
 
 function switchManagerView(view: ManagerView) {
   if (viewMode.value === view) return;
+  mobileCharacterLibraryFilterOpen.value = false;
   closeCharacterDetails();
   viewMode.value = view;
 }
 
 function onEscape() {
+  if (mobileCharacterLibraryFilterOpen.value) {
+    mobileCharacterLibraryFilterOpen.value = false;
+    return;
+  }
   if (detailCharacter.value) {
     if (editingDetailBody.value) {
       cancelDetailBodyEdit();
@@ -1444,6 +1478,15 @@ function onEscape() {
     return;
   }
   emit('close');
+}
+
+const activeCharacterLibraryFilterLabel = computed(
+  () => characterLibraryFilterOptions.find(option => option.value === characterLibraryFilter.value)?.label ?? '全部',
+);
+
+function setMobileCharacterLibraryFilter(filter: CharacterLibraryFilter) {
+  characterLibraryFilter.value = filter;
+  mobileCharacterLibraryFilterOpen.value = false;
 }
 
 const filteredEntries = computed(() => {
@@ -1724,7 +1767,7 @@ async function loadWorldbooks() {
   loadingWorldbooks.value = true;
   loadError.value = '';
   saveState.value = 'idle';
-  void loadEncounteredCharacterData();
+  let initialEntriesLoaded = false;
   try {
     currentCharacterName.value = getCurrentCharacterName() || '';
     if (!currentCharacterName.value) throw new Error('请先在 SillyTavern 打开一张角色卡。');
@@ -1736,10 +1779,13 @@ async function loadWorldbooks() {
 
     if (!worldbooks.value.includes(selectedWorldbookName.value)) {
       selectWorldbook(worldbooks.value[0]);
+      await nextTick();
+      await selectedWorldbookEntriesLoad;
     } else {
       worldbookSearch.value = selectedWorldbookName.value;
       await loadEntries(selectedWorldbookName.value);
     }
+    initialEntriesLoaded = true;
   } catch (error) {
     worldbooks.value = [];
     characterWorldbooks.value = [];
@@ -1752,14 +1798,25 @@ async function loadWorldbooks() {
   } finally {
     loadingWorldbooks.value = false;
   }
+
+  if (!initialEntriesLoaded) return;
+  await nextTick();
+  await new Promise<void>(resolve => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(resolve);
+    });
+  });
+  void loadEncounteredCharacterData();
 }
 
 async function loadEntries(worldbookName: string) {
+  const loadRevision = ++entriesLoadRevision;
   if (!worldbookName) {
     entries.value = [];
     selectedEntryUid.value = null;
     entrySearch.value = '';
     entryPickerOpen.value = false;
+    loadingEntries.value = false;
     return;
   }
 
@@ -1768,17 +1825,20 @@ async function loadEntries(worldbookName: string) {
   characterToggleMessage.value = '';
   Object.keys(characterCoverSourceIndexes).forEach(uid => delete characterCoverSourceIndexes[Number(uid)]);
   try {
-    entries.value = await getWorldbook(worldbookName);
+    const loadedEntries = await getWorldbook(worldbookName);
+    if (loadRevision !== entriesLoadRevision || selectedWorldbookName.value !== worldbookName) return;
+    entries.value = loadedEntries;
     if (!entries.value.some(entry => entry.uid === selectedEntryUid.value)) {
       selectedEntryUid.value = null;
       entrySearch.value = '';
     }
   } catch (error) {
+    if (loadRevision !== entriesLoadRevision || selectedWorldbookName.value !== worldbookName) return;
     entries.value = [];
     selectedEntryUid.value = null;
     loadError.value = `无法读取世界书：${error instanceof Error ? error.message : String(error)}`;
   } finally {
-    loadingEntries.value = false;
+    if (loadRevision === entriesLoadRevision) loadingEntries.value = false;
   }
 }
 
@@ -2032,10 +2092,11 @@ watch(selectedWorldbookName, worldbookName => {
   closeCharacterDetails();
   characterSearch.value = '';
   characterLibraryFilter.value = 'all';
+  mobileCharacterLibraryFilterOpen.value = false;
   characterRaceFilter.value = 'all';
   entrySearch.value = '';
   entryPickerOpen.value = false;
-  void loadEntries(worldbookName);
+  selectedWorldbookEntriesLoad = loadEntries(worldbookName);
 });
 watch(selectedEntryUid, uid => {
   if (uid === null) {
@@ -2946,6 +3007,10 @@ h2 {
   align-items: center;
   grid-template-columns: minmax(360px, 1fr) minmax(220px, 290px) auto minmax(132px, auto);
   gap: 18px;
+}
+
+.mobile-character-library-filter {
+  display: none;
 }
 
 .character-library-filter-buttons {
@@ -4405,18 +4470,119 @@ pre {
     display: none;
   }
 
+  .library-header .manager-view-switch button:first-child {
+    display: none;
+  }
+
+  .library-header .manager-view-switch button:nth-child(2) svg {
+    display: block;
+  }
+
   .character-library-control-row {
-    grid-template-columns: 1fr;
-    gap: 10px;
+    grid-template-columns: 96px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .character-library-filter-buttons {
+    display: none;
+  }
+
+  .mobile-character-library-filter {
+    position: relative;
+    display: block;
+    min-width: 0;
+  }
+
+  .mobile-character-library-filter-trigger {
+    display: grid;
+    width: 100%;
+    min-height: 40px;
+    padding: 6px 9px;
+    align-items: center;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 5px;
+    color: var(--text-secondary);
+    background: rgb(18 28 43 / 70%);
+    border: 1px solid rgb(40 57 81 / 58%);
+    border-radius: 8px;
+    font-size: 11px;
+    text-align: left;
+  }
+
+  .mobile-character-library-filter-trigger > span:first-child {
+    color: var(--text-muted);
+  }
+
+  .mobile-character-library-filter-trigger strong {
+    overflow: hidden;
+    color: var(--primary);
+    font-size: 12px;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-character-library-filter-menu {
+    position: absolute;
+    z-index: 5;
+    top: calc(100% + 6px);
+    left: 0;
+    display: grid;
+    min-width: 170px;
+    padding: 5px;
+    gap: 2px;
+    background: #121c2b;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    box-shadow: 0 10px 24px rgb(0 0 0 / 36%);
+  }
+
+  .mobile-character-library-filter-menu button {
+    min-height: 34px;
+    padding: 6px 9px;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 0;
+    border-radius: 5px;
+    font-size: 12px;
+    text-align: left;
+  }
+
+  .mobile-character-library-filter-menu button[aria-checked='true'] {
+    color: #071310;
+    background: var(--primary);
+    font-weight: 800;
+  }
+
+  .character-race-filter {
+    grid-column: 2;
+  }
+
+  .character-library-view-options {
+    grid-column: 3;
+    justify-content: flex-end;
+  }
+
+  .character-library-summary {
+    display: none;
   }
 
   .character-library-view-options {
     align-items: stretch;
-    flex-direction: column;
+    flex-direction: row;
   }
 
   .character-card-columns {
-    justify-content: space-between;
+    display: none;
+  }
+
+  .character-library-layout-switch button {
+    min-width: 36px;
+    padding: 7px;
+  }
+
+  .character-library-layout-switch span {
+    display: none;
   }
 
   .character-library-grid.image-card-view,
@@ -4430,6 +4596,23 @@ pre {
 
   .character-library-grid {
     grid-template-columns: 1fr;
+  }
+
+  .character-library-card {
+    min-height: 82px;
+    padding: 8px;
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .character-cover-button {
+    width: 58px;
+    height: 64px;
+  }
+
+  .character-cover-silhouette {
+    width: 40px;
+    height: 49px;
   }
 
   .character-race-filter {

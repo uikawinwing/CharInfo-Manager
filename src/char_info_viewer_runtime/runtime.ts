@@ -121,6 +121,10 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     worldbookManager.close();
   };
 
+  const destroyWorldbookManager = () => {
+    worldbookManager.destroy();
+  };
+
   const resetLibraryForChat = () => {
     const library = state.library;
     if (!library) return;
@@ -464,6 +468,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     if (!chat) return;
 
     mutationObserver = new window.parent.MutationObserver(mutations => {
+      if (mountedMessages.size === 0) return;
       const changedMessageIds = new Set<number>();
 
       mutations.forEach(mutation => {
@@ -517,7 +522,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     });
     listen(tavern_events.CHAT_CHANGED, () => {
       migrateLegacyGalleries();
-      closeWorldbookManager();
+      destroyWorldbookManager();
       resetLibraryForChat();
       closeSettings();
       clearMessages();
@@ -592,7 +597,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       mutationObserver?.disconnect();
       mutationObserver = null;
       eventStops.splice(0).forEach(stop => stop());
-      closeWorldbookManager();
+      destroyWorldbookManager();
       setManagerOwnership(null);
       closeLibrary();
       closeSettings();

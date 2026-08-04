@@ -61,3 +61,16 @@ test('runtime replaces an older loaded instance instead of duplicating cards and
   assert.match(runtimeEntrySource, /hostWindow\.CHAR_INFO_VIEWER_RUNTIME = nextRuntime/);
   assert.match(runtimeEntrySource, /delete hostWindow\.CHAR_INFO_VIEWER_RUNTIME/);
 });
+
+test('runtime mutation observer skips all mutation traversal until a card is mounted', () => {
+  const observerCallback = runtimeSource.match(
+    /mutationObserver = new window\.parent\.MutationObserver\(mutations => \{([\s\S]*?)\n {4}\}\);/u,
+  )?.[1];
+
+  assert.match(observerCallback ?? '', /^\s*if \(mountedMessages\.size === 0\) return;/u);
+  assert.match(observerCallback ?? '', /target\.closest\('\[data-char-info-runtime-owned\]'\)/u);
+  assert.match(
+    observerCallback ?? '',
+    /!mounted\.sourceElement\.isConnected \|\| mounted\.cardMounts\.some\(cardMount => !cardMount\.host\.isConnected\)/u,
+  );
+});
