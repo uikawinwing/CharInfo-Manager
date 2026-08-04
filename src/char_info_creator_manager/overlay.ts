@@ -18,6 +18,10 @@ export type CreatorManagerOverlayOptions = {
   onOpenCurrentChatLibrary?: () => void;
 };
 
+type CreatorManagerController = {
+  resetToInitialView(): void;
+};
+
 export function createCreatorManagerOverlay(
   initialView: CreatorManagerView,
   options: CreatorManagerOverlayOptions = {},
@@ -27,6 +31,7 @@ export function createCreatorManagerOverlay(
   let $managerIframe: JQuery<HTMLIFrameElement> | null = null;
   let teleportedStyle: { destroy: () => void } | null = null;
   let managerViewportCleanup: (() => void) | null = null;
+  let managerController: CreatorManagerController | null = null;
 
   const getHostWindow = (): Window => (window.parent !== window ? window.parent : window);
 
@@ -69,6 +74,7 @@ export function createCreatorManagerOverlay(
     close();
     mountedApp?.unmount();
     mountedApp = null;
+    managerController = null;
     teleportedStyle?.destroy();
     teleportedStyle = null;
     $managerOverlay?.remove();
@@ -78,6 +84,7 @@ export function createCreatorManagerOverlay(
 
   const open = () => {
     if ($managerOverlay) {
+      managerController?.resetToInitialView();
       $managerOverlay.show();
       startManagerViewportSync();
       return;
@@ -128,7 +135,7 @@ export function createCreatorManagerOverlay(
           onClose: close,
           onOpenCurrentChatLibrary: options.onOpenCurrentChatLibrary,
         });
-        mountedApp.mount(mountPoint);
+        managerController = mountedApp.mount(mountPoint) as CreatorManagerController;
       });
 
     $overlay.append($iframe).appendTo(hostDocument.body);

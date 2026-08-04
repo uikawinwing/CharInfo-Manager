@@ -15,6 +15,25 @@ test('桌面独立打开的世界书角色库不会套用详情侧栏的窄屏�
   );
 });
 
+test('桌面详情侧栏复用紧凑控件，而不是套用旧版纵向移动工具栏', () => {
+  assert.match(
+    appSource,
+    /\.library-detail-open \.library-dialog \.mobile-character-library-filter\s*\{[\s\S]*?display: block;/u,
+  );
+  assert.match(
+    appSource,
+    /\.library-detail-open \.library-dialog \.character-library-filter-buttons\s*\{\s*display: none;/u,
+  );
+  assert.match(
+    appSource,
+    /\.library-detail-open \.library-dialog \.character-library-control-row\s*\{\s*grid-template-columns: 96px minmax\(0, 1fr\) auto;/u,
+  );
+  assert.doesNotMatch(
+    appSource,
+    /\.library-detail-open \.library-dialog \.character-library-control-row\s*\{\s*display: flex;[\s\S]*?flex-direction: column;/u,
+  );
+});
+
 test('桌面角色库将工具组固定在右上角，并在内容滚动时保留筛选工具栏', () => {
   assert.match(
     appSource,

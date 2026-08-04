@@ -1,3 +1,5 @@
+import { JSON_SCHEMA, load } from 'js-yaml';
+
 export type CharacterEntryLike = {
   uid: number;
   name: string;
@@ -13,8 +15,6 @@ export type WorldbookCharacterEntry<T extends CharacterEntryLike, TProfile> = {
 };
 
 const worldbookCharacterEntryPrefix = /^\s*\[DLC\]\[角色\]\s*/iu;
-const trailingHalfwidthMetadataPattern = /\(([^()（）]*)\)\s*$/u;
-const trailingFullwidthMetadataPattern = /（([^()（）]*)）\s*$/u;
 const staticNameFieldPattern = /^\uFEFF?姓名[ \t]*:[ \t]*(.*?)\s*$/u;
 const supplementTitlePattern = /(部分补充|补充设定|补充资料|角色合集|角色集|设定集|资料集|索引|目录|群像)/u;
 const staticCharacterFieldNames = ['姓名', '种族', '性别', '身份', '活跃区域'] as const;
@@ -26,6 +26,9 @@ export type CharacterEntryTitle = {
   rawEntryName: string;
   displayName: string | null;
   metadataText: string | null;
+  authorText: string | null;
+  raceText: string | null;
+  descriptionText: string | null;
   bracketSegments: string[];
   entryKind: 'character' | 'supplement' | 'unknown';
   nameSource: 'managed-profile' | 'body-field' | 'title-heuristic' | 'unknown';
@@ -43,29 +46,36 @@ export type EncounteredCharacterRecord = {
 };
 
 export function isWorldbookCharacterEntryName(name: string): boolean {
-  return worldbookCharacterEntryPrefix.test(name);
+  return splitWorldbookCharacterEntryName(name) !== null;
 }
 
 export function parseWorldbookCharacterEntryTitle(
   rawEntryName: string,
   { content = '', managedProfileName = null }: CharacterEntryTitleOptions = {},
 ): CharacterEntryTitle {
-  const titleSource = rawEntryName.replace(worldbookCharacterEntryPrefix, '').trim();
-  const bracketSegments = readLeadingBracketSegments(rawEntryName.trim());
+  const entryName = splitWorldbookCharacterEntryName(rawEntryName);
+  const titleSource = entryName?.titleSource ?? rawEntryName.replace(worldbookCharacterEntryPrefix, '').trim();
+  const bracketSegments = entryName?.bracketSegments ?? readLeadingBracketSegments(rawEntryName.trim()).segments;
   const titleBrackets = readLeadingBracketSegments(titleSource);
   const titleRemainder = titleSource.slice(titleBrackets.consumedLength).trim();
   const { titleWithoutMetadata, metadataText } = splitTrailingMetadata(titleRemainder);
+  const parsedMetadata = parseCharacterMetadata(metadataText);
   const profileName = normalizeStaticName(managedProfileName);
   const bodyName = readTopLevelStaticName(content);
   const bracketName = titleBrackets.segments.map(normalizeTitleBracketName).find(Boolean) ?? null;
-  const titleName = bracketName ?? normalizeTitleName(titleWithoutMetadata);
+  const titleName = normalizeTitleName(titleWithoutMetadata) ?? bracketName;
+  const metadata = {
+    ...parsedMetadata,
+    raceText: resolveTrustedTitleRace(parsedMetadata.raceText, content, profileName ?? bodyName ?? titleName),
+  };
 
   if (supplementTitlePattern.test(titleWithoutMetadata)) {
     return {
       rawEntryName,
       displayName: null,
       metadataText,
-      bracketSegments: bracketSegments.segments,
+      ...metadata,
+      bracketSegments,
       entryKind: 'supplement',
       nameSource: 'unknown',
     };
@@ -76,7 +86,8 @@ export function parseWorldbookCharacterEntryTitle(
       rawEntryName,
       displayName: profileName,
       metadataText,
-      bracketSegments: bracketSegments.segments,
+      ...metadata,
+      bracketSegments,
       entryKind: 'character',
       nameSource: 'managed-profile',
     };
@@ -87,7 +98,8 @@ export function parseWorldbookCharacterEntryTitle(
       rawEntryName,
       displayName: bodyName,
       metadataText,
-      bracketSegments: bracketSegments.segments,
+      ...metadata,
+      bracketSegments,
       entryKind: 'character',
       nameSource: 'body-field',
     };
@@ -98,7 +110,8 @@ export function parseWorldbookCharacterEntryTitle(
       rawEntryName,
       displayName: titleName,
       metadataText,
-      bracketSegments: bracketSegments.segments,
+      ...metadata,
+      bracketSegments,
       entryKind: 'character',
       nameSource: 'title-heuristic',
     };
@@ -108,7 +121,8 @@ export function parseWorldbookCharacterEntryTitle(
     rawEntryName,
     displayName: null,
     metadataText,
-    bracketSegments: bracketSegments.segments,
+    ...metadata,
+    bracketSegments,
     entryKind: 'unknown',
     nameSource: 'unknown',
   };
@@ -116,7 +130,8 @@ export function parseWorldbookCharacterEntryTitle(
 
 export function parseWorldbookCharacterDisplayName(name: string): string {
   const title = parseWorldbookCharacterEntryTitle(name);
-  return title.displayName ?? (name.replace(worldbookCharacterEntryPrefix, '').trim() || name.trim());
+  const titleSource = splitWorldbookCharacterEntryName(name)?.titleSource ?? name.replace(worldbookCharacterEntryPrefix, '').trim();
+  return title.displayName ?? (titleSource || name.trim());
 }
 
 export function collectWorldbookCharacterEntries<T extends CharacterEntryLike, TProfile>(
@@ -160,14 +175,106 @@ function readLeadingBracketSegments(source: string): { segments: string[]; consu
   return { segments, consumedLength };
 }
 
+function splitWorldbookCharacterEntryName(
+  rawEntryName: string,
+): { titleSource: string; bracketSegments: string[] } | null {
+  const trimmedName = rawEntryName.trim();
+  if (worldbookCharacterEntryPrefix.test(trimmedName)) {
+    return {
+      titleSource: trimmedName.replace(worldbookCharacterEntryPrefix, '').trim(),
+      bracketSegments: readLeadingBracketSegments(trimmedName).segments,
+    };
+  }
+
+  const trailingBrackets = readTrailingBracketSegments(trimmedName);
+  if (trailingBrackets.segments[0] !== 'DLC' || trailingBrackets.segments[1] !== '角色') return null;
+  return {
+    titleSource: trimmedName.slice(0, trailingBrackets.startIndex).trim(),
+    bracketSegments: trailingBrackets.segments,
+  };
+}
+
+function readTrailingBracketSegments(source: string): { segments: string[]; startIndex: number } {
+  const segments: string[] = [];
+  let startIndex = source.length;
+
+  while (startIndex > 0 && source[startIndex - 1] === ']') {
+    const openingIndex = source.lastIndexOf('[', startIndex - 2);
+    if (openingIndex === -1) break;
+    const segment = source.slice(openingIndex + 1, startIndex - 1).trim();
+    if (!segment) break;
+    segments.unshift(segment);
+    startIndex = openingIndex;
+  }
+
+  return { segments, startIndex };
+}
+
 function splitTrailingMetadata(source: string): { titleWithoutMetadata: string; metadataText: string | null } {
-  const match = source.match(trailingHalfwidthMetadataPattern) ?? source.match(trailingFullwidthMetadataPattern);
-  if (!match) return { titleWithoutMetadata: source.trim(), metadataText: null };
+  const trimmedSource = source.trim();
+  const closingCharacter = trimmedSource.at(-1);
+  if (closingCharacter !== ')' && closingCharacter !== '）') return { titleWithoutMetadata: trimmedSource, metadataText: null };
+
+  const closingForOpening: Record<string, string> = { '(': ')', '（': '）' };
+  const stack: { index: number; openingCharacter: string }[] = [];
+  let metadataStartIndex = -1;
+
+  for (let index = 0; index < trimmedSource.length; index += 1) {
+    const character = trimmedSource[index];
+    if (character in closingForOpening) {
+      stack.push({ index, openingCharacter: character });
+      continue;
+    }
+    if (character !== ')' && character !== '）') continue;
+
+    const opening = stack.pop();
+    if (!opening || closingForOpening[opening.openingCharacter] !== character) {
+      return { titleWithoutMetadata: trimmedSource, metadataText: null };
+    }
+    if (stack.length === 0 && index === trimmedSource.length - 1) {
+      metadataStartIndex = opening.index;
+    }
+  }
+
+  if (metadataStartIndex === -1 || stack.length > 0) return { titleWithoutMetadata: trimmedSource, metadataText: null };
+  return {
+    titleWithoutMetadata: trimmedSource.slice(0, metadataStartIndex).trim(),
+    metadataText: trimmedSource.slice(metadataStartIndex + 1, -1).trim() || null,
+  };
+}
+
+function parseCharacterMetadata(metadataText: string | null): Pick<CharacterEntryTitle, 'authorText' | 'raceText' | 'descriptionText'> {
+  if (!metadataText) return { authorText: null, raceText: null, descriptionText: null };
+
+  const separatorIndex = metadataText.search(/[，,]/u);
+  const identityText = (separatorIndex === -1 ? metadataText : metadataText.slice(0, separatorIndex)).trim();
+  const descriptionText = (separatorIndex === -1 ? '' : metadataText.slice(separatorIndex + 1)).trim() || null;
+  const separatorMatches = [...identityText.matchAll(/[-－—]/gu)];
+  const authorRaceSeparator = separatorMatches.at(-1);
+  if (!authorRaceSeparator || authorRaceSeparator.index === undefined) {
+    return { authorText: null, raceText: null, descriptionText };
+  }
+
+  const authorText = identityText.slice(0, authorRaceSeparator.index).trim() || null;
+  const raceText = identityText.slice(authorRaceSeparator.index + authorRaceSeparator[0].length).trim() || null;
+  if (!authorText || !raceText) {
+    return { authorText: null, raceText: null, descriptionText };
+  }
 
   return {
-    titleWithoutMetadata: source.slice(0, match.index).trim(),
-    metadataText: match[1].trim() || null,
+    authorText,
+    raceText,
+    descriptionText,
   };
+}
+
+function resolveTrustedTitleRace(candidate: string | null, content: string, characterName: string | null): string | null {
+  if (!candidate) return null;
+  const explicitRace = candidate.match(/^种族[：:]\s*(.+)$/u)?.[1]?.trim() ?? '';
+  if (explicitRace && !/[\r\n]/u.test(explicitRace) && !dynamicFieldValuePattern.test(explicitRace)) return explicitRace;
+
+  const bodyRace = inferCharacterRace(content, characterName);
+  return bodyRace && bodyRace === candidate ? candidate : null;
 }
 
 function normalizeTitleBracketName(value: string): string | null {
@@ -294,8 +401,56 @@ export function collectEncounteredCharacters(mvuData: unknown): EncounteredChara
   });
 }
 
-export function inferCharacterRace(entryBody: string): string {
-  return readStaticCharacterFields(entryBody).种族?.split(/[，,]/u)[0]?.trim() ?? '';
+export function inferCharacterRace(entryBody: string, characterName?: string | null): string {
+  const staticRace = readStaticCharacterFields(entryBody).种族?.split(/[，,]/u)[0]?.trim() ?? '';
+  if (!entryBody.trim() || dynamicFieldValuePattern.test(entryBody)) return staticRace;
+
+  let parsedBody: unknown;
+  try {
+    parsedBody = load(entryBody, { schema: JSON_SCHEMA });
+  } catch {
+    return staticRace;
+  }
+  if (!isRecord(parsedBody)) return staticRace;
+
+  const directRace = readRaceAtKnownPaths(parsedBody);
+  if (directRace) return directRace;
+
+  const normalizedCharacterName = normalizeStaticName(characterName);
+  const characterRoot = normalizedCharacterName ? parsedBody[normalizedCharacterName] : null;
+  if (isRecord(characterRoot)) {
+    const characterRace = readRaceAtKnownPaths(characterRoot);
+    if (characterRace) return characterRace;
+  }
+
+  if (normalizedCharacterName) {
+    const matchingRoots = Object.entries(parsedBody).filter(
+      ([rootName, value]) =>
+        isRecord(value) &&
+        namesShareQualifiedBoundary(rootName, normalizedCharacterName) &&
+        readRaceAtKnownPaths(value),
+    );
+    if (matchingRoots.length === 1) return readRaceAtKnownPaths(matchingRoots[0][1] as Record<string, unknown>);
+  }
+
+  return staticRace;
+}
+
+function namesShareQualifiedBoundary(left: string, right: string): boolean {
+  if (left === right) return true;
+  const [shorter, longer] = left.length < right.length ? [left, right] : [right, left];
+  return longer.startsWith(shorter) && /^[·・\s]/u.test(longer.slice(shorter.length));
+}
+
+function readRaceAtKnownPaths(value: Record<string, unknown>): string {
+  return readRaceScalar(value.种族) || (isRecord(value.基本信息) ? readRaceScalar(value.基本信息.种族) : '');
+}
+
+function readRaceScalar(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  const normalized = value.trim();
+  if (!normalized || /[\r\n]/u.test(normalized) || dynamicFieldValuePattern.test(normalized)) return '';
+  return normalized.split(/[，,]/u)[0]?.trim() ?? '';
 }
 
 export function readStaticCharacterFields(entryBody: string): StaticCharacterFields {

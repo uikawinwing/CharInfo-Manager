@@ -79,3 +79,13 @@ test('管理器弹窗固定在手机可视视口，不混入页面滚动坐标',
   assert.match(overlaySource, /position:\s*'fixed'/);
   assert.doesNotMatch(overlaySource, /hostWindow\.scroll[XY]/);
 });
+
+test('缓存的管理器重开时恢复其初始工具视图，并清除残留详情与筛选菜单', () => {
+  assert.match(
+    appSource,
+    /function resetToInitialView\(\) \{[\s\S]*?mobileCharacterLibraryFilterOpen\.value = false;[\s\S]*?worldbookPickerOpen\.value = false;[\s\S]*?entryPickerOpen\.value = false;[\s\S]*?closeCharacterDetails\(\);[\s\S]*?switchManagerView\(props\.initialView\);/u,
+  );
+  assert.match(appSource, /defineExpose\(\{ resetToInitialView \}\);/u);
+  assert.match(overlaySource, /let managerController: CreatorManagerController \| null = null;/u);
+  assert.match(overlaySource, /managerController\?\.resetToInitialView\(\);[\s\S]*?\$managerOverlay\.show\(\);/u);
+});

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -17,6 +18,8 @@ import {
   createEmptyProfile,
   inspectManagedBlock,
 } from '../../src/char_info_creator_manager/ejsProfile.ts';
+
+const appSource = readFileSync(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
 
 const irisProfile = {
   ...createEmptyProfile('Iris'),
@@ -82,11 +85,17 @@ test('世界书角色库只收录确定的单角色条目，视觉配置缺失�
 
 test('标题解析保留原始名称、方括号标签，并从莉利亚条目拆出元数据', () => {
   assert.deepEqual(
-    parseWorldbookCharacterEntryTitle('[DLC][角色][莉利亚・利桑德]莉利亚・利桑德(辻-利桑德家族继承人,活跃于索伦蒂斯)'),
+    parseWorldbookCharacterEntryTitle(
+      '[DLC][角色][莉利亚・利桑德]莉利亚・利桑德(辻-利桑德家族继承人,活跃于索伦蒂斯)',
+      { content: '种族: 利桑德家族继承人' },
+    ),
     {
       rawEntryName: '[DLC][角色][莉利亚・利桑德]莉利亚・利桑德(辻-利桑德家族继承人,活跃于索伦蒂斯)',
       displayName: '莉利亚・利桑德',
       metadataText: '辻-利桑德家族继承人,活跃于索伦蒂斯',
+      authorText: '辻',
+      raceText: '利桑德家族继承人',
+      descriptionText: '活跃于索伦蒂斯',
       bracketSegments: ['DLC', '角色', '莉利亚・利桑德'],
       entryKind: 'character',
       nameSource: 'title-heuristic',
@@ -102,6 +111,95 @@ test('标题解析会跳过傲雪条目中的额外方括号标签', () => {
   assert.equal(title.displayName, '傲雪');
   assert.deepEqual(title.bracketSegments, ['DLC', '角色', '傲雪', '<东方龙裔']);
   assert.equal(title.entryKind, 'character');
+});
+
+test('澪条目可从前置或尾置角色标签、嵌套括号元数据与正文 YAML 补全种族', () => {
+  const metadata = 'glen0822（扭曲亚提）-神造人，走出神殿的人偶/候补圣女/旅行者';
+  const body = `澪:\n  基本信息:\n    种族: 神造人`;
+  const leading = parseWorldbookCharacterEntryTitle(`[DLC][角色][澪]澪(${metadata})`, { content: body });
+  const trailing = parseWorldbookCharacterEntryTitle(`澪(${metadata})[DLC][角色][澪]`, { content: body });
+
+  for (const title of [leading, trailing]) {
+    assert.deepEqual(
+      {
+        displayName: title.displayName,
+        metadataText: title.metadataText,
+        authorText: title.authorText,
+        raceText: title.raceText,
+        descriptionText: title.descriptionText,
+        entryKind: title.entryKind,
+      },
+      {
+        displayName: '澪',
+        metadataText: metadata,
+        authorText: 'glen0822（扭曲亚提）',
+        raceText: '神造人',
+        descriptionText: '走出神殿的人偶/候补圣女/旅行者',
+        entryKind: 'character',
+      },
+    );
+  }
+
+  assert.equal(inferCharacterRace(body, leading.displayName), '神造人');
+});
+
+test('真实世界书标题不会把分类标签、编者注、旧名或数字误判为姓名和种族', () => {
+  const alicia = parseWorldbookCharacterEntryTitle(
+    '[DLC][角色][雌小鬼与熟女与龙]艾莉希雅(Spaceperson-新增角色：艾莉希雅和奥希莉雅·骸响龙姬)',
+  );
+  const hassan = parseWorldbookCharacterEntryTitle(
+    '[DLC][角色][哈桑]哈桑(萨赫拉联邦静寂之王-编者注:唉，又一个写自传的...)',
+  );
+  const siren = parseWorldbookCharacterEntryTitle(
+    '[DLC][角色][瑟涟]瑟涟·赛瑞利亚(△一串-旧名塞壬,赛瑞利亚领主,大家的妈妈)',
+  );
+  const lillias = parseWorldbookCharacterEntryTitle('[DLC][角色][莉莉娅丝]莉莉娅丝(Hilo-1011)');
+
+  assert.equal(alicia.displayName, '艾莉希雅');
+  assert.equal(alicia.raceText, null);
+  assert.equal(hassan.displayName, '哈桑');
+  assert.equal(hassan.raceText, null);
+  assert.equal(siren.displayName, '瑟涟·赛瑞利亚');
+  assert.equal(siren.raceText, null);
+  assert.equal(lillias.displayName, '莉莉娅丝');
+  assert.equal(lillias.raceText, null);
+});
+
+test('正文只有一个角色根节点时仍可从受控路径读取种族', () => {
+  const body = '艾莉希雅·温德米尔:\n  基本信息:\n    种族: 古龙';
+
+  assert.equal(inferCharacterRace(body, '艾莉希雅'), '古龙');
+  assert.equal(inferCharacterRace('莉莉娅:\n  种族: 人类', '莉'), '');
+});
+
+test('标题种族只接受正文印证或显式种族标记', () => {
+  const unverified = parseWorldbookCharacterEntryTitle('[DLC][角色]赫洛(A-史莱姆)');
+  const verified = parseWorldbookCharacterEntryTitle('[DLC][角色]赫洛(A-史莱姆)', {
+    content: '种族: 史莱姆',
+  });
+  const explicit = parseWorldbookCharacterEntryTitle('[DLC][角色]赫洛(A-种族:史莱姆)');
+
+  assert.equal(unverified.raceText, null);
+  assert.equal(verified.raceText, '史莱姆');
+  assert.equal(explicit.raceText, '史莱姆');
+});
+
+test('条目元数据外层括号允许同种或另一种括号嵌套', () => {
+  const halfwidth = parseWorldbookCharacterEntryTitle('[DLC][角色]赫洛(A(笔名)-人类，旅行者)', {
+    content: '种族: 人类',
+  });
+  const fullwidth = parseWorldbookCharacterEntryTitle('[DLC][角色]晴（B（笔名）－精灵，学者）', {
+    content: '种族: 精灵',
+  });
+
+  assert.deepEqual(
+    { displayName: halfwidth.displayName, authorText: halfwidth.authorText, raceText: halfwidth.raceText },
+    { displayName: '赫洛', authorText: 'A(笔名)', raceText: '人类' },
+  );
+  assert.deepEqual(
+    { displayName: fullwidth.displayName, authorText: fullwidth.authorText, raceText: fullwidth.raceText },
+    { displayName: '晴', authorText: 'B（笔名）', raceText: '精灵' },
+  );
 });
 
 test('合集、部分补充与无法确认的标题不会伪装为单角色', () => {
@@ -244,15 +342,30 @@ test('从最新消息 MVU 快照读取当前聊天已遇到角色，不接受错
   assert.deepEqual(collectEncounteredCharacters({ 关系列表: { Iris: {} } }), []);
 });
 
-test('尚未进入变量的角色只从顶层静态字段提取种族', () => {
+test('尚未进入变量的角色只从受控 YAML 路径提取静态种族', () => {
   assert.equal(inferCharacterRace('姓名: Iris\n种族: 星辉水母\n等级: 14'), '星辉水母');
   assert.equal(inferCharacterRace('种族: "人类, 半神"\n身份: 学者'), '人类');
-  assert.equal(inferCharacterRace('正文没有结构化种族'), '');
+  assert.equal(inferCharacterRace('基本信息:\n  种族: 精灵'), '精灵');
+  assert.equal(inferCharacterRace('澪:\n  种族: 神造人', '澪'), '神造人');
+  assert.equal(inferCharacterRace('澪:\n  基本信息:\n    种族: 神造人', '澪'), '神造人');
   assert.equal(inferCharacterRace('设定:\n  种族: 人类'), '');
+  assert.equal(inferCharacterRace('正文没有结构化种族'), '');
+  assert.equal(inferCharacterRace('设定:\n  身份:\n    种族: 人类'), '');
+  assert.equal(inferCharacterRace('<%_ const flag = true; _%>\n种族: 人类'), '人类');
+  assert.equal(inferCharacterRace('种族: 人类\n<%_ const flag = true; _%>\n正文: :'), '人类');
+  assert.equal(inferCharacterRace('种族: 人类\n无效 YAML: ['), '人类');
   assert.equal(inferCharacterRace('<%_\n种族: EJS 种族\n_%>'), '');
   assert.equal(inferCharacterRace('种族: <%= npc.race %>'), '');
   assert.equal(inferCharacterRace('种族: ${npc.race}'), '');
   assert.equal(inferCharacterRace('种族: [人类]'), '');
+  assert.equal(inferCharacterRace('种族: { 名称: 人类 }'), '');
+});
+
+test('角色库种族依次使用聊天变量、世界书正文和标题元数据', () => {
+  assert.match(
+    appSource,
+    /race: encountered\?\.race \|\| inferCharacterRace\(entryBody, character\.title\.displayName\) \|\| character\.title\.raceText \|\| ''/u,
+  );
 });
 
 test('世界书分类白名单只保留顶层静态字面量', () => {
