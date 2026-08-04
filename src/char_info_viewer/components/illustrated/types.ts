@@ -11,9 +11,9 @@ export type AttributeView = {
   showFormula: boolean;
 };
 
-export type SpecialNpcTabKey = 'overview' | TabKey;
+export type IllustratedTabKey = 'overview' | TabKey;
 
-export type SpecialNpcTab = {
-  key: SpecialNpcTabKey;
+export type IllustratedTab = {
+  key: IllustratedTabKey;
   label: string;
 };

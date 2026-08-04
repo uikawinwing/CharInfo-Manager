@@ -4,7 +4,7 @@
     class="viewer-root"
     :class="{
       'viewer-root-embedded': props.embedded,
-      'special-npc-viewer-root': shouldShowSpecialNpcLayout,
+      'illustrated-viewer-root': shouldShowIllustratedLayout,
       'viewer-effects-disabled': !props.effectsEnabled,
     }"
   >
@@ -47,7 +47,7 @@
     </div>
 
     <section
-      v-else-if="initializingViewer || loadingSpecialNpc"
+      v-else-if="initializingViewer || loadingDxCharacter"
       class="viewer-loading-shell"
       role="status"
       aria-live="polite"
@@ -66,7 +66,7 @@
         <div class="viewer-loading-resources" aria-hidden="true">
           <span v-for="index in 3" :key="index"></span>
         </div>
-        <p>{{ loadingSpecialNpc ? '正在读取专属角色资料…' : '正在建立角色档案…' }}</p>
+        <p>{{ loadingDxCharacter ? '正在读取专属角色资料…' : '正在建立角色档案…' }}</p>
       </div>
     </section>
 
@@ -75,8 +75,8 @@
         {{ looseParseWarning }}
       </div>
 
-      <SpecialNpcCharacterSheet
-        v-if="shouldShowSpecialNpcLayout && vm"
+      <IllustratedCharacterSheet
+        v-if="shouldShowIllustratedLayout && vm"
         :vm="vm"
         :attributes="attributes"
         :importing="importing"
@@ -87,7 +87,7 @@
         @toggle-import-menu="toggleImportMenu"
         @import-mvu="onImportMvu"
         @import-worldbook="onImportWorldbook"
-        @fallback-to-default="useSpecialNpcFallback"
+        @fallback-to-default="useIllustratedFallback"
       />
 
       <div v-else :class="[wrapperClasses, { 'portrait-mode': isPortraitLayout }]">
@@ -501,18 +501,18 @@ import {
   statusEffectType,
   type TabKey,
 } from './services/characterViewModel';
-import { importToMvuVariables, mergeSpecialNpcIntoMvuData, saveToChatWorldbook } from './services/importService';
+import { importToMvuVariables, mergeDxCharacterIntoMvuData, saveToChatWorldbook } from './services/importService';
 import { createParticleEngine, type ParticleEngine } from './services/particleEngine';
-import { enqueueSpecialNpcImport } from './services/specialNpcImportQueue';
+import { enqueueDxCharacterImport } from './services/dxCharacterImportQueue';
 import { applyTheme, resolveCharacterVisualConfigWithExtensions, resolveTheme } from './services/themeService';
 import { parseCharacterYaml, parseCharacterYamlLoose } from './services/yamlParser';
 import {
-  loadSpecialNpcCharacterReference,
-  messageContainsSpecialNpcCharacterReference,
-  parseSpecialNpcCharacterReference,
-} from './specialNpcCharacterData';
+  loadDxCharacterReference,
+  messageContainsDxCharacterReference,
+  parseDxCharacterReference,
+} from './dxCharacterData';
 import type { CharacterData, FriendlyYamlError, ThemeResolved } from './types';
-import SpecialNpcCharacterSheet from './components/specialNpc/SpecialNpcCharacterSheet.vue';
+import IllustratedCharacterSheet from './components/illustrated/IllustratedCharacterSheet.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -542,7 +542,7 @@ const parseMode = ref<'strict' | 'loose' | 'builtin'>('strict');
 const parseWarnings = ref<string[]>([]);
 const looseParsing = ref(false);
 const initializingViewer = ref(true);
-const loadingSpecialNpc = ref(false);
+const loadingDxCharacter = ref(false);
 const theme = ref<ThemeResolved | null>(null);
 const activeTab = ref<TabKey>('profile');
 
@@ -555,11 +555,11 @@ const importing = ref(false);
 const defaultImportButtonText = '📥';
 const importButtonText = ref(defaultImportButtonText);
 let importButtonResetTimer: ReturnType<typeof setTimeout> | null = null;
-let specialNpcAutoImportTimer: ReturnType<typeof setTimeout> | null = null;
-let specialNpcAutoImportEventListener: EventOnReturn | null = null;
-let specialNpcGenerationEndedEventListener: EventOnReturn | null = null;
-let specialNpcAutoImportStarted = false;
-let specialNpcAutoImportDisposed = false;
+let dxCharacterAutoImportTimer: ReturnType<typeof setTimeout> | null = null;
+let dxCharacterAutoImportEventListener: EventOnReturn | null = null;
+let dxCharacterGenerationEndedEventListener: EventOnReturn | null = null;
+let dxCharacterAutoImportStarted = false;
+let dxCharacterAutoImportDisposed = false;
 let listenerDocument: Document | null = null;
 
 const defaultParseErrorTips = [
@@ -596,9 +596,9 @@ const wrapperClasses = computed(() => ({
 const vm = computed(() =>
   sheetData.value ? buildCharacterViewModel(sheetData.value, props.imageSourcePriority) : null,
 );
-const isSpecialNpcLayout = computed(() => vm.value?.layoutKind === 'special_npc');
-const specialNpcFallbackActive = ref(false);
-const shouldShowSpecialNpcLayout = computed(() => isSpecialNpcLayout.value && !specialNpcFallbackActive.value);
+const isIllustratedLayout = computed(() => vm.value?.layoutKind === 'illustrated');
+const illustratedFallbackActive = ref(false);
+const shouldShowIllustratedLayout = computed(() => isIllustratedLayout.value && !illustratedFallbackActive.value);
 const isPortraitLayout = computed(() => false);
 const isPortraitDetailTab = computed(() => isPortraitLayout.value && activeTab.value !== 'profile');
 const portraitImageUrl = computed(() => vm.value?.imageUrl || '');
@@ -709,35 +709,35 @@ async function initFromYaml() {
   parseMode.value = 'strict';
   parseWarnings.value = [];
   theme.value = null;
-  loadingSpecialNpc.value = false;
+  loadingDxCharacter.value = false;
 
   if (!yamlText) {
     parseError.value = { message: '未检测到 YAML 数据。' };
     return;
   }
 
-  const specialNpcReference = parseSpecialNpcCharacterReference(yamlText);
-  if (specialNpcReference.kind === 'reference') {
-    loadingSpecialNpc.value = true;
+  const dxCharacterReference = parseDxCharacterReference(yamlText);
+  if (dxCharacterReference.kind === 'reference') {
+    loadingDxCharacter.value = true;
     try {
-      const specialNpcData = await loadSpecialNpcCharacterReference(specialNpcReference.reference);
-      mvuImportData.value = specialNpcData.injectData;
-      await applyParsedCharacterData(specialNpcData.data, 'builtin');
+      const dxCharacterData = await loadDxCharacterReference(dxCharacterReference.reference);
+      mvuImportData.value = dxCharacterData.data;
+      await applyParsedCharacterData(dxCharacterData.data, 'builtin');
       await nextTick();
       setupParticleEngine();
-      scheduleSpecialNpcAutoImport(
-        specialNpcData.injectData,
-        specialNpcData.appearVariableName,
-        specialNpcData.data.姓名 || specialNpcData.reference,
-        specialNpcData.reference,
+      scheduleDxCharacterAutoImport(
+        dxCharacterData.injectData,
+        dxCharacterData.appearVariableName,
+        dxCharacterData.data.姓名 || dxCharacterData.reference,
+        dxCharacterData.reference,
       );
     } catch (err: any) {
       const message = err?.message || String(err);
-      console.error('[CharInfo Viewer] Special NPC profile load failed:', err);
+      console.error('[CharInfo Viewer] DX character profile load failed:', err);
       parseError.value = { message: `专属角色资料加载失败：${message}` };
       if (typeof toastr !== 'undefined') toastr.error(`专属角色资料加载失败：${message}`);
     } finally {
-      loadingSpecialNpc.value = false;
+      loadingDxCharacter.value = false;
     }
     return;
   }
@@ -753,16 +753,16 @@ async function initFromYaml() {
   nextTick(() => setupParticleEngine());
 }
 
-function scheduleSpecialNpcAutoImport(
+function scheduleDxCharacterAutoImport(
   data: CharacterData,
   appearVariableName: string,
   characterName: string,
   reference: string,
 ) {
-  if (specialNpcAutoImportTimer) clearTimeout(specialNpcAutoImportTimer);
-  specialNpcAutoImportTimer = setTimeout(() => {
-    specialNpcAutoImportTimer = null;
-    void autoImportSpecialNpc(data, appearVariableName, characterName, reference);
+  if (dxCharacterAutoImportTimer) clearTimeout(dxCharacterAutoImportTimer);
+  dxCharacterAutoImportTimer = setTimeout(() => {
+    dxCharacterAutoImportTimer = null;
+    void autoImportDxCharacter(data, appearVariableName, characterName, reference);
   }, 0);
 }
 
@@ -771,50 +771,50 @@ function readActiveSwipeId(messageId: number): number | null {
   return message ? message.swipe_id : null;
 }
 
-function isSpecialNpcImportContextCurrent(chatId: string, swipeId: number, reference: string): boolean {
-  if (specialNpcAutoImportDisposed || SillyTavern.getCurrentChatId() !== chatId) return false;
+function isDxCharacterImportContextCurrent(chatId: string, swipeId: number, reference: string): boolean {
+  if (dxCharacterAutoImportDisposed || SillyTavern.getCurrentChatId() !== chatId) return false;
   if (readActiveSwipeId(props.messageId) !== swipeId) return false;
 
   const message = getChatMessages(props.messageId)[0];
-  return Boolean(message && messageContainsSpecialNpcCharacterReference(message.message, reference));
+  return Boolean(message && messageContainsDxCharacterReference(message.message, reference));
 }
 
-async function autoImportSpecialNpc(
+async function autoImportDxCharacter(
   data: CharacterData,
   appearVariableName: string,
   characterName: string,
   reference: string,
 ) {
-  if (specialNpcAutoImportStarted) return;
-  specialNpcAutoImportStarted = true;
+  if (dxCharacterAutoImportStarted) return;
+  dxCharacterAutoImportStarted = true;
 
   try {
     await waitGlobalInitialized('Mvu');
     const chatId = SillyTavern.getCurrentChatId();
     const swipeId = readActiveSwipeId(props.messageId);
-    if (swipeId === null || !isSpecialNpcImportContextCurrent(chatId, swipeId, reference)) return;
+    if (swipeId === null || !isDxCharacterImportContextCurrent(chatId, swipeId, reference)) return;
 
     const targetScope = { type: 'message', message_id: props.messageId } as const;
     let successToastShown = false;
 
     const mergeIntoFinalVariables = (variables: Mvu.MvuData) => {
-      const result = mergeSpecialNpcIntoMvuData(data, appearVariableName, characterName, variables, !successToastShown);
+      const result = mergeDxCharacterIntoMvuData(data, appearVariableName, characterName, variables, !successToastShown);
       if (result === 'imported') successToastShown = true;
       return result;
     };
 
     const mvuUpdateReached = new Promise<void>(resolve => {
-      specialNpcAutoImportEventListener = eventOn(Mvu.events.BEFORE_MESSAGE_UPDATE, context => {
-        if (!isSpecialNpcImportContextCurrent(chatId, swipeId, reference)) return;
-        if (!messageContainsSpecialNpcCharacterReference(context.message_content, reference)) return;
+      dxCharacterAutoImportEventListener = eventOn(Mvu.events.BEFORE_MESSAGE_UPDATE, context => {
+        if (!isDxCharacterImportContextCurrent(chatId, swipeId, reference)) return;
+        if (!messageContainsDxCharacterReference(context.message_content, reference)) return;
 
         resolve();
       });
     });
     const targetGenerationEnded = new Promise<void>(resolve => {
-      specialNpcGenerationEndedEventListener = eventOn(tavern_events.GENERATION_ENDED, messageId => {
+      dxCharacterGenerationEndedEventListener = eventOn(tavern_events.GENERATION_ENDED, messageId => {
         if (messageId !== props.messageId) return;
-        if (!isSpecialNpcImportContextCurrent(chatId, swipeId, reference)) return;
+        if (!isDxCharacterImportContextCurrent(chatId, swipeId, reference)) return;
         resolve();
       });
     });
@@ -823,24 +823,24 @@ async function autoImportSpecialNpc(
       Promise.all([mvuUpdateReached, targetGenerationEnded]),
       new Promise<'fallback'>(resolve => setTimeout(() => resolve('fallback'), 1000)),
     ]);
-    if (!isSpecialNpcImportContextCurrent(chatId, swipeId, reference)) return;
+    if (!isDxCharacterImportContextCurrent(chatId, swipeId, reference)) return;
 
     await waitUntil(
       () =>
-        !isSpecialNpcImportContextCurrent(chatId, swipeId, reference) ||
+        !isDxCharacterImportContextCurrent(chatId, swipeId, reference) ||
         _.has(Mvu.getMvuData(targetScope), 'stat_data'),
     );
-    if (!isSpecialNpcImportContextCurrent(chatId, swipeId, reference)) return;
+    if (!isDxCharacterImportContextCurrent(chatId, swipeId, reference)) return;
 
     const queueKey = `${chatId}\u0000${props.messageId}\u0000${swipeId}`;
-    await enqueueSpecialNpcImport(queueKey, async () => {
-      if (!isSpecialNpcImportContextCurrent(chatId, swipeId, reference)) return;
+    await enqueueDxCharacterImport(queueKey, async () => {
+      if (!isDxCharacterImportContextCurrent(chatId, swipeId, reference)) return;
       const currentVariables = Mvu.getMvuData(targetScope);
       if (mergeIntoFinalVariables(currentVariables) === 'imported') {
         await Mvu.replaceMvuData(currentVariables, targetScope);
       }
     });
-    if (!isSpecialNpcImportContextCurrent(chatId, swipeId, reference)) return;
+    if (!isDxCharacterImportContextCurrent(chatId, swipeId, reference)) return;
 
     const verifiedVariables = Mvu.getMvuData(targetScope);
     const characterInserted = _.has(verifiedVariables, `stat_data.关系列表.${characterName}`);
@@ -849,13 +849,13 @@ async function autoImportSpecialNpc(
       throw new Error('MVU 写入后的读回验证失败。');
     }
   } catch (err: any) {
-    console.error('[CharInfo Viewer] Special NPC auto import failed:', err);
+    console.error('[CharInfo Viewer] DX character auto import failed:', err);
     if (typeof toastr !== 'undefined') toastr.error(`特殊角色自动注入失败：${err?.message || String(err)}`);
   } finally {
-    specialNpcAutoImportEventListener?.stop();
-    specialNpcAutoImportEventListener = null;
-    specialNpcGenerationEndedEventListener?.stop();
-    specialNpcGenerationEndedEventListener = null;
+    dxCharacterAutoImportEventListener?.stop();
+    dxCharacterAutoImportEventListener = null;
+    dxCharacterGenerationEndedEventListener?.stop();
+    dxCharacterGenerationEndedEventListener = null;
   }
 }
 
@@ -872,7 +872,7 @@ async function applyParsedCharacterData(
           ...resolvedData,
           登场台词: props.entranceQuoteOverride,
         };
-  specialNpcFallbackActive.value = false;
+  illustratedFallbackActive.value = false;
   parseError.value = null;
   parseMode.value = mode;
   parseWarnings.value = warnings;
@@ -880,8 +880,8 @@ async function applyParsedCharacterData(
   if (viewerRootRef.value) applyTheme(theme.value, viewerRootRef.value);
 }
 
-function useSpecialNpcFallback() {
-  specialNpcFallbackActive.value = true;
+function useIllustratedFallback() {
+  illustratedFallbackActive.value = true;
   nextTick(() => setupParticleEngine());
 }
 
@@ -917,9 +917,9 @@ function flashImportButton(temp: string, duration = 1200) {
     clearTimeout(importButtonResetTimer);
     importButtonResetTimer = null;
   }
-  if (specialNpcAutoImportTimer) {
-    clearTimeout(specialNpcAutoImportTimer);
-    specialNpcAutoImportTimer = null;
+  if (dxCharacterAutoImportTimer) {
+    clearTimeout(dxCharacterAutoImportTimer);
+    dxCharacterAutoImportTimer = null;
   }
   importButtonText.value = temp;
   importButtonResetTimer = setTimeout(() => {
@@ -1003,21 +1003,21 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  specialNpcAutoImportDisposed = true;
+  dxCharacterAutoImportDisposed = true;
   engine?.destroy();
   engine = null;
   if (importButtonResetTimer) {
     clearTimeout(importButtonResetTimer);
     importButtonResetTimer = null;
   }
-  if (specialNpcAutoImportTimer) {
-    clearTimeout(specialNpcAutoImportTimer);
-    specialNpcAutoImportTimer = null;
+  if (dxCharacterAutoImportTimer) {
+    clearTimeout(dxCharacterAutoImportTimer);
+    dxCharacterAutoImportTimer = null;
   }
-  specialNpcAutoImportEventListener?.stop();
-  specialNpcAutoImportEventListener = null;
-  specialNpcGenerationEndedEventListener?.stop();
-  specialNpcGenerationEndedEventListener = null;
+  dxCharacterAutoImportEventListener?.stop();
+  dxCharacterAutoImportEventListener = null;
+  dxCharacterGenerationEndedEventListener?.stop();
+  dxCharacterGenerationEndedEventListener = null;
   listenerDocument?.removeEventListener('click', onDocumentClick);
   listenerDocument?.removeEventListener('keydown', onKeydown);
   listenerDocument = null;
@@ -1044,7 +1044,7 @@ onBeforeUnmount(() => {
   font-family: 'Noto Sans SC', sans-serif;
 }
 
-.viewer-root.special-npc-viewer-root {
+.viewer-root.illustrated-viewer-root {
   min-height: 0;
 }
 

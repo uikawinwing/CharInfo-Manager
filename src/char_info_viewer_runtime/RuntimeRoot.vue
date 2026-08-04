@@ -20,7 +20,7 @@
 
   <Teleport v-if="state.library" :to="state.library.host">
     <button
-      v-if="state.library.characters.length > 0 && !state.library.listOpen && !state.library.viewerOpen"
+      v-if="!state.library.listOpen && !state.library.viewerOpen"
       class="char-info-library-floating-button"
       type="button"
       :style="floatingButtonStyle"
@@ -47,10 +47,11 @@
       <section
         ref="listWindowRef"
         class="char-info-library-list-dialog"
+        :class="{ 'with-viewer': state.library.viewerOpen }"
         :style="listWindowStyle"
         role="dialog"
-        aria-modal="true"
-        aria-labelledby="char-info-list-title"
+        aria-modal="false"
+        aria-label="角色资料库"
       >
         <header
           @pointerdown="beginListWindowDrag"
@@ -59,19 +60,20 @@
           @pointercancel="cancelListWindowDrag"
         >
           <div class="char-info-library-list-title">
-            <h2 id="char-info-list-title">当前角色</h2>
-            <button
-              class="char-info-worldbook-library-action"
-              type="button"
-              aria-label="打开世界书角色库"
-              title="世界书角色库"
-              @click="props.onOpenWorldbookLibrary"
-            >
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M4.5 5.5A2.5 2.5 0 0 1 7 3h5v17H7a2.5 2.5 0 0 0-2.5 2.5V5.5Z" />
-                <path d="M19.5 5.5A2.5 2.5 0 0 0 17 3h-5v17h5a2.5 2.5 0 0 1 2.5 2.5V5.5Z" />
-              </svg>
-            </button>
+            <div class="char-info-library-source-switch" role="group" aria-label="角色资料来源">
+              <button type="button" class="active" aria-pressed="true" @click="props.onOpenLibraryList">
+                当前聊天角色
+              </button>
+              <button
+                type="button"
+                aria-pressed="false"
+                aria-label="打开世界书角色库"
+                title="打开世界书角色库"
+                @click="props.onOpenWorldbookLibrary"
+              >
+                世界书角色
+              </button>
+            </div>
           </div>
           <div class="char-info-library-list-actions">
             <button type="button" aria-label="查看器设置" title="设置" @click="onOpenSettings">
@@ -85,7 +87,7 @@
             <button type="button" :disabled="state.library.loading" aria-label="刷新角色列表" @click="onRefreshLibrary">
               {{ state.library.loading ? '…' : '↻' }}
             </button>
-            <button type="button" aria-label="关闭角色列表" @click="onCloseLibrary">×</button>
+            <button type="button" aria-label="关闭角色列表" @click="closeListWindow">×</button>
           </div>
         </header>
 
@@ -158,9 +160,10 @@
       v-if="state.library.viewerOpen"
       ref="viewerWindowRef"
       class="char-info-library-overlay"
+      :class="{ 'with-list': state.library.listOpen }"
       :style="viewerWindowStyle"
       role="dialog"
-      aria-modal="true"
+      aria-modal="false"
       aria-label="当前聊天角色资料"
     >
       <header
@@ -197,7 +200,7 @@
             class="char-info-library-icon-action char-info-library-close-action"
             type="button"
             aria-label="关闭角色资料"
-            @click="onCloseLibrary"
+            @click="closeViewerWindow"
           >
             <svg aria-hidden="true" viewBox="0 0 24 24">
               <path d="m7 7 10 10M17 7 7 17" />
@@ -302,7 +305,8 @@ type LibraryFilter = 'all' | 'present' | 'away';
 
 const props = defineProps<{
   state: RuntimeViewState;
-  onCloseLibrary: () => void;
+  onCloseLibraryList: () => void;
+  onCloseLibraryViewer: () => void;
   onRefreshLibrary: () => void;
   onOpenLibraryList: () => void;
   onOpenLibraryCharacter: (name: string) => void;
@@ -366,6 +370,14 @@ function onAvatarError(url: string): void {
 function openCharacter(name: string): void {
   selectedCharacterName.value = name;
   props.onOpenLibraryCharacter(name);
+}
+
+function closeListWindow(): void {
+  props.onCloseLibraryList();
+}
+
+function closeViewerWindow(): void {
+  props.onCloseLibraryViewer();
 }
 
 function getHostViewport(): { width: number; height: number } {
@@ -962,6 +974,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   width: min(390px, calc(100% - 24px));
+  height: min(680px, calc(100% - 24px));
   max-height: min(680px, calc(100% - 24px));
   overflow: hidden;
   border: 1px solid rgba(232, 210, 171, 0.28);
@@ -972,6 +985,18 @@ onBeforeUnmount(() => {
   font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
   transform: translate(-50%, -50%);
   pointer-events: auto;
+}
+
+@media (min-width: 721px) {
+  .char-info-library-list-dialog.with-viewer {
+    left: max(12px, calc(50% - 810px));
+    transform: translateY(-50%);
+  }
+
+  .char-info-library-overlay.with-list {
+    left: calc(50% + 210px);
+    width: min(1200px, calc(100% - 430px));
+  }
 }
 
 .char-info-library-list-dialog > header {
@@ -990,51 +1015,56 @@ onBeforeUnmount(() => {
   cursor: grabbing;
 }
 
-.char-info-library-list-dialog h2 {
-  margin: 0;
-  font-family: Georgia, 'Noto Serif SC', serif;
-  font-size: 1.28rem;
-}
-
 .char-info-library-list-title {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 8px;
+  flex: 1 1 auto;
 }
 
-.char-info-worldbook-library-action {
+.char-info-library-source-switch {
   display: grid;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 auto;
-  padding: 8px;
-  place-items: center;
-  border: 1px solid rgba(232, 210, 171, 0.24);
-  border-radius: 9px;
-  background: rgba(217, 184, 122, 0.1);
-  color: #ead19c;
-  cursor: pointer;
-}
-
-.char-info-worldbook-library-action:hover {
-  border-color: rgba(240, 207, 142, 0.6);
-  background: rgba(217, 184, 122, 0.2);
-}
-
-.char-info-worldbook-library-action:focus-visible {
-  outline: 2px solid #f0cf8e;
-  outline-offset: 2px;
-}
-
-.char-info-worldbook-library-action svg {
   width: 100%;
-  height: 100%;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.7;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid rgba(232, 210, 171, 0.2);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.char-info-library-source-switch button {
+  min-width: 0;
+  min-height: 38px;
+  padding: 7px 9px;
+  border: 0;
+  border-left: 1px solid rgba(232, 210, 171, 0.14);
+  background: transparent;
+  color: #b9b4bd;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.char-info-library-source-switch button:first-child {
+  border-left: 0;
+}
+
+.char-info-library-source-switch button:hover {
+  background: rgba(217, 184, 122, 0.1);
+  color: #fff8eb;
+}
+
+.char-info-library-source-switch button.active {
+  background: rgba(217, 184, 122, 0.2);
+  color: #f4d493;
+}
+
+.char-info-library-source-switch button:focus-visible {
+  outline: 2px solid #f0cf8e;
+  outline-offset: -2px;
 }
 
 .char-info-library-list-actions {
@@ -1382,7 +1412,8 @@ onBeforeUnmount(() => {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 12px;
 }
 
@@ -1392,13 +1423,13 @@ onBeforeUnmount(() => {
   padding: 0;
 }
 
-.char-info-library-viewer .special-npc-wrapper,
-.char-info-library-viewer .special-npc-shell {
+.char-info-library-viewer .illustrated-wrapper,
+.char-info-library-viewer .illustrated-shell {
   height: 100%;
   min-height: 0;
 }
 
-.char-info-library-viewer .special-npc-shell {
+.char-info-library-viewer .illustrated-shell {
   height: 100% !important;
 }
 
@@ -1439,6 +1470,7 @@ onBeforeUnmount(() => {
 
   .char-info-library-list-dialog {
     width: calc(100% - 16px);
+    height: calc(100% - 16px);
     max-height: calc(100% - 16px);
     border-radius: 15px;
   }
@@ -1512,18 +1544,18 @@ onBeforeUnmount(() => {
     min-height: 100%;
   }
 
-  .char-info-library-viewer .special-npc-wrapper {
+  .char-info-library-viewer .illustrated-wrapper {
     height: auto;
     max-width: none;
   }
 
-  .char-info-library-viewer .special-npc-shell {
+  .char-info-library-viewer .illustrated-shell {
     height: 216.4251cqw !important;
     min-height: 0;
   }
 
-  .char-info-library-viewer .special-npc-portrait-image,
-  .char-info-library-viewer .special-npc-portrait-video,
+  .char-info-library-viewer .illustrated-portrait-image,
+  .char-info-library-viewer .illustrated-portrait-video,
   .char-info-library-viewer .portrait-image {
     object-fit: contain;
     background: rgba(0, 0, 0, 0.22);

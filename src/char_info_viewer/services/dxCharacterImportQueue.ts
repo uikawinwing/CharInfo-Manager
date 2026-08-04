@@ -1,6 +1,6 @@
 const pendingImports = new Map<string, Promise<void>>();
 
-export function enqueueSpecialNpcImport(queueKey: string, task: () => Promise<void>): Promise<void> {
+export function enqueueDxCharacterImport(queueKey: string, task: () => Promise<void>): Promise<void> {
   const previous = pendingImports.get(queueKey) ?? Promise.resolve();
   const current = previous
     .catch(() => undefined)

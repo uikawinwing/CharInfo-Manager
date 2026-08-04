@@ -1,5 +1,5 @@
 <template>
-  <section class="special-npc-default-divinity">
+  <section class="illustrated-default-divinity">
     <header class="default-divinity-hero">
       <span class="default-divinity-kicker">Divinity Path</span>
       <h3>{{ vm.divinityGodTitle || '登神长阶' }}</h3>
@@ -30,7 +30,7 @@ const sections = computed(() => buildDivinitySections(props.vm));
 </script>
 
 <style scoped>
-.special-npc-default-divinity {
+.illustrated-default-divinity {
   display: grid;
   gap: 18px;
   width: min(100%, 560px);
@@ -43,16 +43,16 @@ const sections = computed(() => buildDivinitySections(props.vm));
   justify-items: center;
   gap: 8px;
   padding: 26px 22px;
-  border-top: 1px solid rgba(var(--special-npc-tier-accent-rgb), 0.62);
-  border-bottom: 1px solid rgba(var(--special-npc-tier-accent-rgb), 0.32);
+  border-top: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.62);
+  border-bottom: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.32);
   background:
-    radial-gradient(ellipse at 50% 0, rgba(var(--special-npc-tier-accent-rgb), 0.18), transparent 62%),
+    radial-gradient(ellipse at 50% 0, rgba(var(--illustrated-tier-accent-rgb), 0.18), transparent 62%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 0, 0, 0.12));
   text-align: center;
 }
 
 .default-divinity-kicker {
-  color: rgba(var(--special-npc-tier-accent-rgb), 0.86);
+  color: rgba(var(--illustrated-tier-accent-rgb), 0.86);
   font-family: Cinzel, Georgia, serif;
   font-size: 11px;
   font-weight: 700;
@@ -84,7 +84,7 @@ const sections = computed(() => buildDivinitySections(props.vm));
   display: grid;
   gap: 10px;
   padding: 18px 20px;
-  border: 1px solid rgba(var(--special-npc-tier-accent-rgb), 0.2);
+  border: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.2);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.01)),
     rgba(5, 15, 32, 0.44);
@@ -96,7 +96,7 @@ const sections = computed(() => buildDivinitySections(props.vm));
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  color: rgba(var(--special-npc-tier-accent-rgb), 0.92);
+  color: rgba(var(--illustrated-tier-accent-rgb), 0.92);
   font-weight: 800;
 }
 

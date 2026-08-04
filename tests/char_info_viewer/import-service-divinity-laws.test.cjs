@@ -26,3 +26,19 @@ test('导入 MVU 时合并顶层与登神长阶中的法则，并让登神长阶
   assert.equal(laws.新律.被动效果, '第七层新律被动');
   assert.equal(laws.新律.主动效果, '旧版新律主动');
 });
+
+test('从聊天角色资料导入时完整保留性格文本，不截断英文标识后的正文', () => {
+  const currentVars = { stat_data: { 关系列表: {} } };
+  const personality =
+    'dhAGz(S)。看似悲愤实则刻板冷漠，追求绝对的纯粹与完美。遇到计划外的事物容易在内心产生烦躁，但表面极力维持庄重。';
+
+  mergeCharacterIntoMvuData(
+    {
+      姓名: '瓦莉·希尔·奥古斯丁',
+      性格: personality,
+    },
+    currentVars,
+  );
+
+  assert.equal(currentVars.stat_data.关系列表.瓦莉·希尔·奥古斯丁.性格, personality);
+});

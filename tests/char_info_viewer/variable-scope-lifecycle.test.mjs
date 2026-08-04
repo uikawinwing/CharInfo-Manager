@@ -15,19 +15,19 @@ const viewerRuntimeRootSource = await readFile(
 );
 const previewBuilderSource = await readFile(new URL('docs/previews/char_info_ejs_builder.html', repoRoot), 'utf8');
 
-test('特殊 NPC 自动导入绑定聊天、楼层与 swipe，事件只负责时序且卸载时清理', () => {
+test('DX 角色自动导入绑定聊天、楼层与 swipe，事件只负责时序且卸载时清理', () => {
   assert.match(appSource, /Mvu\.events\.BEFORE_MESSAGE_UPDATE/);
-  assert.match(appSource, /messageContainsSpecialNpcCharacterReference\(context\.message_content, reference\)/);
+  assert.match(appSource, /messageContainsDxCharacterReference\(context\.message_content, reference\)/);
   assert.match(appSource, /tavern_events\.GENERATION_ENDED/);
   assert.match(appSource, /messageId !== props\.messageId/);
   assert.doesNotMatch(appSource, /Mvu\.events\.VARIABLE_UPDATE_ENDED/);
   assert.doesNotMatch(appSource, /mergeIntoFinalVariables\(context\.variables\)/);
-  assert.match(appSource, /enqueueSpecialNpcImport\(queueKey/);
+  assert.match(appSource, /enqueueDxCharacterImport\(queueKey/);
   assert.match(appSource, /Mvu\.getMvuData\(targetScope\)/);
   assert.match(appSource, /Mvu\.replaceMvuData\(currentVariables, targetScope\)/);
-  assert.match(appSource, /specialNpcAutoImportDisposed = true/);
-  assert.match(appSource, /specialNpcAutoImportEventListener\?\.stop\(\)/);
-  assert.match(appSource, /specialNpcGenerationEndedEventListener\?\.stop\(\)/);
+  assert.match(appSource, /dxCharacterAutoImportDisposed = true/);
+  assert.match(appSource, /dxCharacterAutoImportEventListener\?\.stop\(\)/);
+  assert.match(appSource, /dxCharacterGenerationEndedEventListener\?\.stop\(\)/);
   assert.match(appSource, /SillyTavern\.getCurrentChatId\(\) !== chatId/);
   assert.match(appSource, /readActiveSwipeId\(props\.messageId\) !== swipeId/);
 });

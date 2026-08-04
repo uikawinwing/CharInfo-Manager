@@ -176,7 +176,7 @@ test('豪华／DX 版不会读取 Aoo 状态栏公版相册', () => {
   const data = resolveCharacterVisualConfig(
     {
       姓名: '傲雪',
-      __char_info_ref: 'special_npc_aoxue',
+      __dx_character_ref: 'dx_anastasia',
     },
     {
       status: {

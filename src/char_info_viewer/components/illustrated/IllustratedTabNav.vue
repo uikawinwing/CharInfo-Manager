@@ -1,8 +1,8 @@
 <template>
-  <nav class="special-npc-tabs" aria-label="角色资料分页">
+  <nav class="illustrated-tabs" aria-label="角色资料分页">
     <button
       v-if="homeTab"
-      class="special-npc-tab-button special-npc-home-button"
+      class="illustrated-tab-button illustrated-home-button"
       :class="{ active: activeTab === homeTab.key }"
       :aria-current="activeTab === homeTab.key ? 'page' : undefined"
       type="button"
@@ -11,11 +11,11 @@
       {{ homeTab.label }}
     </button>
 
-    <div class="special-npc-tab-scroll">
+    <div class="illustrated-tab-scroll">
       <button
         v-for="tab in detailTabs"
         :key="tab.key"
-        class="special-npc-tab-button"
+        class="illustrated-tab-button"
         :class="{ active: activeTab === tab.key }"
         :aria-current="activeTab === tab.key ? 'page' : undefined"
         type="button"
@@ -27,7 +27,7 @@
 
     <button
       v-if="showImportAction"
-      class="special-npc-nav-save-button"
+      class="illustrated-nav-save-button"
       :disabled="importing"
       type="button"
       aria-label="保存或导入"
@@ -41,18 +41,18 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import type { SpecialNpcTab, SpecialNpcTabKey } from './types';
+import type { IllustratedTab, IllustratedTabKey } from './types';
 
 const props = defineProps<{
-  tabs: SpecialNpcTab[];
-  activeTab: SpecialNpcTabKey;
+  tabs: IllustratedTab[];
+  activeTab: IllustratedTabKey;
   importing: boolean;
   importButtonText: string;
   showImportAction: boolean;
 }>();
 
 defineEmits<{
-  setTab: [tab: SpecialNpcTabKey];
+  setTab: [tab: IllustratedTabKey];
   toggleImportMenu: [];
 }>();
 
@@ -61,7 +61,7 @@ const detailTabs = computed(() => props.tabs.filter(tab => tab.key !== 'overview
 </script>
 
 <style scoped>
-.special-npc-tabs {
+.illustrated-tabs {
   position: relative;
   z-index: 5;
   display: flex;
@@ -71,14 +71,14 @@ const detailTabs = computed(() => props.tabs.filter(tab => tab.key !== 'overview
   width: fit-content;
   max-width: 100%;
   justify-content: center;
-  min-height: var(--special-npc-tabs-height);
+  min-height: var(--illustrated-tabs-height);
   margin: 0 auto;
   overflow: hidden;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   background: linear-gradient(180deg, rgba(20, 22, 30, 0.2) 0%, rgba(20, 22, 30, 0.96) 35%);
 }
 
-.special-npc-tab-scroll {
+.illustrated-tab-scroll {
   display: flex;
   flex: 0 1 auto;
   flex-wrap: nowrap;
@@ -88,11 +88,11 @@ const detailTabs = computed(() => props.tabs.filter(tab => tab.key !== 'overview
   scrollbar-width: none;
 }
 
-.special-npc-tab-scroll::-webkit-scrollbar {
+.illustrated-tab-scroll::-webkit-scrollbar {
   display: none;
 }
 
-.special-npc-tab-button {
+.illustrated-tab-button {
   position: relative;
   display: flex;
   flex: 0 0 auto;
@@ -112,7 +112,7 @@ const detailTabs = computed(() => props.tabs.filter(tab => tab.key !== 'overview
   transition: color 0.2s ease;
 }
 
-.special-npc-tab-scroll .special-npc-tab-button {
+.illustrated-tab-scroll .illustrated-tab-button {
   flex: 0 0 auto;
   justify-content: center;
   width: auto;
@@ -121,22 +121,22 @@ const detailTabs = computed(() => props.tabs.filter(tab => tab.key !== 'overview
   padding-left: 12px;
 }
 
-.special-npc-tab-button:hover:not(:disabled),
-.special-npc-tab-button.active:not(:disabled) {
-  color: var(--special-npc-race-accent);
+.illustrated-tab-button:hover:not(:disabled),
+.illustrated-tab-button.active:not(:disabled) {
+  color: var(--illustrated-race-accent);
 }
 
-.special-npc-tab-button.active::after {
+.illustrated-tab-button.active::after {
   content: '';
   position: absolute;
   right: 0;
   bottom: -1px;
   left: 0;
   height: 2px;
-  background: var(--special-npc-race-accent);
+  background: var(--illustrated-race-accent);
 }
 
-.special-npc-home-button {
+.illustrated-home-button {
   z-index: 2;
   flex: 0 0 auto;
   min-width: 56px;
@@ -144,7 +144,7 @@ const detailTabs = computed(() => props.tabs.filter(tab => tab.key !== 'overview
   padding-left: 12px;
 }
 
-.special-npc-nav-save-button {
+.illustrated-nav-save-button {
   position: relative;
   flex: 0 0 auto;
   min-width: 56px;
@@ -163,60 +163,60 @@ const detailTabs = computed(() => props.tabs.filter(tab => tab.key !== 'overview
     opacity 0.2s ease;
 }
 
-.special-npc-nav-save-button:disabled {
+.illustrated-nav-save-button:disabled {
   opacity: 0.7;
   cursor: wait;
 }
 
-.special-npc-nav-save-button:hover:not(:disabled) {
-  color: var(--special-npc-race-accent);
+.illustrated-nav-save-button:hover:not(:disabled) {
+  color: var(--illustrated-race-accent);
 }
 
-.special-npc-tab-button:focus-visible,
-.special-npc-nav-save-button:focus-visible {
+.illustrated-tab-button:focus-visible,
+.illustrated-nav-save-button:focus-visible {
   z-index: 3;
-  outline: 2px solid var(--special-npc-race-accent);
+  outline: 2px solid var(--illustrated-race-accent);
   outline-offset: -3px;
 }
 
-.special-npc-nav-save-button::after {
+.illustrated-nav-save-button::after {
   content: '';
   position: absolute;
   right: 0;
   bottom: -1px;
   left: 0;
   height: 2px;
-  background: color-mix(in srgb, var(--special-npc-race-accent) 62%, transparent);
+  background: color-mix(in srgb, var(--illustrated-race-accent) 62%, transparent);
   opacity: 0.42;
 }
 
-:global(.special-npc-theme-anastasia .special-npc-tabs) {
+:global(.illustrated-theme-anastasia .illustrated-tabs) {
   border-top-color: rgba(10, 45, 78, 0.3);
   background: linear-gradient(180deg, rgba(228, 237, 242, 0.94), rgba(190, 210, 221, 0.96));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
 }
 
-:global(.special-npc-theme-anastasia .special-npc-tab-button),
-:global(.special-npc-theme-anastasia .special-npc-nav-save-button) {
+:global(.illustrated-theme-anastasia .illustrated-tab-button),
+:global(.illustrated-theme-anastasia .illustrated-nav-save-button) {
   color: #315873;
   font-weight: 700;
   text-shadow: none;
 }
 
-:global(.special-npc-theme-anastasia .special-npc-tab-button:hover:not(:disabled)),
-:global(.special-npc-theme-anastasia .special-npc-tab-button.active:not(:disabled)),
-:global(.special-npc-theme-anastasia .special-npc-nav-save-button:hover:not(:disabled)) {
+:global(.illustrated-theme-anastasia .illustrated-tab-button:hover:not(:disabled)),
+:global(.illustrated-theme-anastasia .illustrated-tab-button.active:not(:disabled)),
+:global(.illustrated-theme-anastasia .illustrated-nav-save-button:hover:not(:disabled)) {
   color: #0a2d4e;
 }
 
-:global(.special-npc-theme-anastasia .special-npc-tab-button.active::after),
-:global(.special-npc-theme-anastasia .special-npc-nav-save-button::after) {
+:global(.illustrated-theme-anastasia .illustrated-tab-button.active::after),
+:global(.illustrated-theme-anastasia .illustrated-nav-save-button::after) {
   background: #bd3b4b;
   opacity: 0.82;
 }
 
 @media (max-width: 640px) {
-  .special-npc-tabs {
+  .illustrated-tabs {
     align-self: stretch;
     justify-content: flex-start;
     width: 100%;
@@ -224,7 +224,7 @@ const detailTabs = computed(() => props.tabs.filter(tab => tab.key !== 'overview
     min-height: 48px;
   }
 
-  .special-npc-tab-scroll {
+  .illustrated-tab-scroll {
     display: flex;
     flex: 1 1 auto;
     justify-content: flex-start;
@@ -234,33 +234,33 @@ const detailTabs = computed(() => props.tabs.filter(tab => tab.key !== 'overview
     mask-image: linear-gradient(90deg, transparent, #000 8px, #000 calc(100% - 8px), transparent);
   }
 
-  .special-npc-tab-scroll .special-npc-tab-button {
+  .illustrated-tab-scroll .illustrated-tab-button {
     flex: 0 0 auto;
     width: auto;
     min-width: 58px;
     font-size: 15px;
   }
 
-  .special-npc-tab-button,
-  .special-npc-nav-save-button {
+  .illustrated-tab-button,
+  .illustrated-nav-save-button {
     min-height: 48px;
     padding: 0 10px;
   }
 
-  .special-npc-home-button,
-  .special-npc-nav-save-button {
+  .illustrated-home-button,
+  .illustrated-nav-save-button {
     z-index: 2;
     flex: 0 0 auto;
     min-width: 58px;
-    background: color-mix(in srgb, var(--special-npc-bg) 94%, transparent);
+    background: color-mix(in srgb, var(--illustrated-bg) 94%, transparent);
   }
 
-  .special-npc-home-button {
-    border-right: 1px solid rgba(var(--special-npc-race-accent-rgb), 0.16);
+  .illustrated-home-button {
+    border-right: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.16);
   }
 
-  .special-npc-nav-save-button {
-    border-left: 1px solid rgba(var(--special-npc-race-accent-rgb), 0.16);
+  .illustrated-nav-save-button {
+    border-left: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.16);
   }
 }
 </style>

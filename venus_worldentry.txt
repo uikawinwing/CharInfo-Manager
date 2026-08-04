@@ -1,5 +1,5 @@
 <%_
-const venusAppearKey = '$special_npc_01_venus_appear';
+const venusAppearKey = '$dx_venus_appear';
 const venusAppearRaw = getMessageVar(venusAppearKey, { defaults: null });
 if (venusAppearRaw === null || venusAppearRaw === undefined) {
   setMessageVar(venusAppearKey, 0, { dryRun: true });
@@ -7,7 +7,7 @@ if (venusAppearRaw === null || venusAppearRaw === undefined) {
 const venusAppear = Number(venusAppearRaw) === 1 ? 1 : 0;
 _%>
 ---
-[special_npc_01_venus]
+[dx_venus]
 <%_ if (venusAppear === 0) { _%>
   **IMPORTANT RULE**:
     仅当本轮剧情确实需要为维纳丝生成`<char_info>`时，LLM必须且只能输出占位符；若本轮无需输出她的面板，不得主动生成`<char_info>`和更新变量。
@@ -15,7 +15,7 @@ _%>
     `<char_info>`内不得添加姓名、属性、资源、技能、装备、法则、注释或任何其他字段。
     強制输出格式: |
       <char_info>
-      __char_info_ref: special_npc_01_venus
+      __dx_character_ref: dx_venus
       </char_info>
 
 <%_ } _%>

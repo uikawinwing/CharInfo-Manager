@@ -19,7 +19,7 @@ export interface CharacterData {
   image?: string;
   custom_racecolor?: string;
   custom_tiercolor?: string;
-  __char_info_ref?: string;
+  __dx_character_ref?: string;
   __char_info_image_urls?: string[];
   __char_info_image_source_groups?: string[][];
   __char_info_randomize_initial_image?: boolean;

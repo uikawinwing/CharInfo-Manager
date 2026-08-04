@@ -46,14 +46,33 @@ test('世界书角色库在独立页面提供搜索、筛选、启停与查看�
   assert.match(libraryPageSource, /openCharacterDetails/);
 });
 
-test('世界书角色库采用参考图的三段式桌面工具栏与四列紧凑卡片', () => {
-  assert.match(appSource, /class="dialog-header"\s*:class="\{ 'library-header': viewMode === 'library' \}"/);
+test('世界书角色库与当前聊天角色库使用同尺寸悬浮菜单和明确的资料源切换', () => {
+  assert.match(appSource, /class="manager-root"[\s\S]*?'library-detail-open'/);
+  assert.match(appSource, /class="character-source-switch"/);
+  assert.match(appSource, /aria-pressed="false"[^>]*>\s*当前聊天角色/u);
+  assert.match(appSource, /aria-pressed="true">世界书角色</);
+  assert.match(appSource, /props\.onOpenCurrentChatLibrary/);
+  assert.match(appSource, /\.manager-dialog\.library-dialog \{[\s\S]*?width: min\(390px,/);
+  assert.match(appSource, /\.manager-dialog\.library-dialog \{[\s\S]*?height: min\(680px,/);
+  assert.match(appSource, /\.library-page \{[\s\S]*?grid-template-columns: 1fr/);
+});
+
+test('世界书角色详情作为第二悬浮窗口打开，不遮蔽或停用角色菜单', () => {
+  assert.match(appSource, /:aria-hidden="detailCharacter && viewMode !== 'library'/);
+  assert.match(appSource, /:inert="detailCharacter && viewMode !== 'library'/);
+  assert.match(appSource, /:aria-modal="viewMode === 'library' \? 'false' : 'true'"/);
+  assert.match(appSource, /\.library-detail-open \.character-detail-layer \{[\s\S]*?background: transparent/);
+  assert.match(appSource, /\.library-detail-open \.character-detail-dialog \{[\s\S]*?pointer-events: auto/);
+  assert.match(appSource, /@click="openCharacterDetails\(character\)"/);
+});
+
+test('世界书角色库保留搜索、筛选、世界书选择和视图切换', () => {
   assert.match(appSource, /class="library-header-worldbook"/);
   assert.match(appSource, /class="library-search-field"/);
   assert.match(appSource, /class="character-library-control-row"/);
   assert.match(appSource, /找到 \{\{ visibleCharacterEntries\.length \}\} 个角色/);
   assert.match(appSource, /class="character-cover-silhouette"/);
-  assert.match(appSource, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.match(appSource, /characterLibraryLayout === 'cards'/);
 });
 
 test('管理器弹窗固定在手机可视视口，不混入页面滚动坐标', () => {

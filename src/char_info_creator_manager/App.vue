@@ -1,15 +1,28 @@
 <template>
-  <div class="manager-root" @keydown.esc="onEscape">
-    <button class="backdrop" type="button" aria-label="关闭管理器" @click="emit('close')"></button>
+  <div
+    class="manager-root"
+    :class="{
+      'library-mode': viewMode === 'library',
+      'library-detail-open': viewMode === 'library' && detailCharacter,
+    }"
+    @keydown.esc="onEscape"
+  >
+    <button
+      v-if="viewMode !== 'library'"
+      class="backdrop"
+      type="button"
+      aria-label="关闭管理器"
+      @click="emit('close')"
+    ></button>
 
     <main
       class="manager-dialog"
       :class="{ 'library-dialog': viewMode === 'library' }"
       role="dialog"
-      aria-modal="true"
+      :aria-modal="viewMode === 'library' ? 'false' : 'true'"
       aria-labelledby="manager-title"
-      :aria-hidden="detailCharacter ? 'true' : undefined"
-      :inert="detailCharacter ? true : undefined"
+      :aria-hidden="detailCharacter && viewMode !== 'library' ? 'true' : undefined"
+      :inert="detailCharacter && viewMode !== 'library' ? true : undefined"
     >
       <header class="dialog-header" :class="{ 'library-header': viewMode === 'library' }">
         <div class="header-title">
@@ -21,6 +34,13 @@
           <span class="phase-badge">
             {{ viewMode === 'library' ? worldbookCharacterEntries.length : `${activeStep}/${steps.length}` }}
           </span>
+        </div>
+
+        <div v-if="viewMode === 'library'" class="character-source-switch" role="group" aria-label="选择角色资料来源">
+          <button type="button" aria-pressed="false" @click="props.onOpenCurrentChatLibrary?.()">
+            当前聊天角色
+          </button>
+          <button type="button" class="active" aria-pressed="true">世界书角色</button>
         </div>
 
         <div v-if="viewMode === 'library'" class="library-header-worldbook">
@@ -756,7 +776,15 @@
                 </span>
               </button>
 
-              <div class="character-library-card-copy">
+              <div
+                class="character-library-card-copy"
+                role="button"
+                tabindex="0"
+                :aria-label="`查看 ${character.profile.characterName || character.entry.name}`"
+                @click="openCharacterDetails(character)"
+                @keydown.enter.prevent="openCharacterDetails(character)"
+                @keydown.space.prevent="openCharacterDetails(character)"
+              >
                 <strong>{{ character.profile.characterName || character.entry.name }}</strong>
                 <span class="character-library-card-meta">
                   <i>{{ character.race || '种族未知' }}</i>
@@ -803,7 +831,7 @@
       v-if="detailCharacter"
       class="character-detail-layer"
       role="dialog"
-      aria-modal="true"
+      :aria-modal="viewMode === 'library' ? 'false' : 'true'"
       aria-labelledby="character-detail-title"
       @click.self="closeCharacterDetails"
     >
@@ -976,7 +1004,13 @@ type CharacterLibraryLayout = 'compact' | 'cards';
 type StepId = 1 | 2 | 3 | 4 | 5;
 type ManagerView = 'editor' | 'library';
 
-const props = withDefaults(defineProps<{ initialView?: ManagerView }>(), { initialView: 'editor' });
+const props = withDefaults(
+  defineProps<{
+    initialView?: ManagerView;
+    onOpenCurrentChatLibrary?: () => void;
+  }>(),
+  { initialView: 'editor', onOpenCurrentChatLibrary: undefined },
+);
 const emit = defineEmits<{ close: [] }>();
 const viewMode = ref<ManagerView>(props.initialView);
 const steps: { id: StepId; shortLabel: string; title: string }[] = [
@@ -3107,6 +3141,13 @@ h2 {
   min-width: 0;
   flex-direction: column;
   gap: 5px;
+  cursor: pointer;
+}
+
+.character-library-card-copy:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+  border-radius: 5px;
 }
 
 .character-library-card-copy strong,
@@ -4445,6 +4486,213 @@ pre {
 
   .primary-button {
     width: 100%;
+  }
+}
+
+.manager-root.library-mode {
+  padding: 8px;
+  overflow: hidden;
+  background: transparent;
+}
+
+.manager-dialog.library-dialog {
+  width: min(390px, calc(100% - 16px));
+  height: min(680px, calc(100% - 16px));
+  max-height: none;
+  border-radius: 18px;
+  transition:
+    left 180ms ease,
+    transform 180ms ease;
+}
+
+.library-dialog .library-header {
+  display: flex;
+  min-height: 0;
+  padding: 13px 14px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.library-dialog .header-title {
+  order: 1;
+  flex: 1 1 auto;
+}
+
+.library-dialog .header-title h1 {
+  font-size: 20px;
+}
+
+.library-dialog .library-title-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.library-dialog .header-actions {
+  order: 1;
+  flex: 0 0 auto;
+}
+
+.library-dialog .manager-view-switch button:first-child {
+  display: none;
+}
+
+.library-dialog .manager-view-switch button {
+  min-width: 0;
+  min-height: 36px;
+  padding: 6px 9px;
+}
+
+.library-dialog .close-button,
+.library-dialog .library-refresh-button {
+  width: 38px;
+  height: 38px;
+}
+
+.character-source-switch {
+  display: grid;
+  order: 2;
+  width: 100%;
+  padding: 3px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  background: rgb(8 11 16 / 72%);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.character-source-switch button {
+  min-height: 34px;
+  padding: 6px 8px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.character-source-switch button:hover,
+.character-source-switch button.active {
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-color: rgb(119 214 199 / 34%);
+}
+
+.library-dialog .library-header-worldbook {
+  order: 3;
+  width: 100%;
+}
+
+.library-dialog .library-page {
+  display: grid;
+  min-height: 0;
+  padding: 12px;
+  grid-template-columns: 1fr;
+  overflow-y: auto;
+}
+
+.library-dialog .character-library-toolbar {
+  margin-bottom: 12px;
+  gap: 10px;
+}
+
+.library-dialog .library-search-field {
+  min-height: 42px;
+}
+
+.library-dialog .character-library-control-row {
+  display: flex;
+  align-items: stretch;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.library-dialog .character-library-filter-buttons {
+  padding: 5px;
+  flex-wrap: wrap;
+}
+
+.library-dialog .character-library-filter-buttons button {
+  min-height: 30px;
+  padding: 5px 9px;
+}
+
+.library-dialog .character-race-filter select {
+  flex: 1;
+}
+
+.library-dialog .character-library-view-options {
+  justify-content: space-between;
+}
+
+.library-dialog .character-library-summary {
+  justify-content: flex-start;
+}
+
+.library-dialog .character-library-grid {
+  grid-template-columns: 1fr;
+}
+
+.library-dialog .character-library-card {
+  min-height: 82px;
+  padding: 8px;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+}
+
+.library-dialog .character-cover-button {
+  width: 58px;
+  height: 64px;
+}
+
+.library-dialog .character-cover-silhouette {
+  width: 40px;
+  height: 49px;
+}
+
+.library-detail-open .manager-dialog.library-dialog {
+  position: absolute;
+  top: 50%;
+  left: max(12px, calc(50% - 810px));
+  transform: translateY(-50%);
+}
+
+.library-detail-open .character-detail-layer {
+  padding: 12px 12px 12px 422px;
+  overflow: hidden;
+  background: transparent;
+  backdrop-filter: none;
+  pointer-events: none;
+}
+
+.library-detail-open .character-detail-dialog {
+  width: min(1100px, 100%);
+  max-height: min(820px, calc(100% - 24px));
+  pointer-events: auto;
+}
+
+@media (max-width: 900px) {
+  .manager-root.library-detail-open {
+    overflow: auto;
+  }
+
+  .library-detail-open .manager-dialog.library-dialog {
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+  }
+
+  .library-detail-open .character-detail-layer {
+    padding: 8px;
+    background: rgb(3 5 8 / 82%);
+    backdrop-filter: blur(10px);
+    pointer-events: auto;
+  }
+
+  .library-detail-open .character-detail-dialog {
+    width: 100%;
+    max-height: calc(100% - 16px);
   }
 }
 </style>

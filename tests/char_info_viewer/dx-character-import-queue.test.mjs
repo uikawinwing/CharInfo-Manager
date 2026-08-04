@@ -1,21 +1,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { enqueueSpecialNpcImport } from '../../src/char_info_viewer/services/specialNpcImportQueue.ts';
+import { enqueueDxCharacterImport } from '../../src/char_info_viewer/services/dxCharacterImportQueue.ts';
 
-test('同一消息与 swipe 的特殊 NPC 导入会串行执行', async () => {
+test('同一消息与 swipe 的 DX 角色导入会串行执行', async () => {
   const order = [];
   let releaseFirst;
   const firstGate = new Promise(resolve => {
     releaseFirst = resolve;
   });
 
-  const first = enqueueSpecialNpcImport('chat-a\u00002\u00001', async () => {
+  const first = enqueueDxCharacterImport('chat-a\u00002\u00001', async () => {
     order.push('first:start');
     await firstGate;
     order.push('first:end');
   });
-  const second = enqueueSpecialNpcImport('chat-a\u00002\u00001', async () => {
+  const second = enqueueDxCharacterImport('chat-a\u00002\u00001', async () => {
     order.push('second:start');
   });
 
@@ -29,11 +29,11 @@ test('同一消息与 swipe 的特殊 NPC 导入会串行执行', async () => {
 
 test('前一个导入失败不会阻塞同键后续导入', async () => {
   const order = [];
-  const first = enqueueSpecialNpcImport('chat-b\u00003\u00000', async () => {
+  const first = enqueueDxCharacterImport('chat-b\u00003\u00000', async () => {
     order.push('first');
     throw new Error('expected failure');
   });
-  const second = enqueueSpecialNpcImport('chat-b\u00003\u00000', async () => {
+  const second = enqueueDxCharacterImport('chat-b\u00003\u00000', async () => {
     order.push('second');
   });
 

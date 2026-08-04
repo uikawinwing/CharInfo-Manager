@@ -28,7 +28,30 @@ test('主 CharInfo 运行脚本将世界书角色库入口放入当前角色菜�
   assert.match(runtimeSource, /setManagerOwnership\(null\)/u);
   assert.match(creatorManagerEntrySource, /'世界书角色库'/u);
   assert.doesNotMatch(creatorManagerEntrySource, /createCreatorManagerOverlay/u);
+  assert.match(runtimeRootSource, /当前聊天角色/u);
+  assert.match(runtimeRootSource, /世界书角色/u);
   assert.match(runtimeRootSource, /aria-label="打开世界书角色库"[\s\S]*?@click="props\.onOpenWorldbookLibrary"/u);
+});
+
+test('角色资料与角色菜单是独立窗口：选择角色和切换世界书不会关闭当前菜单', () => {
+  const openCharacter = runtimeSource.match(/const openLibraryCharacter = \(name: string\) => \{([\s\S]*?)\n\s{2}\};/u)?.[1] ?? '';
+  const openWorldbook = runtimeSource.match(/const openWorldbookLibrary = \(\) => \{([\s\S]*?)\n\s{2}\};/u)?.[1] ?? '';
+
+  assert.match(openCharacter, /library\.listOpen = true;/u);
+  assert.match(openCharacter, /library\.viewerOpen = true;/u);
+  assert.doesNotMatch(openCharacter, /library\.listOpen = false;/u);
+  assert.doesNotMatch(openWorldbook, /closeLibrary\(\);/u);
+  assert.match(openWorldbook, /closeLibraryList\(\);/u);
+  assert.match(
+    runtimeSource,
+    /createCreatorManagerOverlay\('library', \{[\s\S]*?onOpenCurrentChatLibrary: \(\) => \{[\s\S]*?worldbookManager\.close\(\);[\s\S]*?openLibraryList\(\);/u,
+  );
+  assert.match(runtimeRootSource, /@click="closeListWindow"/u);
+  assert.match(runtimeRootSource, /@click="closeViewerWindow"/u);
+  assert.match(runtimeRootSource, /onCloseLibraryList: \(\) => void;/u);
+  assert.match(runtimeRootSource, /onCloseLibraryViewer: \(\) => void;/u);
+  assert.match(runtimeRootSource, /class="char-info-library-list-dialog"[\s\S]*?'with-viewer'/u);
+  assert.match(runtimeRootSource, /class="char-info-library-overlay"[\s\S]*?'with-list'/u);
 });
 
 test('角色视觉编辑器通过独立全屏 iframe 打开，避免 ST 层级和滚动污染', () => {
@@ -56,7 +79,7 @@ test('角色视觉编辑器通过独立全屏 iframe 打开，避免 ST 层级�
 });
 
 test('世界书管理器打进主运行脚本，不依赖浏览器无法解析的裸 chunk 路径', () => {
-  assert.match(runtimeSource, /const worldbookManager = createCreatorManagerOverlay\('library'\)/u);
+  assert.match(runtimeSource, /const worldbookManager = createCreatorManagerOverlay\('library'(?:,\s*\{)?/u);
   assert.doesNotMatch(runtimeSource, /Promise<CreatorManagerOverlay>|\.then\(manager =>/u);
 });
 
@@ -77,6 +100,10 @@ test('当前聊天资料库和设置宿主明确使用动态视口尺寸，避�
 
 test('当前聊天资料库由悬浮入口打开角色列表，并完整显示角色立绘', () => {
   assert.match(runtimeRootSource, /class="char-info-library-floating-button"/u);
+  assert.doesNotMatch(
+    runtimeRootSource,
+    /v-if="state\.library\.characters\.length > 0 && !state\.library\.listOpen && !state\.library\.viewerOpen"/u,
+  );
   assert.match(runtimeRootSource, /state\.library\.unreadCharacterNames\.length/u);
   assert.match(runtimeRootSource, /class="char-info-library-list-dialog"/u);
   assert.match(
@@ -90,6 +117,10 @@ test('当前聊天资料库由悬浮入口打开角色列表，并完整显示�
   assert.match(
     runtimeRootSource,
     /\.char-info-library-list-dialog \{[\s\S]*?position: absolute;[\s\S]*?transform: translate\(-50%, -50%\);[\s\S]*?pointer-events: auto;/u,
+  );
+  assert.match(
+    runtimeRootSource,
+    /\.char-info-library-list-dialog \{[\s\S]*?width: min\(390px,[\s\S]*?height: min\(680px,/u,
   );
   assert.match(runtimeRootSource, /♡\s*\{\{ character\.affinity/u);
   assert.match(runtimeRootSource, /:entrance-quote-override="selectedCharacter\.innerThought"/u);
@@ -105,10 +136,10 @@ test('当前聊天资料库由悬浮入口打开角色列表，并完整显示�
     runtimeRootSource,
     /@media \(max-width: 720px\) \{[\s\S]*?\.char-info-library-viewer \{[\s\S]*?overflow-y: auto;/u,
   );
-  assert.match(runtimeRootSource, /\.char-info-library-viewer \.special-npc-shell \{[\s\S]*?height: 216\.4251cqw !important;/u);
+  assert.match(runtimeRootSource, /\.char-info-library-viewer \.illustrated-shell \{[\s\S]*?height: 216\.4251cqw !important;/u);
   assert.match(
     runtimeRootSource,
-    /\.char-info-library-viewer \.special-npc-portrait-image,[\s\S]*?\.char-info-library-viewer \.portrait-image \{[\s\S]*?object-fit: contain;/u,
+    /\.char-info-library-viewer \.illustrated-portrait-image,[\s\S]*?\.char-info-library-viewer \.portrait-image \{[\s\S]*?object-fit: contain;/u,
   );
   assert.match(
     viewerSource,
@@ -124,7 +155,10 @@ test('角色详情是在聊天上方可拖动的非模态窗口，不显示开�
     runtimeRootSource,
     /\.char-info-library-overlay \{[\s\S]*?position: absolute;[\s\S]*?width: min\(1240px,[\s\S]*?height: min\(892px,[\s\S]*?transform: translate\(-50%, -50%\);/u,
   );
-  assert.match(runtimeRootSource, /\.char-info-library-viewer \{[\s\S]*?overflow: hidden;[\s\S]*?padding: 12px;/u);
+  assert.match(
+    runtimeRootSource,
+    /\.char-info-library-viewer \{[\s\S]*?overflow-x: hidden;[\s\S]*?overflow-y: auto;[\s\S]*?padding: 12px;/u,
+  );
   assert.match(runtimeRootSource, /class="char-info-library-list-action"[\s\S]*?<svg/u);
   assert.match(runtimeRootSource, /class="char-info-library-icon-action char-info-library-close-action"/u);
   assert.doesNotMatch(runtimeRootSource, /CURRENT CHAT(?: ARCHIVE)?|资料与心里话均读取自最新消息变量/u);

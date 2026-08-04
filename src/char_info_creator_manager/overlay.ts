@@ -13,7 +13,14 @@ export type CreatorManagerOverlay = {
 
 export type CreatorManagerView = 'editor' | 'library';
 
-export function createCreatorManagerOverlay(initialView: CreatorManagerView): CreatorManagerOverlay {
+export type CreatorManagerOverlayOptions = {
+  onOpenCurrentChatLibrary?: () => void;
+};
+
+export function createCreatorManagerOverlay(
+  initialView: CreatorManagerView,
+  options: CreatorManagerOverlayOptions = {},
+): CreatorManagerOverlay {
   let mountedApp: VueApp<Element> | null = null;
   let $managerOverlay: JQuery<HTMLDivElement> | null = null;
   let $managerIframe: JQuery<HTMLIFrameElement> | null = null;
@@ -106,7 +113,11 @@ export function createCreatorManagerOverlay(initialView: CreatorManagerView): Cr
         mountPoint.id = 'char-info-creator-manager';
         iframeDocument.body.appendChild(mountPoint);
 
-        mountedApp = createApp(App, { initialView, onClose: close });
+        mountedApp = createApp(App, {
+          initialView,
+          onClose: close,
+          onOpenCurrentChatLibrary: options.onOpenCurrentChatLibrary,
+        });
         mountedApp.mount(mountPoint);
       });
 

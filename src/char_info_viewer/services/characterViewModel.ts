@@ -1,10 +1,10 @@
 import { characterStoryBookMap, type CharacterStoryBookLink } from '../characterStoryBookMap';
 import {
-  resolveSpecialNpcProfile,
-  resolveSpecialNpcReferenceProfile,
-  resolveSpecialPortraitProfile,
-  type SpecialNpcProfile,
-} from '../specialNpcProfiles';
+  resolveDxCharacterProfile,
+  resolveDxCharacterNameProfile,
+  resolveIllustratedPortraitProfile,
+  type CharacterPresentationProfile,
+} from '../dxCharacterRoster';
 import type { CharacterData } from '../types';
 import { getSmartArray, hasArrayContent, hasText, normalizeDisplayText } from './common';
 import { prioritizeImageSourceGroups } from './imageSourcePriority';
@@ -43,7 +43,7 @@ export type DivinityKingdom = {
   description: string;
 };
 
-export type CharacterLayoutKind = 'default' | 'special_npc';
+export type CharacterLayoutKind = 'default' | 'illustrated';
 
 export type CharacterViewModel = {
   nameText: string;
@@ -63,7 +63,7 @@ export type CharacterViewModel = {
   imageSourceGroups: string[][];
   randomizeInitialImage: boolean;
   layoutKind: CharacterLayoutKind;
-  specialNpcProfile: SpecialNpcProfile | null;
+  presentationProfile: CharacterPresentationProfile | null;
   resourceBoxes: ResourceBox[];
   skills: ItemObject[];
   equipments: ItemObject[];
@@ -299,7 +299,15 @@ export function itemEffectOrDescription(item: ItemObject): string {
 }
 
 export function itemTags(item: ItemObject): string[] {
-  return getSmartArray(item?.标签);
+  const tags = item?.标签;
+  if (!Array.isArray(tags)) {
+    const tag = tags && typeof tags === 'object' ? textFromUnknown(tags) : '';
+    return tag ? [tag] : getSmartArray(tags);
+  }
+
+  return tags
+    .map(tag => (tag && typeof tag === 'object' ? textFromUnknown(tag) : normalizeDisplayText(tag)))
+    .filter(Boolean);
 }
 
 export function itemCost(item: ItemObject): string {
@@ -372,28 +380,30 @@ function resolveConfiguredImageSourceGroups(data: CharacterData): string[][] {
   }, []);
 }
 
-function resolveSpecialNpcProfileForData(data: CharacterData, nameText: string): SpecialNpcProfile | null {
-  const reference = textFromUnknown(pickField(data, '__char_info_ref'));
-  const referenceProfile = resolveSpecialNpcReferenceProfile(reference, nameText);
-  if (referenceProfile) return referenceProfile;
+function resolveCharacterPresentationProfileForData(data: CharacterData, nameText: string): CharacterPresentationProfile | null {
+  const reference = textFromUnknown(pickField(data, '__dx_character_ref'));
+  const dxProfile = resolveDxCharacterProfile(reference, nameText);
+  if (dxProfile) return dxProfile;
+  const namedDxProfile = resolveDxCharacterNameProfile(nameText);
+  if (namedDxProfile) return namedDxProfile;
 
   const explicitPortraitUrl = textFromUnknown(
     pickField(data, '特殊立绘', '角色图片', '立绘', '图片', 'portrait', 'image'),
   );
-  return resolveSpecialPortraitProfile(nameText, explicitPortraitUrl) ?? resolveSpecialNpcProfile(nameText);
+  return resolveIllustratedPortraitProfile(nameText, explicitPortraitUrl);
 }
 
 function resolveCharacterImage(
   data: CharacterData,
-  specialNpcProfile: SpecialNpcProfile | null,
+  presentationProfile: CharacterPresentationProfile | null,
 ): CharacterImageResolution {
-  const isDxProfile = Boolean(textFromUnknown(pickField(data, '__char_info_ref')));
+  const isDxProfile = presentationProfile?.edition === 'dx';
   const configuredSourceGroups = isDxProfile ? [] : resolveConfiguredImageSourceGroups(data);
   const configuredUrls = configuredSourceGroups.map(sources => sources[0]);
 
-  if (specialNpcProfile) {
+  if (presentationProfile) {
     const source = textFromUnknown(pickField(data, '特殊立绘')) ? 'special_portrait' : 'map';
-    const urls = configuredUrls.length > 0 ? configuredUrls : [specialNpcProfile.imageUrl];
+    const urls = configuredUrls.length > 0 ? configuredUrls : [presentationProfile.imageUrl];
     return {
       url: urls[0],
       urls,
@@ -461,8 +471,8 @@ export function buildCharacterViewModel(
   const divinityLaws = mergeNamedObjectArrays(divinityRoot.法则, data.法则);
   const skills = asNamedObjectArray(data.技能);
   const equipments = asNamedObjectArray(data.装备);
-  const specialNpcProfile = resolveSpecialNpcProfileForData(data, nameText);
-  const image = resolveCharacterImage(data, specialNpcProfile);
+  const presentationProfile = resolveCharacterPresentationProfileForData(data, nameText);
+  const image = resolveCharacterImage(data, presentationProfile);
   const imageSourceGroups = prioritizeImageSourceGroups(image.sourceGroups, imageSourcePriority);
   const imageUrls = imageSourceGroups.map(sources => sources[0]);
   const imageUrl = imageUrls[0] ?? image.url;
@@ -509,8 +519,8 @@ export function buildCharacterViewModel(
     imageUrls,
     imageSourceGroups,
     randomizeInitialImage: image.randomizeInitialImage,
-    layoutKind: specialNpcProfile ? 'special_npc' : 'default',
-    specialNpcProfile,
+    layoutKind: presentationProfile ? 'illustrated' : 'default',
+    presentationProfile,
     resourceBoxes,
     skills,
     equipments,

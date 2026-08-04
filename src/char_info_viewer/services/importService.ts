@@ -281,7 +281,7 @@ export async function importToMvuVariables(data: CharacterData, targetScope: Mes
   await Mvu.replaceMvuData(currentVars, targetScope);
 }
 
-export function mergeSpecialNpcIntoMvuData(
+export function mergeDxCharacterIntoMvuData(
   data: CharacterData,
   appearVariableName: string,
   characterName: string,

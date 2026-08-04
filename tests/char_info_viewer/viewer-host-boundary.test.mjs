@@ -6,11 +6,11 @@ const repoRoot = new URL('../../', import.meta.url);
 const appSource = await readFile(new URL('src/char_info_viewer/App.vue', repoRoot), 'utf8');
 const runtimeEntrySource = await readFile(new URL('src/char_info_viewer_runtime/index.ts', repoRoot), 'utf8');
 const specialSheetSource = await readFile(
-  new URL('src/char_info_viewer/components/specialNpc/SpecialNpcCharacterSheet.vue', repoRoot),
+  new URL('src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue', repoRoot),
   'utf8',
 );
 const divinityPanelSource = await readFile(
-  new URL('src/char_info_viewer/components/specialNpc/SpecialNpcDivinityPanel.vue', repoRoot),
+  new URL('src/char_info_viewer/components/illustrated/IllustratedDivinityPanel.vue', repoRoot),
   'utf8',
 );
 const runtimeSource = await readFile(new URL('src/char_info_viewer_runtime/runtime.ts', repoRoot), 'utf8');

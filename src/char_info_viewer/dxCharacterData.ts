@@ -1,14 +1,19 @@
 import { parseCharacterYaml } from './services/yamlParser';
 import type { CharacterData } from './types';
+import { findDxCharacterById } from './dxCharacterRoster';
 
-const specialNpcRegistryEntryName = 'char_info_special_profiles';
-const specialNpcReferencePattern = /^__char_info_ref\s*:\s*([a-z0-9][a-z0-9_-]*)\s*$/i;
+const dxCharacterRegistryEntryName = 'char_info_dx_characters';
+const dxCharacterReferencePattern = /^__dx_character_ref\s*:\s*(dx_[a-z0-9][a-z0-9_-]*)\s*$/i;
 const charInfoWrapperPattern = /^<char_info>\s*([\s\S]*?)\s*<\/char_info>$/i;
 const charInfoBlockPattern = /<char_info\s*>[\s\S]*?<\/char_info\s*>/gi;
 
-export type SpecialNpcReference = { kind: 'not_reference' } | { kind: 'reference'; reference: string };
+export type DxCharacterReference = { kind: 'not_reference' } | { kind: 'reference'; reference: string };
 
-export type SpecialNpcCharacterReferenceResolution = {
+/**
+ * 仅用于带 `__dx_character_ref` 的 DX 资料。
+ * `data` 是供查看与手动导入使用的完整资料；`injectData` 只用于首次出现时的后台精简注入。
+ */
+export type DxCharacterReferenceResolution = {
   reference: string;
   data: CharacterData;
   injectData: CharacterData;
@@ -29,55 +34,77 @@ type RegistryCache = Map<string, RegistryCacheEntry>;
 
 type SharedRegistryCacheWindow = Window &
   typeof globalThis & {
-    __CHAR_INFO_SPECIAL_NPC_REGISTRY_CACHE__?: RegistryCache;
+    __CHAR_INFO_DX_CHARACTER_REGISTRY_CACHE__?: RegistryCache;
   };
 
-const sharedRegistryCacheKey = '__CHAR_INFO_SPECIAL_NPC_REGISTRY_CACHE__';
+const sharedRegistryCacheKey = '__CHAR_INFO_DX_CHARACTER_REGISTRY_CACHE__';
 const settledRegistryCacheLifetimeMs = 5000;
 const localRegistryCache: RegistryCache = new Map();
 
-export function parseSpecialNpcCharacterReference(source: string): SpecialNpcReference {
+export function parseDxCharacterReference(source: string): DxCharacterReference {
   const trimmedSource = source.trim();
   const wrappedMatch = trimmedSource.match(charInfoWrapperPattern);
   const referenceSource = wrappedMatch ? wrappedMatch[1].trim() : trimmedSource;
-  const match = referenceSource.match(specialNpcReferencePattern);
+  const match = referenceSource.match(dxCharacterReferencePattern);
   return match ? { kind: 'reference', reference: match[1] } : { kind: 'not_reference' };
 }
 
-export function messageContainsSpecialNpcCharacterReference(message: string, expectedReference: string): boolean {
+export function messageContainsDxCharacterReference(message: string, expectedReference: string): boolean {
   charInfoBlockPattern.lastIndex = 0;
   for (const match of message.matchAll(charInfoBlockPattern)) {
-    const parsed = parseSpecialNpcCharacterReference(match[0]);
+    const parsed = parseDxCharacterReference(match[0]);
     if (parsed.kind === 'reference' && parsed.reference === expectedReference) return true;
   }
   return false;
 }
 
-export async function loadSpecialNpcCharacterReference(
+export async function loadDxCharacterReference(
   reference: string,
-): Promise<SpecialNpcCharacterReferenceResolution> {
-  const registry = await findSpecialNpcRegistry();
-  const npcBlock = findSpecialNpcBlock(registry.content, reference);
+): Promise<DxCharacterReferenceResolution> {
+  const rosterEntry = findDxCharacterById(reference);
+  if (!rosterEntry) {
+    throw new Error(`未知 DX 角色引用 ${reference}。`);
+  }
+  if (!rosterEntry.hasRegistryData) {
+    throw new Error(`DX 角色 ${reference} 尚未配置注入资料。`);
+  }
+
+  const registry = await findDxCharacterRegistry();
+  const npcBlock = findDxCharacterBlock(registry.content, reference);
   const appearVariableName = readAttribute(npcBlock.attributes, 'appear_variable');
   if (!appearVariableName) {
     throw new Error(`专属资料 ${reference} 缺少 appear_variable。`);
   }
+  if (appearVariableName !== rosterEntry.appearVariableName) {
+    throw new Error(
+      `DX 角色 ${reference} 的 appear_variable 不匹配：应为 ${rosterEntry.appearVariableName}，实际为 ${appearVariableName}。`,
+    );
+  }
 
   const injectData = parseRegistryYaml(reference, 'inject_var', readTagContent(npcBlock.content, 'inject_var', true)!);
+  assertRosterName(reference, 'inject_var', injectData, rosterEntry.name);
   const displaySource = readTagContent(npcBlock.content, 'display_only', false);
   const displayData = displaySource
     ? { ...injectData, ...parseRegistryYaml(reference, 'display_only', displaySource) }
     : injectData;
+  assertRosterName(reference, 'display_only 合并后', displayData, rosterEntry.name);
 
   return {
     reference,
-    data: { ...displayData, __char_info_ref: reference },
+    data: { ...displayData, __dx_character_ref: reference },
     injectData,
     appearVariableName,
   };
 }
 
-async function findSpecialNpcRegistry(): Promise<RegistryEntryLocation> {
+function assertRosterName(reference: string, source: string, data: CharacterData, expectedName: string): void {
+  if (data.姓名 === expectedName) return;
+  throw new Error(
+    `DX 角色 ${reference} 的 ${source} 姓名不匹配：应为 ${expectedName}，实际为 ${String(data.姓名 ?? '')}。`,
+  );
+}
+
+async function findDxCharacterRegistry(): Promise<RegistryEntryLocation> {
   const worldbookNames = getActiveWorldbookNames();
   const cacheKey = [...worldbookNames].sort().join('\u0000');
   const cache = getSharedRegistryCache();
@@ -89,7 +116,7 @@ async function findSpecialNpcRegistry(): Promise<RegistryEntryLocation> {
     promise: Promise.resolve(null as unknown as RegistryEntryLocation),
     expiresAt: Number.POSITIVE_INFINITY,
   };
-  cacheEntry.promise = readSpecialNpcRegistry(worldbookNames)
+  cacheEntry.promise = readDxCharacterRegistry(worldbookNames)
     .then(registry => {
       cacheEntry.expiresAt = Date.now() + settledRegistryCacheLifetimeMs;
       return registry;
@@ -102,14 +129,14 @@ async function findSpecialNpcRegistry(): Promise<RegistryEntryLocation> {
   return cacheEntry.promise;
 }
 
-async function readSpecialNpcRegistry(worldbookNames: string[]): Promise<RegistryEntryLocation> {
+async function readDxCharacterRegistry(worldbookNames: string[]): Promise<RegistryEntryLocation> {
   const matches = (
     await Promise.all(
       worldbookNames.map(async worldbookName => {
         try {
           const entries = await getWorldbook(worldbookName);
           return entries
-            .filter(entry => entry.name === specialNpcRegistryEntryName)
+            .filter(entry => entry.name === dxCharacterRegistryEntryName)
             .map(entry => ({ worldbookName, content: entry.content }));
         } catch (error) {
           console.warn(`[CharInfo Viewer] Failed to read worldbook ${worldbookName}:`, error);
@@ -120,10 +147,10 @@ async function readSpecialNpcRegistry(worldbookNames: string[]): Promise<Registr
   ).flat();
 
   if (matches.length === 0) {
-    throw new Error(`未找到禁用资料库条目 ${specialNpcRegistryEntryName}。`);
+    throw new Error(`未找到禁用资料库条目 ${dxCharacterRegistryEntryName}。`);
   }
   if (matches.length > 1) {
-    throw new Error(`找到 ${matches.length} 个同名资料库条目 ${specialNpcRegistryEntryName}，请只保留一个。`);
+    throw new Error(`找到 ${matches.length} 个同名资料库条目 ${dxCharacterRegistryEntryName}，请只保留一个。`);
   }
 
   return matches[0];
@@ -153,13 +180,13 @@ function getActiveWorldbookNames(): string[] {
   return [...new Set(names)];
 }
 
-function findSpecialNpcBlock(content: string, reference: string): { attributes: string; content: string } {
-  const registryRoot = /<special_npc_registry\b[^>]*>/i;
+function findDxCharacterBlock(content: string, reference: string): { attributes: string; content: string } {
+  const registryRoot = /<dx_character_registry\b[^>]*>/i;
   if (!registryRoot.test(content)) {
-    throw new Error(`资料库 ${specialNpcRegistryEntryName} 缺少 <special_npc_registry> 根标签。`);
+    throw new Error(`资料库 ${dxCharacterRegistryEntryName} 缺少 <dx_character_registry> 根标签。`);
   }
 
-  const pattern = /<special_npc\b([^>]*)>([\s\S]*?)<\/special_npc>/gi;
+  const pattern = /<dx_character\b([^>]*)>([\s\S]*?)<\/dx_character>/gi;
   const matches = [...content.matchAll(pattern)].filter(match => readAttribute(match[1], 'id') === reference);
   if (matches.length === 0) {
     throw new Error(`资料库中未找到 ${reference}。`);

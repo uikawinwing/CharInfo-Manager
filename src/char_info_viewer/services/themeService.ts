@@ -270,7 +270,7 @@ export function resolveCharacterVisualConfig(
   data: CharacterData,
   chatVariables: Record<string, unknown>,
 ): CharacterData {
-  if (typeof data.__char_info_ref === 'string' && data.__char_info_ref.trim()) return data;
+  if (typeof data.__dx_character_ref === 'string' && data.__dx_character_ref.trim()) return data;
 
   const rawImage = typeof data.角色图片 === 'string' ? data.角色图片.trim() : '';
   const placeholder = rawImage.match(/^\[\[([a-z0-9][a-z0-9_-]*)\]\]$/i);
@@ -287,7 +287,7 @@ export async function resolveCharacterVisualConfigWithExtensions(
   data: CharacterData,
   chatVariables: Record<string, unknown>,
 ): Promise<CharacterData> {
-  if (typeof data.__char_info_ref === 'string' && data.__char_info_ref.trim()) return data;
+  if (typeof data.__dx_character_ref === 'string' && data.__dx_character_ref.trim()) return data;
 
   const rawImage = typeof data.角色图片 === 'string' ? data.角色图片.trim() : '';
   const placeholder = rawImage.match(/^\[\[([a-z0-9][a-z0-9_-]*)\]\]$/i);

@@ -1,29 +1,29 @@
 <template>
-  <SpecialNpcDefaultDivinityPanel v-if="variant === 'default'" :vm="vm" />
+  <IllustratedDefaultDivinityPanel v-if="variant === 'default'" :vm="vm" />
 
   <section
     v-else
-    class="special-npc-divinity-stage"
+    class="illustrated-divinity-stage"
     :class="{ 'is-open': curtainOpen, 'show-skill-popup': skillPopupOpen }"
     :style="stageStyle"
   >
-    <div class="special-npc-divinity-frame" aria-hidden="true"></div>
+    <div class="illustrated-divinity-frame" aria-hidden="true"></div>
 
-    <div class="special-npc-divinity-curtain" aria-hidden="true">
+    <div class="illustrated-divinity-curtain" aria-hidden="true">
       <span class="curtain-panel left"></span>
       <span class="curtain-panel right"></span>
       <span class="curtain-valance"></span>
     </div>
 
-    <div class="special-npc-divinity-title">
-      <span class="special-npc-divinity-foreign">Le Théâtre des Rêves</span>
+    <div class="illustrated-divinity-title">
+      <span class="illustrated-divinity-foreign">Le Théâtre des Rêves</span>
       <h3>{{ title || '煌海梦幻大剧场' }}</h3>
-      <span class="special-npc-divinity-title-ornament" aria-hidden="true"></span>
+      <span class="illustrated-divinity-title-ornament" aria-hidden="true"></span>
     </div>
 
     <button
       v-if="!curtainOpen"
-      class="special-npc-divinity-open-button"
+      class="illustrated-divinity-open-button"
       type="button"
       aria-label="打开煌海梦幻大剧场"
       @click="openCurtain"
@@ -33,7 +33,7 @@
 
     <button
       v-else
-      class="special-npc-divinity-spell-quote"
+      class="illustrated-divinity-spell-quote"
       type="button"
       :aria-controls="contentId"
       :aria-expanded="skillPopupOpen"
@@ -44,14 +44,14 @@
       <span class="spell-quote-icon" aria-hidden="true">⌄</span>
     </button>
 
-    <div :id="contentId" class="special-npc-divinity-content" :aria-hidden="!skillPopupOpen">
+    <div :id="contentId" class="illustrated-divinity-content" :aria-hidden="!skillPopupOpen">
       <article
         v-for="(section, index) in sections"
         :key="`${section.kind}-${section.title}-${index}`"
         class="stage-skill"
       >
         <div class="stage-skill-header">
-          <span class="special-npc-divinity-keyword">{{ section.kind }}</span>
+          <span class="illustrated-divinity-keyword">{{ section.kind }}</span>
           <div class="stage-skill-title-group">
             <span class="stage-skill-type">{{ section.typeLabel }}</span>
             <strong class="stage-skill-title">{{ section.title }}</strong>
@@ -67,12 +67,12 @@
 import { computed, ref, useId, watch } from 'vue';
 
 import type { CharacterViewModel } from '../../services/characterViewModel';
-import type { SpecialNpcProfile } from '../../specialNpcProfiles';
+import type { CharacterPresentationProfile } from '../../dxCharacterRoster';
 import { buildDivinitySections } from './divinitySections';
-import SpecialNpcDefaultDivinityPanel from './SpecialNpcDefaultDivinityPanel.vue';
+import IllustratedDefaultDivinityPanel from './IllustratedDefaultDivinityPanel.vue';
 import { venusNameFrameCssVars } from './venusAssets';
 
-const props = defineProps<{ vm: CharacterViewModel; profile: SpecialNpcProfile | null }>();
+const props = defineProps<{ vm: CharacterViewModel; profile: CharacterPresentationProfile | null }>();
 
 const contentId = useId();
 const curtainOpen = ref(false);
@@ -102,7 +102,7 @@ watch(
 </script>
 
 <style scoped>
-.special-npc-divinity-stage {
+.illustrated-divinity-stage {
   --stage-gold: #f6d982;
   --stage-gold-rgb: 246, 217, 130;
   --stage-blue: #0a2853;
@@ -134,7 +134,7 @@ watch(
   isolation: isolate;
 }
 
-.special-npc-divinity-frame {
+.illustrated-divinity-frame {
   position: absolute;
   inset: clamp(22px, 6cqw, 34px) clamp(28px, 8cqw, 52px);
   z-index: 4;
@@ -145,8 +145,8 @@ watch(
   transition: opacity 0.42s ease;
 }
 
-.special-npc-divinity-frame::before,
-.special-npc-divinity-frame::after {
+.illustrated-divinity-frame::before,
+.illustrated-divinity-frame::after {
   content: '';
   position: absolute;
   top: 0;
@@ -157,17 +157,17 @@ watch(
     contrast(94%) drop-shadow(0 0 8px rgba(var(--stage-gold-rgb), 0.22));
 }
 
-.special-npc-divinity-frame::before {
+.illustrated-divinity-frame::before {
   left: 0;
   transform: translateY(-50%);
 }
 
-.special-npc-divinity-frame::after {
+.illustrated-divinity-frame::after {
   right: 0;
   transform: translateY(-50%) scaleX(-1);
 }
 
-.special-npc-divinity-curtain {
+.illustrated-divinity-curtain {
   position: absolute;
   inset: 0;
   z-index: 2;
@@ -239,7 +239,7 @@ watch(
     opacity 0.8s ease;
 }
 
-.special-npc-divinity-title {
+.illustrated-divinity-title {
   position: absolute;
   top: 50%;
   right: clamp(34px, 9cqw, 64px);
@@ -256,7 +256,7 @@ watch(
     filter 0.7s ease;
 }
 
-.special-npc-divinity-foreign {
+.illustrated-divinity-foreign {
   color: rgba(255, 255, 246, 0.94);
   font-family: Cinzel, Georgia, serif;
   font-size: clamp(11px, 2.7cqw, 14px);
@@ -268,7 +268,7 @@ watch(
     0 2px 8px rgba(0, 0, 0, 0.7);
 }
 
-.special-npc-divinity-title h3 {
+.illustrated-divinity-title h3 {
   margin: 0;
   color: #fffdf5;
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
@@ -281,7 +281,7 @@ watch(
     0 3px 12px rgba(0, 0, 0, 0.82);
 }
 
-.special-npc-divinity-title-ornament {
+.illustrated-divinity-title-ornament {
   width: min(74%, 360px);
   height: clamp(22px, 5cqw, 32px);
   background: var(--stage-frame-url) center / contain no-repeat;
@@ -290,8 +290,8 @@ watch(
     contrast(94%) drop-shadow(0 0 7px rgba(var(--stage-gold-rgb), 0.22));
 }
 
-.special-npc-divinity-open-button,
-.special-npc-divinity-spell-quote {
+.illustrated-divinity-open-button,
+.illustrated-divinity-spell-quote {
   position: absolute;
   z-index: 6;
   border: none;
@@ -305,14 +305,14 @@ watch(
     0 2px 8px rgba(0, 0, 0, 0.72);
 }
 
-.special-npc-divinity-open-button {
+.illustrated-divinity-open-button {
   right: 0;
   bottom: clamp(72px, 18cqw, 108px);
   left: 0;
   letter-spacing: 0.18em;
 }
 
-.special-npc-divinity-spell-quote {
+.illustrated-divinity-spell-quote {
   right: clamp(82px, 20cqw, 230px);
   bottom: clamp(26px, 7cqw, 42px);
   left: clamp(82px, 20cqw, 230px);
@@ -347,7 +347,7 @@ watch(
     box-shadow 0.2s ease;
 }
 
-.special-npc-divinity-spell-quote:hover {
+.illustrated-divinity-spell-quote:hover {
   border-color: rgba(var(--stage-gold-rgb), 0.76);
   box-shadow:
     0 0 0 1px rgba(255, 255, 246, 0.06),
@@ -376,7 +376,7 @@ watch(
   transition: transform 0.2s ease;
 }
 
-.special-npc-divinity-content {
+.illustrated-divinity-content {
   position: absolute;
   top: clamp(96px, 21cqw, 128px);
   right: clamp(82px, 20cqw, 230px);
@@ -418,7 +418,7 @@ watch(
   display: contents;
 }
 
-.special-npc-divinity-keyword {
+.illustrated-divinity-keyword {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -464,67 +464,67 @@ watch(
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
-.special-npc-divinity-stage.is-open .curtain-panel.left {
+.illustrated-divinity-stage.is-open .curtain-panel.left {
   width: 18%;
   clip-path: polygon(0 0, 100% 0, 68% 100%, 0 100%);
   filter: brightness(0.78);
   transform: matrix(1, 0, -0.14, 1, 0, 0);
 }
 
-.special-npc-divinity-stage.is-open .curtain-panel.right {
+.illustrated-divinity-stage.is-open .curtain-panel.right {
   width: 18%;
   clip-path: polygon(0 0, 100% 0, 100% 100%, 32% 100%);
   filter: brightness(0.78);
   transform: matrix(1, 0, 0.14, 1, 0, 0);
 }
 
-.special-npc-divinity-stage.is-open .curtain-valance {
+.illustrated-divinity-stage.is-open .curtain-valance {
   height: 5%;
   opacity: 0.72;
 }
 
-.special-npc-divinity-stage.is-open .special-npc-divinity-title,
-.special-npc-divinity-stage.is-open .special-npc-divinity-frame {
+.illustrated-divinity-stage.is-open .illustrated-divinity-title,
+.illustrated-divinity-stage.is-open .illustrated-divinity-frame {
   opacity: 0;
   pointer-events: none;
 }
 
-.special-npc-divinity-stage.is-open .special-npc-divinity-title {
+.illustrated-divinity-stage.is-open .illustrated-divinity-title {
   transform: translateY(-68%) scale(0.96);
 }
 
-.special-npc-divinity-stage.is-open .special-npc-divinity-spell-quote {
+.illustrated-divinity-stage.is-open .illustrated-divinity-spell-quote {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
 }
 
-.special-npc-divinity-stage.show-skill-popup .special-npc-divinity-content {
+.illustrated-divinity-stage.show-skill-popup .illustrated-divinity-content {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
 }
 
-.special-npc-divinity-stage.show-skill-popup .special-npc-divinity-spell-quote {
+.illustrated-divinity-stage.show-skill-popup .illustrated-divinity-spell-quote {
   opacity: 0.84;
 }
 
-.special-npc-divinity-stage.show-skill-popup .spell-quote-icon {
+.illustrated-divinity-stage.show-skill-popup .spell-quote-icon {
   transform: rotate(180deg);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .special-npc-divinity-title,
+  .illustrated-divinity-title,
   .curtain-panel,
   .curtain-valance,
-  .special-npc-divinity-spell-quote,
-  .special-npc-divinity-content {
+  .illustrated-divinity-spell-quote,
+  .illustrated-divinity-content {
     transition: none;
   }
 }
 
 @media (max-width: 640px) {
-  .special-npc-divinity-stage {
+  .illustrated-divinity-stage {
     width: 100%;
     aspect-ratio: 0.86 / 1;
   }
@@ -539,8 +539,8 @@ watch(
     grid-column: auto;
   }
 
-  .special-npc-divinity-spell-quote,
-  .special-npc-divinity-content {
+  .illustrated-divinity-spell-quote,
+  .illustrated-divinity-content {
     right: clamp(34px, 10cqw, 48px);
     left: clamp(34px, 10cqw, 48px);
   }

@@ -65,7 +65,12 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     settings: readRuntimeSettings(getVariables({ type: 'script' })),
     settingsView: null,
   });
-  const worldbookManager = createCreatorManagerOverlay('library');
+  const worldbookManager = createCreatorManagerOverlay('library', {
+    onOpenCurrentChatLibrary: () => {
+      worldbookManager.close();
+      openLibraryList();
+    },
+  });
   const mountedMessages = new Map<number, MountedMessage>();
   const activeFloorIds = new Set<number>();
   const dirtyMessageIds = new Set<number>();
@@ -99,6 +104,16 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   const closeLibrary = () => {
     if (!state.library) return;
     state.library.listOpen = false;
+    state.library.viewerOpen = false;
+  };
+
+  const closeLibraryList = () => {
+    if (!state.library) return;
+    state.library.listOpen = false;
+  };
+
+  const closeLibraryViewer = () => {
+    if (!state.library) return;
     state.library.viewerOpen = false;
   };
 
@@ -179,7 +194,6 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     closeWorldbookManager();
     closeSettings();
     if (!state.library) return;
-    state.library.viewerOpen = false;
     state.library.listOpen = true;
     void refreshLibrary();
   };
@@ -188,7 +202,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     const library = state.library;
     if (!library?.characters.some(character => character.name === name)) return;
     library.unreadCharacterNames = library.unreadCharacterNames.filter(characterName => characterName !== name);
-    library.listOpen = false;
+    library.listOpen = true;
     library.viewerOpen = true;
   };
 
@@ -256,7 +270,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
   const openWorldbookLibrary = () => {
     if (!started) return;
-    closeLibrary();
+    closeLibraryList();
     closeSettings();
     try {
       worldbookManager.open();
@@ -527,7 +541,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       destroyTeleportedStyle = teleportStyle().destroy;
       app = createApp(RuntimeRoot, {
         state,
-        onCloseLibrary: closeLibrary,
+        onCloseLibraryList: closeLibraryList,
+        onCloseLibraryViewer: closeLibraryViewer,
         onRefreshLibrary: () => void refreshLibrary(),
         onOpenLibraryList: openLibraryList,
         onOpenLibraryCharacter: openLibraryCharacter,

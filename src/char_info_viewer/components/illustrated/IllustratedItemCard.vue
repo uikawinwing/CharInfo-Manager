@@ -1,30 +1,30 @@
 <template>
-  <article class="special-npc-list-item" :class="qualityClass(item)">
-    <div class="special-npc-list-item-header">
+  <article class="illustrated-list-item" :class="qualityClass(item)">
+    <div class="illustrated-list-item-header">
       <h3>{{ itemName(item) }}</h3>
-      <span v-if="subtitle" class="special-npc-list-item-type">{{ subtitle }}</span>
+      <span v-if="subtitle" class="illustrated-list-item-type">{{ subtitle }}</span>
     </div>
 
-    <div v-if="tags.length > 0" class="special-npc-tags">
-      <span v-for="tag in tags" :key="tag" class="special-npc-tag">{{ tag }}</span>
+    <div v-if="tags.length > 0" class="illustrated-tags">
+      <span v-for="tag in tags" :key="tag" class="illustrated-tag">{{ tag }}</span>
     </div>
 
-    <p v-if="cost" class="special-npc-line"><span>消耗</span>{{ cost }}</p>
+    <p v-if="cost" class="illustrated-line"><span>消耗</span>{{ cost }}</p>
 
-    <ul v-if="effects.length > 0" class="special-npc-effect-list">
-      <li v-for="entry in effects" :key="`${entry.name}-${entry.content}`" class="special-npc-effect-item">
-        <span v-if="!entry.fallback" class="special-npc-effect-name">{{ entry.name }}</span>
-        <span class="special-npc-effect-text">{{ entry.content }}</span>
+    <ul v-if="effects.length > 0" class="illustrated-effect-list">
+      <li v-for="entry in effects" :key="`${entry.name}-${entry.content}`" class="illustrated-effect-item">
+        <span v-if="!entry.fallback" class="illustrated-effect-name">{{ entry.name }}</span>
+        <span class="illustrated-effect-text">{{ entry.content }}</span>
       </li>
     </ul>
 
-    <div v-if="statusLines.length > 0" class="special-npc-status-lines">
-      <p v-for="line in statusLines" :key="line.label" class="special-npc-line">
+    <div v-if="statusLines.length > 0" class="illustrated-status-lines">
+      <p v-for="line in statusLines" :key="line.label" class="illustrated-line">
         <span>{{ line.label }}</span>{{ line.value }}
       </p>
     </div>
 
-    <p v-if="description" class="special-npc-description">{{ description }}</p>
+    <p v-if="description" class="illustrated-description">{{ description }}</p>
   </article>
 </template>
 
@@ -83,7 +83,7 @@ const statusLines = computed(() => {
 </script>
 
 <style scoped>
-.special-npc-list-item {
+.illustrated-list-item {
   position: relative;
   margin-bottom: 24px;
   padding: 24px 32px;
@@ -93,30 +93,30 @@ const statusLines = computed(() => {
   box-shadow:
     inset 0 0 40px rgba(0, 0, 0, 0.8),
     0 10px 20px rgba(0, 0, 0, 0.5);
-  --item-color: var(--special-npc-race-accent);
+  --item-color: var(--illustrated-race-accent);
 }
 
-.special-npc-list-item.quality-mythic {
+.illustrated-list-item.quality-mythic {
   --item-color: #f21455;
 }
 
-.special-npc-list-item.quality-legendary {
+.illustrated-list-item.quality-legendary {
   --item-color: #d4af37;
 }
 
-.special-npc-list-item.quality-epic {
+.illustrated-list-item.quality-epic {
   --item-color: #cf95ff;
 }
 
-.special-npc-list-item.quality-rare {
+.illustrated-list-item.quality-rare {
   --item-color: #62bbff;
 }
 
-.special-npc-list-item.quality-uncommon {
+.illustrated-list-item.quality-uncommon {
   --item-color: #7be495;
 }
 
-.special-npc-list-item-header {
+.illustrated-list-item-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -126,7 +126,7 @@ const statusLines = computed(() => {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.special-npc-list-item h3 {
+.illustrated-list-item h3 {
   display: flex;
   align-items: center;
   margin: 0;
@@ -136,7 +136,7 @@ const statusLines = computed(() => {
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
-.special-npc-list-item h3::before {
+.illustrated-list-item h3::before {
   content: '✦';
   margin-right: 12px;
   color: var(--item-color);
@@ -145,7 +145,7 @@ const statusLines = computed(() => {
   text-shadow: 0 0 12px var(--item-color);
 }
 
-.special-npc-list-item-type {
+.illustrated-list-item-type {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -159,7 +159,7 @@ const statusLines = computed(() => {
   white-space: nowrap;
 }
 
-.special-npc-list-item-type::before {
+.illustrated-list-item-type::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -168,7 +168,7 @@ const statusLines = computed(() => {
   opacity: 0.15;
 }
 
-.special-npc-list-item-type::after {
+.illustrated-list-item-type::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -179,14 +179,14 @@ const statusLines = computed(() => {
   -webkit-mask-image: linear-gradient(90deg, transparent, black 20%, black 80%, transparent);
 }
 
-.special-npc-tags {
+.illustrated-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 16px;
 }
 
-.special-npc-tag {
+.illustrated-tag {
   padding: 4px 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 2px;
@@ -195,7 +195,7 @@ const statusLines = computed(() => {
   font-size: 12px;
 }
 
-.special-npc-effect-list {
+.illustrated-effect-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -204,42 +204,42 @@ const statusLines = computed(() => {
   list-style: none;
 }
 
-.special-npc-effect-item {
+.illustrated-effect-item {
   color: #e2e8f0;
   line-height: 1.7;
 }
 
-.special-npc-effect-name,
-.special-npc-line span {
+.illustrated-effect-name,
+.illustrated-line span {
   display: inline-block;
   margin-right: 8px;
   color: var(--item-color);
   font-weight: 700;
 }
 
-.special-npc-effect-text,
-.special-npc-description,
-.special-npc-line {
+.illustrated-effect-text,
+.illustrated-description,
+.illustrated-line {
   color: #e2e8f0;
   white-space: pre-line;
 }
 
-.special-npc-description,
-.special-npc-line {
+.illustrated-description,
+.illustrated-line {
   margin: 8px 0 0;
   line-height: 1.7;
 }
 
-.special-npc-status-lines {
+.illustrated-status-lines {
   margin-top: 10px;
 }
 
 @media (max-width: 640px) {
-  .special-npc-list-item {
+  .illustrated-list-item {
     padding: 20px;
   }
 
-  .special-npc-list-item-header {
+  .illustrated-list-item-header {
     flex-direction: column;
     align-items: flex-start;
   }

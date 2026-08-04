@@ -1,18 +1,18 @@
 <template>
-  <div class="special-npc-wrapper" :class="themeClass" :style="themeStyle">
+  <div class="illustrated-wrapper" :class="themeClass" :style="themeStyle">
     <main
-      class="special-npc-shell"
+      class="illustrated-shell"
       :class="{ 'is-overview-tab': isOverviewTab, 'is-detail-tab': !isOverviewTab, 'is-divinity-tab': isDivinityTab }"
     >
-      <aside class="special-npc-portrait-pane">
-        <div v-if="!portraitLoaded && !portraitLoadFailed" class="special-npc-portrait-loading" role="status">
+      <aside class="illustrated-portrait-pane">
+        <div v-if="!portraitLoaded && !portraitLoadFailed" class="illustrated-portrait-loading" role="status">
           <span aria-hidden="true">◇</span>
           <small>立绘载入中</small>
         </div>
         <video
           v-if="isVideoPortrait && !portraitLoadFailed"
           :key="portraitMediaUrl"
-          class="special-npc-portrait-video"
+          class="illustrated-portrait-video"
           :class="{ 'is-loaded': portraitLoaded }"
           :src="portraitMediaUrl"
           :aria-label="vm.nameText"
@@ -27,7 +27,7 @@
         <img
           v-else-if="!portraitLoadFailed"
           :key="portraitMediaUrl"
-          class="special-npc-portrait-image"
+          class="illustrated-portrait-image"
           :class="{ 'is-loaded': portraitLoaded }"
           :src="portraitMediaUrl"
           :alt="vm.nameText"
@@ -36,60 +36,60 @@
           @load="onPortraitLoaded"
           @error="onPortraitLoadError"
         />
-        <section v-else class="special-npc-portrait-failure" role="status">
+        <section v-else class="illustrated-portrait-failure" role="status">
           <strong>立绘无法加载</strong>
           <p>可能是网络、代理或资源地址不可用。</p>
-          <div class="special-npc-portrait-failure-actions">
+          <div class="illustrated-portrait-failure-actions">
             <button type="button" @click="retryPortraitLoad">重试</button>
-            <button type="button" @click="$emit('fallbackToDefault')">使用普通版</button>
+            <button type="button" @click="$emit('fallbackToDefault')">切换到默认版</button>
           </div>
         </section>
-        <div v-if="isVenusTheme" class="special-npc-portrait-deco" aria-hidden="true">
-          <span class="special-npc-portrait-deco-corner top-left"></span>
-          <span class="special-npc-portrait-deco-corner top-right"></span>
-          <span class="special-npc-portrait-deco-corner bottom-left"></span>
-          <span class="special-npc-portrait-deco-corner bottom-right"></span>
+        <div v-if="isVenusTheme" class="illustrated-portrait-deco" aria-hidden="true">
+          <span class="illustrated-portrait-deco-corner top-left"></span>
+          <span class="illustrated-portrait-deco-corner top-right"></span>
+          <span class="illustrated-portrait-deco-corner bottom-left"></span>
+          <span class="illustrated-portrait-deco-corner bottom-right"></span>
         </div>
-        <div v-if="isIrisTheme" class="special-npc-iris-portrait-deco" aria-hidden="true">
-          <span class="special-npc-iris-bubble bubble-one"></span>
-          <span class="special-npc-iris-bubble bubble-two"></span>
-          <span class="special-npc-iris-bubble bubble-three"></span>
-          <span class="special-npc-iris-bubble bubble-four"></span>
-          <span class="special-npc-iris-toy-node node-one"></span>
-          <span class="special-npc-iris-toy-node node-two"></span>
+        <div v-if="isIrisTheme" class="illustrated-iris-portrait-deco" aria-hidden="true">
+          <span class="illustrated-iris-bubble bubble-one"></span>
+          <span class="illustrated-iris-bubble bubble-two"></span>
+          <span class="illustrated-iris-bubble bubble-three"></span>
+          <span class="illustrated-iris-bubble bubble-four"></span>
+          <span class="illustrated-iris-toy-node node-one"></span>
+          <span class="illustrated-iris-toy-node node-two"></span>
         </div>
-        <div v-if="isOverviewTab && hasMultiplePortraits" class="special-npc-portrait-navigation">
+        <div v-if="isOverviewTab && hasMultiplePortraits" class="illustrated-portrait-navigation">
           <button type="button" aria-label="上一张立绘" @click="switchPortrait(-1)">‹</button>
           <button type="button" aria-label="下一张立绘" @click="switchPortrait(1)">›</button>
         </div>
-        <div v-if="isOverviewTab" class="special-npc-mobile-overview-overlay">
-          <blockquote v-if="vm.entranceQuoteText" class="special-npc-mobile-entrance-quote">
-            <span class="special-npc-mobile-quote-mark" aria-hidden="true">“</span>
-            <span class="special-npc-mobile-quote-text">{{ vm.entranceQuoteText }}</span>
-            <span class="special-npc-mobile-quote-mark" aria-hidden="true">”</span>
+        <div v-if="isOverviewTab" class="illustrated-mobile-overview-overlay">
+          <blockquote v-if="vm.entranceQuoteText" class="illustrated-mobile-entrance-quote">
+            <span class="illustrated-mobile-quote-mark" aria-hidden="true">“</span>
+            <span class="illustrated-mobile-quote-text">{{ vm.entranceQuoteText }}</span>
+            <span class="illustrated-mobile-quote-mark" aria-hidden="true">”</span>
           </blockquote>
-          <div class="special-npc-mobile-header-overlay">
-            <SpecialNpcHeader :vm="vm" :ornate="hasOrnateHeader" compact />
+          <div class="illustrated-mobile-header-overlay">
+            <IllustratedHeader :vm="vm" :ornate="hasOrnateHeader" compact />
           </div>
         </div>
       </aside>
 
-      <section class="special-npc-data-pane">
-        <div v-if="isIrisTheme && isOverviewTab" class="special-npc-iris-header-deco" aria-hidden="true">
-          <span class="special-npc-iris-jellyfish">
+      <section class="illustrated-data-pane">
+        <div v-if="isIrisTheme && isOverviewTab" class="illustrated-iris-header-deco" aria-hidden="true">
+          <span class="illustrated-iris-jellyfish">
             <i class="jellyfish-dome"></i>
             <i class="jellyfish-tentacle tentacle-one"></i>
             <i class="jellyfish-tentacle tentacle-two"></i>
             <i class="jellyfish-tentacle tentacle-three"></i>
           </span>
-          <span class="special-npc-iris-toy-blocks"><i></i><i></i><i></i><i></i></span>
+          <span class="illustrated-iris-toy-blocks"><i></i><i></i><i></i><i></i></span>
         </div>
-        <SpecialNpcHeader v-if="isOverviewTab" class="special-npc-desktop-header" :vm="vm" :ornate="hasOrnateHeader" />
+        <IllustratedHeader v-if="isOverviewTab" class="illustrated-desktop-header" :vm="vm" :ornate="hasOrnateHeader" />
 
-        <div class="special-npc-panels">
-          <SpecialNpcPageTitle v-if="!isOverviewTab" :title="activeSpecialTabTitle" />
+        <div class="illustrated-panels">
+          <IllustratedPageTitle v-if="!isOverviewTab" :title="activeSpecialTabTitle" />
 
-          <SpecialNpcOverviewPanel
+          <IllustratedOverviewPanel
             v-if="activeSpecialTab === 'overview'"
             :attributes="attributes"
             :resource-boxes="vm.resourceBoxes"
@@ -97,7 +97,7 @@
             @toggle-attribute-formula="$emit('toggleAttributeFormula', $event)"
           />
 
-          <SpecialNpcProfilePanel
+          <IllustratedProfilePanel
             v-else-if="activeSpecialTab === 'profile'"
             :vm="vm"
             :attributes="attributes"
@@ -106,17 +106,17 @@
           />
 
           <template v-else-if="activeSpecialTab === 'skills'">
-            <SpecialNpcItemCard v-for="(item, index) in vm.skills" :key="`skill-${index}`" :item="item" show-cost />
+            <IllustratedItemCard v-for="(item, index) in vm.skills" :key="`skill-${index}`" :item="item" show-cost />
           </template>
 
           <template v-else-if="activeSpecialTab === 'equipment'">
-            <SpecialNpcItemCard v-for="(item, index) in vm.equipments" :key="`equipment-${index}`" :item="item" />
+            <IllustratedItemCard v-for="(item, index) in vm.equipments" :key="`equipment-${index}`" :item="item" />
           </template>
 
           <template v-else-if="activeSpecialTab === 'inventory'">
-            <section v-for="section in vm.inventorySections" :key="section.key" class="special-npc-section">
-              <h3 class="special-npc-section-title">{{ section.title }}</h3>
-              <SpecialNpcItemCard
+            <section v-for="section in vm.inventorySections" :key="section.key" class="illustrated-section">
+              <h3 class="illustrated-section-title">{{ section.title }}</h3>
+              <IllustratedItemCard
                 v-for="(item, index) in section.items"
                 :key="`${section.key}-${index}`"
                 :item="item"
@@ -124,14 +124,14 @@
             </section>
           </template>
 
-          <SpecialNpcDivinityPanel
+          <IllustratedDivinityPanel
             v-else-if="activeSpecialTab === 'divinity'"
             :vm="vm"
-            :profile="vm.specialNpcProfile"
+            :profile="vm.presentationProfile"
           />
 
           <template v-else-if="activeSpecialTab === 'statusEffects'">
-            <SpecialNpcItemCard
+            <IllustratedItemCard
               v-for="(item, index) in vm.statusEffects"
               :key="`status-${index}`"
               :item="item"
@@ -139,30 +139,30 @@
             />
           </template>
 
-          <article v-else-if="activeSpecialTab === 'characterStory'" class="special-npc-story-combined-block">
-            <section v-if="vm.backstoryText" class="special-npc-story-block">
+          <article v-else-if="activeSpecialTab === 'characterStory'" class="illustrated-story-combined-block">
+            <section v-if="vm.backstoryText" class="illustrated-story-block">
               <h3>背景故事</h3>
               <p>{{ vm.backstoryText }}</p>
             </section>
 
-            <section v-if="vm.storyBookLink" class="special-npc-story-link-block">
-              <div class="special-npc-story-link-copy">
-                <span v-if="vm.storyBookLink.festivalName" class="special-npc-story-kicker">
+            <section v-if="vm.storyBookLink" class="illustrated-story-link-block">
+              <div class="illustrated-story-link-copy">
+                <span v-if="vm.storyBookLink.festivalName" class="illustrated-story-kicker">
                   {{ vm.storyBookLink.festivalName }}
                 </span>
                 <h3>《{{ vm.storyBookLink.title }}》</h3>
                 <p>打开月历悬浮球里的节庆故事读本，阅读与她相关的角色故事。</p>
               </div>
-              <button class="special-npc-story-link-button" type="button" @click="openCharacterStory">前往读本</button>
+              <button class="illustrated-story-link-button" type="button" @click="openCharacterStory">前往读本</button>
             </section>
           </article>
 
-          <article v-else class="special-npc-story-block">
+          <article v-else class="illustrated-story-block">
             <p>{{ vm.backstoryText || '暂无故事' }}</p>
           </article>
         </div>
 
-        <SpecialNpcTabNav
+        <IllustratedTabNav
           :tabs="tabs"
           :active-tab="activeSpecialTab"
           :importing="importing"
@@ -186,14 +186,14 @@ import { computed, ref, watch, watchEffect } from 'vue';
 
 import type { CharacterViewModel } from '../../services/characterViewModel';
 import { normalizePortraitMediaUrlForBrowser } from '../../services/imageUrl';
-import type { AttributeView, SpecialNpcTab, SpecialNpcTabKey } from './types';
-import SpecialNpcDivinityPanel from './SpecialNpcDivinityPanel.vue';
-import SpecialNpcHeader from './SpecialNpcHeader.vue';
-import SpecialNpcItemCard from './SpecialNpcItemCard.vue';
-import SpecialNpcOverviewPanel from './SpecialNpcOverviewPanel.vue';
-import SpecialNpcPageTitle from './SpecialNpcPageTitle.vue';
-import SpecialNpcProfilePanel from './SpecialNpcProfilePanel.vue';
-import SpecialNpcTabNav from './SpecialNpcTabNav.vue';
+import type { AttributeView, IllustratedTab, IllustratedTabKey } from './types';
+import IllustratedDivinityPanel from './IllustratedDivinityPanel.vue';
+import IllustratedHeader from './IllustratedHeader.vue';
+import IllustratedItemCard from './IllustratedItemCard.vue';
+import IllustratedOverviewPanel from './IllustratedOverviewPanel.vue';
+import IllustratedPageTitle from './IllustratedPageTitle.vue';
+import IllustratedProfilePanel from './IllustratedProfilePanel.vue';
+import IllustratedTabNav from './IllustratedTabNav.vue';
 import { anastasiaPortraitCssVars } from './anastasiaAssets';
 import { venusPortraitCssVars } from './venusAssets';
 
@@ -214,7 +214,7 @@ defineEmits<{
   fallbackToDefault: [];
 }>();
 
-const activeSpecialTab = ref<SpecialNpcTabKey>('overview');
+const activeSpecialTab = ref<IllustratedTabKey>('overview');
 const portraitLoadFailed = ref(false);
 const portraitLoaded = ref(false);
 const portraitRetryAttempt = ref(0);
@@ -247,8 +247,8 @@ const portraitMediaUrl = computed(() => {
     return `${activePortraitUrl.value}${separator}_char_info_retry=${portraitRetryAttempt.value}`;
   }
 });
-const tabs = computed<SpecialNpcTab[]>(() => {
-  const mergedTabs: SpecialNpcTab[] = [{ key: 'overview', label: '首页' }];
+const tabs = computed<IllustratedTab[]>(() => {
+  const mergedTabs: IllustratedTab[] = [{ key: 'overview', label: '首页' }];
   let hasStoryTab = false;
 
   props.vm.visibleTabs.forEach(tab => {
@@ -268,14 +268,14 @@ const tabs = computed<SpecialNpcTab[]>(() => {
 const isOverviewTab = computed(() => activeSpecialTab.value === 'overview');
 const isDivinityTab = computed(() => activeSpecialTab.value === 'divinity');
 const activeSpecialTabTitle = computed(() => tabs.value.find(tab => tab.key === activeSpecialTab.value)?.label ?? '');
-const isVenusTheme = computed(() => props.vm.specialNpcProfile?.visualTheme === 'venus');
-const isAnastasiaTheme = computed(() => props.vm.specialNpcProfile?.visualTheme === 'anastasia');
-const isIrisTheme = computed(() => props.vm.specialNpcProfile?.visualTheme === 'iris');
+const isVenusTheme = computed(() => props.vm.presentationProfile?.visualTheme === 'venus');
+const isAnastasiaTheme = computed(() => props.vm.presentationProfile?.visualTheme === 'anastasia');
+const isIrisTheme = computed(() => props.vm.presentationProfile?.visualTheme === 'iris');
 const hasOrnateHeader = computed(() => isVenusTheme.value || isAnastasiaTheme.value);
 const themeClass = computed(() => ({
-  'special-npc-theme-venus': isVenusTheme.value,
-  'special-npc-theme-anastasia': isAnastasiaTheme.value,
-  'special-npc-theme-iris': isIrisTheme.value,
+  'illustrated-theme-venus': isVenusTheme.value,
+  'illustrated-theme-anastasia': isAnastasiaTheme.value,
+  'illustrated-theme-iris': isIrisTheme.value,
 }));
 const themeStyle = computed(() => {
   if (isVenusTheme.value) return venusPortraitCssVars;
@@ -390,73 +390,73 @@ watchEffect(() => {
 </script>
 
 <style scoped>
-.special-npc-wrapper {
+.illustrated-wrapper {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
   container-type: inline-size;
   color: #f8f9fa;
   font-family: 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  --special-npc-bg: #14161e;
-  --special-npc-panel: rgba(20, 22, 30, 0.78);
-  --special-npc-race-accent: var(--race-color, #d4af37);
-  --special-npc-race-accent-rgb: var(--race-color-rgb, 212, 175, 55);
-  --special-npc-tier-accent: var(--tier-color, #d4af37);
-  --special-npc-tier-accent-rgb: var(--tier-color-rgb, 212, 175, 55);
-  --special-npc-overview-width: 520px;
-  --special-npc-flag-width: 128px;
-  --special-npc-flag-height: 128px;
-  --special-npc-flag-gap: 12px;
-  --special-npc-resource-width: 128px;
-  --special-npc-resource-height: 72px;
-  --special-npc-resource-gap: 16px;
-  --special-npc-header-min-height: 148px;
-  --special-npc-tabs-height: 52px;
+  --illustrated-bg: #14161e;
+  --illustrated-panel: rgba(20, 22, 30, 0.78);
+  --illustrated-race-accent: var(--race-color, #d4af37);
+  --illustrated-race-accent-rgb: var(--race-color-rgb, 212, 175, 55);
+  --illustrated-tier-accent: var(--tier-color, #d4af37);
+  --illustrated-tier-accent-rgb: var(--tier-color-rgb, 212, 175, 55);
+  --illustrated-overview-width: 520px;
+  --illustrated-flag-width: 128px;
+  --illustrated-flag-height: 128px;
+  --illustrated-flag-gap: 12px;
+  --illustrated-resource-width: 128px;
+  --illustrated-resource-height: 72px;
+  --illustrated-resource-gap: 16px;
+  --illustrated-header-min-height: 148px;
+  --illustrated-tabs-height: 52px;
 }
 
-.special-npc-wrapper.special-npc-theme-venus {
-  --special-npc-bg: #061731;
-  --special-npc-panel: rgba(7, 21, 45, 0.72);
-  --special-npc-race-accent: #70e5bd;
-  --special-npc-race-accent-rgb: 112, 229, 189;
-  --special-npc-tier-accent: #f6d982;
-  --special-npc-tier-accent-rgb: 246, 217, 130;
-  --special-npc-soft-accent: #b9d7e8;
-  --special-npc-soft-accent-rgb: 185, 215, 232;
-  --special-npc-shell-deep: #051226;
+.illustrated-wrapper.illustrated-theme-venus {
+  --illustrated-bg: #061731;
+  --illustrated-panel: rgba(7, 21, 45, 0.72);
+  --illustrated-race-accent: #70e5bd;
+  --illustrated-race-accent-rgb: 112, 229, 189;
+  --illustrated-tier-accent: #f6d982;
+  --illustrated-tier-accent-rgb: 246, 217, 130;
+  --illustrated-soft-accent: #b9d7e8;
+  --illustrated-soft-accent-rgb: 185, 215, 232;
+  --illustrated-shell-deep: #051226;
 }
 
-.special-npc-wrapper.special-npc-theme-anastasia {
+.illustrated-wrapper.illustrated-theme-anastasia {
   color-scheme: light;
   isolation: isolate;
   color: #14304b;
   background-color: #e6edf1;
-  --special-npc-bg: #e6edf1;
-  --special-npc-panel: rgba(248, 251, 252, 0.88);
-  --special-npc-race-accent: #0a2d4e;
-  --special-npc-race-accent-rgb: 10, 45, 78;
-  --special-npc-tier-accent: #d0a653;
-  --special-npc-tier-accent-rgb: 208, 166, 83;
-  --special-npc-soft-accent: #5f8fa8;
-  --special-npc-soft-accent-rgb: 95, 143, 168;
+  --illustrated-bg: #e6edf1;
+  --illustrated-panel: rgba(248, 251, 252, 0.88);
+  --illustrated-race-accent: #0a2d4e;
+  --illustrated-race-accent-rgb: 10, 45, 78;
+  --illustrated-tier-accent: #d0a653;
+  --illustrated-tier-accent-rgb: 208, 166, 83;
+  --illustrated-soft-accent: #5f8fa8;
+  --illustrated-soft-accent-rgb: 95, 143, 168;
 }
 
-.special-npc-wrapper.special-npc-theme-iris {
+.illustrated-wrapper.illustrated-theme-iris {
   color-scheme: light;
   isolation: isolate;
   color: #17324a;
   background-color: #dce9e7;
-  --special-npc-bg: #dce9e7;
-  --special-npc-panel: rgba(247, 251, 250, 0.94);
-  --special-npc-race-accent: #42a996;
-  --special-npc-race-accent-rgb: 66, 169, 150;
-  --special-npc-tier-accent: #a98ce8;
-  --special-npc-tier-accent-rgb: 169, 140, 232;
-  --special-npc-soft-accent: #f078a6;
-  --special-npc-soft-accent-rgb: 240, 120, 166;
+  --illustrated-bg: #dce9e7;
+  --illustrated-panel: rgba(247, 251, 250, 0.94);
+  --illustrated-race-accent: #42a996;
+  --illustrated-race-accent-rgb: 66, 169, 150;
+  --illustrated-tier-accent: #a98ce8;
+  --illustrated-tier-accent-rgb: 169, 140, 232;
+  --illustrated-soft-accent: #f078a6;
+  --illustrated-soft-accent-rgb: 240, 120, 166;
 }
 
-.special-npc-shell {
+.illustrated-shell {
   position: relative;
   display: flex;
   height: min(800px, 80cqw);
@@ -464,31 +464,31 @@ watchEffect(() => {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  background: var(--special-npc-bg);
+  background: var(--illustrated-bg);
   box-shadow:
-    0 0 0 1px rgba(var(--special-npc-tier-accent-rgb), 0.35),
-    0 0 26px rgba(var(--special-npc-tier-accent-rgb), 0.32),
-    0 0 54px rgba(var(--special-npc-tier-accent-rgb), 0.18),
+    0 0 0 1px rgba(var(--illustrated-tier-accent-rgb), 0.35),
+    0 0 26px rgba(var(--illustrated-tier-accent-rgb), 0.32),
+    0 0 54px rgba(var(--illustrated-tier-accent-rgb), 0.18),
     0 24px 64px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-.special-npc-theme-venus .special-npc-shell {
+.illustrated-theme-venus .illustrated-shell {
   border: 1px solid transparent;
   background:
-    radial-gradient(circle at 52% -10%, rgba(var(--special-npc-tier-accent-rgb), 0.32), transparent 30rem),
+    radial-gradient(circle at 52% -10%, rgba(var(--illustrated-tier-accent-rgb), 0.32), transparent 30rem),
     radial-gradient(circle at 78% 22%, rgba(86, 171, 220, 0.16), transparent 30rem),
-    radial-gradient(circle at 86% 46%, rgba(var(--special-npc-race-accent-rgb), 0.055), transparent 17rem),
+    radial-gradient(circle at 86% 46%, rgba(var(--illustrated-race-accent-rgb), 0.055), transparent 17rem),
     linear-gradient(180deg, rgba(246, 217, 130, 0.18) 0%, rgba(19, 55, 98, 0.78) 34%, rgba(5, 18, 43, 0.97) 100%),
-    var(--special-npc-shell-deep);
+    var(--illustrated-shell-deep);
   box-shadow:
     0 0 28px rgba(86, 171, 220, 0.14),
-    0 0 64px rgba(var(--special-npc-tier-accent-rgb), 0.16),
+    0 0 64px rgba(var(--illustrated-tier-accent-rgb), 0.16),
     0 24px 64px rgba(0, 0, 0, 0.38),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-.special-npc-theme-anastasia .special-npc-shell {
+.illustrated-theme-anastasia .illustrated-shell {
   border-color: rgba(10, 45, 78, 0.24);
   background:
     radial-gradient(circle at 74% 8%, rgba(208, 166, 83, 0.12), transparent 24rem),
@@ -501,7 +501,7 @@ watchEffect(() => {
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-.special-npc-theme-iris .special-npc-shell {
+.illustrated-theme-iris .illustrated-shell {
   border-color: rgba(49, 83, 109, 0.58);
   border-radius: 14px;
   background:
@@ -515,7 +515,7 @@ watchEffect(() => {
     inset 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 
-.special-npc-theme-anastasia .special-npc-shell::before {
+.illustrated-theme-anastasia .illustrated-shell::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -534,7 +534,7 @@ watchEffect(() => {
   mask-composite: exclude;
 }
 
-.special-npc-theme-anastasia .special-npc-shell::after {
+.illustrated-theme-anastasia .illustrated-shell::after {
   content: '';
   position: absolute;
   inset: 9px;
@@ -550,7 +550,7 @@ watchEffect(() => {
   pointer-events: none;
 }
 
-.special-npc-theme-venus .special-npc-shell::before {
+.illustrated-theme-venus .illustrated-shell::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -561,11 +561,11 @@ watchEffect(() => {
     linear-gradient(180deg, rgba(255, 238, 172, 0.98) 0%, rgba(86, 171, 220, 0.64) 48%, rgba(22, 75, 143, 0.86) 100%),
     linear-gradient(
       90deg,
-      rgba(var(--special-npc-race-accent-rgb), 0.16),
+      rgba(var(--illustrated-race-accent-rgb), 0.16),
       rgba(255, 252, 235, 0.58),
-      rgba(var(--special-npc-race-accent-rgb), 0.16)
+      rgba(var(--illustrated-race-accent-rgb), 0.16)
     );
-  filter: drop-shadow(0 0 7px rgba(var(--special-npc-tier-accent-rgb), 0.18))
+  filter: drop-shadow(0 0 7px rgba(var(--illustrated-tier-accent-rgb), 0.18))
     drop-shadow(0 0 12px rgba(86, 171, 220, 0.1));
   pointer-events: none;
   -webkit-mask:
@@ -578,48 +578,48 @@ watchEffect(() => {
   mask-composite: exclude;
 }
 
-.special-npc-theme-venus .special-npc-shell::after {
+.illustrated-theme-venus .illustrated-shell::after {
   content: '';
   position: absolute;
   inset: 9px;
   z-index: 6;
-  border: 1px solid rgba(var(--special-npc-soft-accent-rgb), 0.18);
+  border: 1px solid rgba(var(--illustrated-soft-accent-rgb), 0.18);
   border-radius: 10px;
   background:
-    linear-gradient(135deg, rgba(var(--special-npc-tier-accent-rgb), 0.92) 0 18px, transparent 18px) top left / 74px
+    linear-gradient(135deg, rgba(var(--illustrated-tier-accent-rgb), 0.92) 0 18px, transparent 18px) top left / 74px
       74px no-repeat,
-    linear-gradient(225deg, rgba(var(--special-npc-tier-accent-rgb), 0.92) 0 18px, transparent 18px) top right / 74px
+    linear-gradient(225deg, rgba(var(--illustrated-tier-accent-rgb), 0.92) 0 18px, transparent 18px) top right / 74px
       74px no-repeat,
     linear-gradient(45deg, rgba(86, 171, 220, 0.62) 0 16px, transparent 16px) bottom left / 66px 66px no-repeat,
     linear-gradient(315deg, rgba(86, 171, 220, 0.62) 0 16px, transparent 16px) bottom right / 66px 66px no-repeat;
   box-shadow:
-    inset 0 0 0 1px rgba(var(--special-npc-tier-accent-rgb), 0.08),
+    inset 0 0 0 1px rgba(var(--illustrated-tier-accent-rgb), 0.08),
     inset 0 0 26px rgba(86, 171, 220, 0.05);
   pointer-events: none;
 }
 
-.special-npc-portrait-pane {
+.illustrated-portrait-pane {
   position: relative;
   flex: 0 0 45%;
   min-width: 0;
 }
 
-.special-npc-theme-venus .special-npc-portrait-pane {
+.illustrated-theme-venus .illustrated-portrait-pane {
   padding: 14px;
 }
 
-.special-npc-theme-anastasia .special-npc-portrait-pane {
+.illustrated-theme-anastasia .illustrated-portrait-pane {
   padding: 14px;
 }
 
-.special-npc-theme-iris .special-npc-portrait-pane {
+.illustrated-theme-iris .illustrated-portrait-pane {
   padding: 12px;
   overflow: hidden;
   background: #a8c8c7;
 }
 
-.special-npc-theme-venus .special-npc-portrait-pane::before,
-.special-npc-theme-venus .special-npc-portrait-pane::after {
+.illustrated-theme-venus .illustrated-portrait-pane::before,
+.illustrated-theme-venus .illustrated-portrait-pane::after {
   content: '';
   position: absolute;
   inset: 14px;
@@ -627,7 +627,7 @@ watchEffect(() => {
   pointer-events: none;
 }
 
-.special-npc-theme-anastasia .special-npc-portrait-pane::before {
+.illustrated-theme-anastasia .illustrated-portrait-pane::before {
   content: '';
   position: absolute;
   inset: 14px;
@@ -653,12 +653,12 @@ watchEffect(() => {
   pointer-events: none;
 }
 
-.special-npc-theme-anastasia .special-npc-portrait-pane::after {
+.illustrated-theme-anastasia .illustrated-portrait-pane::after {
   background: linear-gradient(to right, transparent 58%, rgba(230, 237, 241, 0.92) 100%);
 }
 
-.special-npc-theme-venus .special-npc-portrait-pane::before {
-  border: 2px solid rgba(var(--special-npc-tier-accent-rgb), 0.95);
+.illustrated-theme-venus .illustrated-portrait-pane::before {
+  border: 2px solid rgba(var(--illustrated-tier-accent-rgb), 0.95);
   border-radius: 8px;
   background:
     linear-gradient(135deg, rgba(255, 255, 246, 0.96) 0 12px, transparent 12px) top left / 56px 56px no-repeat,
@@ -676,18 +676,18 @@ watchEffect(() => {
     0 18px
   );
   box-shadow:
-    inset 0 0 0 1px rgba(var(--special-npc-soft-accent-rgb), 0.34),
-    0 0 14px rgba(var(--special-npc-tier-accent-rgb), 0.18);
+    inset 0 0 0 1px rgba(var(--illustrated-soft-accent-rgb), 0.34),
+    0 0 14px rgba(var(--illustrated-tier-accent-rgb), 0.18);
 }
 
-.special-npc-theme-venus .special-npc-portrait-pane::after {
+.illustrated-theme-venus .illustrated-portrait-pane::after {
   border-radius: 8px;
   background:
     linear-gradient(
         90deg,
-        rgba(var(--special-npc-tier-accent-rgb), 0.98) 0 68px,
+        rgba(var(--illustrated-tier-accent-rgb), 0.98) 0 68px,
         transparent 68px calc(100% - 68px),
-        rgba(var(--special-npc-tier-accent-rgb), 0.98) calc(100% - 68px)
+        rgba(var(--illustrated-tier-accent-rgb), 0.98) calc(100% - 68px)
       )
       top / 100% 2px no-repeat,
     linear-gradient(
@@ -699,29 +699,29 @@ watchEffect(() => {
       bottom / 100% 2px no-repeat,
     linear-gradient(
         180deg,
-        rgba(var(--special-npc-tier-accent-rgb), 0.98) 0 68px,
+        rgba(var(--illustrated-tier-accent-rgb), 0.98) 0 68px,
         transparent 68px calc(100% - 68px),
         rgba(86, 171, 220, 0.7) calc(100% - 68px)
       )
       left / 2px 100% no-repeat,
     linear-gradient(
         180deg,
-        rgba(var(--special-npc-tier-accent-rgb), 0.98) 0 68px,
+        rgba(var(--illustrated-tier-accent-rgb), 0.98) 0 68px,
         transparent 68px calc(100% - 68px),
         rgba(86, 171, 220, 0.7) calc(100% - 68px)
       )
       right / 2px 100% no-repeat;
 }
 
-.special-npc-portrait-pane::after {
+.illustrated-portrait-pane::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(to right, transparent 60%, var(--special-npc-bg) 100%);
+  background: linear-gradient(to right, transparent 60%, var(--illustrated-bg) 100%);
   pointer-events: none;
 }
 
-.special-npc-portrait-image {
+.illustrated-portrait-image {
   display: block;
   width: 100%;
   height: 100%;
@@ -731,7 +731,7 @@ watchEffect(() => {
   transition: opacity 180ms ease-out;
 }
 
-.special-npc-portrait-video {
+.illustrated-portrait-video {
   display: block;
   width: 100%;
   height: 100%;
@@ -741,38 +741,38 @@ watchEffect(() => {
   transition: opacity 180ms ease-out;
 }
 
-.special-npc-portrait-image.is-loaded,
-.special-npc-portrait-video.is-loaded {
+.illustrated-portrait-image.is-loaded,
+.illustrated-portrait-video.is-loaded {
   opacity: 1;
 }
 
-.special-npc-portrait-loading {
+.illustrated-portrait-loading {
   position: absolute;
   inset: 0;
   z-index: 1;
   display: grid;
   place-content: center;
   gap: 10px;
-  color: rgba(var(--special-npc-soft-accent-rgb), 0.78);
+  color: rgba(var(--illustrated-soft-accent-rgb), 0.78);
   text-align: center;
   background:
-    radial-gradient(circle at 42% 36%, rgba(var(--special-npc-race-accent-rgb), 0.18), transparent 34%),
-    linear-gradient(145deg, rgba(22, 35, 49, 0.98), var(--special-npc-bg));
+    radial-gradient(circle at 42% 36%, rgba(var(--illustrated-race-accent-rgb), 0.18), transparent 34%),
+    linear-gradient(145deg, rgba(22, 35, 49, 0.98), var(--illustrated-bg));
 }
 
-.special-npc-portrait-loading span {
+.illustrated-portrait-loading span {
   font-size: clamp(28px, 5cqw, 54px);
-  text-shadow: 0 0 20px rgba(var(--special-npc-soft-accent-rgb), 0.38);
-  animation: special-npc-portrait-pulse 1.2s ease-in-out infinite alternate;
+  text-shadow: 0 0 20px rgba(var(--illustrated-soft-accent-rgb), 0.38);
+  animation: illustrated-portrait-pulse 1.2s ease-in-out infinite alternate;
 }
 
-.special-npc-portrait-loading small {
+.illustrated-portrait-loading small {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
 }
 
-@keyframes special-npc-portrait-pulse {
+@keyframes illustrated-portrait-pulse {
   from {
     opacity: 0.35;
     transform: scale(0.94);
@@ -784,18 +784,18 @@ watchEffect(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .special-npc-portrait-loading span {
+  .illustrated-portrait-loading span {
     animation: none;
   }
 
-  .special-npc-portrait-image,
-  .special-npc-portrait-video {
+  .illustrated-portrait-image,
+  .illustrated-portrait-video {
     transition: none;
   }
 }
 
-.special-npc-theme-iris .special-npc-portrait-image,
-.special-npc-theme-iris .special-npc-portrait-video {
+.illustrated-theme-iris .illustrated-portrait-image,
+.illustrated-theme-iris .illustrated-portrait-video {
   border: 1px solid rgba(237, 255, 251, 0.88);
   border-radius: 10px;
   object-position: 50% 48%;
@@ -803,7 +803,7 @@ watchEffect(() => {
   filter: saturate(0.98) contrast(1.02);
 }
 
-.special-npc-theme-iris .special-npc-portrait-pane::after {
+.illustrated-theme-iris .illustrated-portrait-pane::after {
   z-index: 2;
   inset: 12px;
   border-radius: 10px;
@@ -812,7 +812,7 @@ watchEffect(() => {
     linear-gradient(90deg, rgba(131, 220, 203, 0.1), transparent 26%, transparent 74%, rgba(169, 140, 232, 0.12));
 }
 
-.special-npc-iris-portrait-deco {
+.illustrated-iris-portrait-deco {
   position: absolute;
   inset: 12px;
   z-index: 4;
@@ -822,7 +822,7 @@ watchEffect(() => {
   pointer-events: none;
 }
 
-.special-npc-iris-bubble {
+.illustrated-iris-bubble {
   position: absolute;
   width: var(--bubble-size);
   aspect-ratio: 1;
@@ -832,7 +832,7 @@ watchEffect(() => {
   box-shadow: inset -3px -4px 9px rgba(131, 220, 203, 0.24);
 }
 
-.special-npc-iris-bubble::after {
+.illustrated-iris-bubble::after {
   content: '';
   position: absolute;
   top: 20%;
@@ -843,31 +843,31 @@ watchEffect(() => {
   background: rgba(255, 255, 255, 0.78);
 }
 
-.special-npc-iris-bubble.bubble-one {
+.illustrated-iris-bubble.bubble-one {
   top: 8%;
   left: 7%;
   --bubble-size: 42px;
 }
 
-.special-npc-iris-bubble.bubble-two {
+.illustrated-iris-bubble.bubble-two {
   top: 16%;
   right: 8%;
   --bubble-size: 28px;
 }
 
-.special-npc-iris-bubble.bubble-three {
+.illustrated-iris-bubble.bubble-three {
   bottom: 12%;
   left: 10%;
   --bubble-size: 24px;
 }
 
-.special-npc-iris-bubble.bubble-four {
+.illustrated-iris-bubble.bubble-four {
   right: 10%;
   bottom: 19%;
   --bubble-size: 48px;
 }
 
-.special-npc-iris-toy-node {
+.illustrated-iris-toy-node {
   position: absolute;
   width: 14px;
   aspect-ratio: 1;
@@ -877,20 +877,20 @@ watchEffect(() => {
   box-shadow: 0 2px 6px rgba(23, 50, 74, 0.24);
 }
 
-.special-npc-iris-toy-node.node-one {
+.illustrated-iris-toy-node.node-one {
   top: 18px;
   left: 18px;
   transform: rotate(16deg);
 }
 
-.special-npc-iris-toy-node.node-two {
+.illustrated-iris-toy-node.node-two {
   right: 18px;
   bottom: 18px;
   background: #a98ce8;
   transform: rotate(34deg);
 }
 
-.special-npc-portrait-failure {
+.illustrated-portrait-failure {
   position: relative;
   z-index: 5;
   display: grid;
@@ -901,18 +901,18 @@ watchEffect(() => {
   min-height: 260px;
   padding: 28px;
   background:
-    radial-gradient(circle at 50% 35%, rgba(var(--special-npc-tier-accent-rgb), 0.14), transparent 56%),
-    var(--special-npc-bg);
+    radial-gradient(circle at 50% 35%, rgba(var(--illustrated-tier-accent-rgb), 0.14), transparent 56%),
+    var(--illustrated-bg);
   color: #f8f9fa;
   text-align: center;
 }
 
-.special-npc-portrait-failure strong {
-  color: var(--special-npc-tier-accent);
+.illustrated-portrait-failure strong {
+  color: var(--illustrated-tier-accent);
   font-size: 20px;
 }
 
-.special-npc-portrait-failure p {
+.illustrated-portrait-failure p {
   max-width: 22em;
   margin: 10px 0 20px;
   color: rgba(248, 249, 250, 0.76);
@@ -920,31 +920,31 @@ watchEffect(() => {
   line-height: 1.6;
 }
 
-.special-npc-portrait-failure-actions {
+.illustrated-portrait-failure-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
 }
 
-.special-npc-portrait-failure-actions button {
+.illustrated-portrait-failure-actions button {
   min-height: 40px;
   padding: 0 16px;
-  border: 1px solid rgba(var(--special-npc-race-accent-rgb), 0.72);
+  border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.72);
   border-radius: 6px;
-  background: rgba(var(--special-npc-race-accent-rgb), 0.12);
+  background: rgba(var(--illustrated-race-accent-rgb), 0.12);
   color: #f8f9fa;
   cursor: pointer;
   font: inherit;
   font-weight: 700;
 }
 
-.special-npc-portrait-failure-actions button:hover {
-  border-color: var(--special-npc-tier-accent);
-  background: rgba(var(--special-npc-tier-accent-rgb), 0.18);
+.illustrated-portrait-failure-actions button:hover {
+  border-color: var(--illustrated-tier-accent);
+  background: rgba(var(--illustrated-tier-accent-rgb), 0.18);
 }
 
-.special-npc-portrait-navigation {
+.illustrated-portrait-navigation {
   position: absolute;
   top: 50%;
   right: 14px;
@@ -956,12 +956,12 @@ watchEffect(() => {
   transform: translateY(-50%);
 }
 
-.special-npc-portrait-navigation button {
+.illustrated-portrait-navigation button {
   display: grid;
   width: 42px;
   height: 42px;
   padding: 0;
-  border: 1px solid rgba(var(--special-npc-race-accent-rgb), 0.6);
+  border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.6);
   border-radius: 50%;
   background: rgba(7, 11, 18, 0.56);
   color: rgba(255, 255, 255, 0.92);
@@ -978,16 +978,16 @@ watchEffect(() => {
     transform 160ms ease;
 }
 
-.special-npc-portrait-navigation button:hover,
-.special-npc-portrait-navigation button:focus-visible {
-  border-color: var(--special-npc-tier-accent);
+.illustrated-portrait-navigation button:hover,
+.illustrated-portrait-navigation button:focus-visible {
+  border-color: var(--illustrated-tier-accent);
   background: rgba(7, 11, 18, 0.78);
   outline: none;
   transform: scale(1.06);
 }
 
-.special-npc-theme-venus .special-npc-portrait-image,
-.special-npc-theme-venus .special-npc-portrait-video {
+.illustrated-theme-venus .illustrated-portrait-image,
+.illustrated-theme-venus .illustrated-portrait-video {
   border-radius: 8px;
   clip-path: polygon(
     16px 0,
@@ -1000,11 +1000,11 @@ watchEffect(() => {
     0 16px
   );
   box-shadow:
-    0 0 0 1px rgba(var(--special-npc-soft-accent-rgb), 0.2),
+    0 0 0 1px rgba(var(--illustrated-soft-accent-rgb), 0.2),
     0 16px 36px rgba(0, 0, 0, 0.28);
 }
 
-.special-npc-portrait-deco {
+.illustrated-portrait-deco {
   position: absolute;
   inset: 22px;
   z-index: 4;
@@ -1023,46 +1023,46 @@ watchEffect(() => {
   pointer-events: none;
 }
 
-.special-npc-portrait-deco-corner {
+.illustrated-portrait-deco-corner {
   position: absolute;
   width: min(25%, 128px);
   aspect-ratio: 1;
   background: var(--venus-portrait-corner-url) center / contain no-repeat;
   opacity: 0.72;
   filter: brightness(0) saturate(100%) invert(89%) sepia(33%) saturate(618%) hue-rotate(348deg) brightness(108%)
-    contrast(96%) drop-shadow(0 0 7px rgba(var(--special-npc-tier-accent-rgb), 0.28))
+    contrast(96%) drop-shadow(0 0 7px rgba(var(--illustrated-tier-accent-rgb), 0.28))
     drop-shadow(0 0 14px rgba(86, 171, 220, 0.1));
 }
 
-.special-npc-portrait-deco-corner.top-left {
+.illustrated-portrait-deco-corner.top-left {
   top: 0;
   left: 0;
 }
 
-.special-npc-portrait-deco-corner.top-right {
+.illustrated-portrait-deco-corner.top-right {
   top: 0;
   right: 0;
   transform: scaleX(-1);
 }
 
-.special-npc-portrait-deco-corner.bottom-left {
+.illustrated-portrait-deco-corner.bottom-left {
   bottom: 0;
   left: 0;
   transform: scaleY(-1);
 }
 
-.special-npc-portrait-deco-corner.bottom-right {
+.illustrated-portrait-deco-corner.bottom-right {
   right: 0;
   bottom: 0;
   transform: scale(-1);
 }
 
-.special-npc-mobile-overview-overlay,
-.special-npc-mobile-header-overlay {
+.illustrated-mobile-overview-overlay,
+.illustrated-mobile-header-overlay {
   display: none;
 }
 
-.special-npc-data-pane {
+.illustrated-data-pane {
   position: relative;
   z-index: 2;
   display: flex;
@@ -1074,8 +1074,8 @@ watchEffect(() => {
   overflow: hidden;
 }
 
-.special-npc-theme-venus .special-npc-data-pane::before,
-.special-npc-theme-venus .special-npc-data-pane::after {
+.illustrated-theme-venus .illustrated-data-pane::before,
+.illustrated-theme-venus .illustrated-data-pane::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -1083,7 +1083,7 @@ watchEffect(() => {
   pointer-events: none;
 }
 
-.special-npc-theme-anastasia .special-npc-data-pane::after {
+.illustrated-theme-anastasia .illustrated-data-pane::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -1095,24 +1095,24 @@ watchEffect(() => {
   pointer-events: none;
 }
 
-.special-npc-theme-anastasia .special-npc-data-pane > * {
+.illustrated-theme-anastasia .illustrated-data-pane > * {
   position: relative;
   z-index: 1;
 }
 
-.special-npc-theme-anastasia :deep(.special-npc-header .special-npc-name) {
+.illustrated-theme-anastasia :deep(.illustrated-header .illustrated-name) {
   color: #0a2d4e;
   text-shadow:
     0 1px 0 rgba(255, 255, 255, 0.86),
     0 2px 10px rgba(95, 143, 168, 0.18);
 }
 
-.special-npc-theme-anastasia :deep(.special-npc-header .special-npc-subtitle) {
+.illustrated-theme-anastasia :deep(.illustrated-header .illustrated-subtitle) {
   color: #315873;
   text-shadow: none;
 }
 
-.special-npc-theme-anastasia :deep(.special-npc-header .rail-line) {
+.illustrated-theme-anastasia :deep(.illustrated-header .rail-line) {
   background: linear-gradient(
     90deg,
     transparent,
@@ -1125,30 +1125,30 @@ watchEffect(() => {
   opacity: 0.9;
 }
 
-.special-npc-theme-anastasia :deep(.special-npc-header .rail-flourish),
-.special-npc-theme-anastasia :deep(.special-npc-header .rail-center) {
+.illustrated-theme-anastasia :deep(.illustrated-header .rail-flourish),
+.illustrated-theme-anastasia :deep(.illustrated-header .rail-center) {
   filter: brightness(0) saturate(100%) invert(22%) sepia(35%) saturate(1262%) hue-rotate(164deg) brightness(90%)
     contrast(96%) drop-shadow(0 1px 1px rgba(255, 255, 255, 0.86));
   opacity: 0.76;
 }
 
-.special-npc-theme-anastasia :deep(.special-npc-attribute),
-.special-npc-theme-anastasia :deep(.special-npc-profile-card),
-.special-npc-theme-anastasia :deep(.special-npc-list-item),
-.special-npc-theme-anastasia :deep(.special-npc-story-block) {
+.illustrated-theme-anastasia :deep(.illustrated-attribute),
+.illustrated-theme-anastasia :deep(.illustrated-profile-card),
+.illustrated-theme-anastasia :deep(.illustrated-list-item),
+.illustrated-theme-anastasia :deep(.illustrated-story-block) {
   border-color: rgba(10, 45, 78, 0.16);
   background-color: rgba(250, 252, 253, 0.84);
   box-shadow: 0 8px 18px rgba(30, 67, 91, 0.1);
 }
 
-.special-npc-theme-anastasia :deep(.special-npc-attribute),
-.special-npc-theme-anastasia :deep(.special-npc-profile-card),
-.special-npc-theme-anastasia :deep(.special-npc-list-item),
-.special-npc-theme-anastasia :deep(.special-npc-story-block) {
+.illustrated-theme-anastasia :deep(.illustrated-attribute),
+.illustrated-theme-anastasia :deep(.illustrated-profile-card),
+.illustrated-theme-anastasia :deep(.illustrated-list-item),
+.illustrated-theme-anastasia :deep(.illustrated-story-block) {
   color: #14304b;
 }
 
-.special-npc-theme-anastasia :deep(.special-npc-list-item) {
+.illustrated-theme-anastasia :deep(.illustrated-list-item) {
   overflow: hidden;
   border: 1px solid rgba(10, 45, 78, 0.18);
   border-radius: 10px;
@@ -1160,44 +1160,44 @@ watchEffect(() => {
     0 8px 18px rgba(30, 67, 91, 0.12);
 }
 
-.special-npc-theme-anastasia :deep(.special-npc-list-item-header) {
+.illustrated-theme-anastasia :deep(.illustrated-list-item-header) {
   border-bottom-color: rgba(10, 45, 78, 0.14);
 }
 
-.special-npc-theme-anastasia :deep(.special-npc-list-item h3) {
+.illustrated-theme-anastasia :deep(.illustrated-list-item h3) {
   color: #0a2d4e;
   text-shadow: none;
 }
 
-.special-npc-theme-anastasia :deep(.special-npc-list-item h3::before) {
+.illustrated-theme-anastasia :deep(.illustrated-list-item h3::before) {
   text-shadow: none;
 }
 
-.special-npc-theme-anastasia :deep(.special-npc-tag) {
+.illustrated-theme-anastasia :deep(.illustrated-tag) {
   border-color: rgba(10, 45, 78, 0.2);
   background: rgba(255, 255, 255, 0.62);
   color: #315873;
 }
 
-.special-npc-theme-anastasia :deep(.special-npc-effect-item),
-.special-npc-theme-anastasia :deep(.special-npc-effect-text),
-.special-npc-theme-anastasia :deep(.special-npc-description),
-.special-npc-theme-anastasia :deep(.special-npc-line) {
+.illustrated-theme-anastasia :deep(.illustrated-effect-item),
+.illustrated-theme-anastasia :deep(.illustrated-effect-text),
+.illustrated-theme-anastasia :deep(.illustrated-description),
+.illustrated-theme-anastasia :deep(.illustrated-line) {
   color: #1f405a;
   text-shadow: none;
 }
 
-.special-npc-theme-anastasia :deep(.special-npc-resources .special-npc-resource) {
+.illustrated-theme-anastasia :deep(.illustrated-resources .illustrated-resource) {
   border: 0;
   background: transparent;
   box-shadow: none;
 }
 
-.special-npc-theme-anastasia :deep(.special-npc-resources .special-npc-resource-value) {
+.illustrated-theme-anastasia :deep(.illustrated-resources .illustrated-resource-value) {
   color: #0a2d4e;
 }
 
-.special-npc-theme-anastasia :deep(.special-npc-text-block) {
+.illustrated-theme-anastasia :deep(.illustrated-text-block) {
   --corner: rgba(10, 45, 78, 0.54);
   border-color: rgba(10, 45, 78, 0.22);
   border-radius: 10px;
@@ -1207,17 +1207,17 @@ watchEffect(() => {
     0 8px 18px rgba(30, 67, 91, 0.12);
 }
 
-.special-npc-theme-anastasia :deep(.special-npc-text-block h3) {
+.illustrated-theme-anastasia :deep(.illustrated-text-block h3) {
   color: #0a2d4e;
   text-shadow: none;
 }
 
-.special-npc-theme-anastasia :deep(.special-npc-text-block p) {
+.illustrated-theme-anastasia :deep(.illustrated-text-block p) {
   color: #1f405a;
   text-shadow: none;
 }
 
-.special-npc-theme-iris .special-npc-data-pane {
+.illustrated-theme-iris .illustrated-data-pane {
   color: #17324a;
   background-color: #dcefeb;
   background-image:
@@ -1234,12 +1234,12 @@ watchEffect(() => {
     auto;
 }
 
-.special-npc-theme-iris .special-npc-data-pane > * {
+.illustrated-theme-iris .illustrated-data-pane > * {
   position: relative;
   z-index: 2;
 }
 
-.special-npc-iris-header-deco {
+.illustrated-iris-header-deco {
   position: absolute !important;
   top: 26px;
   right: 34px;
@@ -1252,14 +1252,14 @@ watchEffect(() => {
   pointer-events: none;
 }
 
-.special-npc-iris-jellyfish {
+.illustrated-iris-jellyfish {
   position: relative;
   width: 58px;
   height: 68px;
   color: #7258ba;
 }
 
-.special-npc-iris-jellyfish .jellyfish-dome {
+.illustrated-iris-jellyfish .jellyfish-dome {
   position: absolute;
   top: 5px;
   left: 6px;
@@ -1272,7 +1272,7 @@ watchEffect(() => {
   box-shadow: inset 7px 5px 0 rgba(255, 255, 255, 0.42);
 }
 
-.special-npc-iris-jellyfish .jellyfish-dome::after {
+.illustrated-iris-jellyfish .jellyfish-dome::after {
   content: '';
   position: absolute;
   top: 8px;
@@ -1283,7 +1283,7 @@ watchEffect(() => {
   background: #f078a6;
 }
 
-.special-npc-iris-jellyfish .jellyfish-tentacle {
+.illustrated-iris-jellyfish .jellyfish-tentacle {
   position: absolute;
   top: 35px;
   width: 8px;
@@ -1292,29 +1292,29 @@ watchEffect(() => {
   border-radius: 50%;
 }
 
-.special-npc-iris-jellyfish .tentacle-one {
+.illustrated-iris-jellyfish .tentacle-one {
   left: 15px;
   transform: rotate(8deg);
 }
 
-.special-npc-iris-jellyfish .tentacle-two {
+.illustrated-iris-jellyfish .tentacle-two {
   left: 27px;
   transform: rotate(-9deg);
 }
 
-.special-npc-iris-jellyfish .tentacle-three {
+.illustrated-iris-jellyfish .tentacle-three {
   left: 39px;
   transform: rotate(11deg);
 }
 
-.special-npc-iris-toy-blocks {
+.illustrated-iris-toy-blocks {
   display: grid;
   grid-template-columns: repeat(2, 18px);
   gap: 6px;
   transform: rotate(8deg);
 }
 
-.special-npc-iris-toy-blocks i {
+.illustrated-iris-toy-blocks i {
   width: 18px;
   aspect-ratio: 1;
   border: 2px solid #42a996;
@@ -1323,42 +1323,42 @@ watchEffect(() => {
   box-shadow: 2px 2px 0 rgba(169, 140, 232, 0.28);
 }
 
-.special-npc-iris-toy-blocks i:nth-child(2),
-.special-npc-iris-toy-blocks i:nth-child(3) {
+.illustrated-iris-toy-blocks i:nth-child(2),
+.illustrated-iris-toy-blocks i:nth-child(3) {
   border-color: #be4f79;
   background: #fbe7ef;
 }
 
-.special-npc-theme-iris :deep(.special-npc-header .special-npc-name) {
+.illustrated-theme-iris :deep(.illustrated-header .illustrated-name) {
   color: #17324a;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-.special-npc-theme-iris :deep(.special-npc-header .special-npc-level),
-.special-npc-theme-iris :deep(.special-npc-header .special-npc-tier) {
+.illustrated-theme-iris :deep(.illustrated-header .illustrated-level),
+.illustrated-theme-iris :deep(.illustrated-header .illustrated-tier) {
   color: #7258ba;
   text-shadow: none;
 }
 
-.special-npc-theme-iris :deep(.special-npc-header .special-npc-subtitle) {
+.illustrated-theme-iris :deep(.illustrated-header .illustrated-subtitle) {
   color: #31536d;
   text-shadow: none;
 }
 
-.special-npc-theme-iris :deep(.special-npc-page-title) {
+.illustrated-theme-iris :deep(.illustrated-page-title) {
   color: #17324a;
 }
 
-.special-npc-theme-iris :deep(.special-npc-page-title-line) {
+.illustrated-theme-iris :deep(.illustrated-page-title-line) {
   background: linear-gradient(90deg, transparent, #42a996, #a98ce8, transparent);
 }
 
-.special-npc-theme-iris :deep(.special-npc-page-title h2) {
+.illustrated-theme-iris :deep(.illustrated-page-title h2) {
   color: #17324a;
   text-shadow: none;
 }
 
-.special-npc-theme-iris :deep(.special-npc-attribute) {
+.illustrated-theme-iris :deep(.illustrated-attribute) {
   border: 1px solid #85b7b0;
   border-radius: 18px 18px 42% 42% / 18px 18px 22% 22%;
   background: linear-gradient(180deg, #f9fcfb 0%, #e6f4f1 58%, #bfe8df 100%);
@@ -1369,7 +1369,7 @@ watchEffect(() => {
     inset 0 0 0 4px rgba(255, 255, 255, 0.5);
 }
 
-.special-npc-theme-iris :deep(.special-npc-attribute::before) {
+.illustrated-theme-iris :deep(.illustrated-attribute::before) {
   content: '';
   position: absolute;
   top: 0;
@@ -1380,16 +1380,16 @@ watchEffect(() => {
   background: #83dccb;
 }
 
-.special-npc-theme-iris :deep(.special-npc-attribute-name) {
+.illustrated-theme-iris :deep(.illustrated-attribute-name) {
   color: #17324a;
 }
 
-.special-npc-theme-iris :deep(.special-npc-attribute-total) {
+.illustrated-theme-iris :deep(.illustrated-attribute-total) {
   color: #be4f79;
   text-shadow: none;
 }
 
-.special-npc-theme-iris :deep(.special-npc-resources::before) {
+.illustrated-theme-iris :deep(.illustrated-resources::before) {
   top: 50%;
   right: 11%;
   bottom: auto;
@@ -1399,11 +1399,11 @@ watchEffect(() => {
   background: #a98ce8;
 }
 
-.special-npc-theme-iris :deep(.special-npc-resources::after) {
+.illustrated-theme-iris :deep(.illustrated-resources::after) {
   display: none;
 }
 
-.special-npc-theme-iris :deep(.special-npc-resource) {
+.illustrated-theme-iris :deep(.illustrated-resource) {
   border: 1px solid #88b8b1;
   border-radius: 46% 54% 51% 49% / 51% 44% 56% 49%;
   background: rgba(247, 251, 250, 0.95);
@@ -1412,22 +1412,22 @@ watchEffect(() => {
     0 7px 12px rgba(23, 50, 74, 0.1);
 }
 
-.special-npc-theme-iris :deep(.special-npc-resource:not(:last-child)::after) {
+.illustrated-theme-iris :deep(.illustrated-resource:not(:last-child)::after) {
   display: none;
 }
 
-.special-npc-theme-iris :deep(.special-npc-resource-name) {
+.illustrated-theme-iris :deep(.illustrated-resource-name) {
   color: #7258ba;
 }
 
-.special-npc-theme-iris :deep(.special-npc-resource-value) {
+.illustrated-theme-iris :deep(.illustrated-resource-value) {
   color: #17324a;
   text-shadow: none;
 }
 
-.special-npc-theme-iris :deep(.special-npc-profile-card),
-.special-npc-theme-iris :deep(.special-npc-text-block),
-.special-npc-theme-iris :deep(.special-npc-list-item) {
+.illustrated-theme-iris :deep(.illustrated-profile-card),
+.illustrated-theme-iris :deep(.illustrated-text-block),
+.illustrated-theme-iris :deep(.illustrated-list-item) {
   border: 1px solid #a6c3c0;
   border-radius: 10px;
   background: rgba(247, 251, 250, 0.95);
@@ -1435,54 +1435,54 @@ watchEffect(() => {
   box-shadow: 0 8px 18px rgba(23, 50, 74, 0.1);
 }
 
-.special-npc-theme-iris :deep(.special-npc-text-block h3),
-.special-npc-theme-iris :deep(.special-npc-list-item h3) {
+.illustrated-theme-iris :deep(.illustrated-text-block h3),
+.illustrated-theme-iris :deep(.illustrated-list-item h3) {
   color: #17324a;
   text-shadow: none;
 }
 
-.special-npc-theme-iris :deep(.special-npc-list-item-header) {
+.illustrated-theme-iris :deep(.illustrated-list-item-header) {
   border-bottom-color: rgba(66, 169, 150, 0.26);
 }
 
-.special-npc-theme-iris :deep(.special-npc-tag) {
+.illustrated-theme-iris :deep(.illustrated-tag) {
   border-color: #a7c5c1;
   background: #fff;
   color: #31536d;
 }
 
-.special-npc-theme-iris :deep(.special-npc-effect-item),
-.special-npc-theme-iris :deep(.special-npc-effect-text),
-.special-npc-theme-iris :deep(.special-npc-description),
-.special-npc-theme-iris :deep(.special-npc-line),
-.special-npc-theme-iris :deep(.special-npc-text-block p) {
+.illustrated-theme-iris :deep(.illustrated-effect-item),
+.illustrated-theme-iris :deep(.illustrated-effect-text),
+.illustrated-theme-iris :deep(.illustrated-description),
+.illustrated-theme-iris :deep(.illustrated-line),
+.illustrated-theme-iris :deep(.illustrated-text-block p) {
   color: #31536d;
   text-shadow: none;
 }
 
-.special-npc-theme-iris :deep(.special-npc-tabs) {
+.illustrated-theme-iris :deep(.illustrated-tabs) {
   border: 1px solid #9abbb7;
   border-radius: 8px;
   background: rgba(247, 251, 250, 0.96);
   box-shadow: 0 7px 16px rgba(23, 50, 74, 0.1);
 }
 
-.special-npc-theme-iris :deep(.special-npc-tab-button) {
+.illustrated-theme-iris :deep(.illustrated-tab-button) {
   color: #31536d;
 }
 
-.special-npc-theme-iris :deep(.special-npc-tab-button:hover),
-.special-npc-theme-iris :deep(.special-npc-tab-button.active) {
+.illustrated-theme-iris :deep(.illustrated-tab-button:hover),
+.illustrated-theme-iris :deep(.illustrated-tab-button.active) {
   background: #d9f0ea;
   color: #17324a;
 }
 
-.special-npc-theme-iris :deep(.special-npc-tab-button.active::after) {
+.illustrated-theme-iris :deep(.illustrated-tab-button.active::after) {
   background: #f078a6;
 }
 
-.special-npc-theme-iris .special-npc-story-block,
-.special-npc-theme-iris .special-npc-story-link-block {
+.illustrated-theme-iris .illustrated-story-block,
+.illustrated-theme-iris .illustrated-story-link-block {
   border-color: #a6c3c0;
   border-radius: 10px;
   background: rgba(247, 251, 250, 0.95);
@@ -1490,37 +1490,37 @@ watchEffect(() => {
   box-shadow: 0 8px 18px rgba(23, 50, 74, 0.1);
 }
 
-.special-npc-theme-iris .special-npc-story-block h3,
-.special-npc-theme-iris .special-npc-story-link-copy h3 {
+.illustrated-theme-iris .illustrated-story-block h3,
+.illustrated-theme-iris .illustrated-story-link-copy h3 {
   color: #17324a;
   text-shadow: none;
 }
 
-.special-npc-theme-iris .special-npc-story-block p,
-.special-npc-theme-iris .special-npc-story-link-copy p {
+.illustrated-theme-iris .illustrated-story-block p,
+.illustrated-theme-iris .illustrated-story-link-copy p {
   color: #31536d;
 }
 
-.special-npc-theme-iris .import-action-menu {
+.illustrated-theme-iris .import-action-menu {
   border-color: #9abbb7;
   background: rgba(247, 251, 250, 0.98);
   box-shadow: 0 12px 30px rgba(23, 50, 74, 0.2);
 }
 
-.special-npc-theme-iris .import-action-menu button {
+.illustrated-theme-iris .import-action-menu button {
   color: #17324a;
 }
 
-.special-npc-theme-iris .import-action-menu button:hover:not(:disabled) {
+.illustrated-theme-iris .import-action-menu button:hover:not(:disabled) {
   border-color: rgba(66, 169, 150, 0.34);
   background: #e4f3ef;
 }
 
-.special-npc-theme-venus .special-npc-data-pane::after {
+.illustrated-theme-venus .illustrated-data-pane::after {
   background:
     linear-gradient(
       180deg,
-      rgba(var(--special-npc-tier-accent-rgb), 0.14) 0%,
+      rgba(var(--illustrated-tier-accent-rgb), 0.14) 0%,
       rgba(27, 69, 111, 0.18) 34%,
       rgba(4, 15, 36, 0.36) 100%
     ),
@@ -1529,25 +1529,25 @@ watchEffect(() => {
   opacity: 0.9;
 }
 
-.special-npc-theme-venus .special-npc-data-pane > * {
+.illustrated-theme-venus .illustrated-data-pane > * {
   position: relative;
   z-index: 1;
 }
 
-.special-npc-panels::-webkit-scrollbar {
+.illustrated-panels::-webkit-scrollbar {
   width: 6px;
 }
 
-.special-npc-panels::-webkit-scrollbar-track {
+.illustrated-panels::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.special-npc-panels::-webkit-scrollbar-thumb {
+.illustrated-panels::-webkit-scrollbar-thumb {
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.12);
 }
 
-.special-npc-panels {
+.illustrated-panels {
   flex: 1;
   min-width: 0;
   min-height: 0;
@@ -1557,30 +1557,30 @@ watchEffect(() => {
   scrollbar-width: thin;
 }
 
-.special-npc-shell.is-divinity-tab .special-npc-panels {
+.illustrated-shell.is-divinity-tab .illustrated-panels {
   display: flex;
   flex-direction: column;
   overflow: hidden;
   padding-bottom: 12px;
 }
 
-.special-npc-shell.is-divinity-tab .special-npc-portrait-pane,
-.special-npc-shell.is-divinity-tab .special-npc-desktop-header {
+.illustrated-shell.is-divinity-tab .illustrated-portrait-pane,
+.illustrated-shell.is-divinity-tab .illustrated-desktop-header {
   display: none;
 }
 
-.special-npc-shell.is-divinity-tab .special-npc-data-pane {
+.illustrated-shell.is-divinity-tab .illustrated-data-pane {
   flex: 1 1 100%;
   max-height: none;
   padding: 14px;
 }
 
-.special-npc-shell.is-divinity-tab :deep(.special-npc-page-title) {
+.illustrated-shell.is-divinity-tab :deep(.illustrated-page-title) {
   flex-shrink: 0;
   margin-bottom: 8px;
 }
 
-.special-npc-shell.is-divinity-tab :deep(.special-npc-divinity-stage) {
+.illustrated-shell.is-divinity-tab :deep(.illustrated-divinity-stage) {
   flex: 1 1 auto;
   width: 100%;
   max-width: none;
@@ -1588,96 +1588,96 @@ watchEffect(() => {
   aspect-ratio: auto;
 }
 
-.special-npc-section + .special-npc-section {
+.illustrated-section + .illustrated-section {
   margin-top: 28px;
 }
 
-.special-npc-section-title {
+.illustrated-section-title {
   margin: 0 0 16px;
-  color: var(--special-npc-race-accent);
+  color: var(--illustrated-race-accent);
   font-size: 18px;
   font-weight: 700;
 }
 
-.special-npc-story-combined-block {
+.illustrated-story-combined-block {
   display: grid;
   gap: 18px;
 }
 
-.special-npc-story-block {
+.illustrated-story-block {
   padding: 28px 36px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   background: radial-gradient(ellipse at center, rgba(30, 34, 42, 0.4) 0%, rgba(10, 12, 16, 0.8) 100%);
 }
 
-.special-npc-story-block h3 {
+.illustrated-story-block h3 {
   margin: 0 0 16px;
-  color: var(--special-npc-tier-accent);
+  color: var(--illustrated-tier-accent);
   font-family: 'Noto Serif SC', 'SimSun', serif;
   font-size: 22px;
   font-weight: 700;
   text-align: center;
-  text-shadow: 0 0 12px rgba(var(--special-npc-tier-accent-rgb), 0.26);
+  text-shadow: 0 0 12px rgba(var(--illustrated-tier-accent-rgb), 0.26);
 }
 
-.special-npc-story-block p {
+.illustrated-story-block p {
   margin: 0;
   color: #e2e8f0;
   line-height: 1.8;
   white-space: pre-line;
 }
 
-.special-npc-story-link-block {
+.illustrated-story-link-block {
   display: grid;
   gap: 22px;
   justify-items: center;
   width: min(100%, 520px);
   margin: 0 auto;
   padding: 38px 40px;
-  border: 1px solid rgba(var(--special-npc-tier-accent-rgb), 0.28);
+  border: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.28);
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(var(--special-npc-tier-accent-rgb), 0.14), transparent 64%),
+    radial-gradient(ellipse at 50% 0%, rgba(var(--illustrated-tier-accent-rgb), 0.14), transparent 64%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   text-align: center;
 }
 
-.special-npc-story-link-copy {
+.illustrated-story-link-copy {
   display: grid;
   gap: 10px;
 }
 
-.special-npc-story-kicker {
-  color: var(--special-npc-race-accent);
+.illustrated-story-kicker {
+  color: var(--illustrated-race-accent);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.08em;
 }
 
-.special-npc-story-link-copy h3 {
+.illustrated-story-link-copy h3 {
   margin: 0;
   color: #fff8da;
   font-family: 'Noto Serif SC', 'SimSun', serif;
   font-size: 28px;
   font-weight: 700;
-  text-shadow: 0 0 14px rgba(var(--special-npc-tier-accent-rgb), 0.36);
+  text-shadow: 0 0 14px rgba(var(--illustrated-tier-accent-rgb), 0.36);
 }
 
-.special-npc-story-link-copy p {
+.illustrated-story-link-copy p {
   margin: 0;
   color: #d9e5f2;
   line-height: 1.75;
 }
 
-.special-npc-story-link-button {
+.illustrated-story-link-button {
   min-width: 150px;
   padding: 10px 22px;
-  border: 1px solid rgba(var(--special-npc-tier-accent-rgb), 0.6);
+  border: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.6);
   border-radius: 999px;
   background: linear-gradient(
     180deg,
-    rgba(var(--special-npc-tier-accent-rgb), 0.2),
-    rgba(var(--special-npc-tier-accent-rgb), 0.08)
+    rgba(var(--illustrated-tier-accent-rgb), 0.2),
+    rgba(var(--illustrated-tier-accent-rgb), 0.08)
   );
   color: #fff6d5;
   cursor: pointer;
@@ -1688,9 +1688,9 @@ watchEffect(() => {
     transform 0.2s ease;
 }
 
-.special-npc-story-link-button:hover {
-  border-color: rgba(var(--special-npc-tier-accent-rgb), 0.9);
-  box-shadow: 0 0 18px rgba(var(--special-npc-tier-accent-rgb), 0.24);
+.illustrated-story-link-button:hover {
+  border-color: rgba(var(--illustrated-tier-accent-rgb), 0.9);
+  box-shadow: 0 0 18px rgba(var(--illustrated-tier-accent-rgb), 0.24);
   transform: translateY(-1px);
 }
 
@@ -1737,37 +1737,37 @@ watchEffect(() => {
 }
 
 @media (min-width: 901px) {
-  .special-npc-theme-anastasia .special-npc-shell.is-overview-tab .special-npc-panels {
+  .illustrated-theme-anastasia .illustrated-shell.is-overview-tab .illustrated-panels {
     overflow-y: hidden;
     padding-bottom: 0;
   }
 }
 
 @media (max-width: 900px) {
-  .special-npc-wrapper {
+  .illustrated-wrapper {
     max-width: min(100%, 480px);
   }
 
-  .special-npc-shell {
+  .illustrated-shell {
     flex-direction: column;
     height: 216.4251cqw;
     min-height: 0;
   }
 
-  .special-npc-portrait-pane {
+  .illustrated-portrait-pane {
     flex: 1 1 auto;
     min-height: 0;
   }
 
-  .special-npc-shell.is-detail-tab .special-npc-portrait-pane {
+  .illustrated-shell.is-detail-tab .illustrated-portrait-pane {
     display: none;
   }
 
-  .special-npc-portrait-pane::after {
-    background: linear-gradient(to bottom, transparent 65%, var(--special-npc-bg) 100%);
+  .illustrated-portrait-pane::after {
+    background: linear-gradient(to bottom, transparent 65%, var(--illustrated-bg) 100%);
   }
 
-  .special-npc-data-pane {
+  .illustrated-data-pane {
     flex: 1;
     max-height: none;
     min-height: 0;
@@ -1775,21 +1775,21 @@ watchEffect(() => {
     overflow: hidden;
   }
 
-  .special-npc-shell.is-overview-tab .special-npc-data-pane {
+  .illustrated-shell.is-overview-tab .illustrated-data-pane {
     flex: 0 0 auto;
     padding: 0 18px 8px;
     overflow: visible;
   }
 
-  .special-npc-shell.is-detail-tab .special-npc-data-pane {
+  .illustrated-shell.is-detail-tab .illustrated-data-pane {
     padding: 18px 24px 14px;
   }
 
-  .special-npc-desktop-header {
+  .illustrated-desktop-header {
     display: none;
   }
 
-  .special-npc-mobile-overview-overlay {
+  .illustrated-mobile-overview-overlay {
     position: absolute;
     right: 18px;
     bottom: 22px;
@@ -1800,7 +1800,7 @@ watchEffect(() => {
     gap: 10px;
   }
 
-  .special-npc-mobile-entrance-quote {
+  .illustrated-mobile-entrance-quote {
     box-sizing: border-box;
     display: flex;
     align-items: center;
@@ -1809,7 +1809,7 @@ watchEffect(() => {
     min-height: 38px;
     margin: 0 8px;
     padding: 7px 12px;
-    border: 1px solid rgba(var(--special-npc-race-accent-rgb), 0.48);
+    border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.48);
     border-radius: 6px;
     background: rgba(8, 12, 18, 0.58);
     box-shadow: 0 5px 16px rgba(0, 0, 0, 0.2);
@@ -1823,15 +1823,15 @@ watchEffect(() => {
     text-align: center;
   }
 
-  .special-npc-mobile-quote-mark {
+  .illustrated-mobile-quote-mark {
     flex: 0 0 auto;
-    color: rgba(var(--special-npc-race-accent-rgb), 0.92);
+    color: rgba(var(--illustrated-race-accent-rgb), 0.92);
     font-family: Georgia, 'Times New Roman', serif;
     font-size: 18px;
     line-height: 1;
   }
 
-  .special-npc-mobile-quote-text {
+  .illustrated-mobile-quote-text {
     display: -webkit-box;
     overflow: hidden;
     overflow-wrap: anywhere;
@@ -1840,10 +1840,10 @@ watchEffect(() => {
     -webkit-line-clamp: 2;
   }
 
-  .special-npc-mobile-header-overlay {
+  .illustrated-mobile-header-overlay {
     display: block;
     padding: 10px 12px;
-    border: 1px solid rgba(var(--special-npc-race-accent-rgb), 0.62);
+    border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.62);
     border-radius: 8px;
     background: rgba(12, 14, 20, 0.66);
     box-shadow:
@@ -1853,11 +1853,11 @@ watchEffect(() => {
     -webkit-backdrop-filter: blur(5px);
   }
 
-  .special-npc-shell.is-overview-tab .special-npc-panels {
+  .illustrated-shell.is-overview-tab .illustrated-panels {
     display: none;
   }
 
-  .special-npc-panels {
+  .illustrated-panels {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
@@ -1865,84 +1865,84 @@ watchEffect(() => {
     scrollbar-width: none;
   }
 
-  .special-npc-shell.is-divinity-tab .special-npc-panels {
+  .illustrated-shell.is-divinity-tab .illustrated-panels {
     overflow: hidden;
     padding-bottom: 14px;
   }
 
-  .special-npc-shell.is-divinity-tab .special-npc-data-pane {
+  .illustrated-shell.is-divinity-tab .illustrated-data-pane {
     padding: 12px;
   }
 
-  .special-npc-shell.is-divinity-tab :deep(.special-npc-page-title) {
+  .illustrated-shell.is-divinity-tab :deep(.illustrated-page-title) {
     margin-bottom: 8px;
   }
 
-  .special-npc-shell.is-divinity-tab :deep(.special-npc-divinity-stage) {
+  .illustrated-shell.is-divinity-tab :deep(.illustrated-divinity-stage) {
     min-height: 0;
     height: 100%;
   }
 
-  .special-npc-panels::-webkit-scrollbar {
+  .illustrated-panels::-webkit-scrollbar {
     display: none;
   }
 
-  .special-npc-panels > :deep(.special-npc-overview) {
+  .illustrated-panels > :deep(.illustrated-overview) {
     display: none;
   }
 
-  .special-npc-shell :deep(.special-npc-tab-scroll) {
+  .illustrated-shell :deep(.illustrated-tab-scroll) {
     padding-right: 12px;
   }
 
-  .special-npc-mobile-header-overlay :deep(.special-npc-header.compact.ornate) {
+  .illustrated-mobile-header-overlay :deep(.illustrated-header.compact.ornate) {
     gap: 2px;
   }
 
-  .special-npc-mobile-header-overlay :deep(.special-npc-header.compact.ornate .special-npc-name-rail.top) {
+  .illustrated-mobile-header-overlay :deep(.illustrated-header.compact.ornate .illustrated-name-rail.top) {
     height: 16px;
     margin-bottom: -2px;
   }
 
-  .special-npc-mobile-header-overlay :deep(.special-npc-header.compact.ornate .special-npc-name-rail.bottom) {
+  .illustrated-mobile-header-overlay :deep(.illustrated-header.compact.ornate .illustrated-name-rail.bottom) {
     height: 14px;
     margin-top: -2px;
   }
 
-  .special-npc-mobile-header-overlay :deep(.special-npc-header.compact.ornate .rail-flourish) {
+  .illustrated-mobile-header-overlay :deep(.illustrated-header.compact.ornate .rail-flourish) {
     height: 12px;
   }
 
-  .special-npc-mobile-header-overlay :deep(.special-npc-header.compact.ornate .rail-center) {
+  .illustrated-mobile-header-overlay :deep(.illustrated-header.compact.ornate .rail-center) {
     height: 14px;
   }
 
-  .special-npc-mobile-header-overlay :deep(.special-npc-header.compact.ornate .special-npc-name) {
+  .illustrated-mobile-header-overlay :deep(.illustrated-header.compact.ornate .illustrated-name) {
     font-size: 20px;
     line-height: 1.08;
   }
 
-  .special-npc-mobile-header-overlay :deep(.special-npc-header.compact.ornate .special-npc-level-tier) {
+  .illustrated-mobile-header-overlay :deep(.illustrated-header.compact.ornate .illustrated-level-tier) {
     margin-bottom: 0;
     padding: 0;
   }
 
-  .special-npc-mobile-header-overlay :deep(.special-npc-header.compact.ornate .special-npc-level),
-  .special-npc-mobile-header-overlay :deep(.special-npc-header.compact.ornate .special-npc-tier) {
+  .illustrated-mobile-header-overlay :deep(.illustrated-header.compact.ornate .illustrated-level),
+  .illustrated-mobile-header-overlay :deep(.illustrated-header.compact.ornate .illustrated-tier) {
     font-size: 10px;
   }
 
-  .special-npc-mobile-header-overlay :deep(.special-npc-header.compact.ornate .special-npc-badge-separator) {
+  .illustrated-mobile-header-overlay :deep(.illustrated-header.compact.ornate .illustrated-badge-separator) {
     margin: 0 8px;
   }
 
-  .special-npc-mobile-header-overlay :deep(.special-npc-header.compact.ornate .special-npc-subtitle) {
+  .illustrated-mobile-header-overlay :deep(.illustrated-header.compact.ornate .illustrated-subtitle) {
     gap: 4px;
     font-size: 10px;
     line-height: 1.35;
   }
 
-  .special-npc-theme-anastasia .special-npc-mobile-header-overlay {
+  .illustrated-theme-anastasia .illustrated-mobile-header-overlay {
     padding: 8px 10px 9px;
     border-color: rgba(10, 45, 78, 0.42);
     border-radius: 8px;
@@ -1954,17 +1954,17 @@ watchEffect(() => {
     -webkit-backdrop-filter: none;
   }
 
-  .special-npc-theme-anastasia .special-npc-mobile-header-overlay :deep(.special-npc-header.compact.ornate) {
+  .illustrated-theme-anastasia .illustrated-mobile-header-overlay :deep(.illustrated-header.compact.ornate) {
     gap: 3px;
   }
 
-  .special-npc-theme-anastasia .special-npc-mobile-header-overlay :deep(.special-npc-name-rail) {
+  .illustrated-theme-anastasia .illustrated-mobile-header-overlay :deep(.illustrated-name-rail) {
     display: none;
   }
 
-  .special-npc-theme-anastasia
-    .special-npc-mobile-header-overlay
-    :deep(.special-npc-header.compact.ornate .special-npc-name) {
+  .illustrated-theme-anastasia
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-header.compact.ornate .illustrated-name) {
     max-width: 100%;
     color: #0a2d4e;
     font-size: clamp(15px, 5.4cqw, 20px);
@@ -1974,26 +1974,26 @@ watchEffect(() => {
     overflow-wrap: anywhere;
   }
 
-  .special-npc-theme-anastasia
-    .special-npc-mobile-header-overlay
-    :deep(.special-npc-header.compact.ornate .special-npc-level),
-  .special-npc-theme-anastasia
-    .special-npc-mobile-header-overlay
-    :deep(.special-npc-header.compact.ornate .special-npc-tier) {
+  .illustrated-theme-anastasia
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-header.compact.ornate .illustrated-level),
+  .illustrated-theme-anastasia
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-header.compact.ornate .illustrated-tier) {
     color: #a87a27;
     font-size: 10px;
   }
 
-  .special-npc-theme-anastasia
-    .special-npc-mobile-header-overlay
-    :deep(.special-npc-header.compact.ornate .special-npc-subtitle) {
+  .illustrated-theme-anastasia
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-header.compact.ornate .illustrated-subtitle) {
     color: #315873;
     font-size: 9px;
     line-height: 1.28;
     text-shadow: none;
   }
 
-  .special-npc-theme-iris .special-npc-mobile-header-overlay {
+  .illustrated-theme-iris .illustrated-mobile-header-overlay {
     max-height: 24%;
     padding: 10px 12px;
     overflow: hidden;
@@ -2004,7 +2004,7 @@ watchEffect(() => {
     -webkit-backdrop-filter: none;
   }
 
-  .special-npc-theme-iris .special-npc-mobile-header-overlay :deep(.special-npc-name) {
+  .illustrated-theme-iris .illustrated-mobile-header-overlay :deep(.illustrated-name) {
     max-width: 100%;
     color: #17324a;
     font-size: clamp(18px, 6cqw, 24px);
@@ -2014,144 +2014,144 @@ watchEffect(() => {
     overflow-wrap: anywhere;
   }
 
-  .special-npc-theme-iris .special-npc-mobile-header-overlay :deep(.special-npc-level),
-  .special-npc-theme-iris .special-npc-mobile-header-overlay :deep(.special-npc-tier) {
+  .illustrated-theme-iris .illustrated-mobile-header-overlay :deep(.illustrated-level),
+  .illustrated-theme-iris .illustrated-mobile-header-overlay :deep(.illustrated-tier) {
     color: #7258ba;
     font-size: 10px;
   }
 
-  .special-npc-theme-iris .special-npc-mobile-header-overlay :deep(.special-npc-subtitle) {
+  .illustrated-theme-iris .illustrated-mobile-header-overlay :deep(.illustrated-subtitle) {
     color: #31536d;
     font-size: 10px;
     line-height: 1.3;
     text-shadow: none;
   }
 
-  .special-npc-theme-iris :deep(.special-npc-attribute) {
+  .illustrated-theme-iris :deep(.illustrated-attribute) {
     border-radius: 12px 12px 42% 42% / 12px 12px 22% 22%;
   }
 
-  .special-npc-theme-iris .special-npc-iris-header-deco {
+  .illustrated-theme-iris .illustrated-iris-header-deco {
     display: none;
   }
 }
 
 @media (max-width: 640px) {
-  .special-npc-shell {
+  .illustrated-shell {
     border-radius: 12px;
   }
 
-  .special-npc-data-pane {
+  .illustrated-data-pane {
     padding: 22px 16px 18px;
   }
 
-  .special-npc-shell.is-overview-tab .special-npc-data-pane {
+  .illustrated-shell.is-overview-tab .illustrated-data-pane {
     padding: 0 14px 8px;
   }
 
-  .special-npc-shell.is-detail-tab .special-npc-data-pane {
+  .illustrated-shell.is-detail-tab .illustrated-data-pane {
     padding: 16px 14px 12px;
   }
 
-  .special-npc-mobile-overview-overlay {
+  .illustrated-mobile-overview-overlay {
     right: 14px;
     bottom: 18px;
     left: 14px;
   }
 
-  .special-npc-mobile-header-overlay {
+  .illustrated-mobile-header-overlay {
     padding: 9px 10px;
   }
 
-  .special-npc-theme-anastasia :deep(.special-npc-list-item) {
+  .illustrated-theme-anastasia :deep(.illustrated-list-item) {
     margin-bottom: 12px;
     padding: 15px;
   }
 
-  .special-npc-theme-anastasia :deep(.special-npc-list-item-header) {
+  .illustrated-theme-anastasia :deep(.illustrated-list-item-header) {
     gap: 6px;
     margin-bottom: 10px;
     padding-bottom: 8px;
   }
 
-  .special-npc-theme-anastasia :deep(.special-npc-list-item h3) {
+  .illustrated-theme-anastasia :deep(.illustrated-list-item h3) {
     font-size: 17px;
     line-height: 1.3;
   }
 
-  .special-npc-theme-anastasia :deep(.special-npc-list-item h3::before) {
+  .illustrated-theme-anastasia :deep(.illustrated-list-item h3::before) {
     margin-right: 8px;
     font-size: 16px;
   }
 
-  .special-npc-theme-anastasia :deep(.special-npc-list-item-type) {
+  .illustrated-theme-anastasia :deep(.illustrated-list-item-type) {
     padding: 3px 12px;
     font-size: 12px;
   }
 
-  .special-npc-theme-anastasia :deep(.special-npc-tags) {
+  .illustrated-theme-anastasia :deep(.illustrated-tags) {
     gap: 6px;
     margin-bottom: 10px;
   }
 
-  .special-npc-theme-anastasia :deep(.special-npc-tag) {
+  .illustrated-theme-anastasia :deep(.illustrated-tag) {
     padding: 3px 8px;
     font-size: 11px;
   }
 
-  .special-npc-theme-anastasia :deep(.special-npc-effect-list) {
+  .illustrated-theme-anastasia :deep(.illustrated-effect-list) {
     gap: 6px;
   }
 
-  .special-npc-theme-anastasia :deep(.special-npc-effect-item),
-  .special-npc-theme-anastasia :deep(.special-npc-effect-text),
-  .special-npc-theme-anastasia :deep(.special-npc-description),
-  .special-npc-theme-anastasia :deep(.special-npc-line) {
+  .illustrated-theme-anastasia :deep(.illustrated-effect-item),
+  .illustrated-theme-anastasia :deep(.illustrated-effect-text),
+  .illustrated-theme-anastasia :deep(.illustrated-description),
+  .illustrated-theme-anastasia :deep(.illustrated-line) {
     font-size: 14px;
     line-height: 1.55;
   }
 
-  .special-npc-theme-anastasia :deep(.special-npc-description),
-  .special-npc-theme-anastasia :deep(.special-npc-line) {
+  .illustrated-theme-anastasia :deep(.illustrated-description),
+  .illustrated-theme-anastasia :deep(.illustrated-line) {
     margin-top: 6px;
   }
 
-  .special-npc-theme-iris :deep(.special-npc-list-item) {
+  .illustrated-theme-iris :deep(.illustrated-list-item) {
     margin-bottom: 12px;
     padding: 15px;
   }
 
-  .special-npc-theme-iris :deep(.special-npc-list-item-header) {
+  .illustrated-theme-iris :deep(.illustrated-list-item-header) {
     gap: 6px;
     margin-bottom: 10px;
     padding-bottom: 8px;
   }
 
-  .special-npc-theme-iris :deep(.special-npc-list-item h3) {
+  .illustrated-theme-iris :deep(.illustrated-list-item h3) {
     font-size: 17px;
     line-height: 1.3;
   }
 
-  .special-npc-theme-iris :deep(.special-npc-list-item-type) {
+  .illustrated-theme-iris :deep(.illustrated-list-item-type) {
     padding: 3px 10px;
     font-size: 12px;
   }
 
-  .special-npc-theme-iris :deep(.special-npc-tags) {
+  .illustrated-theme-iris :deep(.illustrated-tags) {
     gap: 6px;
     margin-bottom: 10px;
   }
 
-  .special-npc-theme-iris :deep(.special-npc-tag) {
+  .illustrated-theme-iris :deep(.illustrated-tag) {
     padding: 3px 8px;
     font-size: 11px;
   }
 
-  .special-npc-theme-iris :deep(.special-npc-effect-item),
-  .special-npc-theme-iris :deep(.special-npc-effect-text),
-  .special-npc-theme-iris :deep(.special-npc-description),
-  .special-npc-theme-iris :deep(.special-npc-line),
-  .special-npc-theme-iris :deep(.special-npc-text-block p) {
+  .illustrated-theme-iris :deep(.illustrated-effect-item),
+  .illustrated-theme-iris :deep(.illustrated-effect-text),
+  .illustrated-theme-iris :deep(.illustrated-description),
+  .illustrated-theme-iris :deep(.illustrated-line),
+  .illustrated-theme-iris :deep(.illustrated-text-block p) {
     font-size: 14px;
     line-height: 1.55;
   }

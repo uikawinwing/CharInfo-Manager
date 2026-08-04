@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 
 const { buildCharacterViewModel } = require('../../src/char_info_viewer/services/characterViewModel.ts');
-const { buildDivinitySections } = require('../../src/char_info_viewer/components/specialNpc/divinitySections.ts');
+const { buildDivinitySections } = require('../../src/char_info_viewer/components/illustrated/divinitySections.ts');
 
 test('keeps the complete law collection when legacy top-level data accompanies the current divinity field', () => {
   const vm = buildCharacterViewModel({

@@ -1,6 +1,6 @@
 <template>
-  <header class="special-npc-header" :class="{ compact, ornate }" :style="ornate ? venusNameFrameCssVars : undefined">
-    <div v-if="ornate" class="special-npc-name-rail top" aria-hidden="true">
+  <header class="illustrated-header" :class="{ compact, ornate }" :style="ornate ? venusNameFrameCssVars : undefined">
+    <div v-if="ornate" class="illustrated-name-rail top" aria-hidden="true">
       <span class="rail-flourish left"></span>
       <span class="rail-line"></span>
       <span class="rail-center"></span>
@@ -8,22 +8,22 @@
       <span class="rail-flourish right"></span>
     </div>
 
-    <div class="special-npc-level-tier">
-      <span class="special-npc-level">LV. {{ vm.levelText }}</span>
-      <span class="special-npc-badge-separator">✦</span>
-      <span class="special-npc-tier">{{ vm.tierText }}</span>
+    <div class="illustrated-level-tier">
+      <span class="illustrated-level">LV. {{ vm.levelText }}</span>
+      <span class="illustrated-badge-separator">✦</span>
+      <span class="illustrated-tier">{{ vm.tierText }}</span>
     </div>
 
-    <h1 class="special-npc-name">{{ vm.nameText }}</h1>
+    <h1 class="illustrated-name">{{ vm.nameText }}</h1>
 
-    <div v-if="metaItems.length > 0" class="special-npc-subtitle">
+    <div v-if="metaItems.length > 0" class="illustrated-subtitle">
       <template v-for="(item, index) in metaItems" :key="`${index}-${item}`">
-        <span v-if="index > 0" class="special-npc-meta-sep">◆</span>
+        <span v-if="index > 0" class="illustrated-meta-sep">◆</span>
         <span>{{ item }}</span>
       </template>
     </div>
 
-    <div v-if="ornate" class="special-npc-name-rail bottom" aria-hidden="true">
+    <div v-if="ornate" class="illustrated-name-rail bottom" aria-hidden="true">
       <span class="rail-line"></span>
       <span class="rail-center"></span>
       <span class="rail-line"></span>
@@ -55,7 +55,7 @@ const metaItems = computed(() =>
 </script>
 
 <style scoped>
-.special-npc-header {
+.illustrated-header {
   container-type: inline-size;
   display: flex;
   flex-shrink: 0;
@@ -66,26 +66,26 @@ const metaItems = computed(() =>
   text-align: center;
 }
 
-.special-npc-header:not(.compact) {
-  min-height: var(--special-npc-header-min-height);
+.illustrated-header:not(.compact) {
+  min-height: var(--illustrated-header-min-height);
   justify-content: center;
 }
 
-.special-npc-name-rail {
+.illustrated-name-rail {
   display: grid;
   width: min(100%, 560px);
   align-items: center;
   pointer-events: none;
 }
 
-.special-npc-name-rail.top {
+.illustrated-name-rail.top {
   height: 26px;
   grid-template-columns: minmax(42px, 0.28fr) minmax(34px, 1fr) auto minmax(34px, 1fr) minmax(42px, 0.28fr);
   column-gap: 8px;
   margin-bottom: -4px;
 }
 
-.special-npc-name-rail.bottom {
+.illustrated-name-rail.bottom {
   width: min(86%, 520px);
   height: 24px;
   grid-template-columns: minmax(42px, 1fr) auto minmax(42px, 1fr);
@@ -98,12 +98,12 @@ const metaItems = computed(() =>
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(var(--special-npc-tier-accent-rgb), 0.88),
+    rgba(var(--illustrated-tier-accent-rgb), 0.88),
     rgba(255, 255, 240, 0.44),
-    rgba(var(--special-npc-tier-accent-rgb), 0.72),
+    rgba(var(--illustrated-tier-accent-rgb), 0.72),
     transparent
   );
-  filter: drop-shadow(0 0 6px rgba(var(--special-npc-tier-accent-rgb), 0.2)) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 0 6px rgba(var(--illustrated-tier-accent-rgb), 0.2)) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
   opacity: 0.78;
 }
 
@@ -112,7 +112,7 @@ const metaItems = computed(() =>
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
-  filter: drop-shadow(0 0 7px rgba(var(--special-npc-tier-accent-rgb), 0.24)) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 0 7px rgba(var(--illustrated-tier-accent-rgb), 0.24)) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
   opacity: 0.78;
 }
 
@@ -128,20 +128,20 @@ const metaItems = computed(() =>
   background-image: var(--venus-name-right-flourish-url);
 }
 
-.special-npc-name-rail.top .rail-center {
+.illustrated-name-rail.top .rail-center {
   width: clamp(118px, 26cqw, 164px);
   height: 26px;
   background-image: var(--venus-name-center-crest-url);
 }
 
-.special-npc-name-rail.bottom .rail-center {
+.illustrated-name-rail.bottom .rail-center {
   width: clamp(108px, 24cqw, 152px);
   height: 22px;
   background-image: var(--venus-name-bottom-crest-url);
   opacity: 0.66;
 }
 
-.special-npc-level-tier {
+.illustrated-level-tier {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -150,51 +150,51 @@ const metaItems = computed(() =>
   padding: 4px 0;
 }
 
-.special-npc-level-tier::before,
-.special-npc-level-tier::after {
+.illustrated-level-tier::before,
+.illustrated-level-tier::after {
   content: '';
   position: absolute;
   top: 50%;
   width: 40px;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--special-npc-tier-accent), transparent);
+  background: linear-gradient(90deg, transparent, var(--illustrated-tier-accent), transparent);
   transform: translateY(-50%);
 }
 
-.special-npc-level-tier::before {
+.illustrated-level-tier::before {
   right: 100%;
   margin-right: 16px;
 }
 
-.special-npc-level-tier::after {
+.illustrated-level-tier::after {
   left: 100%;
   margin-left: 16px;
 }
 
-.special-npc-level,
-.special-npc-tier {
+.illustrated-level,
+.illustrated-tier {
   font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Noto Sans SC', serif;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.1em;
-  text-shadow: 0 0 8px rgba(var(--special-npc-tier-accent-rgb), 0.4);
+  text-shadow: 0 0 8px rgba(var(--illustrated-tier-accent-rgb), 0.4);
 }
 
-.special-npc-level {
-  color: var(--special-npc-tier-accent);
+.illustrated-level {
+  color: var(--illustrated-tier-accent);
 }
 
-.special-npc-tier {
-  color: var(--special-npc-tier-accent);
+.illustrated-tier {
+  color: var(--illustrated-tier-accent);
 }
 
-.special-npc-badge-separator {
+.illustrated-badge-separator {
   margin: 0 16px;
-  color: rgba(var(--special-npc-tier-accent-rgb), 0.5);
+  color: rgba(var(--illustrated-tier-accent-rgb), 0.5);
   font-size: 10px;
 }
 
-.special-npc-name {
+.illustrated-name {
   max-width: 100%;
   margin: 0 0 4px;
   overflow-wrap: anywhere;
@@ -206,20 +206,20 @@ const metaItems = computed(() =>
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 
-.special-npc-header.ornate {
+.illustrated-header.ornate {
   gap: 5px;
 }
 
-.special-npc-header.ornate .special-npc-level-tier {
+.illustrated-header.ornate .illustrated-level-tier {
   margin-bottom: -2px;
 }
 
-.special-npc-header.ornate .special-npc-level-tier::before,
-.special-npc-header.ornate .special-npc-level-tier::after {
+.illustrated-header.ornate .illustrated-level-tier::before,
+.illustrated-header.ornate .illustrated-level-tier::after {
   content: none;
 }
 
-.special-npc-header.ornate .special-npc-name {
+.illustrated-header.ornate .illustrated-name {
   max-width: 100%;
   overflow: visible;
   white-space: normal;
@@ -229,17 +229,17 @@ const metaItems = computed(() =>
   text-shadow:
     0 2px 0 rgba(12, 22, 34, 0.45),
     0 3px 12px rgba(0, 0, 0, 0.68),
-    0 0 18px rgba(var(--special-npc-tier-accent-rgb), 0.22);
+    0 0 18px rgba(var(--illustrated-tier-accent-rgb), 0.22);
 }
 
-.special-npc-header.ornate .special-npc-subtitle {
+.illustrated-header.ornate .illustrated-subtitle {
   max-width: 100%;
   color: rgba(255, 255, 246, 0.95);
   font-weight: 700;
   white-space: normal;
 }
 
-.special-npc-subtitle {
+.illustrated-subtitle {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -251,55 +251,55 @@ const metaItems = computed(() =>
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
-.special-npc-meta-sep {
+.illustrated-meta-sep {
   display: inline-block;
-  color: rgba(var(--special-npc-race-accent-rgb), 0.7);
+  color: rgba(var(--illustrated-race-accent-rgb), 0.7);
   font-size: 10px;
   transform: scale(0.8) rotate(45deg);
 }
 
 @media (max-width: 640px) {
-  .special-npc-header {
+  .illustrated-header {
     margin-bottom: 20px;
   }
 
-  .special-npc-name {
+  .illustrated-name {
     font-size: 30px;
   }
 }
 
-.special-npc-header.compact {
+.illustrated-header.compact {
   gap: 8px;
   margin-bottom: 0;
 }
 
-.special-npc-header.compact .special-npc-level-tier {
+.illustrated-header.compact .illustrated-level-tier {
   margin-bottom: 4px;
 }
 
-.special-npc-header.compact .special-npc-name {
+.illustrated-header.compact .illustrated-name {
   font-size: 30px;
 }
 
-.special-npc-header.compact .special-npc-subtitle {
+.illustrated-header.compact .illustrated-subtitle {
   font-size: 12px;
 }
 
-.special-npc-header.compact.ornate .special-npc-name {
+.illustrated-header.compact.ornate .illustrated-name {
   font-size: clamp(23px, 7cqw, 30px);
 }
 
-.special-npc-header.compact.ornate .special-npc-name-rail {
+.illustrated-header.compact.ornate .illustrated-name-rail {
   width: min(100%, 360px);
 }
 
 @media (max-width: 420px) {
-  .special-npc-header.compact .special-npc-name {
+  .illustrated-header.compact .illustrated-name {
     font-size: 26px;
   }
 
-  .special-npc-header.compact .special-npc-level,
-  .special-npc-header.compact .special-npc-tier {
+  .illustrated-header.compact .illustrated-level,
+  .illustrated-header.compact .illustrated-tier {
     font-size: 12px;
   }
 }
