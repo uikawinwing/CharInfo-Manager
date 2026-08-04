@@ -1,12 +1,5 @@
 <template>
-  <div
-    class="manager-root"
-    :class="{
-      'library-mode': viewMode === 'library',
-      'library-detail-open': viewMode === 'library' && detailCharacter,
-    }"
-    @keydown.esc="onEscape"
-  >
+  <div class="manager-root" :class="{ 'library-mode': viewMode === 'library' }" @keydown.esc="onEscape">
     <button
       v-if="viewMode !== 'library'"
       class="backdrop"
@@ -37,9 +30,7 @@
         </div>
 
         <div v-if="viewMode === 'library'" class="character-source-switch" role="group" aria-label="选择角色资料来源">
-          <button type="button" aria-pressed="false" @click="props.onOpenCurrentChatLibrary?.()">
-            当前聊天角色
-          </button>
+          <button type="button" aria-pressed="false" @click="props.onOpenCurrentChatLibrary?.()">当前聊天角色</button>
           <button type="button" class="active" aria-pressed="true">世界书角色</button>
         </div>
 
@@ -368,7 +359,7 @@
               <span class="step-number">3</span>
               <span class="mobile-section-copy">
                 <strong>主题颜色</strong>
-                    <small>{{ customizeColors ? '已启用自定义配色' : '使用默认配色' }}</small>
+                <small>{{ customizeColors ? '已启用自定义配色' : '使用默认配色' }}</small>
               </span>
             </div>
 
@@ -384,7 +375,7 @@
                 <input v-model="customizeColors" type="checkbox" @change="onCustomizeColorsChange" />
                 <span>
                   <strong>启用自定义主题颜色</strong>
-                    <small>{{ customizeColors ? '正在使用自定义颜色' : '使用默认配色' }}</small>
+                  <small>{{ customizeColors ? '正在使用自定义颜色' : '使用默认配色' }}</small>
                 </span>
               </label>
 
@@ -665,7 +656,10 @@
         <div v-if="worldbookCharacterEntries.length > 0" class="character-library">
           <div class="character-library-toolbar">
             <label class="library-search-field">
-              <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.7" cy="10.7" r="6.4" /><path d="m16 16 4 4" /></svg>
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <circle cx="10.7" cy="10.7" r="6.4" />
+                <path d="m16 16 4 4" />
+              </svg>
               <input
                 v-model="characterSearch"
                 type="search"
@@ -729,7 +723,9 @@
                     :aria-pressed="characterLibraryLayout === 'compact'"
                     @click="characterLibraryLayout = 'compact'"
                   >
-                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" /></svg>
+                    <svg aria-hidden="true" viewBox="0 0 24 24">
+                      <path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" />
+                    </svg>
                     <span>紧凑列表</span>
                   </button>
                   <button
@@ -737,20 +733,25 @@
                     :aria-pressed="characterLibraryLayout === 'cards'"
                     @click="characterLibraryLayout = 'cards'"
                   >
-                    <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx=".8" /><rect x="14" y="4" width="6" height="6" rx=".8" /><rect x="4" y="14" width="6" height="6" rx=".8" /><rect x="14" y="14" width="6" height="6" rx=".8" /></svg>
+                    <svg aria-hidden="true" viewBox="0 0 24 24">
+                      <rect x="4" y="4" width="6" height="6" rx=".8" />
+                      <rect x="14" y="4" width="6" height="6" rx=".8" />
+                      <rect x="4" y="14" width="6" height="6" rx=".8" />
+                      <rect x="14" y="14" width="6" height="6" rx=".8" />
+                    </svg>
                     <span>图片卡片</span>
                   </button>
                 </div>
 
-              <label v-if="characterLibraryLayout === 'cards'" class="character-card-columns">
-                <span>每行显示</span>
-                <select v-model="characterLibraryCardColumns" aria-label="每行显示卡片数">
-                  <option value="auto">自动适应</option>
-                  <option v-for="column in characterLibraryCardColumnOptions" :key="column" :value="column">
-                    {{ column }} 列
-                  </option>
-                </select>
-              </label>
+                <label v-if="characterLibraryLayout === 'cards'" class="character-card-columns">
+                  <span>每行显示</span>
+                  <select v-model="characterLibraryCardColumns" aria-label="每行显示卡片数">
+                    <option value="auto">自动适应</option>
+                    <option v-for="column in characterLibraryCardColumnOptions" :key="column" :value="column">
+                      {{ column }} 列
+                    </option>
+                  </select>
+                </label>
               </div>
 
               <div class="character-library-summary" aria-live="polite">
@@ -879,7 +880,7 @@
           <section class="character-detail-gallery" aria-labelledby="character-detail-gallery-title">
             <div class="character-detail-section-heading">
               <div>
-              <span>图片资料</span>
+                <span>图片资料</span>
                 <h3 id="character-detail-gallery-title">角色图库</h3>
               </div>
               <b>{{ detailGalleryItems.length }} 张</b>
@@ -910,7 +911,7 @@
                 </div>
                 <figcaption>
                   <strong>{{ item.title || `角色图片 ${index + 1}` }}</strong>
-              <small v-if="item.sourceCount > 1">{{ item.sourceCount }} 个备用地址</small>
+                  <small v-if="item.sourceCount > 1">{{ item.sourceCount }} 个备用地址</small>
                 </figcaption>
               </figure>
             </div>
@@ -922,7 +923,7 @@
           <section class="character-detail-content" aria-labelledby="character-detail-content-title">
             <div class="character-detail-section-heading">
               <div>
-              <span>角色设定</span>
+                <span>角色设定</span>
                 <h3 id="character-detail-content-title">角色条目内容</h3>
               </div>
               <b>{{ editingDetailBody ? '编辑中' : '只读' }}</b>
@@ -2014,7 +2015,7 @@ async function saveToEntry() {
   if (!canSave.value || !entry) return;
 
   const confirmed = window.confirm(
-      useExtendedGallery.value
+    useExtendedGallery.value
       ? `确定保存角色视觉资料和扩展图库？\n\n角色世界书：${worldbookName}\n角色条目：${entry.name || `#${entry.uid}`}\n图库世界书：${galleryPackWorldbookName.value}`
       : `确定将角色视觉资料写入以下条目？\n\n世界书：${worldbookName}\n条目：${entry.name || `#${entry.uid}`}`,
   );
@@ -2022,7 +2023,7 @@ async function saveToEntry() {
 
   saving.value = true;
   saveState.value = 'idle';
-    saveMessage.value = '正在读取条目并安全写入…';
+  saveMessage.value = '正在读取条目并安全写入…';
 
   try {
     const normalizedProfile = normalizeProfile(toSerializableProfile());
@@ -2050,7 +2051,9 @@ async function saveToEntry() {
           const target = entries.find(item => item.uid === entry.uid);
           if (!target) throw new Error(`找不到世界书条目 #${entry.uid}。`);
           return entries.map(item =>
-            item.uid === entry.uid ? { ...item, content: upsertManagedEjsBlock(item.content, normalizedProfile) } : item,
+            item.uid === entry.uid
+              ? { ...item, content: upsertManagedEjsBlock(item.content, normalizedProfile) }
+              : item,
           );
         },
         { render: 'immediate' },
@@ -2978,7 +2981,9 @@ h2 {
   background: linear-gradient(90deg, rgb(23 33 49 / 96%), rgb(20 28 42 / 92%));
   border: 1px solid var(--border-strong);
   border-radius: 10px;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .library-search-field:focus-within {
@@ -4704,73 +4709,6 @@ pre {
   }
 }
 
-.manager-root.library-detail-open {
-  padding: 8px;
-  overflow: hidden;
-  background: transparent;
-}
-
-.library-detail-open .manager-dialog.library-dialog {
-  width: min(390px, calc(100% - 16px));
-  height: min(680px, calc(100% - 16px));
-  max-height: none;
-  border-radius: 18px;
-  transition:
-    left 180ms ease,
-    transform 180ms ease;
-}
-
-.library-detail-open .library-dialog .library-header {
-  display: flex;
-  min-height: 0;
-  padding: 13px 14px;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.library-detail-open .library-dialog .header-title {
-  order: 1;
-  flex: 1 1 auto;
-}
-
-.library-detail-open .library-dialog .header-title h1 {
-  font-size: 20px;
-}
-
-.library-detail-open .library-dialog .library-title-icon {
-  width: 24px;
-  height: 24px;
-}
-
-.library-detail-open .library-dialog .header-actions {
-  order: 1;
-  flex: 0 0 auto;
-}
-
-.library-detail-open .library-dialog .manager-view-switch button:first-child {
-  display: none;
-}
-
-.library-detail-open .library-dialog .manager-view-switch button {
-  min-width: 0;
-  min-height: 36px;
-  padding: 6px;
-}
-
-.library-detail-open .library-dialog .manager-view-switch span {
-  display: none;
-}
-
-.library-detail-open .library-dialog .manager-view-switch svg {
-  display: block;
-}
-
-.library-detail-open .library-dialog .close-button,
-.library-detail-open .library-dialog .library-refresh-button {
-  width: 38px;
-  height: 38px;
-}
-
 .character-source-switch {
   display: grid;
   padding: 3px;
@@ -4798,134 +4736,5 @@ pre {
   color: var(--primary);
   background: var(--primary-soft);
   border-color: rgb(119 214 199 / 34%);
-}
-
-.library-detail-open .library-dialog .library-header-worldbook {
-  order: 3;
-  width: 100%;
-}
-
-.library-detail-open .library-dialog .library-page {
-  display: grid;
-  min-height: 0;
-  padding: 12px;
-  grid-template-columns: 1fr;
-  overflow-y: auto;
-}
-
-.library-detail-open .library-dialog .character-library-toolbar {
-  margin-bottom: 12px;
-  gap: 10px;
-}
-
-.library-detail-open .library-dialog .library-search-field {
-  min-height: 42px;
-}
-
-.library-detail-open .library-dialog .character-library-control-row {
-  grid-template-columns: 96px minmax(0, 1fr) auto;
-  gap: 8px;
-}
-
-.library-detail-open .library-dialog .mobile-character-library-filter {
-  display: block;
-}
-
-.library-detail-open .library-dialog .character-library-filter-buttons {
-  display: none;
-}
-
-.library-detail-open .library-dialog .character-race-filter {
-  grid-column: 2;
-}
-
-.library-detail-open .library-dialog .character-library-view-options {
-  grid-column: 3;
-  align-items: stretch;
-  flex-direction: row;
-  justify-content: flex-end;
-}
-
-.library-detail-open .library-dialog .character-library-summary {
-  display: none;
-}
-
-.library-detail-open .library-dialog .character-card-columns {
-  display: none;
-}
-
-.library-detail-open .library-dialog .character-library-layout-switch button {
-  min-width: 36px;
-  padding: 7px;
-}
-
-.library-detail-open .library-dialog .character-library-layout-switch span {
-  display: none;
-}
-
-.library-detail-open .library-dialog .character-library-grid {
-  grid-template-columns: 1fr;
-}
-
-.library-detail-open .library-dialog .character-library-card {
-  min-height: 82px;
-  padding: 8px;
-  grid-template-columns: 58px minmax(0, 1fr) auto;
-}
-
-.library-detail-open .library-dialog .character-cover-button {
-  width: 58px;
-  height: 64px;
-}
-
-.library-detail-open .library-dialog .character-cover-silhouette {
-  width: 40px;
-  height: 49px;
-}
-
-.library-detail-open .manager-dialog.library-dialog {
-  position: absolute;
-  top: 50%;
-  left: max(12px, calc(50% - 810px));
-  transform: translateY(-50%);
-}
-
-.library-detail-open .character-detail-layer {
-  padding: 12px 12px 12px 422px;
-  overflow: hidden;
-  background: transparent;
-  backdrop-filter: none;
-  pointer-events: none;
-}
-
-.library-detail-open .character-detail-dialog {
-  width: min(1100px, 100%);
-  max-height: min(820px, calc(100% - 24px));
-  pointer-events: auto;
-}
-
-@media (max-width: 900px) {
-  .manager-root.library-detail-open {
-    overflow: auto;
-  }
-
-  .library-detail-open .manager-dialog.library-dialog {
-    position: relative;
-    top: auto;
-    left: auto;
-    transform: none;
-  }
-
-  .library-detail-open .character-detail-layer {
-    padding: 8px;
-    background: rgb(3 5 8 / 82%);
-    backdrop-filter: blur(10px);
-    pointer-events: auto;
-  }
-
-  .library-detail-open .character-detail-dialog {
-    width: 100%;
-    max-height: calc(100% - 16px);
-  }
 }
 </style>

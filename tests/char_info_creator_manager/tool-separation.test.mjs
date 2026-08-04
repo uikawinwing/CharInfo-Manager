@@ -6,7 +6,10 @@ const appSource = readFileSync(new URL('../../src/char_info_creator_manager/App.
 const indexSource = readFileSync(new URL('../../src/char_info_creator_manager/index.ts', import.meta.url), 'utf8');
 const overlaySource = readFileSync(new URL('../../src/char_info_creator_manager/overlay.ts', import.meta.url), 'utf8');
 const runtimeSource = readFileSync(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
-const runtimeRootSource = readFileSync(new URL('../../src/char_info_viewer_runtime/RuntimeRoot.vue', import.meta.url), 'utf8');
+const runtimeRootSource = readFileSync(
+  new URL('../../src/char_info_viewer_runtime/RuntimeRoot.vue', import.meta.url),
+  'utf8',
+);
 
 test('世界书角色库只从当前角色悬浮面板进入，并由运行时独占管理器', () => {
   assert.match(indexSource, /'世界书角色库', '角色视觉编辑器', '角色视觉编辑', '角色资料库', 'CharInfo 设置'/);
@@ -15,7 +18,10 @@ test('世界书角色库只从当前角色悬浮面板进入，并由运行时�
   assert.match(runtimeSource, /const RUNTIME_MANAGER_OWNER_KEY = '__charInfoWorldbookManagerOwner'/);
   assert.match(runtimeSource, /setManagerOwnership\('runtime'\)/);
   assert.match(runtimeSource, /setManagerOwnership\(null\)/);
-  assert.match(runtimeSource, /import \{ createCreatorManagerOverlay \} from '\.\.\/char_info_creator_manager\/overlay';/);
+  assert.match(
+    runtimeSource,
+    /import \{ createCreatorManagerOverlay \} from '\.\.\/char_info_creator_manager\/overlay';/,
+  );
   assert.doesNotMatch(runtimeSource, /import\('\.\.\/char_info_creator_manager\/overlay'\)/);
   assert.doesNotMatch(runtimeSource, /appendInexistentScriptButtons/);
   assert.match(runtimeRootSource, /aria-label="打开世界书角色库"[\s\S]*?@click="props\.onOpenWorldbookLibrary"/);
@@ -46,23 +52,23 @@ test('世界书角色库在独立页面提供搜索、筛选、启停与查看�
   assert.match(libraryPageSource, /openCharacterDetails/);
 });
 
-test('世界书角色库与当前聊天角色库使用同尺寸悬浮菜单和明确的资料源切换', () => {
-  assert.match(appSource, /class="manager-root"[\s\S]*?'library-detail-open'/);
+test('世界书角色库保持桌面宽屏布局并提供明确的资料源切换', () => {
+  assert.doesNotMatch(appSource, /library-detail-open/);
   assert.match(appSource, /class="character-source-switch"/);
   assert.match(appSource, /aria-pressed="false"[^>]*>\s*当前聊天角色/u);
   assert.match(appSource, /aria-pressed="true">世界书角色</);
   assert.match(appSource, /props\.onOpenCurrentChatLibrary/);
-  assert.match(appSource, /\.manager-dialog\.library-dialog \{[\s\S]*?width: min\(390px,/);
-  assert.match(appSource, /\.manager-dialog\.library-dialog \{[\s\S]*?height: min\(680px,/);
-  assert.match(appSource, /\.library-page \{[\s\S]*?grid-template-columns: 1fr/);
+  assert.match(appSource, /\.manager-dialog \{[\s\S]*?width: min\(1420px, 100%\)/);
+  assert.doesNotMatch(appSource, /\.manager-dialog\.library-dialog \{[\s\S]*?width: min\(390px,/);
+  assert.match(appSource, /\.library-page \{[\s\S]*?overflow-y: auto/);
 });
 
 test('世界书角色详情作为第二悬浮窗口打开，不遮蔽或停用角色菜单', () => {
   assert.match(appSource, /:aria-hidden="detailCharacter && viewMode !== 'library'/);
   assert.match(appSource, /:inert="detailCharacter && viewMode !== 'library'/);
   assert.match(appSource, /:aria-modal="viewMode === 'library' \? 'false' : 'true'"/);
-  assert.match(appSource, /\.library-detail-open \.character-detail-layer \{[\s\S]*?background: transparent/);
-  assert.match(appSource, /\.library-detail-open \.character-detail-dialog \{[\s\S]*?pointer-events: auto/);
+  assert.match(appSource, /\.character-detail-layer \{[\s\S]*?position: fixed/);
+  assert.match(appSource, /\.character-detail-dialog \{[\s\S]*?width: min\(1240px, 100%\)/);
   assert.match(appSource, /@click="openCharacterDetails\(character\)"/);
 });
 

@@ -250,6 +250,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     const nextSettings = normalizeRuntimeSettings(value);
     state.settings.activeFloorLimit = nextSettings.activeFloorLimit;
     state.settings.effectsEnabled = nextSettings.effectsEnabled;
+    state.settings.imageSourcePriorityEnabled = nextSettings.imageSourcePriorityEnabled;
     state.settings.imageSourcePriority = nextSettings.imageSourcePriority;
     replaceVariables(mergeRuntimeSettings(getVariables({ type: 'script' }), nextSettings), { type: 'script' });
     scanRecentFloors();
@@ -263,10 +264,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       const currentVariables = getVariables({ type: 'chat' });
       if (migrateLegacyExternalGalleries(currentVariables).migratedNames.length === 0) return;
 
-      updateVariablesWith(
-        variables => migrateLegacyExternalGalleries(variables).variables,
-        { type: 'chat' },
-      );
+      updateVariablesWith(variables => migrateLegacyExternalGalleries(variables).variables, { type: 'chat' });
     } catch (error) {
       console.warn('[CharInfo Runtime] 旧图库迁移失败：', error);
     }

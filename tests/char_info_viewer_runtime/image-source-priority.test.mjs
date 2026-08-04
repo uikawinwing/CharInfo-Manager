@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -7,6 +8,11 @@ import {
   prioritizeImageSources,
 } from '../../src/char_info_viewer/services/imageSourcePriority.ts';
 import { mergeRuntimeSettings, readRuntimeSettings } from '../../src/char_info_viewer_runtime/runtimeSettings.ts';
+
+const runtimeRootSource = readFileSync(
+  new URL('../../src/char_info_viewer_runtime/RuntimeRoot.vue', import.meta.url),
+  'utf8',
+);
 
 test('按用户域名优先级稳定重排同一图片的镜像来源', () => {
   const sources = [
@@ -59,14 +65,40 @@ test('完整 URL 会提取 hostname，域名规则可匹配子域名并丢弃无
 test('图片源优先级随既有 char_info_runtime.settings 持久化，且保留其他脚本数据', () => {
   const merged = mergeRuntimeSettings(
     { unrelated: true, char_info_runtime: { cacheVersion: 3 } },
-    { activeFloorLimit: 8, effectsEnabled: false, imageSourcePriority: ['https://files.catbox.moe/image.webp'] },
+    {
+      activeFloorLimit: 8,
+      effectsEnabled: false,
+      imageSourcePriorityEnabled: true,
+      imageSourcePriority: ['https://files.catbox.moe/image.webp'],
+    },
   );
 
   assert.deepEqual(readRuntimeSettings(merged), {
     activeFloorLimit: 8,
     effectsEnabled: false,
+    imageSourcePriorityEnabled: true,
     imageSourcePriority: ['files.catbox.moe'],
   });
   assert.equal(merged.unrelated, true);
   assert.equal(merged.char_info_runtime.cacheVersion, 3);
+});
+
+test('旧版已填写优先级会自动保持启用，空设置使用关闭的推荐示例', () => {
+  assert.equal(
+    readRuntimeSettings({ char_info_runtime: { settings: { imageSourcePriority: ['catbox.moe'] } } })
+      .imageSourcePriorityEnabled,
+    true,
+  );
+  assert.deepEqual(readRuntimeSettings({}).imageSourcePriority, ['files.catbox.moe', 'i.ibb.co']);
+  assert.equal(readRuntimeSettings({}).imageSourcePriorityEnabled, false);
+});
+
+test('图片来源优先级使用开关和逐项表单，不暴露自由文本配置', () => {
+  assert.match(runtimeRootSource, /v-model="imageSourcePriorityEnabledDraft"/u);
+  assert.match(runtimeRootSource, /v-for="\(priority, index\) in imageSourcePriorityDraft"/u);
+  assert.match(runtimeRootSource, /添加图片来源/u);
+  assert.match(runtimeRootSource, /使用推荐顺序/u);
+  assert.match(runtimeRootSource, /上移/u);
+  assert.match(runtimeRootSource, /下移/u);
+  assert.doesNotMatch(runtimeRootSource, /id="char-info-image-source-priority"[\s\S]*?<textarea/u);
 });

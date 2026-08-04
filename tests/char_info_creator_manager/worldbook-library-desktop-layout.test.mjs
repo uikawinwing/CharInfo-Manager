@@ -4,69 +4,35 @@ import test from 'node:test';
 
 const appSource = readFileSync(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
 
-test('桌面独立打开的世界书角色库不会套用详情侧栏的窄屏尺寸', () => {
+test('桌面打开角色详情时世界书角色库不会变成 390px 移动侧栏', () => {
   assert.doesNotMatch(
     appSource,
     /(?:^|\n)\.manager-dialog\.library-dialog\s*\{\s*width: min\(390px, calc\(100% - 16px\)\);/u,
   );
-  assert.match(
-    appSource,
-    /\.library-detail-open \.manager-dialog\.library-dialog\s*\{\s*width: min\(390px, calc\(100% - 16px\)\);/u,
-  );
+  assert.doesNotMatch(appSource, /library-detail-open/u);
 });
 
-test('桌面详情侧栏复用紧凑控件，而不是套用旧版纵向移动工具栏', () => {
-  assert.match(
-    appSource,
-    /\.library-detail-open \.library-dialog \.mobile-character-library-filter\s*\{[\s\S]*?display: block;/u,
-  );
-  assert.match(
-    appSource,
-    /\.library-detail-open \.library-dialog \.character-library-filter-buttons\s*\{\s*display: none;/u,
-  );
-  assert.match(
-    appSource,
-    /\.library-detail-open \.library-dialog \.character-library-control-row\s*\{\s*grid-template-columns: 96px minmax\(0, 1fr\) auto;/u,
-  );
-  assert.doesNotMatch(
-    appSource,
-    /\.library-detail-open \.library-dialog \.character-library-control-row\s*\{\s*display: flex;[\s\S]*?flex-direction: column;/u,
-  );
+test('角色详情使用独立覆盖层，关闭后仍返回原尺寸角色库', () => {
+  assert.match(appSource, /v-if="detailCharacter"\s+class="character-detail-layer"/u);
+  assert.match(appSource, /@click\.self="closeCharacterDetails"/u);
+  assert.doesNotMatch(appSource, /detailCharacter[^\n]*manager-dialog/u);
 });
 
 test('桌面角色库将工具组固定在右上角，并在内容滚动时保留筛选工具栏', () => {
-  assert.match(
-    appSource,
-    /\.library-header \.header-actions\s*\{\s*grid-column: 3;\s*grid-row: 1;/u,
-  );
-  assert.match(
-    appSource,
-    /\.library-header \.character-source-switch\s*\{\s*grid-column: 1 \/ -1;\s*grid-row: 2;/u,
-  );
-  assert.match(
-    appSource,
-    /\.character-library-toolbar\s*\{[\s\S]*?position: sticky;[\s\S]*?top: 0;/u,
-  );
+  assert.match(appSource, /\.library-header \.header-actions\s*\{\s*grid-column: 3;\s*grid-row: 1;/u);
+  assert.match(appSource, /\.library-header \.character-source-switch\s*\{\s*grid-column: 1 \/ -1;\s*grid-row: 2;/u);
+  assert.match(appSource, /\.character-library-toolbar\s*\{[\s\S]*?position: sticky;[\s\S]*?top: 0;/u);
 });
 
 test('手机角色库将状态筛选收进箭头菜单，并将视图切换收为图标', () => {
-  assert.match(
-    appSource,
-    /\.library-header \.manager-view-switch button:first-child\s*\{\s*display: none;/u,
-  );
-  assert.match(
-    appSource,
-    /\.library-header \.manager-view-switch button:nth-child\(2\) svg\s*\{\s*display: block;/u,
-  );
+  assert.match(appSource, /\.library-header \.manager-view-switch button:first-child\s*\{\s*display: none;/u);
+  assert.match(appSource, /\.library-header \.manager-view-switch button:nth-child\(2\) svg\s*\{\s*display: block;/u);
   assert.match(appSource, /class="mobile-character-library-filter"/u);
   assert.match(appSource, /mobileCharacterLibraryFilterOpen/u);
   assert.match(appSource, /@click="setMobileCharacterLibraryFilter\(option\.value\)"/u);
   assert.match(appSource, /\.mobile-character-library-filter\s*\{[\s\S]*?display: block;/u);
   assert.match(appSource, /\.character-library-filter-buttons\s*\{\s*display: none;/u);
-  assert.match(
-    appSource,
-    /\.character-library-control-row\s*\{\s*grid-template-columns: 96px minmax\(0, 1fr\) auto;/u,
-  );
+  assert.match(appSource, /\.character-library-control-row\s*\{\s*grid-template-columns: 96px minmax\(0, 1fr\) auto;/u);
   assert.match(appSource, /\.character-library-layout-switch span\s*\{\s*display: none;/u);
   assert.match(appSource, /\.character-card-columns\s*\{\s*display: none;/u);
 });

@@ -14,7 +14,8 @@ test('运行时设置使用稳定默认值并修复越界输入', () => {
   assert.deepEqual(defaultRuntimeSettings(), {
     activeFloorLimit: 6,
     effectsEnabled: true,
-    imageSourcePriority: [],
+    imageSourcePriorityEnabled: false,
+    imageSourcePriority: ['files.catbox.moe', 'i.ibb.co'],
   });
   assert.deepEqual(
     normalizeRuntimeSettings({
@@ -24,7 +25,8 @@ test('运行时设置使用稳定默认值并修复越界输入', () => {
     {
       activeFloorLimit: 6,
       effectsEnabled: true,
-      imageSourcePriority: [],
+      imageSourcePriorityEnabled: false,
+      imageSourcePriority: ['files.catbox.moe', 'i.ibb.co'],
     },
   );
   assert.deepEqual(
@@ -35,7 +37,8 @@ test('运行时设置使用稳定默认值并修复越界输入', () => {
     {
       activeFloorLimit: 12,
       effectsEnabled: false,
-      imageSourcePriority: [],
+      imageSourcePriorityEnabled: false,
+      imageSourcePriority: ['files.catbox.moe', 'i.ibb.co'],
     },
   );
 });
@@ -73,7 +76,8 @@ test('运行时设置只读写脚本变量命名空间，并保留其他脚本�
   assert.deepEqual(readRuntimeSettings(original), {
     activeFloorLimit: 8,
     effectsEnabled: false,
-    imageSourcePriority: [],
+    imageSourcePriorityEnabled: false,
+    imageSourcePriority: ['files.catbox.moe', 'i.ibb.co'],
   });
   assert.deepEqual(
     mergeRuntimeSettings(original, {
@@ -87,7 +91,8 @@ test('运行时设置只读写脚本变量命名空间，并保留其他脚本�
         settings: {
           activeFloorLimit: 4,
           effectsEnabled: true,
-          imageSourcePriority: [],
+          imageSourcePriorityEnabled: false,
+          imageSourcePriority: ['files.catbox.moe', 'i.ibb.co'],
         },
       },
     },

@@ -11,7 +11,7 @@
           :yaml-text="card.yamlText"
           :message-id="message.messageId"
           :effects-enabled="state.settings.effectsEnabled"
-          :image-source-priority="state.settings.imageSourcePriority"
+          :image-source-priority="activeImageSourcePriority"
           embedded
         />
       </div>
@@ -216,14 +216,14 @@
           :yaml-text="selectedCharacterYaml"
           :message-id="state.library.messageId"
           :effects-enabled="state.settings.effectsEnabled"
-          :image-source-priority="state.settings.imageSourcePriority"
+          :image-source-priority="activeImageSourcePriority"
           :entrance-quote-override="selectedCharacter.innerThought"
           embedded
           read-only
         />
         <div v-else class="char-info-library-placeholder">
           <span aria-hidden="true">◇</span>
-              <p>{{ state.library.loading ? '正在读取角色资料…' : '暂时无法找到该角色的资料。' }}</p>
+          <p>{{ state.library.loading ? '正在读取角色资料…' : '暂时无法找到该角色的资料。' }}</p>
         </div>
       </main>
     </section>
@@ -263,24 +263,78 @@
             <input v-model="effectsEnabledDraft" type="checkbox" @change="applySettings" />
           </label>
 
-          <label class="char-info-settings-priority">
-            <span id="char-info-image-source-priority-label">
-              <strong>图片来源优先级</strong>
-              <small id="char-info-image-source-priority-help">
-                每行填写一个图片来源域名或完整图片地址，系统会按填写顺序尝试加载；填写根域名后，其子域名也会匹配。
-              </small>
-            </span>
-            <textarea
-              id="char-info-image-source-priority"
-              v-model="imageSourcePriorityDraft"
-              rows="4"
-              placeholder="files.catbox.moe\ni.ibb.co"
-              spellcheck="false"
-              aria-labelledby="char-info-image-source-priority-label"
-              aria-describedby="char-info-image-source-priority-help"
-              @change="applySettings"
-            ></textarea>
-          </label>
+          <section class="char-info-settings-priority" aria-labelledby="char-info-image-source-priority-label">
+            <label class="char-info-settings-switch char-info-settings-priority-switch">
+              <span>
+                <strong id="char-info-image-source-priority-label">图片来源优先级</strong>
+                <small>开启后，查看器会优先尝试排在前面的网站；关闭时保持作者原本的图片顺序。</small>
+              </span>
+              <span class="char-info-settings-priority-toggle-wrap">
+                <small>{{ imageSourcePriorityEnabledDraft ? '已开启' : '已关闭' }}</small>
+                <input
+                  v-model="imageSourcePriorityEnabledDraft"
+                  class="char-info-settings-priority-toggle"
+                  type="checkbox"
+                  role="switch"
+                  aria-label="启用图片来源优先级"
+                  @change="toggleImageSourcePriority"
+                />
+              </span>
+            </label>
+
+            <div v-if="imageSourcePriorityEnabledDraft" class="char-info-settings-priority-editor">
+              <p>一个输入框只填一个图片网站。数字越小，优先级越高。</p>
+              <div class="char-info-settings-priority-list">
+                <div
+                  v-for="(priority, index) in imageSourcePriorityDraft"
+                  :key="index"
+                  class="char-info-settings-priority-row"
+                >
+                  <span class="char-info-settings-priority-index" aria-hidden="true">{{ index + 1 }}</span>
+                  <input
+                    v-model.trim="imageSourcePriorityDraft[index]"
+                    type="text"
+                    :aria-label="`第 ${index + 1} 个图片网站`"
+                    placeholder="例如：files.catbox.moe"
+                    spellcheck="false"
+                    @change="applySettings"
+                  />
+                  <div class="char-info-settings-priority-actions">
+                    <button
+                      type="button"
+                      :disabled="index === 0"
+                      :aria-label="`上移第 ${index + 1} 个图片网站`"
+                      title="上移"
+                      @click="moveImageSourcePriority(index, -1)"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      :disabled="index === imageSourcePriorityDraft.length - 1"
+                      :aria-label="`下移第 ${index + 1} 个图片网站`"
+                      title="下移"
+                      @click="moveImageSourcePriority(index, 1)"
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      :aria-label="`删除第 ${index + 1} 个图片网站`"
+                      title="删除"
+                      @click="removeImageSourcePriority(index)"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="char-info-settings-priority-footer">
+                <button type="button" @click="useRecommendedImageSourcePriority">使用推荐顺序</button>
+                <button type="button" @click="addImageSourcePriority">＋ 添加图片来源</button>
+              </div>
+            </div>
+          </section>
         </div>
 
         <p v-if="settingsMessage" class="char-info-settings-feedback" aria-live="polite">{{ settingsMessage }}</p>
@@ -301,7 +355,12 @@ import { dump } from 'js-yaml';
 import ViewerApp from '../char_info_viewer/App.vue';
 import { normalizeImageSourcePriorityEntries } from '../char_info_viewer/services/imageSourcePriority';
 import { buildCurrentCharacterViewerData } from './currentCharacterLibrary';
-import { MAX_ACTIVE_FLOOR_LIMIT, MIN_ACTIVE_FLOOR_LIMIT, type CharInfoUiSettings } from './runtimeSettings';
+import {
+  DEFAULT_IMAGE_SOURCE_PRIORITY,
+  MAX_ACTIVE_FLOOR_LIMIT,
+  MIN_ACTIVE_FLOOR_LIMIT,
+  type CharInfoUiSettings,
+} from './runtimeSettings';
 import type { RuntimeViewState } from './types';
 
 type LibraryFilter = 'all' | 'present' | 'away';
@@ -332,8 +391,12 @@ const viewerWindowRef = ref<HTMLElement | null>(null);
 const viewerWindowPosition = ref<{ left: number; top: number } | null>(null);
 const floorLimitDraft = ref(props.state.settings.activeFloorLimit);
 const effectsEnabledDraft = ref(props.state.settings.effectsEnabled);
-const imageSourcePriorityDraft = ref(props.state.settings.imageSourcePriority.join('\n'));
+const imageSourcePriorityEnabledDraft = ref(props.state.settings.imageSourcePriorityEnabled);
+const imageSourcePriorityDraft = ref([...props.state.settings.imageSourcePriority]);
 const settingsMessage = ref('');
+const activeImageSourcePriority = computed(() =>
+  props.state.settings.imageSourcePriorityEnabled ? props.state.settings.imageSourcePriority : [],
+);
 const filterOptions: Array<{ value: LibraryFilter; label: string }> = [
   { value: 'all', label: '全部' },
   { value: 'present', label: '在场' },
@@ -608,20 +671,53 @@ function keepFloatingUiInViewport(): void {
 function replaceSettingsDraft(settings: CharInfoUiSettings): void {
   floorLimitDraft.value = settings.activeFloorLimit;
   effectsEnabledDraft.value = settings.effectsEnabled;
-  imageSourcePriorityDraft.value = settings.imageSourcePriority.join('\n');
+  imageSourcePriorityEnabledDraft.value = settings.imageSourcePriorityEnabled;
+  imageSourcePriorityDraft.value = [...settings.imageSourcePriority];
 }
 
 function applySettings(): void {
-  const priorityNormalization = normalizeImageSourcePriorityEntries(imageSourcePriorityDraft.value.split('\n'));
+  const priorityNormalization = normalizeImageSourcePriorityEntries(imageSourcePriorityDraft.value);
   const settings = props.onUpdateSettings({
     activeFloorLimit: Number(floorLimitDraft.value),
     effectsEnabled: effectsEnabledDraft.value,
+    imageSourcePriorityEnabled: imageSourcePriorityEnabledDraft.value,
     imageSourcePriority: priorityNormalization.priorities,
   });
   replaceSettingsDraft(settings);
   settingsMessage.value = priorityNormalization.rejectedCount
     ? `设置已保存；已忽略 ${priorityNormalization.rejectedCount} 条无效图片源规则。`
     : '设置已保存并立即应用。';
+}
+
+function toggleImageSourcePriority(): void {
+  if (imageSourcePriorityEnabledDraft.value && imageSourcePriorityDraft.value.length === 0) {
+    imageSourcePriorityDraft.value = [...DEFAULT_IMAGE_SOURCE_PRIORITY];
+  }
+  applySettings();
+}
+
+function addImageSourcePriority(): void {
+  imageSourcePriorityDraft.value.push('');
+  settingsMessage.value = '请填写图片网站域名，离开输入框后会自动保存。';
+}
+
+function useRecommendedImageSourcePriority(): void {
+  imageSourcePriorityDraft.value = [...DEFAULT_IMAGE_SOURCE_PRIORITY];
+  applySettings();
+}
+
+function moveImageSourcePriority(index: number, offset: -1 | 1): void {
+  const targetIndex = index + offset;
+  if (targetIndex < 0 || targetIndex >= imageSourcePriorityDraft.value.length) return;
+  const priorities = [...imageSourcePriorityDraft.value];
+  [priorities[index], priorities[targetIndex]] = [priorities[targetIndex], priorities[index]];
+  imageSourcePriorityDraft.value = priorities;
+  applySettings();
+}
+
+function removeImageSourcePriority(index: number): void {
+  imageSourcePriorityDraft.value.splice(index, 1);
+  applySettings();
 }
 
 function resetSettings(): void {
@@ -761,6 +857,9 @@ onBeforeUnmount(() => {
 }
 
 .char-info-settings-dialog {
+  display: flex;
+  max-height: calc(100dvh - 36px);
+  flex-direction: column;
   width: min(100%, 520px);
   overflow: hidden;
   border: 1px solid rgba(232, 210, 171, 0.28);
@@ -817,8 +916,10 @@ onBeforeUnmount(() => {
 
 .char-info-settings-fields {
   display: grid;
+  min-height: 0;
   gap: 10px;
   padding: 18px;
+  overflow-y: auto;
 }
 
 .char-info-settings-fields label {
@@ -855,22 +956,148 @@ onBeforeUnmount(() => {
 }
 
 .char-info-settings-priority {
-  align-items: stretch;
-  flex-direction: column;
+  display: grid;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(232, 210, 171, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
 }
 
-.char-info-settings-priority textarea {
+.char-info-settings-fields .char-info-settings-priority-switch {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.char-info-settings-fields .char-info-settings-priority-toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.char-info-settings-switch input.char-info-settings-priority-toggle {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  flex: 0 0 auto;
+  appearance: none;
+  border: 1px solid rgba(232, 210, 171, 0.3);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease;
+}
+
+.char-info-settings-switch input.char-info-settings-priority-toggle::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #aaa5af;
+  content: '';
+  transition:
+    transform 140ms ease,
+    background 140ms ease;
+}
+
+.char-info-settings-switch input.char-info-settings-priority-toggle:checked {
+  border-color: #d9b87a;
+  background: rgba(217, 184, 122, 0.3);
+}
+
+.char-info-settings-switch input.char-info-settings-priority-toggle:checked::after {
+  background: #f1d69f;
+  transform: translateX(20px);
+}
+
+.char-info-settings-priority-editor {
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(232, 210, 171, 0.13);
+}
+
+.char-info-settings-priority-editor > p {
+  margin: 0;
+  color: #b9b4bd;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.char-info-settings-priority-list {
+  display: grid;
+  gap: 8px;
+}
+
+.char-info-settings-priority-row {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.char-info-settings-priority-index {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid rgba(217, 184, 122, 0.26);
+  border-radius: 50%;
+  color: #d9b87a;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.char-info-settings-priority-row input[type='text'] {
   width: 100%;
-  min-height: 96px;
+  min-width: 0;
+  min-height: 40px;
   box-sizing: border-box;
-  resize: vertical;
-  padding: 9px;
+  padding: 8px 10px;
   border: 1px solid rgba(232, 210, 171, 0.25);
   border-radius: 9px;
   background: rgba(0, 0, 0, 0.28);
   color: #fff;
   font: inherit;
-  line-height: 1.45;
+}
+
+.char-info-settings-priority-row input[type='text']:focus {
+  border-color: #d9b87a;
+  outline: 2px solid rgba(217, 184, 122, 0.14);
+}
+
+.char-info-settings-priority-actions,
+.char-info-settings-priority-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.char-info-settings-priority-actions button {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+}
+
+.char-info-settings-priority-actions button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.char-info-settings-priority-footer {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.char-info-settings-priority-footer button:last-child {
+  border-color: rgba(217, 184, 122, 0.48);
+  color: #f0d49d;
 }
 
 .char-info-settings-switch input {
@@ -1450,6 +1677,32 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 720px) {
+  .char-info-settings-backdrop {
+    padding: 8px;
+  }
+
+  .char-info-settings-dialog {
+    max-height: calc(100dvh - 16px);
+  }
+
+  .char-info-settings-fields {
+    padding: 12px;
+  }
+
+  .char-info-settings-priority-row {
+    grid-template-columns: 26px minmax(0, 1fr);
+  }
+
+  .char-info-settings-priority-index {
+    width: 26px;
+    height: 26px;
+  }
+
+  .char-info-settings-priority-actions {
+    grid-column: 2;
+    justify-content: flex-end;
+  }
+
   .char-info-library-overlay {
     inset: 0 !important;
     width: 100%;

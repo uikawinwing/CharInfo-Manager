@@ -5,10 +5,12 @@ import { normalizeImageSourcePriority } from '../char_info_viewer/services/image
 export const DEFAULT_ACTIVE_FLOOR_LIMIT = 6;
 export const MIN_ACTIVE_FLOOR_LIMIT = 1;
 export const MAX_ACTIVE_FLOOR_LIMIT = 20;
+export const DEFAULT_IMAGE_SOURCE_PRIORITY = ['files.catbox.moe', 'i.ibb.co'];
 
 export type CharInfoUiSettings = {
   activeFloorLimit: number;
   effectsEnabled: boolean;
+  imageSourcePriorityEnabled: boolean;
   imageSourcePriority: string[];
 };
 
@@ -20,7 +22,8 @@ export type CharInfoFloatingButtonPosition = {
 const DEFAULT_SETTINGS: CharInfoUiSettings = {
   activeFloorLimit: DEFAULT_ACTIVE_FLOOR_LIMIT,
   effectsEnabled: true,
-  imageSourcePriority: [],
+  imageSourcePriorityEnabled: false,
+  imageSourcePriority: [...DEFAULT_IMAGE_SOURCE_PRIORITY],
 };
 
 const SettingsSchema = z
@@ -32,7 +35,12 @@ const SettingsSchema = z
       .max(MAX_ACTIVE_FLOOR_LIMIT)
       .catch(DEFAULT_SETTINGS.activeFloorLimit),
     effectsEnabled: z.boolean().catch(DEFAULT_SETTINGS.effectsEnabled),
-    imageSourcePriority: z.unknown().transform(normalizeImageSourcePriority).catch(DEFAULT_SETTINGS.imageSourcePriority),
+    imageSourcePriorityEnabled: z.boolean().catch(DEFAULT_SETTINGS.imageSourcePriorityEnabled),
+    imageSourcePriority: z
+      .unknown()
+      .default([...DEFAULT_SETTINGS.imageSourcePriority])
+      .transform(normalizeImageSourcePriority)
+      .catch([...DEFAULT_SETTINGS.imageSourcePriority]),
   })
   .prefault(DEFAULT_SETTINGS);
 
@@ -46,11 +54,25 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function normalizeRuntimeSettings(value: unknown): CharInfoUiSettings {
-  return SettingsSchema.parse(isRecord(value) ? value : {});
+  const source = isRecord(value) ? value : {};
+  const normalized = SettingsSchema.parse(source);
+
+  // 旧版本只保存优先级列表。迁移时保持其原有启用行为；全新设置默认关闭，避免改变图片顺序。
+  if (
+    !Object.prototype.hasOwnProperty.call(source, 'imageSourcePriorityEnabled') &&
+    Object.prototype.hasOwnProperty.call(source, 'imageSourcePriority')
+  ) {
+    normalized.imageSourcePriorityEnabled = normalized.imageSourcePriority.length > 0;
+  }
+
+  return {
+    ...normalized,
+    imageSourcePriority: [...normalized.imageSourcePriority],
+  };
 }
 
 export function readRuntimeSettings(scriptVariables: unknown): CharInfoUiSettings {
-  if (!isRecord(scriptVariables)) return { ...DEFAULT_SETTINGS };
+  if (!isRecord(scriptVariables)) return defaultRuntimeSettings();
   const namespace = isRecord(scriptVariables.char_info_runtime) ? scriptVariables.char_info_runtime : {};
   return normalizeRuntimeSettings(namespace.settings);
 }
@@ -90,5 +112,8 @@ export function mergeRuntimeFloatingButtonPosition(
 }
 
 export function defaultRuntimeSettings(): CharInfoUiSettings {
-  return { ...DEFAULT_SETTINGS };
+  return {
+    ...DEFAULT_SETTINGS,
+    imageSourcePriority: [...DEFAULT_SETTINGS.imageSourcePriority],
+  };
 }
