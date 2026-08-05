@@ -54,16 +54,20 @@ test('vNext runtime mounts cards from raw message text before display formatting
   assert.match(nativeMountSource, /buildRawMessageWithCardSlots\(rawMessage, cards\)/);
   assert.match(nativeMountSource, /formatAsDisplayedMessage\(prepared\.source, \{ message_id: messageId \}\)/);
   assert.match(nativeMountSource, /injectCardHostsIntoDisplayedHtml\(displayedHtml, prepared\.slots\)/);
-  assert.match(nativeMountSource, /while \(root\.firstChild\) originalContent\.appendChild\(root\.firstChild\)/);
-  assert.match(nativeMountSource, /root\.replaceChildren\(originalContent\)/);
+  assert.match(nativeMountSource, /while \(root\.firstChild\) rollbackContent\.appendChild\(root\.firstChild\)/);
+  assert.match(nativeMountSource, /root\.replaceChildren\(preparedContent\.mountedContent\)/);
+  assert.match(nativeMountSource, /hosts\.forEach\(host => host\.remove\(\)\)/);
   assert.doesNotMatch(
     nativeMountSource,
     /createTreeWalker|TreeWalker|findTextRange|findCollapsedTextRange|getCharInfoBoundaryTexts|BLOCKED_NATIVE_SCOPE_SELECTOR/,
   );
 });
 
-test('runtime replaces an older loaded instance instead of duplicating cards and observers', () => {
-  assert.match(runtimeEntrySource, /hostWindow\.CHAR_INFO_VIEWER_RUNTIME\?\.stop\(\)/);
+test('runtime replaces an older loaded instance without refreshing native messages', () => {
+  assert.match(
+    runtimeEntrySource,
+    /hostWindow\.CHAR_INFO_VIEWER_RUNTIME\?\.stop\(\{ restoreNativeMessages: false \}\)/,
+  );
   assert.match(runtimeEntrySource, /hostWindow\.CHAR_INFO_VIEWER_RUNTIME = nextRuntime/);
   assert.match(runtimeEntrySource, /delete hostWindow\.CHAR_INFO_VIEWER_RUNTIME/);
 });
@@ -79,4 +83,20 @@ test('runtime mutation observer skips all mutation traversal until a card is mou
     observerCallback ?? '',
     /!mounted\.sourceElement\.isConnected \|\| mounted\.cardMounts\.some\(cardMount => !cardMount\.host\.isConnected\)/u,
   );
+});
+
+test('runtime stops repeated remounts and detects editing at the message boundary', () => {
+  assert.match(runtimeSource, /const REMOUNT_LOOP_GUARD_MS = 3000/);
+  assert.match(runtimeSource, /messageElement\.querySelector\('#curEditTextarea'\)/);
+  assert.match(runtimeSource, /previousAttempt\?\.signature === sourceSignature/);
+  assert.match(runtimeSource, /now - previousAttempt\.attemptedAt < REMOUNT_LOOP_GUARD_MS/);
+  assert.match(runtimeSource, /已停止自动重挂载以避免渲染循环/);
+});
+
+test('runtime restores native message display only after a real script stop', () => {
+  assert.match(runtimeSource, /stop\(options = \{\}\)/);
+  assert.match(runtimeSource, /options\.restoreNativeMessages === false \? \[\] : Array\.from\(mountedMessages\.keys\(\)\)/);
+  assert.match(runtimeSource, /messageElement\.querySelector\('#curEditTextarea'\)/);
+  assert.match(runtimeSource, /refreshOneMessage\(messageId, \$\(messageElement\)\)/);
+  assert.match(runtimeSource, /destroyTeleportedStyle = null;\s*restoreNativeMessageDisplays\(mountedMessageIds\)/);
 });
