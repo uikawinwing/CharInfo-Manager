@@ -17,7 +17,7 @@ const hostWindow = getHostWindow();
 let runtime: CharInfoRuntime | null = null;
 
 $(() => {
-  hostWindow.CHAR_INFO_VIEWER_RUNTIME?.stop();
+  hostWindow.CHAR_INFO_VIEWER_RUNTIME?.stop({ restoreNativeMessages: false });
   const nextRuntime = createCharInfoRuntime();
   try {
     nextRuntime.start();

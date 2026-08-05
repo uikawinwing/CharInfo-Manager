@@ -24,6 +24,7 @@ import type { RuntimeMessageView, RuntimeViewState } from './types';
 const MAX_CARDS_PER_MESSAGE = 4;
 const DIRTY_BATCH_SIZE = 3;
 const DIRTY_FLUSH_DELAY_MS = 20;
+const REMOUNT_LOOP_GUARD_MS = 3000;
 const LIBRARY_HOST_CLASS = 'char-info-library-host';
 const LEGACY_CURRENT_LIBRARY_BUTTON_NAME = '角色资料库';
 const CREATOR_BUTTON_NAME = '角色视觉编辑器';
@@ -40,9 +41,18 @@ type MountedMessage = {
   cardMounts: MountedNativeCardHost[];
 };
 
+type RemountAttempt = {
+  signature: string;
+  attemptedAt: number;
+};
+
+type CharInfoRuntimeStopOptions = {
+  restoreNativeMessages?: boolean;
+};
+
 export type CharInfoRuntime = {
   start(): void;
-  stop(): void;
+  stop(options?: CharInfoRuntimeStopOptions): void;
 };
 
 function getMessageElement(messageId: number): HTMLElement | null {
@@ -72,6 +82,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     },
   });
   const mountedMessages = new Map<number, MountedMessage>();
+  const remountAttempts = new Map<number, RemountAttempt>();
   const activeFloorIds = new Set<number>();
   const dirtyMessageIds = new Set<number>();
   const eventStops: Array<() => void> = [];
@@ -310,8 +321,20 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
   const clearMessages = () => {
     Array.from(mountedMessages.keys()).forEach(removeMessage);
+    remountAttempts.clear();
     activeFloorIds.clear();
     dirtyMessageIds.clear();
+  };
+
+  const restoreNativeMessageDisplays = (messageIds: readonly number[]) => {
+    messageIds.forEach(messageId => {
+      const messageElement = getMessageElement(messageId);
+      if (!messageElement || messageElement.querySelector('#curEditTextarea')) return;
+
+      void refreshOneMessage(messageId, $(messageElement)).catch(error => {
+        console.warn(`[CharInfo Runtime] 第 ${messageId} 楼关闭后恢复原生显示失败：`, error);
+      });
+    });
   };
 
   const upsertView = (view: RuntimeMessageView) => {
@@ -337,7 +360,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       removeMessage(messageId);
       return;
     }
-    if (sourceElement.querySelector('#curEditTextarea')) {
+    if (messageElement.querySelector('#curEditTextarea')) {
       removeMessage(messageId);
       return;
     }
@@ -369,7 +392,25 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       return;
     }
 
-    if (current) removeMessage(messageId);
+    const sourceSignature = `${source.swipeId}:${source.message.message}`;
+    if (current) {
+      const previousAttempt = remountAttempts.get(messageId);
+      const now = Date.now();
+      if (
+        previousAttempt?.signature === sourceSignature &&
+        now - previousAttempt.attemptedAt < REMOUNT_LOOP_GUARD_MS
+      ) {
+        console.warn(
+          `[CharInfo Runtime] 第 ${messageId} 楼在短时间内重复失去挂载点，已停止自动重挂载以避免渲染循环。`,
+        );
+        removeMessage(messageId);
+        return;
+      }
+      remountAttempts.set(messageId, { signature: sourceSignature, attemptedAt: now });
+      removeMessage(messageId);
+    } else {
+      remountAttempts.delete(messageId);
+    }
 
     const cardMounts = mountCharInfoCardHosts(sourceElement, projection.cards);
     if (!cardMounts) {
@@ -583,10 +624,12 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       });
     },
 
-    stop() {
+    stop(options = {}) {
       if (!started) return;
       started = false;
       lifecycleRevision += 1;
+      const mountedMessageIds =
+        options.restoreNativeMessages === false ? [] : Array.from(mountedMessages.keys());
 
       if (dirtyFlushTimer) clearTimeout(dirtyFlushTimer);
       if (rescanTimer) clearTimeout(rescanTimer);
@@ -607,6 +650,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       appRoot = null;
       destroyTeleportedStyle?.();
       destroyTeleportedStyle = null;
+      restoreNativeMessageDisplays(mountedMessageIds);
     },
   };
 }

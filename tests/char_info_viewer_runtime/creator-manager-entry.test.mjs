@@ -63,7 +63,7 @@ test('角色视觉编辑器通过独立全屏 iframe 打开，避免 ST 层级�
   assert.doesNotMatch(runtimeSource, /import\('\.\.\/char_info_creator_manager\/overlay'\)/u);
   assert.doesNotMatch(runtimeSource, /worldbookManagerLoad|managerOpenRevision/u);
   assert.match(runtimeSource, /tavern_events\.CHAT_CHANGED[\s\S]*?destroyWorldbookManager\(\);/u);
-  assert.match(runtimeSource, /stop\(\) \{[\s\S]*?destroyWorldbookManager\(\);/u);
+  assert.match(runtimeSource, /stop\(options = \{\}\) \{[\s\S]*?destroyWorldbookManager\(\);/u);
   assert.doesNotMatch(runtimeSource, /creatorEditor/u);
   assert.doesNotMatch(runtimeSource, /worldbookLibrary/u);
 
@@ -102,7 +102,7 @@ test('世界书角色库关闭后复用已挂载界面，聊天切换与运行�
     runtimeSource,
     /tavern_events\.CHAT_CHANGED[\s\S]*?destroyWorldbookManager\(\);[\s\S]*?resetLibraryForChat\(\);/u,
   );
-  assert.match(runtimeSource, /stop\(\) \{[\s\S]*?destroyWorldbookManager\(\);/u);
+  assert.match(runtimeSource, /stop\(options = \{\}\) \{[\s\S]*?destroyWorldbookManager\(\);/u);
   assert.match(runtimeSource, /onOpenCurrentChatLibrary:[\s\S]*?worldbookManager\.close\(\);[\s\S]*?openLibraryList\(\);/u);
 });
 
