@@ -54,8 +54,9 @@ test('vNext runtime mounts cards from raw message text before display formatting
   assert.match(nativeMountSource, /buildRawMessageWithCardSlots\(rawMessage, cards\)/);
   assert.match(nativeMountSource, /formatAsDisplayedMessage\(prepared\.source, \{ message_id: messageId \}\)/);
   assert.match(nativeMountSource, /injectCardHostsIntoDisplayedHtml\(displayedHtml, prepared\.slots\)/);
-  assert.match(nativeMountSource, /while \(root\.firstChild\) originalContent\.appendChild\(root\.firstChild\)/);
-  assert.match(nativeMountSource, /root\.replaceChildren\(originalContent\)/);
+  assert.match(nativeMountSource, /while \(root\.firstChild\) rollbackContent\.appendChild\(root\.firstChild\)/);
+  assert.match(nativeMountSource, /root\.replaceChildren\(preparedContent\.mountedContent\)/);
+  assert.match(nativeMountSource, /hosts\.forEach\(host => host\.remove\(\)\)/);
   assert.doesNotMatch(
     nativeMountSource,
     /createTreeWalker|TreeWalker|findTextRange|findCollapsedTextRange|getCharInfoBoundaryTexts|BLOCKED_NATIVE_SCOPE_SELECTOR/,

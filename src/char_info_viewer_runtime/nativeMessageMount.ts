@@ -27,7 +27,7 @@ type PreservedTavernHelperRender = {
 
 type PreparedMountedContent = {
   mountedContent: DocumentFragment;
-  originalContent: DocumentFragment;
+  rollbackContent: DocumentFragment;
   preservedRenders: PreservedTavernHelperRender[];
 };
 
@@ -118,8 +118,8 @@ function prepareMountedContent(root: HTMLElement, mountedHtml: string): Prepared
     return { element, originalMarker };
   });
 
-  const originalContent = root.ownerDocument.createDocumentFragment();
-  while (root.firstChild) originalContent.appendChild(root.firstChild);
+  const rollbackContent = root.ownerDocument.createDocumentFragment();
+  while (root.firstChild) rollbackContent.appendChild(root.firstChild);
 
   preservedRenders.forEach((preserved, index) => {
     frontendMountPoints[index].replaceWith(preserved.element);
@@ -128,25 +128,14 @@ function prepareMountedContent(root: HTMLElement, mountedHtml: string): Prepared
   const mountedContent = root.ownerDocument.createDocumentFragment();
   while (stagedRoot.firstChild) mountedContent.appendChild(stagedRoot.firstChild);
 
-  return { mountedContent, originalContent, preservedRenders };
+  return { mountedContent, rollbackContent, preservedRenders };
 }
 
-function restoreOriginalContent(root: HTMLElement, prepared: PreparedMountedContent): void {
+function rollbackMountedContent(root: HTMLElement, prepared: PreparedMountedContent): void {
   prepared.preservedRenders.forEach(({ element, originalMarker }) => {
     if (originalMarker.parentNode) originalMarker.replaceWith(element);
   });
-  root.replaceChildren(prepared.originalContent);
-}
-
-function scheduleDownstreamRendererRefresh(
-  messageId: number,
-  root: HTMLElement,
-  hosts: readonly HTMLElement[],
-): void {
-  setTimeout(() => {
-    if (!root.isConnected || hosts.some(host => !host.isConnected || !root.contains(host))) return;
-    void eventEmit(tavern_events.CHARACTER_MESSAGE_RENDERED, messageId);
-  }, 0);
+  root.replaceChildren(prepared.rollbackContent);
 }
 
 function resolveMessageId(root: HTMLElement, cards: readonly CharInfoCardPart[]): number | null {
@@ -198,25 +187,21 @@ export function mountCharInfoCardHosts(
   try {
     root.replaceChildren(preparedContent.mountedContent);
   } catch (error) {
-    restoreOriginalContent(root, preparedContent);
+    rollbackMountedContent(root, preparedContent);
     throw error;
   }
 
   const hosts = collectMountedHosts(root, cards);
   if (!hosts) {
-    restoreOriginalContent(root, preparedContent);
+    rollbackMountedContent(root, preparedContent);
     return null;
   }
 
-  scheduleDownstreamRendererRefresh(messageId, root, hosts);
-
-  let restored = false;
+  let removed = false;
   const restore = () => {
-    if (restored) return;
-    restored = true;
-
-    const stillOwnsMessage = hosts.some(host => host.isConnected && root.contains(host));
-    if (stillOwnsMessage && root.isConnected) restoreOriginalContent(root, preparedContent);
+    if (removed) return;
+    removed = true;
+    hosts.forEach(host => host.remove());
   };
 
   return hosts.map(host => ({ host, restore }));
