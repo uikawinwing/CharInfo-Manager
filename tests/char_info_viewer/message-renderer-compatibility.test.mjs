@@ -29,3 +29,16 @@ test('keeps existing Tavern Helper render roots alive while mounting char info',
   assert.match(nativeMountSource, /restoreOriginalContent\(root, preparedContent\)/);
   assert.doesNotMatch(nativeMountSource, /\broot\.innerHTML\s*=/);
 });
+
+test('notifies downstream message renderers after rebuilding the message body', () => {
+  assert.match(nativeMountSource, /scheduleDownstreamRendererRefresh\(messageId, root, hosts\)/);
+  assert.match(nativeMountSource, /setTimeout\(\(\) => \{/);
+  assert.match(
+    nativeMountSource,
+    /eventEmit\(tavern_events\.CHARACTER_MESSAGE_RENDERED, messageId\)/,
+  );
+  assert.match(
+    nativeMountSource,
+    /hosts\.some\(host => !host\.isConnected \|\| !root\.contains\(host\)\)/,
+  );
+});

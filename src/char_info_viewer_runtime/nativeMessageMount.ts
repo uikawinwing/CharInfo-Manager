@@ -138,6 +138,17 @@ function restoreOriginalContent(root: HTMLElement, prepared: PreparedMountedCont
   root.replaceChildren(prepared.originalContent);
 }
 
+function scheduleDownstreamRendererRefresh(
+  messageId: number,
+  root: HTMLElement,
+  hosts: readonly HTMLElement[],
+): void {
+  setTimeout(() => {
+    if (!root.isConnected || hosts.some(host => !host.isConnected || !root.contains(host))) return;
+    void eventEmit(tavern_events.CHARACTER_MESSAGE_RENDERED, messageId);
+  }, 0);
+}
+
 function resolveMessageId(root: HTMLElement, cards: readonly CharInfoCardPart[]): number | null {
   const nativeMessageId = Number(root.closest<HTMLElement>('#chat > .mes')?.getAttribute('mesid'));
   if (Number.isInteger(nativeMessageId) && nativeMessageId >= 0) return nativeMessageId;
@@ -196,6 +207,8 @@ export function mountCharInfoCardHosts(
     restoreOriginalContent(root, preparedContent);
     return null;
   }
+
+  scheduleDownstreamRendererRefresh(messageId, root, hosts);
 
   let restored = false;
   const restore = () => {
