@@ -40,7 +40,7 @@ test('multiple cards do not repeat static viewer element ids in the host documen
   assert.match(divinityPanelSource, /:aria-controls="contentId"/);
 });
 
-test('vNext runtime mounts cards into the native message without replacing Tavern Helper output', () => {
+test('vNext runtime mounts cards from raw message text before display formatting', () => {
   assert.equal(runtimeSource.match(/\bcreateApp\(/g)?.length, 1);
   assert.doesNotMatch(runtimeSource, /createElement\(['"]iframe['"]\)|<iframe|srcdoc/i);
   assert.match(runtimeSource, /createScriptIdDiv\(\)\.addClass\('char-info-runtime-root'\)\.appendTo\('body'\)/);
@@ -48,12 +48,18 @@ test('vNext runtime mounts cards into the native message without replacing Taver
   assert.match(runtimeSource, /window\.parent\.document\.querySelector/);
   assert.doesNotMatch(runtimeSource, /mutation\.target instanceof Element/);
   assert.match(runtimeSource, /mountCharInfoCardHosts\(sourceElement, projection\.cards\)/);
-  assert.doesNotMatch(runtimeSource, /formatAsDisplayedMessage|adaptDisplayedMessageHtml|SOURCE_HIDDEN_CLASS/);
   assert.doesNotMatch(runtimeRootSource, /\bv-html\b|char-info-runtime-text|char-info-runtime-source-hidden/);
-  assert.match(nativeMountSource, /getCharInfoBoundaryTexts/);
-  assert.match(nativeMountSource, /range\.setStartBefore\(startTopLevel\)/);
-  assert.match(nativeMountSource, /range\.setEndAfter\(endTopLevel\)/);
-  assert.doesNotMatch(nativeMountSource, /getCharInfoVisibleText|createSafeRange\(root, visibleText\)/);
+
+  assert.match(nativeMountSource, /const message = getChatMessages\(messageId\)\[0\]/);
+  assert.match(nativeMountSource, /buildRawMessageWithCardSlots\(rawMessage, cards\)/);
+  assert.match(nativeMountSource, /formatAsDisplayedMessage\(prepared\.source, \{ message_id: messageId \}\)/);
+  assert.match(nativeMountSource, /injectCardHostsIntoDisplayedHtml\(displayedHtml, prepared\.slots\)/);
+  assert.match(nativeMountSource, /while \(root\.firstChild\) originalContent\.appendChild\(root\.firstChild\)/);
+  assert.match(nativeMountSource, /root\.replaceChildren\(originalContent\)/);
+  assert.doesNotMatch(
+    nativeMountSource,
+    /createTreeWalker|TreeWalker|findTextRange|findCollapsedTextRange|getCharInfoBoundaryTexts|BLOCKED_NATIVE_SCOPE_SELECTOR/,
+  );
 });
 
 test('runtime replaces an older loaded instance instead of duplicating cards and observers', () => {

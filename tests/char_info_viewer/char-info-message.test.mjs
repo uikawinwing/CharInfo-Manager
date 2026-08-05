@@ -4,9 +4,8 @@ import test from 'node:test';
 import { projectCharInfoMessage } from '../../src/char_info_viewer/runtime/charInfoMessage.ts';
 import { selectRecentMessageIds } from '../../src/char_info_viewer/runtime/recentMessages.ts';
 import {
-  findCollapsedTextRange,
-  findTextRange,
-  getCharInfoBoundaryTexts,
+  buildRawMessageWithCardSlots,
+  injectCardHostsIntoDisplayedHtml,
 } from '../../src/char_info_viewer_runtime/nativeMessageMount.ts';
 
 test('projects one char_info block while preserving surrounding message text', () => {
@@ -66,42 +65,52 @@ test('runtime selects only the latest six loaded floors by default', () => {
   assert.deepEqual(selectRecentMessageIds([3, 4]), [3, 4]);
 });
 
-test('extracts only the first and last raw lines as native DOM boundaries', () => {
-  assert.deepEqual(getCharInfoBoundaryTexts('<char_info>\n姓名: Iris\n技能:\n- 名称: 星光\n</char_info>'), {
-    start: '姓名: Iris',
-    end: '名称: 星光',
-  });
+test('replaces raw char_info blocks with private slots before display formatting', () => {
+  const source = 'Before\n<char_info>\n姓名: Iris\n技能:\n- 名称: 星光\n</char_info>\nAfter';
+  const projection = projectCharInfoMessage({ messageId: 12, swipeId: 2, text: source });
+  const prepared = buildRawMessageWithCardSlots(source, projection.cards);
+
+  assert.ok(prepared);
+  assert.equal(prepared.slots.length, 1);
+  assert.equal(prepared.slots[0].cardId, projection.cards[0].id);
+  assert.match(prepared.slots[0].token, /^CHARINFOVIEWERSLOT[A-Z0-9]+ENDX*$/);
+  assert.equal(prepared.source, `Before\n${prepared.slots[0].token}\nAfter`);
+  assert.doesNotMatch(prepared.source, /<char_info|姓名: Iris|名称: 星光/i);
 });
 
-test('locates a char_info body across native message text nodes', () => {
-  assert.deepEqual(findTextRange(['故事正文\n', '姓名: Iris\n种族:', ' 人类\n', '后文'], '姓名: Iris\n种族: 人类'), {
-    startNodeIndex: 1,
-    startOffset: 0,
-    endNodeIndex: 2,
-    endOffset: 3,
-  });
+test('keeps identical raw cards in ordinal order without DOM text matching', () => {
+  const block = '<char_info>姓名: Iris</char_info>';
+  const source = `${block}\n正文\n${block}`;
+  const projection = projectCharInfoMessage({ messageId: 4, swipeId: 1, text: source });
+  const prepared = buildRawMessageWithCardSlots(source, projection.cards);
+
+  assert.ok(prepared);
+  assert.equal(prepared.slots.length, 2);
+  assert.notEqual(prepared.slots[0].token, prepared.slots[1].token);
+  assert.equal(prepared.source, `${prepared.slots[0].token}\n正文\n${prepared.slots[1].token}`);
 });
 
-test('falls back to whitespace-collapsed matching after Markdown changes text node boundaries', () => {
-  assert.deepEqual(findCollapsedTextRange(['姓名:  Iris', '\n种族:\t人类'], '姓名: Iris\n种族: 人类'), {
-    startNodeIndex: 0,
-    startOffset: 0,
-    endNodeIndex: 1,
-    endOffset: 7,
-  });
+test('injects card hosts into formatted HTML only through private slot tokens', () => {
+  const source = '<char_info>姓名: Iris</char_info>';
+  const projection = projectCharInfoMessage({ messageId: 5, swipeId: 0, text: source });
+  const prepared = buildRawMessageWithCardSlots(source, projection.cards);
+
+  assert.ok(prepared);
+  const html = injectCardHostsIntoDisplayedHtml(`<p>${prepared.slots[0].token}</p>`, prepared.slots);
+
+  assert.ok(html);
+  assert.match(html, /class="char-info-runtime-host"/);
+  assert.match(html, /data-char-info-runtime-owned="1"/);
+  assert.match(html, /data-char-info-card-id="5:0:0"/);
+  assert.doesNotMatch(html, new RegExp(prepared.slots[0].token));
 });
 
-test('matches YAML list items after Markdown consumes their leading hyphens', () => {
-  assert.deepEqual(
-    findCollapsedTextRange(
-      ['姓名: 图尔\n技能:\n', '名称: 巧舌如簧\n品质: 优良'],
-      '姓名: 图尔\n技能:\n- 名称: 巧舌如簧\n  品质: 优良',
-    ),
-    {
-      startNodeIndex: 0,
-      startOffset: 0,
-      endNodeIndex: 1,
-      endOffset: 15,
-    },
+test('rejects formatted output that loses or duplicates a private slot', () => {
+  const slots = [{ cardId: '1:0:0', token: 'CHARINFOVIEWERSLOTTESTX0END' }];
+
+  assert.equal(injectCardHostsIntoDisplayedHtml('<p>missing</p>', slots), null);
+  assert.equal(
+    injectCardHostsIntoDisplayedHtml(`${slots[0].token}<hr>${slots[0].token}`, slots),
+    null,
   );
 });
