@@ -2,6 +2,8 @@ import type { CharInfoCardPart } from '../char_info_viewer/runtime/charInfoMessa
 
 const SLOT_TOKEN_PREFIX = 'CHARINFOVIEWERSLOT';
 const RUNTIME_HOST_SELECTOR = '[data-char-info-runtime-owned="1"][data-char-info-card-id]';
+const TAVERN_HELPER_RENDER_SELECTOR = 'div.TH-render';
+const TAVERN_HELPER_FRONTEND_MARKERS = ['html>', '<head>', '<body'] as const;
 
 export type CharInfoCardSlot = {
   cardId: string;
@@ -16,6 +18,17 @@ export type PreparedCharInfoMessage = {
 export type MountedNativeCardHost = {
   host: HTMLElement;
   restore(): void;
+};
+
+type PreservedTavernHelperRender = {
+  element: HTMLElement;
+  originalMarker: Comment;
+};
+
+type PreparedMountedContent = {
+  mountedContent: DocumentFragment;
+  originalContent: DocumentFragment;
+  preservedRenders: PreservedTavernHelperRender[];
 };
 
 function createSlotToken(source: string, card: CharInfoCardPart, index: number): string {
@@ -75,6 +88,56 @@ export function injectCardHostsIntoDisplayedHtml(
   return output;
 }
 
+export function isTavernHelperFrontendSource(source: string): boolean {
+  return TAVERN_HELPER_FRONTEND_MARKERS.some(marker => source.includes(marker));
+}
+
+function collectTavernHelperFrontendMountPoints(root: ParentNode): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>('pre')).filter(pre =>
+    isTavernHelperFrontendSource(pre.textContent ?? ''),
+  );
+}
+
+function collectPreservableTavernHelperRenders(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>(TAVERN_HELPER_RENDER_SELECTOR)).filter(
+    element => !element.parentElement?.closest(TAVERN_HELPER_RENDER_SELECTOR),
+  );
+}
+
+function prepareMountedContent(root: HTMLElement, mountedHtml: string): PreparedMountedContent | null {
+  const stagedRoot = root.ownerDocument.createElement('div');
+  stagedRoot.innerHTML = mountedHtml;
+
+  const frontendMountPoints = collectTavernHelperFrontendMountPoints(stagedRoot);
+  const existingRenders = collectPreservableTavernHelperRenders(root);
+  if (existingRenders.length > 0 && existingRenders.length !== frontendMountPoints.length) return null;
+
+  const preservedRenders = existingRenders.map(element => {
+    const originalMarker = root.ownerDocument.createComment('char-info-preserved-th-render');
+    element.replaceWith(originalMarker);
+    return { element, originalMarker };
+  });
+
+  const originalContent = root.ownerDocument.createDocumentFragment();
+  while (root.firstChild) originalContent.appendChild(root.firstChild);
+
+  preservedRenders.forEach((preserved, index) => {
+    frontendMountPoints[index].replaceWith(preserved.element);
+  });
+
+  const mountedContent = root.ownerDocument.createDocumentFragment();
+  while (stagedRoot.firstChild) mountedContent.appendChild(stagedRoot.firstChild);
+
+  return { mountedContent, originalContent, preservedRenders };
+}
+
+function restoreOriginalContent(root: HTMLElement, prepared: PreparedMountedContent): void {
+  prepared.preservedRenders.forEach(({ element, originalMarker }) => {
+    if (originalMarker.parentNode) originalMarker.replaceWith(element);
+  });
+  root.replaceChildren(prepared.originalContent);
+}
+
 function resolveMessageId(root: HTMLElement, cards: readonly CharInfoCardPart[]): number | null {
   const nativeMessageId = Number(root.closest<HTMLElement>('#chat > .mes')?.getAttribute('mesid'));
   if (Number.isInteger(nativeMessageId) && nativeMessageId >= 0) return nativeMessageId;
@@ -118,18 +181,19 @@ export function mountCharInfoCardHosts(
   const mountedHtml = injectCardHostsIntoDisplayedHtml(displayedHtml, prepared.slots);
   if (mountedHtml === null) return null;
 
-  const originalContent = root.ownerDocument.createDocumentFragment();
-  while (root.firstChild) originalContent.appendChild(root.firstChild);
+  const preparedContent = prepareMountedContent(root, mountedHtml);
+  if (!preparedContent) return null;
+
   try {
-    root.innerHTML = mountedHtml;
+    root.replaceChildren(preparedContent.mountedContent);
   } catch (error) {
-    root.replaceChildren(originalContent);
+    restoreOriginalContent(root, preparedContent);
     throw error;
   }
 
   const hosts = collectMountedHosts(root, cards);
   if (!hosts) {
-    root.replaceChildren(originalContent);
+    restoreOriginalContent(root, preparedContent);
     return null;
   }
 
@@ -139,7 +203,7 @@ export function mountCharInfoCardHosts(
     restored = true;
 
     const stillOwnsMessage = hosts.some(host => host.isConnected && root.contains(host));
-    if (stillOwnsMessage && root.isConnected) root.replaceChildren(originalContent);
+    if (stillOwnsMessage && root.isConnected) restoreOriginalContent(root, preparedContent);
   };
 
   return hosts.map(host => ({ host, restore }));
