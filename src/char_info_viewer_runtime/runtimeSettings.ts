@@ -10,6 +10,7 @@ export const DEFAULT_IMAGE_SOURCE_PRIORITY = ['files.catbox.moe', 'i.ibb.co'];
 export type CharInfoUiSettings = {
   activeFloorLimit: number;
   effectsEnabled: boolean;
+  forceMobileLayout: boolean;
   imageSourcePriorityEnabled: boolean;
   imageSourcePriority: string[];
 };
@@ -22,6 +23,7 @@ export type CharInfoFloatingButtonPosition = {
 const DEFAULT_SETTINGS: CharInfoUiSettings = {
   activeFloorLimit: DEFAULT_ACTIVE_FLOOR_LIMIT,
   effectsEnabled: true,
+  forceMobileLayout: false,
   imageSourcePriorityEnabled: false,
   imageSourcePriority: [...DEFAULT_IMAGE_SOURCE_PRIORITY],
 };
@@ -35,6 +37,7 @@ const SettingsSchema = z
       .max(MAX_ACTIVE_FLOOR_LIMIT)
       .catch(DEFAULT_SETTINGS.activeFloorLimit),
     effectsEnabled: z.boolean().catch(DEFAULT_SETTINGS.effectsEnabled),
+    forceMobileLayout: z.boolean().catch(DEFAULT_SETTINGS.forceMobileLayout),
     imageSourcePriorityEnabled: z.boolean().catch(DEFAULT_SETTINGS.imageSourcePriorityEnabled),
     imageSourcePriority: z
       .unknown()

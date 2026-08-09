@@ -301,14 +301,27 @@
             <div id="manager-step-2-content" class="mobile-step-content">
               <div class="field-grid">
                 <label class="field">
-                  <span class="field-label">角色姓名 <b>*</b></span>
+                  <span class="field-label">
+                    角色姓名 <b>*</b>
+                    <small :class="{ warning: profile.characterName.length > 12 }">
+                      {{ profile.characterName.length }} 字
+                    </small>
+                  </span>
                   <input
                     v-model="profile.characterName"
                     type="text"
                     maxlength="80"
                     autocomplete="off"
+                    aria-describedby="character-name-guidance"
                     placeholder="例如：傲雪"
                   />
+                  <small
+                    id="character-name-guidance"
+                    class="field-guidance"
+                    :class="{ warning: profile.characterName.length > 12 }"
+                  >
+                    建议中文姓名不超过 12 字；英文姓名可适当放宽。
+                  </small>
                 </label>
 
                 <label class="field">
@@ -325,14 +338,23 @@
                 <label class="field field-full">
                   <span class="field-label">
                     登场台词
-                    <small>{{ profile.entranceQuote.length }}/60</small>
+                    <small :class="{ warning: profile.entranceQuote.length > 48 }">
+                      {{ profile.entranceQuote.length }} 字
+                    </small>
                   </span>
                   <textarea
                     v-model="profile.entranceQuote"
-                    maxlength="60"
                     rows="2"
+                    aria-describedby="entrance-quote-guidance"
                     placeholder="例如：霜雪会记住每一道剑痕。"
                   ></textarea>
+                  <small
+                    id="entrance-quote-guidance"
+                    class="field-guidance"
+                    :class="{ warning: profile.entranceQuote.length > 48 }"
+                  >
+                    建议 12–32 字；超过 48 字时，首页最多显示三行，完整内容仍会保存。
+                  </small>
                 </label>
               </div>
 
@@ -653,6 +675,21 @@
       </div>
 
       <section v-else class="library-page">
+        <div class="mobile-library-context">
+          <div class="character-source-switch" role="group" aria-label="选择角色资料来源">
+            <button type="button" aria-pressed="false" @click="props.onOpenCurrentChatLibrary?.()">当前聊天角色</button>
+            <button type="button" class="active" aria-pressed="true">世界书角色</button>
+          </div>
+          <label class="mobile-library-worldbook">
+            <span>世界书</span>
+            <select v-model="selectedWorldbookName" :disabled="loadingWorldbooks || worldbooks.length === 0">
+              <option v-for="worldbook in worldbooks" :key="worldbook" :value="worldbook">
+                {{ worldbook }}{{ isCharacterWorldbook(worldbook) ? '（当前角色）' : '' }}
+              </option>
+            </select>
+          </label>
+        </div>
+
         <div v-if="worldbookCharacterEntries.length > 0" class="character-library">
           <div class="character-library-toolbar">
             <label class="library-search-field">
@@ -661,6 +698,7 @@
                 <path d="m16 16 4 4" />
               </svg>
               <input
+                ref="characterSearchInput"
                 v-model="characterSearch"
                 type="search"
                 autocomplete="off"
@@ -668,6 +706,27 @@
                 aria-label="搜索角色封面库"
               />
             </label>
+
+            <div v-if="mobileCharacterLibraryFilterOpen" class="mobile-library-filter-panel" aria-label="筛选角色">
+              <div class="mobile-library-filter-options" role="group" aria-label="筛选角色状态">
+                <button
+                  v-for="option in characterLibraryFilterOptions"
+                  :key="option.value"
+                  type="button"
+                  :aria-pressed="characterLibraryFilter === option.value"
+                  @click="setMobileCharacterLibraryFilter(option.value)"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+              <label class="character-race-filter">
+                <span>种族</span>
+                <select v-model="characterRaceFilter">
+                  <option value="all">全部种族</option>
+                  <option v-for="race in availableCharacterRaces" :key="race" :value="race">{{ race }}</option>
+                </select>
+              </label>
+            </div>
 
             <div class="character-library-control-row">
               <div class="mobile-character-library-filter">
@@ -851,6 +910,73 @@
           <strong>这个世界书暂时没有可显示的角色。</strong>
         </div>
         <p v-if="loadError" class="message error">{{ loadError }}</p>
+
+        <nav v-if="!detailCharacter" class="mobile-library-dock" aria-label="角色库操作">
+          <button type="button" aria-label="搜索角色" @click="focusCharacterSearch">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <circle cx="10.7" cy="10.7" r="6.4" />
+              <path d="m16 16 4 4" />
+            </svg>
+            <span>搜索</span>
+          </button>
+          <button
+            type="button"
+            aria-label="筛选角色"
+            :aria-expanded="mobileCharacterLibraryFilterOpen"
+            :aria-pressed="mobileCharacterLibraryFilterOpen"
+            @click="mobileCharacterLibraryFilterOpen = !mobileCharacterLibraryFilterOpen"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5h16l-6.3 7.2v5.2l-3.4 1.8v-7L4 5Z" /></svg>
+            <span>筛选</span>
+          </button>
+          <button class="mobile-library-dock-home" type="button" aria-label="返回游戏" @click="emit('close')">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="m4 11 8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1v-8Z" />
+            </svg>
+            <span>返回游戏</span>
+          </button>
+          <button
+            type="button"
+            :aria-label="characterLibraryLayout === 'compact' ? '切换至图片卡片' : '切换至紧凑列表'"
+            :aria-pressed="characterLibraryLayout === 'cards'"
+            @click="toggleCharacterLibraryLayout"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <rect x="4" y="4" width="6" height="6" rx=".8" />
+              <rect x="14" y="4" width="6" height="6" rx=".8" />
+              <rect x="4" y="14" width="6" height="6" rx=".8" />
+              <rect x="14" y="14" width="6" height="6" rx=".8" />
+            </svg>
+            <span>视图</span>
+          </button>
+          <div class="mobile-library-more">
+            <button
+              type="button"
+              aria-label="更多角色库操作"
+              aria-haspopup="menu"
+              :aria-expanded="mobileCharacterLibraryMoreOpen"
+              @click="mobileCharacterLibraryMoreOpen = !mobileCharacterLibraryMoreOpen"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <circle cx="5" cy="12" r="1.5" />
+                <circle cx="12" cy="12" r="1.5" />
+                <circle cx="19" cy="12" r="1.5" />
+              </svg>
+              <span>更多</span>
+            </button>
+            <div v-if="mobileCharacterLibraryMoreOpen" class="mobile-library-more-menu" role="menu">
+              <button
+                type="button"
+                role="menuitem"
+                :disabled="loadingWorldbooks || loadingEntries"
+                @click="refreshCharacterLibrary"
+              >
+                重新读取角色库
+              </button>
+              <button type="button" role="menuitem" @click="openCharacterVisualEditor">视觉编辑</button>
+            </div>
+          </div>
+        </nav>
       </section>
     </main>
 
@@ -1077,8 +1203,10 @@ const togglingEntryUids = reactive(new Set<number>());
 const encounteredCharacters = ref<EncounteredCharacterRecord[]>([]);
 const loadingEncounteredCharacters = ref(false);
 const characterSearch = ref('');
+const characterSearchInput = ref<HTMLInputElement | null>(null);
 const characterLibraryFilter = ref<CharacterLibraryFilter>('all');
 const mobileCharacterLibraryFilterOpen = ref(false);
+const mobileCharacterLibraryMoreOpen = ref(false);
 const characterRaceFilter = ref('all');
 const characterLibraryLayout = ref<CharacterLibraryLayout>('compact');
 const characterLibraryCardColumns = ref<'auto' | number>('auto');
@@ -1210,7 +1338,11 @@ const worldbookCharacterEntries = computed<CharacterLibraryItem[]>(() =>
     return {
       ...character,
       encountered: !!encountered,
-      race: encountered?.race || inferCharacterRace(entryBody, character.title.displayName) || character.title.raceText || '',
+      race:
+        encountered?.race ||
+        inferCharacterRace(entryBody, character.title.displayName) ||
+        character.title.raceText ||
+        '',
     };
   }),
 );
@@ -1358,6 +1490,8 @@ function onDetailGalleryMediaError(imageIndex: number) {
 
 function openCharacterDetails(character: WorldbookCharacterLibraryEntry) {
   Object.keys(detailGallerySourceIndexes).forEach(key => delete detailGallerySourceIndexes[key]);
+  mobileCharacterLibraryFilterOpen.value = false;
+  mobileCharacterLibraryMoreOpen.value = false;
   editingDetailBody.value = false;
   detailEntryDraft.value = '';
   detailEntryMessage.value = '';
@@ -1461,12 +1595,14 @@ function editDetailCharacter() {
 function switchManagerView(view: ManagerView) {
   if (viewMode.value === view) return;
   mobileCharacterLibraryFilterOpen.value = false;
+  mobileCharacterLibraryMoreOpen.value = false;
   closeCharacterDetails();
   viewMode.value = view;
 }
 
 function resetToInitialView() {
   mobileCharacterLibraryFilterOpen.value = false;
+  mobileCharacterLibraryMoreOpen.value = false;
   worldbookPickerOpen.value = false;
   entryPickerOpen.value = false;
   closeCharacterDetails();
@@ -1476,6 +1612,10 @@ function resetToInitialView() {
 defineExpose({ resetToInitialView });
 
 function onEscape() {
+  if (mobileCharacterLibraryMoreOpen.value) {
+    mobileCharacterLibraryMoreOpen.value = false;
+    return;
+  }
   if (mobileCharacterLibraryFilterOpen.value) {
     mobileCharacterLibraryFilterOpen.value = false;
     return;
@@ -1498,6 +1638,25 @@ const activeCharacterLibraryFilterLabel = computed(
 function setMobileCharacterLibraryFilter(filter: CharacterLibraryFilter) {
   characterLibraryFilter.value = filter;
   mobileCharacterLibraryFilterOpen.value = false;
+}
+
+function focusCharacterSearch() {
+  mobileCharacterLibraryFilterOpen.value = false;
+  void nextTick(() => characterSearchInput.value?.focus());
+}
+
+function toggleCharacterLibraryLayout() {
+  characterLibraryLayout.value = characterLibraryLayout.value === 'compact' ? 'cards' : 'compact';
+}
+
+function refreshCharacterLibrary() {
+  mobileCharacterLibraryMoreOpen.value = false;
+  void loadWorldbooks();
+}
+
+function openCharacterVisualEditor() {
+  mobileCharacterLibraryMoreOpen.value = false;
+  switchManagerView('editor');
 }
 
 const filteredEntries = computed(() => {
@@ -2106,6 +2265,7 @@ watch(selectedWorldbookName, worldbookName => {
   characterSearch.value = '';
   characterLibraryFilter.value = 'all';
   mobileCharacterLibraryFilterOpen.value = false;
+  mobileCharacterLibraryMoreOpen.value = false;
   characterRaceFilter.value = 'all';
   entrySearch.value = '';
   entryPickerOpen.value = false;
@@ -2145,7 +2305,7 @@ onBeforeUnmount(() => {
 });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 :global(#char-info-creator-manager) {
   width: 100%;
   height: 100%;
@@ -2690,6 +2850,12 @@ button {
 
 .library-page > .character-library {
   margin: 0;
+}
+
+.mobile-library-context,
+.mobile-library-filter-panel,
+.mobile-library-dock {
+  display: none;
 }
 
 .library-page-empty {
@@ -3511,6 +3677,17 @@ h2 {
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 500;
+}
+
+.field-label small.warning,
+.field-guidance.warning {
+  color: var(--warning);
+}
+
+.field-guidance {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 input,
@@ -4466,8 +4643,8 @@ pre {
   }
 }
 
-@media (max-width: 620px) {
-  .manager-root {
+@mixin mobile-manager-layout($root: '.manager-root') {
+  #{$root} {
     padding: 0;
   }
 
@@ -4707,6 +4884,230 @@ pre {
   .primary-button {
     width: 100%;
   }
+
+  #{$root}.library-mode {
+    position: fixed;
+    inset: 0;
+    display: block;
+    height: 100dvh;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  #{$root}.library-mode .manager-dialog.library-dialog {
+    width: 100%;
+    height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  #{$root}.library-mode .library-header {
+    min-height: 0;
+    padding: calc(env(safe-area-inset-top) + 14px) 16px 13px;
+  }
+
+  .library-header .library-title-icon,
+  .library-header > .character-source-switch,
+  .library-header > .library-header-worldbook,
+  .library-header > .header-actions {
+    display: none;
+  }
+
+  .library-header .header-title {
+    width: 100%;
+  }
+
+  .library-header h1 {
+    font-size: 21px;
+  }
+
+  .library-page {
+    padding: 12px 16px calc(104px + env(safe-area-inset-bottom));
+  }
+
+  .mobile-library-context {
+    display: grid;
+    margin-bottom: 12px;
+    gap: 10px;
+  }
+
+  .mobile-library-context .character-source-switch {
+    width: 100%;
+  }
+
+  .mobile-library-context .character-source-switch button {
+    min-height: 46px;
+    font-size: 13px;
+  }
+
+  .mobile-library-worldbook {
+    display: grid;
+    gap: 5px;
+  }
+
+  .mobile-library-worldbook > span {
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .mobile-library-worldbook select {
+    min-height: 46px;
+    font-weight: 700;
+  }
+
+  .character-library-control-row {
+    display: none;
+  }
+
+  .mobile-library-filter-panel {
+    display: grid;
+    margin-top: 10px;
+    padding: 12px;
+    gap: 10px;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+
+  .mobile-library-filter-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .mobile-library-filter-options button {
+    min-height: 44px;
+    padding: 8px;
+    color: var(--text-secondary);
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .mobile-library-filter-options button[aria-pressed='true'] {
+    color: #071310;
+    background: var(--primary);
+    border-color: var(--primary);
+  }
+
+  .mobile-library-filter-panel .character-race-filter {
+    display: flex;
+    grid-column: auto;
+  }
+
+  .mobile-library-filter-panel .character-race-filter select {
+    min-height: 44px;
+  }
+
+  .mobile-library-dock {
+    position: fixed;
+    z-index: 5;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    min-height: calc(76px + env(safe-area-inset-bottom));
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: end;
+    gap: 6px;
+    background: rgb(14 18 25 / 96%);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -10px 28px rgb(0 0 0 / 26%);
+  }
+
+  .mobile-library-dock > button,
+  .mobile-library-more > button {
+    display: grid;
+    min-height: 50px;
+    padding: 5px 2px;
+    place-items: center;
+    gap: 3px;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 0;
+    border-radius: 11px;
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .mobile-library-dock svg {
+    width: 23px;
+    height: 23px;
+    fill: none;
+    stroke: currentcolor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+  }
+
+  .mobile-library-dock button[aria-pressed='true'],
+  .mobile-library-dock button[aria-expanded='true'] {
+    color: var(--primary);
+    background: var(--primary-soft);
+  }
+
+  .mobile-library-dock-home {
+    color: var(--primary) !important;
+  }
+
+  .mobile-library-dock-home svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .mobile-library-more {
+    position: relative;
+  }
+
+  .mobile-library-more > button {
+    width: 100%;
+  }
+
+  .mobile-library-more-menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 10px);
+    display: grid;
+    min-width: 156px;
+    padding: 6px;
+    gap: 4px;
+    background: var(--surface-raised);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    box-shadow: 0 12px 30px rgb(0 0 0 / 42%);
+  }
+
+  .mobile-library-more-menu button {
+    min-height: 44px;
+    padding: 8px 10px;
+    color: var(--text-secondary);
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .mobile-library-more-menu button:hover,
+  .mobile-library-more-menu button:focus-visible {
+    color: var(--primary);
+    background: var(--primary-soft);
+  }
+}
+
+@media (max-width: 620px) {
+  @include mobile-manager-layout;
+}
+
+.manager-root.force-mobile-layout {
+  @include mobile-manager-layout('&');
 }
 
 .character-source-switch {

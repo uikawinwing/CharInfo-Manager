@@ -9,6 +9,7 @@ const MANAGER_IFRAME_SRCDOC =
 export type CreatorManagerOverlay = {
   open(): void;
   close(): void;
+  setForceMobileLayout(value: boolean): void;
   destroy(): void;
 };
 
@@ -16,6 +17,7 @@ export type CreatorManagerView = 'editor' | 'library';
 
 export type CreatorManagerOverlayOptions = {
   onOpenCurrentChatLibrary?: () => void;
+  forceMobileLayout?: boolean;
 };
 
 type CreatorManagerController = {
@@ -32,6 +34,8 @@ export function createCreatorManagerOverlay(
   let teleportedStyle: { destroy: () => void } | null = null;
   let managerViewportCleanup: (() => void) | null = null;
   let managerController: CreatorManagerController | null = null;
+  let managerRootElement: HTMLElement | null = null;
+  let forceMobileLayout = options.forceMobileLayout ?? false;
 
   const getHostWindow = (): Window => (window.parent !== window ? window.parent : window);
 
@@ -75,6 +79,7 @@ export function createCreatorManagerOverlay(
     mountedApp?.unmount();
     mountedApp = null;
     managerController = null;
+    managerRootElement = null;
     teleportedStyle?.destroy();
     teleportedStyle = null;
     $managerOverlay?.remove();
@@ -136,6 +141,8 @@ export function createCreatorManagerOverlay(
           onOpenCurrentChatLibrary: options.onOpenCurrentChatLibrary,
         });
         managerController = mountedApp.mount(mountPoint) as CreatorManagerController;
+        managerRootElement = mountPoint.querySelector<HTMLElement>('.manager-root');
+        managerRootElement?.classList.toggle('force-mobile-layout', forceMobileLayout);
       });
 
     $overlay.append($iframe).appendTo(hostDocument.body);
@@ -144,5 +151,10 @@ export function createCreatorManagerOverlay(
     startManagerViewportSync();
   };
 
-  return { open, close, destroy };
+  const setForceMobileLayout = (value: boolean) => {
+    forceMobileLayout = value;
+    managerRootElement?.classList.toggle('force-mobile-layout', value);
+  };
+
+  return { open, close, setForceMobileLayout, destroy };
 }

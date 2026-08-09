@@ -85,10 +85,9 @@ test('世界书角色库只收录确定的单角色条目，视觉配置缺失�
 
 test('标题解析保留原始名称、方括号标签，并从莉利亚条目拆出元数据', () => {
   assert.deepEqual(
-    parseWorldbookCharacterEntryTitle(
-      '[DLC][角色][莉利亚・利桑德]莉利亚・利桑德(辻-利桑德家族继承人,活跃于索伦蒂斯)',
-      { content: '种族: 利桑德家族继承人' },
-    ),
+    parseWorldbookCharacterEntryTitle('[DLC][角色][莉利亚・利桑德]莉利亚・利桑德(辻-利桑德家族继承人,活跃于索伦蒂斯)', {
+      content: '种族: 利桑德家族继承人',
+    }),
     {
       rawEntryName: '[DLC][角色][莉利亚・利桑德]莉利亚・利桑德(辻-利桑德家族继承人,活跃于索伦蒂斯)',
       displayName: '莉利亚・利桑德',
@@ -364,15 +363,18 @@ test('尚未进入变量的角色只从受控 YAML 路径提取静态种族', ()
 test('角色库种族依次使用聊天变量、世界书正文和标题元数据', () => {
   assert.match(
     appSource,
-    /race: encountered\?\.race \|\| inferCharacterRace\(entryBody, character\.title\.displayName\) \|\| character\.title\.raceText \|\| ''/u,
+    /race:\s+encountered\?\.race\s+\|\|\s+inferCharacterRace\(entryBody, character\.title\.displayName\)\s+\|\|\s+character\.title\.raceText\s+\|\|\s+''/u,
   );
 });
 
 test('世界书分类白名单只保留顶层静态字面量', () => {
-  assert.deepEqual(
-    readStaticCharacterFields('姓名: Iris\n种族: 人类\n性别: 女\n身份: 学者\n活跃区域: 索伦蒂斯'),
-    { 姓名: 'Iris', 种族: '人类', 性别: '女', 身份: '学者', 活跃区域: '索伦蒂斯' },
-  );
+  assert.deepEqual(readStaticCharacterFields('姓名: Iris\n种族: 人类\n性别: 女\n身份: 学者\n活跃区域: 索伦蒂斯'), {
+    姓名: 'Iris',
+    种族: '人类',
+    性别: '女',
+    身份: '学者',
+    活跃区域: '索伦蒂斯',
+  });
   assert.deepEqual(
     readStaticCharacterFields('姓名: <%= npc.name %>\n种族: {{ race }}\n身份: { 名称: 学者 }\n活跃区域: |\n  索伦蒂斯'),
     {},

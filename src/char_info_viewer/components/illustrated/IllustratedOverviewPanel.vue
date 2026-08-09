@@ -31,13 +31,21 @@
       </div>
     </div>
 
-    <blockquote v-if="entranceQuoteText" class="illustrated-entrance-quote">
+    <button
+      v-if="entranceQuoteText"
+      class="illustrated-entrance-quote"
+      type="button"
+      aria-label="查看完整台词"
+      title="查看完整台词"
+      @click="emit('openEntranceQuote')"
+    >
       <span class="illustrated-entrance-quote-ornament" aria-hidden="true">
         <span class="illustrated-entrance-quote-diamond"></span>
       </span>
       <span class="illustrated-entrance-quote-text">{{ entranceQuoteText }}</span>
       <span class="illustrated-entrance-quote-tail" aria-hidden="true"></span>
-    </blockquote>
+      <span class="illustrated-quote-expand-cue" aria-hidden="true">↗</span>
+    </button>
   </section>
 </template>
 
@@ -58,6 +66,7 @@ withDefaults(
 
 const emit = defineEmits<{
   toggleAttributeFormula: [key: string];
+  openEntranceQuote: [];
 }>();
 </script>
 
@@ -367,6 +376,8 @@ const emit = defineEmits<{
 }
 
 .illustrated-entrance-quote {
+  position: relative;
+  appearance: none;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -379,6 +390,7 @@ const emit = defineEmits<{
   background: none;
   box-shadow: none;
   color: rgba(255, 255, 255, 0.96);
+  cursor: pointer;
   font-family: 'LXGW WenKai Mono', 'Kaiti SC', STKaiti, serif;
   font-size: clamp(17px, 1.7cqw, 20px);
   font-style: normal;
@@ -388,6 +400,23 @@ const emit = defineEmits<{
   text-align: center;
   white-space: pre-line;
   overflow-wrap: anywhere;
+}
+
+.illustrated-entrance-quote:hover {
+  background: rgba(var(--illustrated-race-accent-rgb), 0.045);
+}
+
+.illustrated-entrance-quote:focus-visible {
+  outline: 2px solid var(--illustrated-tier-accent);
+  outline-offset: 3px;
+}
+
+.illustrated-quote-expand-cue {
+  position: absolute;
+  right: 5px;
+  bottom: 3px;
+  color: rgba(var(--illustrated-tier-accent-rgb), 0.68);
+  font: 11px/1 sans-serif;
 }
 
 .illustrated-entrance-quote-ornament {
@@ -423,7 +452,10 @@ const emit = defineEmits<{
 }
 
 .illustrated-entrance-quote-text {
-  display: block;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.64);
 }
 
@@ -459,6 +491,102 @@ const emit = defineEmits<{
 :global(.illustrated-theme-anastasia .illustrated-entrance-quote-text),
 :global(.illustrated-theme-iris .illustrated-entrance-quote-text) {
   text-shadow: none;
+}
+
+@media (min-width: 901px) {
+  .illustrated-overview.overview-density-compact {
+    gap: 14px;
+  }
+
+  .illustrated-overview.overview-density-compact .illustrated-attributes {
+    margin-top: 2px;
+  }
+
+  .illustrated-overview.overview-density-compact .illustrated-attribute {
+    min-height: 108px;
+    padding: 12px 5px 30px;
+  }
+
+  .illustrated-overview.overview-density-compact .illustrated-resources {
+    padding: 8px 0;
+  }
+
+  .illustrated-overview.overview-density-compact .illustrated-resource {
+    min-height: 62px;
+    padding: 6px 10px;
+  }
+
+  .illustrated-overview.overview-density-compact .illustrated-entrance-quote {
+    margin-bottom: 4px;
+    padding: 2px 14px 6px;
+    font-size: clamp(16px, 1.5cqw, 18px);
+    line-height: 1.5;
+  }
+
+  .illustrated-overview.overview-density-compact .illustrated-entrance-quote-ornament {
+    margin-bottom: 7px;
+  }
+
+  .illustrated-overview.overview-density-compact .illustrated-entrance-quote-tail {
+    margin-top: 7px;
+  }
+
+  .illustrated-overview.overview-density-dense {
+    gap: 8px;
+  }
+
+  .illustrated-overview.overview-density-dense .illustrated-attributes {
+    margin-top: 0;
+    gap: 8px;
+  }
+
+  .illustrated-overview.overview-density-dense .illustrated-attribute {
+    min-height: 88px;
+    padding: 9px 4px 24px;
+  }
+
+  .illustrated-overview.overview-density-dense .illustrated-attribute-name {
+    margin-bottom: 3px;
+    font-size: 0.9rem;
+  }
+
+  .illustrated-overview.overview-density-dense .illustrated-attribute-total {
+    font-size: 1.75rem;
+  }
+
+  .illustrated-overview.overview-density-dense .illustrated-resources {
+    padding: 5px 0;
+  }
+
+  .illustrated-overview.overview-density-dense .illustrated-resource {
+    min-height: 52px;
+    gap: 3px;
+    padding: 4px 8px;
+  }
+
+  .illustrated-overview.overview-density-dense .illustrated-resource-name {
+    font-size: 11px;
+  }
+
+  .illustrated-overview.overview-density-dense .illustrated-resource-value {
+    font-size: 19px;
+  }
+
+  .illustrated-overview.overview-density-dense .illustrated-entrance-quote {
+    margin-bottom: 0;
+    padding: 0 12px 4px;
+    font-size: clamp(15px, 1.35cqw, 16px);
+    line-height: 1.42;
+  }
+
+  .illustrated-overview.overview-density-dense .illustrated-entrance-quote-ornament {
+    width: min(40%, 140px);
+    margin-bottom: 5px;
+  }
+
+  .illustrated-overview.overview-density-dense .illustrated-entrance-quote-tail {
+    margin-top: 5px;
+  }
 }
 
 @media (max-width: 900px) {

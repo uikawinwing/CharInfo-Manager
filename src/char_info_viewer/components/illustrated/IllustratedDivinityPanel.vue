@@ -57,7 +57,13 @@
             <strong class="stage-skill-title">{{ section.title }}</strong>
           </div>
         </div>
-        <p class="stage-skill-body">{{ section.body || '无' }}</p>
+        <div v-if="section.details?.length" class="stage-skill-details">
+          <p v-for="detail in section.details" :key="detail.label">
+            <span class="stage-skill-detail-label">{{ detail.label }}</span>
+            <span>{{ detail.body }}</span>
+          </p>
+        </div>
+        <p v-else class="stage-skill-body">{{ section.body || '无' }}</p>
       </article>
     </div>
   </section>
@@ -464,6 +470,31 @@ watch(
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
+.stage-skill-details {
+  grid-column: 2;
+  display: grid;
+  gap: 8px;
+}
+
+.stage-skill-details p {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  color: rgba(255, 252, 242, 0.96);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.58;
+  white-space: pre-line;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.stage-skill-detail-label {
+  color: var(--stage-gold);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
 .illustrated-divinity-stage.is-open .curtain-panel.left {
   width: 18%;
   clip-path: polygon(0 0, 100% 0, 68% 100%, 0 100%);
@@ -536,6 +567,10 @@ watch(
   }
 
   .stage-skill-body {
+    grid-column: auto;
+  }
+
+  .stage-skill-details {
     grid-column: auto;
   }
 

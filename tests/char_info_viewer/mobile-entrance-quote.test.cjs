@@ -12,7 +12,10 @@ test('the illustrated character mobile overview keeps the entrance quote above i
   const source = fs.readFileSync(componentPath, 'utf8');
 
   assert.match(source, /class="illustrated-mobile-overview-overlay"/);
-  assert.match(source, /v-if="vm\.entranceQuoteText" class="illustrated-mobile-entrance-quote"/);
+  assert.match(
+    source,
+    /<button\s+[\s\S]*?v-if="vm\.entranceQuoteText"[\s\S]*?class="illustrated-mobile-entrance-quote"[\s\S]*?@click="openEntranceQuoteDialog"/,
+  );
   assert.match(source, /\.illustrated-mobile-overview-overlay\s*\{[\s\S]*?display:\s*flex;/);
   assert.match(source, /\.illustrated-mobile-entrance-quote\s*\{[\s\S]*?background:\s*rgba\([^;]+\);/);
   assert.match(source, /font-size:\s*clamp\(12px,[^;]+14px\)/);

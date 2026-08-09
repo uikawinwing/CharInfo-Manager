@@ -47,7 +47,7 @@
       <section
         ref="listWindowRef"
         class="char-info-library-list-dialog"
-        :class="{ 'with-viewer': state.library.viewerOpen }"
+        :class="{ 'with-viewer': state.library.viewerOpen, 'force-mobile-layout': state.settings.forceMobileLayout }"
         :style="listWindowStyle"
         role="dialog"
         aria-modal="false"
@@ -60,6 +60,15 @@
           @pointercancel="cancelListWindowDrag"
         >
           <div class="char-info-library-list-title">
+            <div class="char-info-library-mobile-heading">
+              <h2>角色资料库</h2>
+              <p>
+                当前聊天角色 · 筛选：{{ activeFilterLabel }} · {{ filteredCharacters.length }}/{{
+                  libraryCharacterCount
+                }}
+                位角色
+              </p>
+            </div>
             <div class="char-info-library-source-switch" role="group" aria-label="角色资料来源">
               <button type="button" class="active" aria-pressed="true" @click="props.onOpenLibraryList">
                 当前聊天角色
@@ -94,9 +103,13 @@
         <div class="char-info-library-list-controls">
           <label>
             <span class="sr-only">搜索角色</span>
-            <input v-model.trim="searchText" type="search" placeholder="搜索姓名、种族或身份" />
+            <input ref="searchInputRef" v-model.trim="searchText" type="search" placeholder="搜索姓名、种族或身份" />
           </label>
-          <div class="char-info-library-filters" aria-label="角色筛选">
+          <div
+            class="char-info-library-filters"
+            :class="{ 'mobile-expanded': mobileFiltersExpanded }"
+            aria-label="角色筛选"
+          >
             <button
               v-for="option in filterOptions"
               :key="option.value"
@@ -153,6 +166,50 @@
             ></span>
           </button>
         </div>
+
+        <nav class="char-info-library-mobile-dock" aria-label="角色资料库操作">
+          <button type="button" aria-label="搜索角色" @click="focusLibrarySearch">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="6.5" />
+              <path d="m16 16 4 4" />
+            </svg>
+            <span>搜索</span>
+          </button>
+          <button
+            type="button"
+            aria-label="展开角色筛选"
+            :aria-expanded="mobileFiltersExpanded"
+            @click="toggleMobileFilters"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M4 6h16M7 12h10M10 18h4" />
+            </svg>
+            <span>筛选</span>
+          </button>
+          <button class="primary" type="button" aria-label="返回游戏并关闭角色资料库" @click="closeListWindow">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="m4 11 8-7 8 7" />
+              <path d="M6.5 10v10h11V10M9.5 20v-6h5v6" />
+            </svg>
+            <span>返回游戏</span>
+          </button>
+          <button type="button" :disabled="state.library.loading" aria-label="刷新角色列表" @click="onRefreshLibrary">
+            <svg :class="{ spinning: state.library.loading }" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M20 11a8 8 0 1 0-2.34 5.66" />
+              <path d="M20 5v6h-6" />
+            </svg>
+            <span>刷新</span>
+          </button>
+          <button type="button" aria-label="查看器设置" @click="onOpenSettings">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="m19 15.2 2 .8-2 3.5-1.6-1.3a7.8 7.8 0 0 1-2.7 1.6L14.4 22H9.6l-.3-2.2a7.8 7.8 0 0 1-2.7-1.6L5 19.5 3 16l2-.8a8.2 8.2 0 0 1 0-3.2L3 11l2-3.5 1.6 1.3a7.8 7.8 0 0 1 2.7-1.6L9.6 5h4.8l.3 2.2a7.8 7.8 0 0 1 2.7 1.6L19 7.5 21 11l-2 .8a8.2 8.2 0 0 1 0 3.4Z"
+              />
+            </svg>
+            <span>设置</span>
+          </button>
+        </nav>
       </section>
     </div>
 
@@ -160,7 +217,7 @@
       v-if="state.library.viewerOpen"
       ref="viewerWindowRef"
       class="char-info-library-overlay"
-      :class="{ 'with-list': state.library.listOpen }"
+      :class="{ 'with-list': state.library.listOpen, 'force-mobile-layout': state.settings.forceMobileLayout }"
       :style="viewerWindowStyle"
       role="dialog"
       aria-modal="false"
@@ -263,6 +320,14 @@
             <input v-model="effectsEnabledDraft" type="checkbox" @change="applySettings" />
           </label>
 
+          <label class="char-info-settings-switch">
+            <span>
+              <strong>强制使用移动布局</strong>
+              <small>适用于较宽手机或窄屏浏览器；关闭时自动判断。</small>
+            </span>
+            <input v-model="forceMobileLayoutDraft" type="checkbox" @change="applySettings" />
+          </label>
+
           <section class="char-info-settings-priority" aria-labelledby="char-info-image-source-priority-label">
             <label class="char-info-settings-switch char-info-settings-priority-switch">
               <span>
@@ -349,7 +414,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch, type CSSProperties } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type CSSProperties } from 'vue';
 import { dump } from 'js-yaml';
 
 import ViewerApp from '../char_info_viewer/App.vue';
@@ -382,15 +447,18 @@ const props = defineProps<{
 
 const searchText = ref('');
 const activeFilter = ref<LibraryFilter>('all');
+const mobileFiltersExpanded = ref(false);
 const selectedCharacterName = ref('');
 const failedAvatarUrls = ref(new Set<string>());
 const dragPosition = ref<{ left: number; top: number } | null>(null);
 const listWindowRef = ref<HTMLElement | null>(null);
+const searchInputRef = ref<HTMLInputElement | null>(null);
 const listWindowPosition = ref<{ left: number; top: number } | null>(null);
 const viewerWindowRef = ref<HTMLElement | null>(null);
 const viewerWindowPosition = ref<{ left: number; top: number } | null>(null);
 const floorLimitDraft = ref(props.state.settings.activeFloorLimit);
 const effectsEnabledDraft = ref(props.state.settings.effectsEnabled);
+const forceMobileLayoutDraft = ref(props.state.settings.forceMobileLayout);
 const imageSourcePriorityEnabledDraft = ref(props.state.settings.imageSourcePriorityEnabled);
 const imageSourcePriorityDraft = ref([...props.state.settings.imageSourcePriority]);
 const settingsMessage = ref('');
@@ -439,7 +507,16 @@ function openCharacter(name: string): void {
 }
 
 function closeListWindow(): void {
+  mobileFiltersExpanded.value = false;
   props.onCloseLibraryList();
+}
+
+function focusLibrarySearch(): void {
+  void nextTick(() => searchInputRef.value?.focus());
+}
+
+function toggleMobileFilters(): void {
+  mobileFiltersExpanded.value = !mobileFiltersExpanded.value;
 }
 
 function closeViewerWindow(): void {
@@ -671,6 +748,7 @@ function keepFloatingUiInViewport(): void {
 function replaceSettingsDraft(settings: CharInfoUiSettings): void {
   floorLimitDraft.value = settings.activeFloorLimit;
   effectsEnabledDraft.value = settings.effectsEnabled;
+  forceMobileLayoutDraft.value = settings.forceMobileLayout;
   imageSourcePriorityEnabledDraft.value = settings.imageSourcePriorityEnabled;
   imageSourcePriorityDraft.value = [...settings.imageSourcePriority];
 }
@@ -680,6 +758,7 @@ function applySettings(): void {
   const settings = props.onUpdateSettings({
     activeFloorLimit: Number(floorLimitDraft.value),
     effectsEnabled: effectsEnabledDraft.value,
+    forceMobileLayout: forceMobileLayoutDraft.value,
     imageSourcePriorityEnabled: imageSourcePriorityEnabledDraft.value,
     imageSourcePriority: priorityNormalization.priorities,
   });
@@ -740,6 +819,11 @@ const filteredCharacters = computed(() => {
   });
 });
 
+const activeFilterLabel = computed(
+  () => filterOptions.find(option => option.value === activeFilter.value)?.label ?? '全部',
+);
+const libraryCharacterCount = computed(() => props.state.library?.characters.length ?? 0);
+
 const selectedCharacter = computed(() => {
   const library = props.state.library;
   if (!library) return null;
@@ -774,6 +858,7 @@ watch(
   library => {
     searchText.value = '';
     activeFilter.value = 'all';
+    mobileFiltersExpanded.value = false;
     selectedCharacterName.value = library?.characters[0]?.name ?? '';
   },
 );
@@ -1676,6 +1761,11 @@ onBeforeUnmount(() => {
   font-size: 2rem;
 }
 
+.char-info-library-mobile-heading,
+.char-info-library-mobile-dock {
+  display: none;
+}
+
 @media (max-width: 720px) {
   .char-info-settings-backdrop {
     padding: 8px;
@@ -1725,28 +1815,176 @@ onBeforeUnmount(() => {
   }
 
   .char-info-library-list-dialog {
-    width: calc(100% - 16px);
-    height: calc(100% - 16px);
-    max-height: calc(100% - 16px);
-    border-radius: 15px;
+    inset: 0 !important;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    transform: none !important;
   }
 
   .char-info-library-list-dialog > header {
-    padding: 12px;
+    display: block;
+    padding: calc(env(safe-area-inset-top, 0px) + 12px) 14px 8px;
+    cursor: default;
+    touch-action: manipulation;
+  }
+
+  .char-info-library-list-title {
+    display: grid;
+    gap: 10px;
+  }
+
+  .char-info-library-mobile-heading {
+    display: block;
+  }
+
+  .char-info-library-mobile-heading h2 {
+    margin: 0;
+    color: #f7f3ec;
+    font-family: Georgia, 'Noto Serif SC', serif;
+    font-size: 1.22rem;
+    letter-spacing: 0.05em;
+  }
+
+  .char-info-library-mobile-heading p {
+    margin: 4px 0 0;
+    overflow: hidden;
+    color: #aaa7b1;
+    font-size: 0.72rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .char-info-library-list-actions {
+    display: none;
+  }
+
+  .char-info-library-source-switch {
+    gap: 4px;
+    padding: 4px;
+    border-radius: 14px;
+  }
+
+  .char-info-library-source-switch button {
+    min-height: 42px;
+    border: 0;
+    border-radius: 10px;
+    font-size: 0.82rem;
   }
 
   .char-info-library-list-controls {
-    padding: 10px 10px 2px;
+    flex: 0 0 auto;
+    padding: 12px 14px 6px;
+  }
+
+  .char-info-library-list-controls input {
+    min-height: 44px;
+    border-radius: 12px;
+  }
+
+  .char-info-library-filters {
+    display: none;
+    margin: 10px 0 2px;
+  }
+
+  .char-info-library-filters.mobile-expanded {
+    display: flex;
+  }
+
+  .char-info-library-filters button {
+    min-height: 38px;
+    padding: 7px 13px;
+  }
+
+  .char-info-library-error,
+  .char-info-library-empty {
+    flex: 0 0 auto;
+    padding: 12px 14px;
   }
 
   .char-info-library-list {
+    flex: 1 1 auto;
     grid-template-columns: 1fr;
-    padding: 7px 10px 10px;
+    padding: 8px 14px;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .char-info-library-list > button {
-    min-height: 62px;
-    padding: 8px;
+    min-height: 72px;
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .char-info-library-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+  }
+
+  .char-info-library-mobile-dock {
+    display: grid;
+    min-height: 72px;
+    flex: 0 0 auto;
+    grid-template-columns: 1fr 1fr 1.18fr 1fr 1fr;
+    align-items: end;
+    gap: 3px;
+    padding: 7px 7px max(8px, env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(14, 16, 22, 0.94);
+    backdrop-filter: blur(18px);
+  }
+
+  .char-info-library-mobile-dock button {
+    display: grid;
+    min-height: 54px;
+    gap: 4px;
+    padding: 5px 2px;
+    place-items: center;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    color: #9b9da7;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.65rem;
+    touch-action: manipulation;
+  }
+
+  .char-info-library-mobile-dock button:focus-visible {
+    outline: 2px solid #f0cf8e;
+    outline-offset: -2px;
+  }
+
+  .char-info-library-mobile-dock button:disabled {
+    cursor: wait;
+    opacity: 0.48;
+  }
+
+  .char-info-library-mobile-dock svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+  }
+
+  .char-info-library-mobile-dock .primary {
+    min-height: 66px;
+    margin: -14px 3px 0;
+    border: 1px solid rgba(142, 217, 182, 0.42);
+    border-radius: 18px;
+    background: radial-gradient(circle at 50% 18%, rgba(142, 217, 182, 0.2), transparent 58%), #171d20;
+    box-shadow:
+      0 -8px 24px rgba(0, 0, 0, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    color: #8ed9b6;
+    font-weight: 750;
   }
 
   .char-info-library-header {
@@ -1816,5 +2054,256 @@ onBeforeUnmount(() => {
     object-fit: contain;
     background: rgba(0, 0, 0, 0.22);
   }
+}
+
+.char-info-library-overlay.force-mobile-layout {
+  inset: 0 !important;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  transform: none !important;
+}
+
+.char-info-library-list-dialog.force-mobile-layout {
+  inset: 0 !important;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  transform: none !important;
+}
+
+.char-info-library-list-dialog.force-mobile-layout > header {
+  display: block;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 14px 8px;
+  cursor: default;
+  touch-action: manipulation;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-list-title {
+  display: grid;
+  gap: 10px;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-mobile-heading {
+  display: block;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-mobile-heading h2 {
+  margin: 0;
+  color: #f7f3ec;
+  font-family: Georgia, 'Noto Serif SC', serif;
+  font-size: 1.22rem;
+  letter-spacing: 0.05em;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-mobile-heading p {
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: #aaa7b1;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-list-actions {
+  display: none;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-source-switch {
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-source-switch button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 10px;
+  font-size: 0.82rem;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-list-controls {
+  flex: 0 0 auto;
+  padding: 12px 14px 6px;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-list-controls input {
+  min-height: 44px;
+  border-radius: 12px;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-filters {
+  display: none;
+  margin: 10px 0 2px;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-filters.mobile-expanded {
+  display: flex;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-filters button {
+  min-height: 38px;
+  padding: 7px 13px;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-error,
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-empty {
+  flex: 0 0 auto;
+  padding: 12px 14px;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-list {
+  flex: 1 1 auto;
+  grid-template-columns: 1fr;
+  padding: 8px 14px;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-list > button {
+  min-height: 72px;
+  padding: 10px;
+  border-radius: 14px;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-mobile-dock {
+  display: grid;
+  min-height: 72px;
+  flex: 0 0 auto;
+  grid-template-columns: 1fr 1fr 1.18fr 1fr 1fr;
+  align-items: end;
+  gap: 3px;
+  padding: 7px 7px max(8px, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(14, 16, 22, 0.94);
+  backdrop-filter: blur(18px);
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-mobile-dock button {
+  display: grid;
+  min-height: 54px;
+  gap: 4px;
+  padding: 5px 2px;
+  place-items: center;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: #9b9da7;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.65rem;
+  touch-action: manipulation;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-mobile-dock button:focus-visible {
+  outline: 2px solid #f0cf8e;
+  outline-offset: -2px;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-mobile-dock button:disabled {
+  cursor: wait;
+  opacity: 0.48;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-mobile-dock svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.char-info-library-list-dialog.force-mobile-layout .char-info-library-mobile-dock .primary {
+  min-height: 66px;
+  margin: -14px 3px 0;
+  border: 1px solid rgba(142, 217, 182, 0.42);
+  border-radius: 18px;
+  background: radial-gradient(circle at 50% 18%, rgba(142, 217, 182, 0.2), transparent 58%), #171d20;
+  box-shadow:
+    0 -8px 24px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: #8ed9b6;
+  font-weight: 750;
+}
+
+.char-info-library-overlay.force-mobile-layout .char-info-library-header {
+  min-height: 60px;
+  gap: 10px;
+  padding: 8px;
+}
+
+.char-info-library-overlay.force-mobile-layout .char-info-library-header h2 {
+  padding-left: 10px;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.char-info-library-overlay.force-mobile-layout .char-info-library-header h2::before {
+  height: 18px;
+}
+
+.char-info-library-overlay.force-mobile-layout .char-info-library-header-actions {
+  gap: 3px;
+  padding: 3px;
+  border-radius: 12px;
+}
+
+.char-info-library-overlay.force-mobile-layout .char-info-library-header-actions button {
+  min-height: 38px;
+}
+
+.char-info-library-overlay.force-mobile-layout .char-info-library-list-action {
+  gap: 6px;
+  padding: 0 9px;
+  font-size: 0.75rem;
+}
+
+.char-info-library-overlay.force-mobile-layout .char-info-library-icon-action {
+  width: 38px;
+}
+
+.char-info-library-overlay.force-mobile-layout .char-info-library-viewer {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 6px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.char-info-library-overlay.force-mobile-layout .char-info-library-viewer > .viewer-root {
+  height: auto;
+  min-height: 100%;
+}
+
+.char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-wrapper {
+  height: auto;
+  max-width: none;
+}
+
+.char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-shell {
+  height: 216.4251cqw !important;
+  min-height: 0;
+}
+
+.char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-portrait-image,
+.char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-portrait-video,
+.char-info-library-overlay.force-mobile-layout .char-info-library-viewer .portrait-image {
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.22);
 }
 </style>

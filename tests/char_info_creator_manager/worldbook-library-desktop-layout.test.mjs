@@ -24,17 +24,28 @@ test('桌面角色库将工具组固定在右上角，并在内容滚动时保�
   assert.match(appSource, /\.character-library-toolbar\s*\{[\s\S]*?position: sticky;[\s\S]*?top: 0;/u);
 });
 
-test('手机角色库将状态筛选收进箭头菜单，并将视图切换收为图标', () => {
-  assert.match(appSource, /\.library-header \.manager-view-switch button:first-child\s*\{\s*display: none;/u);
-  assert.match(appSource, /\.library-header \.manager-view-switch button:nth-child\(2\) svg\s*\{\s*display: block;/u);
-  assert.match(appSource, /class="mobile-character-library-filter"/u);
+test('手机角色库将操作移至安全区外的五键底栏', () => {
+  assert.match(appSource, /v-if="!detailCharacter" class="mobile-library-dock" aria-label="角色库操作"/u);
+  assert.match(appSource, /aria-label="搜索角色" @click="focusCharacterSearch"/u);
+  assert.match(appSource, /aria-label="返回游戏" @click="emit\('close'\)"/u);
+  assert.match(appSource, /@click="toggleCharacterLibraryLayout"/u);
+  assert.match(appSource, /class="mobile-library-more-menu" role="menu"/u);
+  assert.match(appSource, /@click="refreshCharacterLibrary"/u);
+  assert.match(appSource, /@click="openCharacterVisualEditor"/u);
+  assert.match(appSource, /\.mobile-library-dock\s*\{[\s\S]*?position: fixed;[\s\S]*?env\(safe-area-inset-bottom\)/u);
+  assert.match(appSource, /#\{\$root\}\.library-mode\s*\{[\s\S]*?height: 100dvh;/u);
+  assert.match(appSource, /\.manager-root\.force-mobile-layout\s*\{\s*@include mobile-manager-layout\('&'\);/u);
+});
+
+test('手机角色库保留来源、世界书与同一套筛选状态', () => {
+  assert.match(appSource, /class="mobile-library-context"/u);
+  assert.match(appSource, /class="mobile-library-worldbook"/u);
+  assert.match(appSource, /v-model="selectedWorldbookName"/u);
+  assert.match(appSource, /class="mobile-library-filter-panel"/u);
   assert.match(appSource, /mobileCharacterLibraryFilterOpen/u);
   assert.match(appSource, /@click="setMobileCharacterLibraryFilter\(option\.value\)"/u);
-  assert.match(appSource, /\.mobile-character-library-filter\s*\{[\s\S]*?display: block;/u);
-  assert.match(appSource, /\.character-library-filter-buttons\s*\{\s*display: none;/u);
-  assert.match(appSource, /\.character-library-control-row\s*\{\s*grid-template-columns: 96px minmax\(0, 1fr\) auto;/u);
-  assert.match(appSource, /\.character-library-layout-switch span\s*\{\s*display: none;/u);
-  assert.match(appSource, /\.character-card-columns\s*\{\s*display: none;/u);
+  assert.match(appSource, /v-model="characterRaceFilter"/u);
+  assert.match(appSource, /function focusCharacterSearch\(\)[\s\S]*?characterSearchInput\.value\?\.focus\(\)/u);
 });
 
 test('手机角色库缩短列表卡片，避免工具栏挤掉可阅读的角色数量', () => {

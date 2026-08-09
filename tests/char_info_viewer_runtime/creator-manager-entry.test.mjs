@@ -34,7 +34,8 @@ test('主 CharInfo 运行脚本将世界书角色库入口放入当前角色菜�
 });
 
 test('角色资料与角色菜单是独立窗口：选择角色和切换世界书不会关闭当前菜单', () => {
-  const openCharacter = runtimeSource.match(/const openLibraryCharacter = \(name: string\) => \{([\s\S]*?)\n\s{2}\};/u)?.[1] ?? '';
+  const openCharacter =
+    runtimeSource.match(/const openLibraryCharacter = \(name: string\) => \{([\s\S]*?)\n\s{2}\};/u)?.[1] ?? '';
   const openWorldbook = runtimeSource.match(/const openWorldbookLibrary = \(\) => \{([\s\S]*?)\n\s{2}\};/u)?.[1] ?? '';
 
   assert.match(openCharacter, /library\.listOpen = true;/u);
@@ -103,7 +104,10 @@ test('世界书角色库关闭后复用已挂载界面，聊天切换与运行�
     /tavern_events\.CHAT_CHANGED[\s\S]*?destroyWorldbookManager\(\);[\s\S]*?resetLibraryForChat\(\);/u,
   );
   assert.match(runtimeSource, /stop\(options = \{\}\) \{[\s\S]*?destroyWorldbookManager\(\);/u);
-  assert.match(runtimeSource, /onOpenCurrentChatLibrary:[\s\S]*?worldbookManager\.close\(\);[\s\S]*?openLibraryList\(\);/u);
+  assert.match(
+    runtimeSource,
+    /onOpenCurrentChatLibrary:[\s\S]*?worldbookManager\.close\(\);[\s\S]*?openLibraryList\(\);/u,
+  );
 });
 
 test('世界书管理器打进主运行脚本，不依赖浏览器无法解析的裸 chunk 路径', () => {
@@ -154,7 +158,7 @@ test('当前聊天资料库由悬浮入口打开角色列表，并完整显示�
   assert.match(runtimeRootSource, /:entrance-quote-override="selectedCharacter\.innerThought"/u);
   assert.match(
     runtimeRootSource,
-    /@media \(max-width: 720px\) \{[\s\S]*?\.char-info-library-list-dialog \{[\s\S]*?width: calc\(100% - 16px\);/u,
+    /@media \(max-width: 720px\) \{[\s\S]*?\.char-info-library-list-dialog \{[\s\S]*?inset: 0 !important;[\s\S]*?width: 100%;[\s\S]*?height: 100%;[\s\S]*?max-height: none;/u,
   );
   assert.match(
     runtimeRootSource,
@@ -164,7 +168,10 @@ test('当前聊天资料库由悬浮入口打开角色列表，并完整显示�
     runtimeRootSource,
     /@media \(max-width: 720px\) \{[\s\S]*?\.char-info-library-viewer \{[\s\S]*?overflow-y: auto;/u,
   );
-  assert.match(runtimeRootSource, /\.char-info-library-viewer \.illustrated-shell \{[\s\S]*?height: 216\.4251cqw !important;/u);
+  assert.match(
+    runtimeRootSource,
+    /\.char-info-library-viewer \.illustrated-shell \{[\s\S]*?height: 216\.4251cqw !important;/u,
+  );
   assert.match(
     runtimeRootSource,
     /\.char-info-library-viewer \.illustrated-portrait-image,[\s\S]*?\.char-info-library-viewer \.portrait-image \{[\s\S]*?object-fit: contain;/u,

@@ -1,8 +1,18 @@
 <template>
   <div class="illustrated-wrapper" :class="themeClass" :style="themeStyle">
     <main
+      ref="shellElement"
       class="illustrated-shell"
-      :class="{ 'is-overview-tab': isOverviewTab, 'is-detail-tab': !isOverviewTab, 'is-divinity-tab': isDivinityTab }"
+      :aria-hidden="isEntranceQuoteDialogOpen ? 'true' : undefined"
+      :inert="isEntranceQuoteDialogOpen ? true : undefined"
+      :class="[
+        {
+          'is-overview-tab': isOverviewTab,
+          'is-detail-tab': !isOverviewTab,
+          'is-divinity-tab': isDivinityTab,
+        },
+        isOverviewTab ? overviewDensityClass : null,
+      ]"
     >
       <aside class="illustrated-portrait-pane">
         <div v-if="!portraitLoaded && !portraitLoadFailed" class="illustrated-portrait-loading" role="status">
@@ -63,11 +73,19 @@
           <button type="button" aria-label="下一张立绘" @click="switchPortrait(1)">›</button>
         </div>
         <div v-if="isOverviewTab" class="illustrated-mobile-overview-overlay">
-          <blockquote v-if="vm.entranceQuoteText" class="illustrated-mobile-entrance-quote">
+          <button
+            v-if="vm.entranceQuoteText"
+            class="illustrated-mobile-entrance-quote"
+            type="button"
+            :aria-label="`查看${vm.nameText}的完整台词`"
+            title="查看完整台词"
+            @click="openEntranceQuoteDialog"
+          >
             <span class="illustrated-mobile-quote-mark" aria-hidden="true">“</span>
             <span class="illustrated-mobile-quote-text">{{ vm.entranceQuoteText }}</span>
             <span class="illustrated-mobile-quote-mark" aria-hidden="true">”</span>
-          </blockquote>
+            <span class="illustrated-quote-expand-cue" aria-hidden="true">↗</span>
+          </button>
           <div class="illustrated-mobile-header-overlay">
             <IllustratedHeader :vm="vm" :ornate="hasOrnateHeader" compact />
           </div>
@@ -84,17 +102,25 @@
           </span>
           <span class="illustrated-iris-toy-blocks"><i></i><i></i><i></i><i></i></span>
         </div>
-        <IllustratedHeader v-if="isOverviewTab" class="illustrated-desktop-header" :vm="vm" :ornate="hasOrnateHeader" />
+        <IllustratedHeader
+          v-if="isOverviewTab"
+          :class="['illustrated-desktop-header', overviewDensityClass]"
+          :vm="vm"
+          :ornate="hasOrnateHeader"
+          @layout-change="updateOverviewDensity"
+        />
 
-        <div class="illustrated-panels">
+        <div ref="panelsElement" class="illustrated-panels">
           <IllustratedPageTitle v-if="!isOverviewTab" :title="activeSpecialTabTitle" />
 
           <IllustratedOverviewPanel
             v-if="activeSpecialTab === 'overview'"
+            :class="overviewDensityClass"
             :attributes="attributes"
             :resource-boxes="vm.resourceBoxes"
             :entrance-quote-text="vm.entranceQuoteText"
             @toggle-attribute-formula="$emit('toggleAttributeFormula', $event)"
+            @open-entrance-quote="openEntranceQuoteDialog"
           />
 
           <IllustratedProfilePanel
@@ -178,11 +204,41 @@
         <button type="button" :disabled="importing" @click="$emit('importWorldbook')">导入到聊天世界书</button>
       </div>
     </main>
+
+    <div
+      v-if="isEntranceQuoteDialogOpen"
+      class="illustrated-quote-dialog-backdrop"
+      @click.self="closeEntranceQuoteDialog"
+    >
+      <div class="illustrated-wrapper illustrated-quote-dialog-theme" :class="themeClass" :style="themeStyle">
+        <section
+          class="illustrated-quote-dialog"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="`${vm.nameText}的完整台词`"
+          @keydown.esc.stop.prevent="closeEntranceQuoteDialog"
+          @keydown.tab.prevent="keepEntranceQuoteDialogFocus"
+        >
+          <span class="illustrated-quote-dialog-kicker">CHARACTER VOICE</span>
+          <h2>{{ vm.nameText }}的话</h2>
+          <span class="illustrated-quote-dialog-ornament" aria-hidden="true"><i></i></span>
+          <p class="illustrated-quote-dialog-text">{{ vm.entranceQuoteText }}</p>
+          <button
+            ref="quoteDialogCloseButton"
+            class="illustrated-quote-dialog-close"
+            type="button"
+            @click="closeEntranceQuoteDialog"
+          >
+            关闭
+          </button>
+        </section>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, watchEffect } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 
 import type { CharacterViewModel } from '../../services/characterViewModel';
 import { normalizePortraitMediaUrlForBrowser } from '../../services/imageUrl';
@@ -215,6 +271,15 @@ defineEmits<{
 }>();
 
 const activeSpecialTab = ref<IllustratedTabKey>('overview');
+const shellElement = ref<HTMLElement | null>(null);
+const panelsElement = ref<HTMLElement | null>(null);
+const overviewDensity = ref<'normal' | 'compact' | 'dense'>('normal');
+const overviewDensityClass = computed(() => `overview-density-${overviewDensity.value}`);
+const isEntranceQuoteDialogOpen = ref(false);
+const quoteDialogCloseButton = ref<HTMLButtonElement | null>(null);
+let entranceQuoteTriggerElement: HTMLElement | null = null;
+let overviewDensityFrame: number | undefined;
+let overviewResizeObserver: ResizeObserver | undefined;
 const portraitLoadFailed = ref(false);
 const portraitLoaded = ref(false);
 const portraitRetryAttempt = ref(0);
@@ -371,6 +436,67 @@ function switchPortrait(offset: number): void {
   portraitRetryAttempt.value = 0;
 }
 
+function openEntranceQuoteDialog(event?: Event): void {
+  entranceQuoteTriggerElement =
+    event?.currentTarget instanceof HTMLElement
+      ? event.currentTarget
+      : document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+  isEntranceQuoteDialogOpen.value = true;
+  void nextTick(() => quoteDialogCloseButton.value?.focus());
+}
+
+function closeEntranceQuoteDialog(): void {
+  isEntranceQuoteDialogOpen.value = false;
+  const trigger = entranceQuoteTriggerElement;
+  entranceQuoteTriggerElement = null;
+  void nextTick(() => trigger?.focus());
+}
+
+function keepEntranceQuoteDialogFocus(): void {
+  quoteDialogCloseButton.value?.focus();
+}
+
+function updateOverviewDensity(): void {
+  if (overviewDensityFrame !== undefined) {
+    cancelAnimationFrame(overviewDensityFrame);
+  }
+
+  overviewDensityFrame = requestAnimationFrame(() => {
+    overviewDensityFrame = undefined;
+    if (!isOverviewTab.value || !panelsElement.value) {
+      overviewDensity.value = 'normal';
+      return;
+    }
+
+    overviewDensity.value = 'normal';
+    void nextTick(() => {
+      const panels = panelsElement.value;
+      if (!isOverviewTab.value || !panels || panels.scrollHeight <= panels.clientHeight) return;
+
+      overviewDensity.value = 'compact';
+      void nextTick(() => {
+        if (!isOverviewTab.value || !panelsElement.value) return;
+        if (panelsElement.value.scrollHeight > panelsElement.value.clientHeight) {
+          overviewDensity.value = 'dense';
+        }
+      });
+    });
+  });
+}
+
+onMounted(() => {
+  overviewResizeObserver = new ResizeObserver(updateOverviewDensity);
+  if (shellElement.value) overviewResizeObserver.observe(shellElement.value);
+  updateOverviewDensity();
+});
+
+onBeforeUnmount(() => {
+  if (overviewDensityFrame !== undefined) cancelAnimationFrame(overviewDensityFrame);
+  overviewResizeObserver?.disconnect();
+});
+
 watch(
   () => JSON.stringify(props.vm.imageSourceGroups),
   () => {
@@ -382,6 +508,21 @@ watch(
   },
 );
 
+watch(
+  () => [
+    isOverviewTab.value,
+    props.vm.nameText,
+    props.vm.raceText,
+    props.vm.identityText,
+    props.vm.classText,
+    props.vm.entranceQuoteText,
+    JSON.stringify(props.attributes),
+    JSON.stringify(props.vm.resourceBoxes),
+  ],
+  updateOverviewDensity,
+  { flush: 'post' },
+);
+
 watchEffect(() => {
   if (!tabs.value.some(tab => tab.key === activeSpecialTab.value)) {
     activeSpecialTab.value = 'overview';
@@ -391,6 +532,7 @@ watchEffect(() => {
 
 <style scoped>
 .illustrated-wrapper {
+  position: relative;
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
@@ -471,6 +613,134 @@ watchEffect(() => {
     0 0 54px rgba(var(--illustrated-tier-accent-rgb), 0.18),
     0 24px 64px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.illustrated-quote-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  background: rgba(3, 6, 12, 0.72);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+}
+
+.illustrated-quote-dialog-theme.illustrated-wrapper {
+  width: min(100%, 560px);
+  max-width: 560px;
+  max-height: 100%;
+  margin: 0;
+  color: #f8f9fa;
+  background: transparent;
+  container-type: normal;
+}
+
+.illustrated-quote-dialog-theme.illustrated-theme-anastasia,
+.illustrated-quote-dialog-theme.illustrated-theme-iris {
+  color: #17324a;
+  background: transparent;
+}
+
+.illustrated-quote-dialog {
+  display: flex;
+  max-height: 100%;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px;
+  overflow: hidden;
+  border: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.58);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 0, rgba(var(--illustrated-tier-accent-rgb), 0.16), transparent 20rem),
+    var(--illustrated-bg);
+  box-shadow:
+    0 0 0 1px rgba(var(--illustrated-race-accent-rgb), 0.2),
+    0 24px 70px rgba(0, 0, 0, 0.58);
+  text-align: center;
+}
+
+.illustrated-quote-dialog-kicker {
+  color: var(--illustrated-tier-accent);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.illustrated-quote-dialog h2 {
+  margin: 8px 0 0;
+  color: inherit;
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
+  font-size: clamp(23px, 4cqw, 30px);
+}
+
+.illustrated-quote-dialog-ornament {
+  display: flex;
+  width: min(46%, 180px);
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.illustrated-quote-dialog-ornament::before,
+.illustrated-quote-dialog-ornament::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(var(--illustrated-tier-accent-rgb), 0.72));
+}
+
+.illustrated-quote-dialog-ornament::after {
+  transform: rotate(180deg);
+}
+
+.illustrated-quote-dialog-ornament i {
+  width: 7px;
+  height: 7px;
+  border: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.9);
+  background: rgba(var(--illustrated-tier-accent-rgb), 0.18);
+  transform: rotate(45deg);
+}
+
+.illustrated-quote-dialog-text {
+  min-height: 0;
+  margin: 0;
+  padding: 0 6px;
+  overflow-y: auto;
+  color: inherit;
+  font-family: 'LXGW WenKai Mono', 'Noto Serif SC', 'Songti SC', serif;
+  font-size: clamp(16px, 3cqw, 19px);
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  text-align: left;
+  white-space: pre-wrap;
+  scrollbar-width: thin;
+}
+
+.illustrated-quote-dialog-close {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 24px;
+  border: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.66);
+  border-radius: 9px;
+  background: rgba(var(--illustrated-tier-accent-rgb), 0.14);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  touch-action: manipulation;
+}
+
+.illustrated-quote-dialog-close:hover {
+  background: rgba(var(--illustrated-tier-accent-rgb), 0.22);
+}
+
+.illustrated-quote-dialog-close:focus-visible {
+  outline: 2px solid var(--illustrated-tier-accent);
+  outline-offset: 3px;
 }
 
 .illustrated-theme-venus .illustrated-shell {
@@ -1557,6 +1827,23 @@ watchEffect(() => {
   scrollbar-width: thin;
 }
 
+.illustrated-shell.is-overview-tab .illustrated-panels {
+  overflow-y: hidden;
+  padding-bottom: 0;
+}
+
+@media (min-width: 901px) {
+  .illustrated-shell.overview-density-compact .illustrated-data-pane {
+    padding-top: 42px;
+    padding-bottom: 26px;
+  }
+
+  .illustrated-shell.overview-density-dense .illustrated-data-pane {
+    padding-top: 28px;
+    padding-bottom: 18px;
+  }
+}
+
 .illustrated-shell.is-divinity-tab .illustrated-panels {
   display: flex;
   flex-direction: column;
@@ -1801,6 +2088,8 @@ watchEffect(() => {
   }
 
   .illustrated-mobile-entrance-quote {
+    position: relative;
+    appearance: none;
     box-sizing: border-box;
     display: flex;
     align-items: center;
@@ -1814,6 +2103,7 @@ watchEffect(() => {
     background: rgba(8, 12, 18, 0.58);
     box-shadow: 0 5px 16px rgba(0, 0, 0, 0.2);
     color: rgba(255, 255, 255, 0.96);
+    cursor: pointer;
     font-family: 'LXGW WenKai Mono', 'Noto Serif SC', 'Songti SC', serif;
     font-size: clamp(12px, 3.4cqw, 14px);
     font-style: normal;
@@ -1821,6 +2111,20 @@ watchEffect(() => {
     letter-spacing: 0.04em;
     line-height: 1.4;
     text-align: center;
+    touch-action: manipulation;
+  }
+
+  .illustrated-mobile-entrance-quote:focus-visible {
+    outline: 2px solid var(--illustrated-tier-accent);
+    outline-offset: 3px;
+  }
+
+  .illustrated-mobile-entrance-quote .illustrated-quote-expand-cue {
+    position: absolute;
+    right: 5px;
+    bottom: 3px;
+    color: rgba(var(--illustrated-tier-accent-rgb), 0.76);
+    font: 10px/1 sans-serif;
   }
 
   .illustrated-mobile-quote-mark {
@@ -2033,6 +2337,31 @@ watchEffect(() => {
 
   .illustrated-theme-iris .illustrated-iris-header-deco {
     display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .illustrated-quote-dialog-backdrop {
+    align-items: flex-end;
+    padding: 12px;
+  }
+
+  .illustrated-quote-dialog-theme.illustrated-wrapper {
+    width: 100%;
+  }
+
+  .illustrated-quote-dialog {
+    padding: 24px 20px 18px;
+    border-radius: 16px 16px 12px 12px;
+  }
+
+  .illustrated-quote-dialog-text {
+    font-size: 16px;
+    line-height: 1.72;
+  }
+
+  .illustrated-quote-dialog-close {
+    margin-top: 20px;
   }
 }
 

@@ -76,6 +76,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     settingsView: null,
   });
   const worldbookManager = createCreatorManagerOverlay('library', {
+    forceMobileLayout: state.settings.forceMobileLayout,
     onOpenCurrentChatLibrary: () => {
       worldbookManager.close();
       openLibraryList();
@@ -261,6 +262,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     const nextSettings = normalizeRuntimeSettings(value);
     state.settings.activeFloorLimit = nextSettings.activeFloorLimit;
     state.settings.effectsEnabled = nextSettings.effectsEnabled;
+    state.settings.forceMobileLayout = nextSettings.forceMobileLayout;
+    worldbookManager.setForceMobileLayout(nextSettings.forceMobileLayout);
     state.settings.imageSourcePriorityEnabled = nextSettings.imageSourcePriorityEnabled;
     state.settings.imageSourcePriority = nextSettings.imageSourcePriority;
     replaceVariables(mergeRuntimeSettings(getVariables({ type: 'script' }), nextSettings), { type: 'script' });
@@ -396,13 +399,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     if (current) {
       const previousAttempt = remountAttempts.get(messageId);
       const now = Date.now();
-      if (
-        previousAttempt?.signature === sourceSignature &&
-        now - previousAttempt.attemptedAt < REMOUNT_LOOP_GUARD_MS
-      ) {
-        console.warn(
-          `[CharInfo Runtime] 第 ${messageId} 楼在短时间内重复失去挂载点，已停止自动重挂载以避免渲染循环。`,
-        );
+      if (previousAttempt?.signature === sourceSignature && now - previousAttempt.attemptedAt < REMOUNT_LOOP_GUARD_MS) {
+        console.warn(`[CharInfo Runtime] 第 ${messageId} 楼在短时间内重复失去挂载点，已停止自动重挂载以避免渲染循环。`);
         removeMessage(messageId);
         return;
       }
@@ -628,8 +626,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       if (!started) return;
       started = false;
       lifecycleRevision += 1;
-      const mountedMessageIds =
-        options.restoreNativeMessages === false ? [] : Array.from(mountedMessages.keys());
+      const mountedMessageIds = options.restoreNativeMessages === false ? [] : Array.from(mountedMessages.keys());
 
       if (dirtyFlushTimer) clearTimeout(dirtyFlushTimer);
       if (rescanTimer) clearTimeout(rescanTimer);
