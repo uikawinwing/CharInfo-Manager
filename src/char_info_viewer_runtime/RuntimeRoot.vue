@@ -283,6 +283,37 @@
           <p>{{ state.library.loading ? '正在读取角色资料…' : '暂时无法找到该角色的资料。' }}</p>
         </div>
       </main>
+
+      <nav class="char-info-library-viewer-mobile-dock" aria-label="角色资料操作">
+        <button type="button" aria-label="返回角色列表" @click="showLibraryListFromViewer">
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M5 6h14M5 12h14M5 18h14" />
+            <circle cx="3" cy="6" r="0.75" />
+            <circle cx="3" cy="12" r="0.75" />
+            <circle cx="3" cy="18" r="0.75" />
+          </svg>
+          <span>角色列表</span>
+        </button>
+        <button class="primary" type="button" aria-label="返回游戏并关闭角色资料" @click="closeLibraryWindows">
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="m4 11 8-7 8 7" />
+            <path d="M6.5 10v10h11V10M9.5 20v-6h5v6" />
+          </svg>
+          <span>返回游戏</span>
+        </button>
+        <button
+          type="button"
+          :disabled="state.library.loading"
+          :aria-label="state.library.loading ? '正在刷新角色资料' : '刷新角色资料'"
+          @click="onRefreshLibrary"
+        >
+          <svg :class="{ spinning: state.library.loading }" aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M20 11a8 8 0 1 0-2.34 5.66" />
+            <path d="M20 5v6h-6" />
+          </svg>
+          <span>刷新</span>
+        </button>
+      </nav>
     </section>
   </Teleport>
 
@@ -521,6 +552,16 @@ function toggleMobileFilters(): void {
 
 function closeViewerWindow(): void {
   props.onCloseLibraryViewer();
+}
+
+function showLibraryListFromViewer(): void {
+  closeViewerWindow();
+  props.onOpenLibraryList();
+}
+
+function closeLibraryWindows(): void {
+  closeViewerWindow();
+  closeListWindow();
 }
 
 function getHostViewport(): { width: number; height: number } {
@@ -1762,8 +1803,76 @@ onBeforeUnmount(() => {
 }
 
 .char-info-library-mobile-heading,
-.char-info-library-mobile-dock {
+.char-info-library-mobile-dock,
+.char-info-library-viewer-mobile-dock {
   display: none;
+}
+
+.char-info-library-viewer-mobile-dock {
+  box-sizing: border-box;
+  min-height: 72px;
+  flex: 0 0 auto;
+  grid-template-columns: 1fr 1.18fr 1fr;
+  align-items: end;
+  gap: 8px;
+  padding: 7px 14px max(8px, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(14, 16, 22, 0.96);
+  backdrop-filter: blur(18px);
+}
+
+.char-info-library-viewer-mobile-dock button {
+  display: grid;
+  min-height: 54px;
+  gap: 4px;
+  padding: 5px 2px;
+  place-items: center;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: #9b9da7;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.65rem;
+  touch-action: manipulation;
+}
+
+.char-info-library-viewer-mobile-dock button:focus-visible {
+  outline: 2px solid #f0cf8e;
+  outline-offset: -2px;
+}
+
+.char-info-library-viewer-mobile-dock button:disabled {
+  cursor: wait;
+  opacity: 0.48;
+}
+
+.char-info-library-viewer-mobile-dock svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.char-info-library-viewer-mobile-dock svg circle {
+  fill: currentcolor;
+  stroke: none;
+}
+
+.char-info-library-viewer-mobile-dock .primary {
+  min-height: 66px;
+  margin: -14px 3px 0;
+  border: 1px solid rgba(142, 217, 182, 0.42);
+  border-radius: 18px;
+  background: radial-gradient(circle at 50% 18%, rgba(142, 217, 182, 0.2), transparent 58%), #171d20;
+  box-shadow:
+    0 -8px 24px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: #8ed9b6;
+  font-weight: 750;
 }
 
 @media (max-width: 720px) {
@@ -1987,10 +2096,14 @@ onBeforeUnmount(() => {
     font-weight: 750;
   }
 
-  .char-info-library-header {
-    min-height: 60px;
+  .char-info-library-overlay .char-info-library-header {
+    box-sizing: border-box;
+    min-height: calc(60px + env(safe-area-inset-top, 0px));
     gap: 10px;
-    padding: 8px;
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 14px 8px;
+    cursor: default;
+    pointer-events: none;
+    touch-action: manipulation;
   }
 
   .char-info-library-header h2 {
@@ -2003,48 +2116,33 @@ onBeforeUnmount(() => {
     height: 18px;
   }
 
-  .char-info-library-header-actions {
-    gap: 3px;
-    padding: 3px;
-    border-radius: 12px;
+  .char-info-library-overlay .char-info-library-header-actions {
+    display: none;
   }
 
-  .char-info-library-header-actions button {
-    min-height: 38px;
-  }
-
-  .char-info-library-list-action {
-    gap: 6px;
-    padding: 0 9px;
-    font-size: 0.75rem;
-  }
-
-  .char-info-library-icon-action {
-    width: 38px;
+  .char-info-library-viewer-mobile-dock {
+    display: grid;
   }
 
   .char-info-library-viewer {
     flex: 1 1 auto;
     min-height: 0;
     padding: 6px;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
+    overflow: hidden;
   }
 
   .char-info-library-viewer > .viewer-root {
-    height: auto;
-    min-height: 100%;
+    height: 100%;
+    min-height: 0;
   }
 
   .char-info-library-viewer .illustrated-wrapper {
-    height: auto;
+    height: 100%;
     max-width: none;
   }
 
   .char-info-library-viewer .illustrated-shell {
-    height: 216.4251cqw !important;
+    height: 100% !important;
     min-height: 0;
   }
 
@@ -2240,9 +2338,13 @@ onBeforeUnmount(() => {
 }
 
 .char-info-library-overlay.force-mobile-layout .char-info-library-header {
-  min-height: 60px;
+  box-sizing: border-box;
+  min-height: calc(60px + env(safe-area-inset-top, 0px));
   gap: 10px;
-  padding: 8px;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 14px 8px;
+  cursor: default;
+  pointer-events: none;
+  touch-action: manipulation;
 }
 
 .char-info-library-overlay.force-mobile-layout .char-info-library-header h2 {
@@ -2256,47 +2358,32 @@ onBeforeUnmount(() => {
 }
 
 .char-info-library-overlay.force-mobile-layout .char-info-library-header-actions {
-  gap: 3px;
-  padding: 3px;
-  border-radius: 12px;
+  display: none;
 }
 
-.char-info-library-overlay.force-mobile-layout .char-info-library-header-actions button {
-  min-height: 38px;
-}
-
-.char-info-library-overlay.force-mobile-layout .char-info-library-list-action {
-  gap: 6px;
-  padding: 0 9px;
-  font-size: 0.75rem;
-}
-
-.char-info-library-overlay.force-mobile-layout .char-info-library-icon-action {
-  width: 38px;
+.char-info-library-overlay.force-mobile-layout .char-info-library-viewer-mobile-dock {
+  display: grid;
 }
 
 .char-info-library-overlay.force-mobile-layout .char-info-library-viewer {
   flex: 1 1 auto;
   min-height: 0;
   padding: 6px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
 }
 
 .char-info-library-overlay.force-mobile-layout .char-info-library-viewer > .viewer-root {
-  height: auto;
-  min-height: 100%;
+  height: 100%;
+  min-height: 0;
 }
 
 .char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-wrapper {
-  height: auto;
+  height: 100%;
   max-width: none;
 }
 
 .char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-shell {
-  height: 216.4251cqw !important;
+  height: 100% !important;
   min-height: 0;
 }
 

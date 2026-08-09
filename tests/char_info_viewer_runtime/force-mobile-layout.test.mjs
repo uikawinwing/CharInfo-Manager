@@ -19,6 +19,10 @@ const managerOverlaySource = readFileSync(
   'utf8',
 );
 const managerAppSource = readFileSync(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
+const illustratedSheetSource = readFileSync(
+  new URL('../../src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue', import.meta.url),
+  'utf8',
+);
 
 test('强制移动布局默认关闭，非法值安全归一化为关闭', () => {
   assert.equal(defaultRuntimeSettings().forceMobileLayout, false);
@@ -93,4 +97,52 @@ test('强制移动布局同步到独立 iframe 中的世界书角色库', () => 
   assert.match(managerAppSource, /@mixin mobile-manager-layout\(\$root: '\.manager-root'\)/u);
   assert.match(managerAppSource, /\.manager-root\.force-mobile-layout\s*\{\s*@include mobile-manager-layout\('&'\);/u);
   assert.doesNotMatch(managerAppSource, /768\s*[×x]\s*1388/u);
+});
+
+test('手机角色详情顶部只展示信息，操作移至底部安全区', () => {
+  assert.match(
+    runtimeRootSource,
+    /class="char-info-library-viewer-mobile-dock"[\s\S]*?角色列表[\s\S]*?返回游戏[\s\S]*?刷新/u,
+  );
+  assert.match(
+    runtimeRootSource,
+    /\.char-info-library-viewer-mobile-dock\s*\{[\s\S]*?grid-template-columns:\s*1fr 1\.18fr 1fr;[\s\S]*?safe-area-inset-bottom/u,
+  );
+  assert.match(
+    runtimeRootSource,
+    /@media \(max-width: 720px\) \{[\s\S]*?\.char-info-library-overlay \.char-info-library-header-actions\s*\{\s*display: none;[\s\S]*?\.char-info-library-viewer-mobile-dock\s*\{\s*display: grid;/u,
+  );
+  assert.match(
+    runtimeRootSource,
+    /\.char-info-library-overlay\.force-mobile-layout \.char-info-library-header-actions\s*\{\s*display: none;[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer-mobile-dock\s*\{\s*display: grid;/u,
+  );
+  assert.match(
+    runtimeRootSource,
+    /function showLibraryListFromViewer\(\): void \{\s*closeViewerWindow\(\);\s*props\.onOpenLibraryList\(\);/u,
+  );
+  assert.match(
+    runtimeRootSource,
+    /function closeLibraryWindows\(\): void \{\s*closeViewerWindow\(\);\s*closeListWindow\(\);/u,
+  );
+});
+
+test('手机角色详情把资料分页固定在三键栏上方，并在首页首屏显示姓名块', () => {
+  assert.match(
+    runtimeRootSource,
+    /@media \(max-width: 720px\) \{[\s\S]*?\.char-info-library-viewer\s*\{[\s\S]*?overflow:\s*hidden;[\s\S]*?\.char-info-library-viewer > \.viewer-root\s*\{[\s\S]*?height:\s*100%;[\s\S]*?\.char-info-library-viewer \.illustrated-wrapper[\s\S]*?height:\s*100%;[\s\S]*?\.char-info-library-viewer \.illustrated-shell\s*\{[\s\S]*?height:\s*100% !important;/u,
+  );
+  assert.match(
+    runtimeRootSource,
+    /\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer\s*\{[\s\S]*?overflow:\s*hidden;[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer > \.viewer-root\s*\{[\s\S]*?height:\s*100%;[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer \.illustrated-wrapper[\s\S]*?height:\s*100%;[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer \.illustrated-shell\s*\{[\s\S]*?height:\s*100% !important;/u,
+  );
+  assert.match(
+    illustratedSheetSource,
+    /class="illustrated-portrait-pane"[\s\S]*?class="illustrated-mobile-overview-overlay"[\s\S]*?<IllustratedHeader[^>]*compact/u,
+  );
+  assert.match(
+    illustratedSheetSource,
+    /<div ref="panelsElement" class="illustrated-panels">[\s\S]*?<IllustratedTabNav/u,
+  );
+  assert.doesNotMatch(runtimeRootSource, /scrollLibraryViewerFromWheel|beginLibraryViewerScroll/u);
+  assert.doesNotMatch(runtimeRootSource, /\.char-info-library-viewer\s*\{[^}]*touch-action:\s*none;/u);
 });

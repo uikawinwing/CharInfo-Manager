@@ -166,11 +166,11 @@ test('当前聊天资料库由悬浮入口打开角色列表，并完整显示�
   );
   assert.match(
     runtimeRootSource,
-    /@media \(max-width: 720px\) \{[\s\S]*?\.char-info-library-viewer \{[\s\S]*?overflow-y: auto;/u,
+    /@media \(max-width: 720px\) \{[\s\S]*?\.char-info-library-viewer \{[\s\S]*?overflow: hidden;/u,
   );
   assert.match(
     runtimeRootSource,
-    /\.char-info-library-viewer \.illustrated-shell \{[\s\S]*?height: 216\.4251cqw !important;/u,
+    /@media \(max-width: 720px\) \{[\s\S]*?\.char-info-library-viewer \.illustrated-shell \{[\s\S]*?height: 100% !important;/u,
   );
   assert.match(
     runtimeRootSource,
