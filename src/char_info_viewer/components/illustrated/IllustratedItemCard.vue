@@ -1,15 +1,29 @@
 <template>
-  <article class="illustrated-list-item" :class="qualityClass(item)">
+  <article
+    class="illustrated-list-item"
+    :class="[
+      qualityClass(item),
+      {
+        'is-compact-row': isCompactVariant,
+        'is-compact-skill': isSkillVariant,
+        'is-compact-holding': isHoldingVariant,
+      },
+    ]"
+  >
     <div class="illustrated-list-item-header">
-      <h3>{{ itemName(item) }}</h3>
-      <span v-if="subtitle" class="illustrated-list-item-type">{{ subtitle }}</span>
+      <h3>
+        <span v-if="isSkillVariant && typeText" class="illustrated-skill-mode">[{{ typeText }}]</span>
+        {{ itemName(item) }}
+      </h3>
+      <span v-if="!isSkillVariant && subtitle" class="illustrated-list-item-type">{{ subtitle }}</span>
+      <span v-else-if="cost" class="illustrated-skill-cost"><small>消耗</small>{{ cost }}</span>
     </div>
 
     <div v-if="tags.length > 0" class="illustrated-tags">
       <span v-for="tag in tags" :key="tag" class="illustrated-tag">{{ tag }}</span>
     </div>
 
-    <p v-if="cost" class="illustrated-line"><span>消耗</span>{{ cost }}</p>
+    <p v-if="cost && !isSkillVariant" class="illustrated-line"><span>消耗</span>{{ cost }}</p>
 
     <ul v-if="effects.length > 0" class="illustrated-effect-list">
       <li v-for="entry in effects" :key="`${entry.name}-${entry.content}`" class="illustrated-effect-item">
@@ -50,7 +64,7 @@ const props = withDefaults(
   defineProps<{
     item: ItemObject;
     showCost?: boolean;
-    variant?: 'item' | 'status';
+    variant?: 'item' | 'skill' | 'holding' | 'status';
   }>(),
   {
     showCost: false,
@@ -61,6 +75,9 @@ const props = withDefaults(
 const tags = computed(() => itemTags(props.item));
 const quality = computed(() => itemQuality(props.item));
 const typeText = computed(() => itemType(props.item));
+const isSkillVariant = computed(() => props.variant === 'skill');
+const isHoldingVariant = computed(() => props.variant === 'holding');
+const isCompactVariant = computed(() => isSkillVariant.value || isHoldingVariant.value);
 const subtitle = computed(() => [quality.value, typeText.value].filter(Boolean).join(' / '));
 const effects = computed(() => itemEffectEntriesOrDescription(props.item));
 const description = computed(() => {
@@ -234,6 +251,113 @@ const statusLines = computed(() => {
   margin-top: 10px;
 }
 
+.illustrated-list-item.is-compact-row {
+  margin: 0;
+  padding: 13px 0 14px;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.illustrated-list-item.is-compact-row .illustrated-list-item-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: start;
+  gap: 10px;
+  margin-bottom: 7px;
+  padding: 0;
+  border: 0;
+}
+
+.illustrated-list-item.is-compact-row h3 {
+  min-width: 0;
+  margin: 0 !important;
+  font-size: 15px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.illustrated-list-item.is-compact-row h3::before {
+  margin-right: 7px;
+  font-size: 12px;
+}
+
+.illustrated-skill-mode {
+  margin-right: 5px;
+  color: color-mix(in srgb, var(--item-color) 72%, #b6a9bf);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.illustrated-skill-cost {
+  max-width: 130px;
+  color: #a4a09a;
+  font-size: 9px;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.illustrated-skill-cost small {
+  display: block;
+  color: #c3beb6;
+  font-size: inherit;
+  font-weight: 700;
+}
+
+.illustrated-list-item.is-compact-holding .illustrated-list-item-header {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.illustrated-list-item.is-compact-holding .illustrated-list-item-type {
+  justify-self: start;
+  padding: 0 0 0 19px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+}
+
+.illustrated-list-item.is-compact-holding .illustrated-list-item-type::before,
+.illustrated-list-item.is-compact-holding .illustrated-list-item-type::after {
+  display: none;
+}
+
+.illustrated-list-item.is-compact-row .illustrated-tags {
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.illustrated-list-item.is-compact-row .illustrated-tag {
+  padding: 2px 6px;
+  font-size: 8px;
+  line-height: 1.3 !important;
+}
+
+.illustrated-list-item.is-compact-row .illustrated-effect-list {
+  gap: 6px;
+}
+
+.illustrated-list-item.is-compact-row .illustrated-effect-item {
+  margin: 0 !important;
+  font-size: 11px !important;
+  line-height: 1.52 !important;
+}
+
+.illustrated-list-item.is-compact-row .illustrated-effect-name,
+.illustrated-list-item.is-compact-row .illustrated-effect-text {
+  font-size: inherit !important;
+  line-height: inherit !important;
+}
+
+.illustrated-list-item.is-compact-row .illustrated-description {
+  margin: 8px 0 0 14px !important;
+  color: #747980;
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
+  font-size: 9.3px !important;
+  font-style: italic;
+  line-height: 1.5 !important;
+}
+
 @media (max-width: 640px) {
   .illustrated-list-item {
     padding: 20px;
@@ -242,6 +366,16 @@ const statusLines = computed(() => {
   .illustrated-list-item-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .illustrated-list-item.is-compact-row {
+    padding: 10px 0 11px;
+  }
+
+  .illustrated-list-item.is-compact-row .illustrated-list-item-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    align-items: start;
   }
 }
 </style>

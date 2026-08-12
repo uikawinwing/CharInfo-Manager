@@ -1,6 +1,7 @@
 <template>
-  <section class="illustrated-info-grid">
+  <section class="illustrated-info-grid" :class="{ 'is-compact-profile': !showStats }">
     <IllustratedOverviewPanel
+      v-if="showStats"
       class="illustrated-mobile-profile-stats"
       :attributes="attributes"
       :resource-boxes="resourceBoxes"
@@ -21,11 +22,17 @@ import type { CharacterViewModel, ResourceBox } from '../../services/characterVi
 import IllustratedOverviewPanel from './IllustratedOverviewPanel.vue';
 import type { AttributeView } from './types';
 
-const props = defineProps<{
-  vm: CharacterViewModel;
-  attributes: AttributeView[];
-  resourceBoxes: ResourceBox[];
-}>();
+const props = withDefaults(
+  defineProps<{
+    vm: CharacterViewModel;
+    attributes: AttributeView[];
+    resourceBoxes: ResourceBox[];
+    showStats?: boolean;
+  }>(),
+  {
+    showStats: true,
+  },
+);
 
 defineEmits<{
   toggleAttributeFormula: [key: string];
@@ -143,6 +150,48 @@ const blocks = computed(() =>
 @media (max-width: 900px) {
   .illustrated-mobile-profile-stats {
     display: flex;
+  }
+
+  .illustrated-info-grid.is-compact-profile {
+    gap: 0;
+  }
+
+  .illustrated-info-grid.is-compact-profile .illustrated-text-block {
+    padding: 11px 0 12px;
+    border: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .illustrated-info-grid.is-compact-profile .illustrated-text-block::before,
+  .illustrated-info-grid.is-compact-profile .illustrated-text-block::after {
+    display: none;
+  }
+
+  .illustrated-info-grid.is-compact-profile .illustrated-text-block h3 {
+    justify-content: flex-start;
+    margin-bottom: 7px;
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    text-align: left;
+    text-shadow: none;
+  }
+
+  .illustrated-info-grid.is-compact-profile .illustrated-text-block h3::before {
+    margin: 0 7px 0 0;
+    font-size: 7px;
+  }
+
+  .illustrated-info-grid.is-compact-profile .illustrated-text-block h3::after {
+    display: none;
+  }
+
+  .illustrated-info-grid.is-compact-profile .illustrated-text-block p {
+    color: #c9cdd4;
+    font-size: 11px !important;
+    line-height: 1.65 !important;
+    text-shadow: none;
   }
 }
 

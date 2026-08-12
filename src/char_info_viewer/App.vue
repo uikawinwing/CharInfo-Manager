@@ -5,6 +5,7 @@
     :class="{
       'viewer-root-embedded': props.embedded,
       'illustrated-viewer-root': shouldShowIllustratedLayout,
+      'special-npc-viewer-root': shouldShowSpecialNpcLayout,
       'viewer-effects-disabled': !props.effectsEnabled,
     }"
   >
@@ -76,13 +77,14 @@
       </div>
 
       <IllustratedCharacterSheet
-        v-if="shouldShowIllustratedLayout && vm"
+        v-if="(shouldShowIllustratedLayout || shouldShowSpecialNpcLayout) && vm"
         :vm="vm"
         :attributes="attributes"
         :importing="importing"
         :import-button-text="importButtonText"
         :show-import-menu="showImportMenu"
         :read-only="props.readOnly"
+        :special-npc="shouldShowSpecialNpcLayout"
         @toggle-attribute-formula="toggleAttributeFormula"
         @toggle-import-menu="toggleImportMenu"
         @import-mvu="onImportMvu"
@@ -596,8 +598,11 @@ const wrapperClasses = computed(() => ({
 const vm = computed(() =>
   sheetData.value ? buildCharacterViewModel(sheetData.value, props.imageSourcePriority) : null,
 );
-const isIllustratedLayout = computed(() => vm.value?.layoutKind === 'illustrated');
 const illustratedFallbackActive = ref(false);
+const isIllustratedLayout = computed(() => vm.value?.layoutKind === 'illustrated');
+const shouldShowSpecialNpcLayout = computed(
+  () => vm.value?.layoutKind === 'special_npc' && !illustratedFallbackActive.value,
+);
 const shouldShowIllustratedLayout = computed(() => isIllustratedLayout.value && !illustratedFallbackActive.value);
 const isPortraitLayout = computed(() => false);
 const isPortraitDetailTab = computed(() => isPortraitLayout.value && activeTab.value !== 'profile');
@@ -1045,6 +1050,10 @@ onBeforeUnmount(() => {
 }
 
 .viewer-root.illustrated-viewer-root {
+  min-height: 0;
+}
+
+.viewer-root.special-npc-viewer-root {
   min-height: 0;
 }
 

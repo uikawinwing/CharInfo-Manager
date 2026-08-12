@@ -2,7 +2,6 @@ import { characterStoryBookMap, type CharacterStoryBookLink } from '../character
 import {
   resolveDxCharacterProfile,
   resolveDxCharacterNameProfile,
-  resolveIllustratedPortraitProfile,
   type CharacterPresentationProfile,
 } from '../dxCharacterRoster';
 import type { CharacterData } from '../types';
@@ -43,7 +42,7 @@ export type DivinityKingdom = {
   description: string;
 };
 
-export type CharacterLayoutKind = 'default' | 'illustrated';
+export type CharacterLayoutKind = 'default' | 'illustrated' | 'special_npc';
 
 export type CharacterViewModel = {
   nameText: string;
@@ -384,13 +383,7 @@ function resolveCharacterPresentationProfileForData(data: CharacterData, nameTex
   const reference = textFromUnknown(pickField(data, '__dx_character_ref'));
   const dxProfile = resolveDxCharacterProfile(reference, nameText);
   if (dxProfile) return dxProfile;
-  const namedDxProfile = resolveDxCharacterNameProfile(nameText);
-  if (namedDxProfile) return namedDxProfile;
-
-  const explicitPortraitUrl = textFromUnknown(
-    pickField(data, '特殊立绘', '角色图片', '立绘', '图片', 'portrait', 'image'),
-  );
-  return resolveIllustratedPortraitProfile(nameText, explicitPortraitUrl);
+  return resolveDxCharacterNameProfile(nameText);
 }
 
 function resolveCharacterImage(
@@ -413,7 +406,7 @@ function resolveCharacterImage(
     };
   }
 
-  const fromData = textFromUnknown(pickField(data, '角色图片', '立绘', '图片', 'portrait', 'image'));
+  const fromData = textFromUnknown(pickField(data, '特殊立绘', '角色图片', '立绘', '图片', 'portrait', 'image'));
   if (fromData) {
     const url = normalizePortraitMediaUrlForBrowser(fromData)?.url ?? normalizeImageUrlForBrowser(fromData);
     const urls = configuredUrls.length > 0 ? configuredUrls : [url];
@@ -476,6 +469,7 @@ export function buildCharacterViewModel(
   const imageSourceGroups = prioritizeImageSourceGroups(image.sourceGroups, imageSourcePriority);
   const imageUrls = imageSourceGroups.map(sources => sources[0]);
   const imageUrl = imageUrls[0] ?? image.url;
+  const isSpecialNpc = !presentationProfile && imageUrls.length > 0;
   const storyBookLink = characterStoryBookMap[nameText] ?? null;
   const hasDivinity =
     hasText(divinityGodTitle) ||
@@ -519,7 +513,7 @@ export function buildCharacterViewModel(
     imageUrls,
     imageSourceGroups,
     randomizeInitialImage: image.randomizeInitialImage,
-    layoutKind: presentationProfile ? 'illustrated' : 'default',
+    layoutKind: presentationProfile ? 'illustrated' : isSpecialNpc ? 'special_npc' : 'default',
     presentationProfile,
     resourceBoxes,
     skills,

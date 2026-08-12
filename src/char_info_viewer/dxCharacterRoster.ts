@@ -29,7 +29,7 @@ export type DxCharacterRosterEntry =
     });
 
 export type CharacterPresentationProfile = {
-  edition: 'dx' | 'illustrated';
+  edition: 'dx';
   name: string;
   imageUrl: string;
   portraitKind: PortraitMediaKind;
@@ -113,22 +113,5 @@ function createDxCharacterPresentationProfile(entry: DxCharacterRosterEntry): Ch
     visualTheme: entry.visualTheme,
     divinityVariant: entry.divinityVariant,
     divinityStageBackgroundUrl,
-  };
-}
-
-export function resolveIllustratedPortraitProfile(
-  name: string,
-  rawImageUrl: string,
-): CharacterPresentationProfile | null {
-  const portraitMedia = normalizePortraitMediaUrlForBrowser(rawImageUrl);
-  if (!portraitMedia) return null;
-
-  return {
-    edition: 'illustrated',
-    name,
-    imageUrl: portraitMedia.url,
-    portraitKind: portraitMedia.kind,
-    visualTheme: 'default',
-    divinityVariant: 'default',
   };
 }

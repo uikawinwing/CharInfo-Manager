@@ -1,5 +1,5 @@
 <template>
-  <div class="illustrated-wrapper" :class="themeClass" :style="themeStyle">
+  <div class="illustrated-wrapper" :class="[themeClass, { 'is-special-npc': specialNpc }]" :style="themeStyle">
     <main
       ref="shellElement"
       class="illustrated-shell"
@@ -10,6 +10,8 @@
           'is-overview-tab': isOverviewTab,
           'is-detail-tab': !isOverviewTab,
           'is-divinity-tab': isDivinityTab,
+          'is-skills-tab': specialNpc && activeSpecialTab === 'skills',
+          'is-special-npc': specialNpc,
         },
         isOverviewTab ? overviewDensityClass : null,
       ]"
@@ -128,11 +130,18 @@
             :vm="vm"
             :attributes="attributes"
             :resource-boxes="vm.resourceBoxes"
+            :show-stats="!specialNpc"
             @toggle-attribute-formula="$emit('toggleAttributeFormula', $event)"
           />
 
           <template v-else-if="activeSpecialTab === 'skills'">
-            <IllustratedItemCard v-for="(item, index) in vm.skills" :key="`skill-${index}`" :item="item" show-cost />
+            <IllustratedItemCard
+              v-for="(item, index) in vm.skills"
+              :key="`skill-${index}`"
+              :item="item"
+              :variant="specialNpc ? 'skill' : 'item'"
+              show-cost
+            />
           </template>
 
           <template v-else-if="activeSpecialTab === 'equipment'">
@@ -150,10 +159,33 @@
             </section>
           </template>
 
+          <template v-else-if="activeSpecialTab === 'holdings'">
+            <section v-if="vm.equipments.length > 0" class="illustrated-section">
+              <h3 class="illustrated-section-title">装备</h3>
+              <IllustratedItemCard
+                v-for="(item, index) in vm.equipments"
+                :key="`holding-equipment-${index}`"
+                :item="item"
+                :variant="specialNpc ? 'holding' : 'item'"
+              />
+            </section>
+
+            <section v-for="section in vm.inventorySections" :key="`holding-${section.key}`" class="illustrated-section">
+              <h3 class="illustrated-section-title">{{ section.title }}</h3>
+              <IllustratedItemCard
+                v-for="(item, index) in section.items"
+                :key="`holding-${section.key}-${index}`"
+                :item="item"
+                :variant="specialNpc ? 'holding' : 'item'"
+              />
+            </section>
+          </template>
+
           <IllustratedDivinityPanel
             v-else-if="activeSpecialTab === 'divinity'"
             :vm="vm"
             :profile="vm.presentationProfile"
+            :compact="specialNpc"
           />
 
           <template v-else-if="activeSpecialTab === 'statusEffects'">
@@ -164,6 +196,13 @@
               variant="status"
             />
           </template>
+
+          <IllustratedCharacterPanel
+            v-else-if="activeSpecialTab === 'characterPanel'"
+            :attributes="attributes"
+            :resource-boxes="vm.resourceBoxes"
+            :status-effects="vm.statusEffects"
+          />
 
           <article v-else-if="activeSpecialTab === 'characterStory'" class="illustrated-story-combined-block">
             <section v-if="vm.backstoryText" class="illustrated-story-block">
@@ -189,6 +228,7 @@
         </div>
 
         <IllustratedTabNav
+          v-if="!specialNpc"
           :tabs="tabs"
           :active-tab="activeSpecialTab"
           :importing="importing"
@@ -198,6 +238,18 @@
           @toggle-import-menu="$emit('toggleImportMenu')"
         />
       </section>
+
+      <IllustratedTabNav
+        v-if="specialNpc"
+        side-rail
+        :tabs="tabs"
+        :active-tab="activeSpecialTab"
+        :importing="importing"
+        :import-button-text="importButtonText"
+        :show-import-action="false"
+        @set-tab="activeSpecialTab = $event"
+        @toggle-import-menu="$emit('toggleImportMenu')"
+      />
 
       <div v-if="!readOnly" class="import-action-menu" :class="{ show: showImportMenu }">
         <button type="button" :disabled="importing" @click="$emit('importMvu')">导入到角色状态</button>
@@ -243,6 +295,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect
 import type { CharacterViewModel } from '../../services/characterViewModel';
 import { normalizePortraitMediaUrlForBrowser } from '../../services/imageUrl';
 import type { AttributeView, IllustratedTab, IllustratedTabKey } from './types';
+import IllustratedCharacterPanel from './IllustratedCharacterPanel.vue';
 import IllustratedDivinityPanel from './IllustratedDivinityPanel.vue';
 import IllustratedHeader from './IllustratedHeader.vue';
 import IllustratedItemCard from './IllustratedItemCard.vue';
@@ -260,6 +313,7 @@ const props = defineProps<{
   importButtonText: string;
   showImportMenu: boolean;
   readOnly: boolean;
+  specialNpc: boolean;
 }>();
 
 defineEmits<{
@@ -313,6 +367,17 @@ const portraitMediaUrl = computed(() => {
   }
 });
 const tabs = computed<IllustratedTab[]>(() => {
+  if (props.specialNpc) {
+    return [
+      { key: 'overview', label: '首页' },
+      { key: 'profile', label: '档案' },
+      { key: 'skills', label: '技能' },
+      { key: 'holdings', label: '持有' },
+      { key: 'divinity', label: '登神' },
+      { key: 'characterPanel', label: '面板' },
+    ];
+  }
+
   const mergedTabs: IllustratedTab[] = [{ key: 'overview', label: '首页' }];
   let hasStoryTab = false;
 
@@ -1886,6 +1951,25 @@ watchEffect(() => {
   font-weight: 700;
 }
 
+.illustrated-shell.is-special-npc.is-detail-tab :deep(.illustrated-page-title) {
+  justify-content: flex-start;
+  margin: 0 0 13px;
+  padding: 0 2px 9px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.illustrated-shell.is-special-npc.is-detail-tab :deep(.illustrated-page-title-line),
+.illustrated-shell.is-special-npc.is-detail-tab :deep(.illustrated-page-title h2 span) {
+  display: none;
+}
+
+.illustrated-shell.is-special-npc.is-detail-tab :deep(.illustrated-page-title h2) {
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  text-shadow: none;
+  white-space: nowrap;
+}
+
 .illustrated-story-combined-block {
   display: grid;
   gap: 18px;
@@ -2035,10 +2119,19 @@ watchEffect(() => {
     max-width: min(100%, 480px);
   }
 
+  .illustrated-wrapper.is-special-npc {
+    max-width: min(100%, 414px);
+  }
+
   .illustrated-shell {
     flex-direction: column;
     height: 216.4251cqw;
     min-height: 0;
+  }
+
+  .illustrated-shell.is-special-npc {
+    height: auto;
+    aspect-ratio: 2 / 3;
   }
 
   .illustrated-portrait-pane {
@@ -2068,6 +2161,10 @@ watchEffect(() => {
     overflow: visible;
   }
 
+  .illustrated-shell.is-special-npc.is-overview-tab .illustrated-data-pane {
+    display: none;
+  }
+
   .illustrated-shell.is-detail-tab .illustrated-data-pane {
     padding: 18px 24px 14px;
   }
@@ -2085,6 +2182,23 @@ watchEffect(() => {
     display: flex;
     flex-direction: column;
     gap: 10px;
+  }
+
+  .illustrated-shell.is-special-npc.is-overview-tab .illustrated-portrait-pane::after {
+    background: linear-gradient(
+      180deg,
+      transparent 42%,
+      rgba(8, 10, 14, 0.14) 56%,
+      rgba(8, 10, 14, 0.76) 80%,
+      var(--illustrated-bg) 100%
+    );
+  }
+
+  .illustrated-shell.is-special-npc.is-overview-tab .illustrated-mobile-overview-overlay {
+    right: 17px;
+    bottom: 12px;
+    left: 17px;
+    gap: 6px;
   }
 
   .illustrated-mobile-entrance-quote {
@@ -2112,6 +2226,19 @@ watchEffect(() => {
     line-height: 1.4;
     text-align: center;
     touch-action: manipulation;
+  }
+
+  .illustrated-shell.is-special-npc.is-overview-tab .illustrated-mobile-entrance-quote {
+    min-height: 0;
+    margin: 0 4px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    font-size: 11px;
+    line-height: 1.5;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
   }
 
   .illustrated-mobile-entrance-quote:focus-visible {
@@ -2155,6 +2282,65 @@ watchEffect(() => {
       inset 0 1px 0 rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
+  }
+
+  .illustrated-shell.is-special-npc.is-overview-tab .illustrated-mobile-header-overlay {
+    padding: 0 2px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .illustrated-shell.is-special-npc.is-overview-tab
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-header.compact) {
+    gap: 4px;
+  }
+
+  .illustrated-shell.is-special-npc.is-overview-tab
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-name:not(.illustrated-name-measure)) {
+    order: 1;
+    margin: 0 !important;
+    font-size: clamp(24px, 8cqw, 28px);
+    line-height: 1.12;
+    text-shadow: 0 3px 16px rgba(0, 0, 0, 0.94);
+  }
+
+  .illustrated-shell.is-special-npc.is-overview-tab
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-subtitle) {
+    order: 2;
+    gap: 5px;
+    font-size: 10px;
+    line-height: 1.35;
+    text-shadow: 0 2px 7px rgba(0, 0, 0, 0.95);
+  }
+
+  .illustrated-shell.is-special-npc.is-overview-tab
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-level-tier) {
+    order: 3;
+    margin: 2px 0 0;
+    padding: 2px 0;
+  }
+
+  .illustrated-shell.is-special-npc.is-overview-tab
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-level),
+  .illustrated-shell.is-special-npc.is-overview-tab
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-tier) {
+    font-size: 10px;
+  }
+
+  .illustrated-shell.is-special-npc.is-overview-tab
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-badge-separator) {
+    margin: 0 10px;
   }
 
   .illustrated-shell.is-overview-tab .illustrated-panels {
@@ -2380,6 +2566,23 @@ watchEffect(() => {
 
   .illustrated-shell.is-detail-tab .illustrated-data-pane {
     padding: 16px 14px 12px;
+  }
+
+  .illustrated-shell.is-special-npc.is-detail-tab .illustrated-data-pane {
+    padding: 9px 13px 0;
+  }
+
+  .illustrated-shell.is-special-npc.is-detail-tab :deep(.illustrated-page-title) {
+    min-height: 36px;
+    margin: 0 0 5px;
+    padding-bottom: 7px;
+  }
+
+  .illustrated-shell.is-special-npc.is-detail-tab :deep(.illustrated-page-title h2) {
+    font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-shadow: none;
   }
 
   .illustrated-mobile-overview-overlay {

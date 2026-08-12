@@ -1,5 +1,5 @@
 <template>
-  <section class="illustrated-default-divinity">
+  <section class="illustrated-default-divinity" :class="{ 'is-compact': compact }">
     <header class="default-divinity-hero">
       <span class="default-divinity-kicker">Divinity Path</span>
       <h3>{{ vm.divinityGodTitle || '登神长阶' }}</h3>
@@ -35,7 +35,9 @@ import { computed } from 'vue';
 import type { CharacterViewModel } from '../../services/characterViewModel';
 import { buildDivinitySections } from './divinitySections';
 
-const props = defineProps<{ vm: CharacterViewModel }>();
+const props = withDefaults(defineProps<{ vm: CharacterViewModel; compact?: boolean }>(), {
+  compact: false,
+});
 const sections = computed(() => buildDivinitySections(props.vm));
 </script>
 
@@ -154,5 +156,76 @@ const sections = computed(() => buildDivinitySections(props.vm));
   color: rgba(var(--illustrated-tier-accent-rgb), 0.92);
   font-size: 12px;
   font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  .illustrated-default-divinity.is-compact {
+    gap: 0;
+    padding-bottom: 0;
+  }
+
+  .illustrated-default-divinity.is-compact .default-divinity-hero {
+    justify-items: start;
+    gap: 1px;
+    padding: 6px 0 8px;
+    border-top: 0;
+    border-bottom: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.3);
+    background: transparent;
+    text-align: left;
+  }
+
+  .illustrated-default-divinity.is-compact .default-divinity-kicker {
+    display: none;
+  }
+
+  .illustrated-default-divinity.is-compact .default-divinity-hero h3 {
+    font-size: 15px;
+    letter-spacing: 0.06em;
+    text-shadow: none;
+  }
+
+  .illustrated-default-divinity.is-compact .default-divinity-hero p {
+    font-size: 9px !important;
+  }
+
+  .illustrated-default-divinity.is-compact .default-divinity-list {
+    gap: 0;
+  }
+
+  .illustrated-default-divinity.is-compact .default-divinity-card {
+    gap: 5px;
+    padding: 10px 0 11px;
+    border: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .illustrated-default-divinity.is-compact .default-divinity-card-head {
+    gap: 8px;
+    font-size: 11px;
+  }
+
+  .illustrated-default-divinity.is-compact .default-divinity-card-head small {
+    font-size: 8px;
+  }
+
+  .illustrated-default-divinity.is-compact .default-divinity-card strong {
+    font-size: 14px;
+  }
+
+  .illustrated-default-divinity.is-compact .default-divinity-card p {
+    font-size: 11px !important;
+    font-weight: 500;
+    line-height: 1.6 !important;
+  }
+
+  .illustrated-default-divinity.is-compact .default-divinity-card-details {
+    gap: 6px;
+  }
+
+  .illustrated-default-divinity.is-compact .default-divinity-card-detail-label {
+    font-size: 10px;
+  }
 }
 </style>

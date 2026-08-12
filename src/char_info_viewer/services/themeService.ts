@@ -294,8 +294,7 @@ export async function resolveCharacterVisualConfigWithExtensions(
   const namedVisualConfig = resolveNamedVisualConfig(data, chatVariables);
   const extendedVisualConfig =
     namedVisualConfig === undefined ? undefined : await resolveGalleryExtension(namedVisualConfig);
-  const styledData =
-    extendedVisualConfig === undefined ? data : applyVisualAppearance(data, extendedVisualConfig);
+  const styledData = extendedVisualConfig === undefined ? data : applyVisualAppearance(data, extendedVisualConfig);
 
   if (placeholder) return applyVisualConfig(styledData, chatVariables[placeholder[1]], true);
   if (rawImage) return styledData;

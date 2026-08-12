@@ -1,5 +1,5 @@
 <template>
-  <nav class="illustrated-tabs" aria-label="角色资料分页">
+  <nav class="illustrated-tabs" :class="{ 'is-side-rail': sideRail }" aria-label="角色资料分页">
     <button
       v-if="homeTab"
       class="illustrated-tab-button illustrated-home-button"
@@ -8,7 +8,8 @@
       type="button"
       @click="$emit('setTab', homeTab.key)"
     >
-      {{ homeTab.label }}
+      <span v-if="sideRail" class="illustrated-tab-icon" aria-hidden="true">{{ tabIcon(homeTab.key) }}</span>
+      <span class="illustrated-tab-label">{{ homeTab.label }}</span>
     </button>
 
     <div class="illustrated-tab-scroll">
@@ -21,7 +22,8 @@
         type="button"
         @click="$emit('setTab', tab.key)"
       >
-        {{ tab.label }}
+        <span v-if="sideRail" class="illustrated-tab-icon" aria-hidden="true">{{ tabIcon(tab.key) }}</span>
+        <span class="illustrated-tab-label">{{ tab.label }}</span>
       </button>
     </div>
 
@@ -49,6 +51,7 @@ const props = defineProps<{
   importing: boolean;
   importButtonText: string;
   showImportAction: boolean;
+  sideRail?: boolean;
 }>();
 
 defineEmits<{
@@ -58,6 +61,18 @@ defineEmits<{
 
 const homeTab = computed(() => props.tabs.find(tab => tab.key === 'overview') ?? null);
 const detailTabs = computed(() => props.tabs.filter(tab => tab.key !== 'overview'));
+const tabIcons: Partial<Record<IllustratedTabKey, string>> = {
+  overview: '⌂',
+  profile: '▤',
+  skills: '⚔',
+  holdings: '▣',
+  divinity: '✦',
+  characterPanel: '◈',
+};
+
+function tabIcon(key: IllustratedTabKey): string {
+  return tabIcons[key] ?? '◇';
+}
 </script>
 
 <style scoped>
@@ -134,6 +149,11 @@ const detailTabs = computed(() => props.tabs.filter(tab => tab.key !== 'overview
   left: 0;
   height: 2px;
   background: var(--illustrated-race-accent);
+}
+
+.illustrated-tab-icon,
+.illustrated-tab-label {
+  display: block;
 }
 
 .illustrated-home-button {
@@ -215,6 +235,105 @@ const detailTabs = computed(() => props.tabs.filter(tab => tab.key !== 'overview
   opacity: 0.82;
 }
 
+@media (min-width: 901px) {
+  .illustrated-tabs.is-side-rail {
+    align-self: stretch;
+    flex: 0 0 72px;
+    width: 72px;
+    min-height: 0;
+    flex-direction: column;
+    justify-content: center;
+    margin: 0;
+    border-top: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 14px 6px;
+    background: rgba(4, 5, 9, 0.82);
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-tab-scroll {
+    flex: 0 1 auto;
+    flex-direction: column;
+    gap: 3px;
+    overflow: visible;
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-tab-button,
+  .illustrated-tabs.is-side-rail .illustrated-tab-scroll .illustrated-tab-button,
+  .illustrated-tabs.is-side-rail .illustrated-home-button {
+    width: 100%;
+    min-width: 0;
+    min-height: 62px;
+    flex-direction: column;
+    gap: 4px;
+    padding: 7px 3px;
+    font-size: 9px;
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-tab-icon {
+    font-size: 15px;
+    line-height: 1;
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-tab-button.active {
+    background: linear-gradient(90deg, rgba(var(--illustrated-race-accent-rgb), 0.12), transparent);
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-tab-button.active::after {
+    top: 8px;
+    right: auto;
+    bottom: 8px;
+    left: -6px;
+    width: 2px;
+    height: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .illustrated-tabs.is-side-rail {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    align-self: stretch;
+    width: 100%;
+    max-width: none;
+    min-height: 50px;
+    margin: 0;
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-tab-scroll {
+    display: contents;
+    gap: 0;
+    padding: 0;
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-tab-button,
+  .illustrated-tabs.is-side-rail .illustrated-tab-scroll .illustrated-tab-button,
+  .illustrated-tabs.is-side-rail .illustrated-home-button {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    min-height: 50px;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 2px;
+    font-size: 8px;
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-tab-icon {
+    font-size: 13px;
+    line-height: 1;
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-tab-button.active::after {
+    top: 0;
+    right: auto;
+    bottom: auto;
+    left: 50%;
+    width: 24px;
+    height: 1px;
+    transform: translateX(-50%);
+  }
+}
+
 @media (max-width: 640px) {
   .illustrated-tabs {
     align-self: stretch;
@@ -261,6 +380,27 @@ const detailTabs = computed(() => props.tabs.filter(tab => tab.key !== 'overview
 
   .illustrated-nav-save-button {
     border-left: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.16);
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-tab-scroll {
+    display: contents;
+    mask-image: none;
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-tab-button,
+  .illustrated-tabs.is-side-rail .illustrated-tab-scroll .illustrated-tab-button,
+  .illustrated-tabs.is-side-rail .illustrated-home-button {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    min-height: 50px;
+    padding: 0 2px;
+    font-size: 8px;
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-home-button {
+    border-right: 0;
+    background: transparent;
   }
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <IllustratedDefaultDivinityPanel v-if="variant === 'default'" :vm="vm" />
+  <IllustratedDefaultDivinityPanel v-if="variant === 'default'" :vm="vm" :compact="compact" />
 
   <section
     v-else
@@ -78,7 +78,12 @@ import { buildDivinitySections } from './divinitySections';
 import IllustratedDefaultDivinityPanel from './IllustratedDefaultDivinityPanel.vue';
 import { venusNameFrameCssVars } from './venusAssets';
 
-const props = defineProps<{ vm: CharacterViewModel; profile: CharacterPresentationProfile | null }>();
+const props = withDefaults(
+  defineProps<{ vm: CharacterViewModel; profile: CharacterPresentationProfile | null; compact?: boolean }>(),
+  {
+    compact: false,
+  },
+);
 
 const contentId = useId();
 const curtainOpen = ref(false);

@@ -11,7 +11,7 @@ export type AttributeView = {
   showFormula: boolean;
 };
 
-export type IllustratedTabKey = 'overview' | TabKey;
+export type IllustratedTabKey = 'overview' | 'holdings' | 'characterPanel' | TabKey;
 
 export type IllustratedTab = {
   key: IllustratedTabKey;

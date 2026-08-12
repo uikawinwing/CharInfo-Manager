@@ -38,16 +38,15 @@ test('a character without an image uses the normal layout', () => {
   assert.equal(vm.presentationProfile, null);
 });
 
-test('普通角色的显式图片使用 illustrated 布局而不是 DX', () => {
+test('非 DX 角色的显式图片使用 Special NPC 布局', () => {
   const vm = buildCharacterViewModel({
     姓名: '傲雪',
     角色图片: 'https://example.com/aoxue.png',
   });
 
-  assert.equal(vm.layoutKind, 'illustrated');
+  assert.equal(vm.layoutKind, 'special_npc');
   assert.equal(vm.imageUrl, 'https://example.com/aoxue.png');
-  assert.equal(vm.presentationProfile?.edition, 'illustrated');
-  assert.equal(vm.presentationProfile?.visualTheme, 'default');
+  assert.equal(vm.presentationProfile, null);
 });
 
 test('DX 角色的精确姓名不会误匹配塞壬，瑟涟资料暂列 TODO', () => {
