@@ -2,6 +2,22 @@ import type { CharacterData, ThemeResolved } from '../types';
 import { isLoadedDxCharacterData } from '../dx';
 import { resolveGalleryExtension } from './galleryPackService.ts';
 
+const SPECIAL_NPC_VISUAL_BRAND = Symbol('char_info_special_npc_visual');
+type SpecialNpcVisualData = CharacterData & { [SPECIAL_NPC_VISUAL_BRAND]?: true };
+
+function brandSpecialNpcVisualData(data: CharacterData): CharacterData {
+  Object.defineProperty(data, SPECIAL_NPC_VISUAL_BRAND, {
+    value: true,
+    enumerable: false,
+    configurable: false,
+  });
+  return data;
+}
+
+export function isSpecialNpcVisualData(data: CharacterData): boolean {
+  return (data as SpecialNpcVisualData)[SPECIAL_NPC_VISUAL_BRAND] === true;
+}
+
 export const raceColorMap: Record<string, string> = {
   神祗: '#FFFFFF',
   龙族: '#FFD700',
@@ -243,6 +259,13 @@ function applyImageSourceGroups(
   };
 }
 
+function visualConfigHasImage(visualConfig: unknown): boolean {
+  if (typeof visualConfig === 'string') return normalizeVisualConfigUrl(visualConfig) !== null;
+  const config = asRecord(visualConfig);
+  if (!config) return false;
+  return normalizeVisualConfigUrl(config.url) !== null || normalizeVisualConfigGallery(config.gallery).length > 0;
+}
+
 function applyVisualConfig(data: CharacterData, visualConfig: unknown, clearImageOnFailure: boolean): CharacterData {
   const resolvedAppearance = applyVisualAppearance(data, visualConfig);
   const fallback = clearImageOnFailure ? { ...resolvedAppearance, 角色图片: '' } : resolvedAppearance;
@@ -276,12 +299,14 @@ export function resolveCharacterVisualConfig(
   const rawImage = typeof data.角色图片 === 'string' ? data.角色图片.trim() : '';
   const placeholder = rawImage.match(/^\[\[([a-z0-9][a-z0-9_-]*)\]\]$/i);
   const namedVisualConfig = resolveNamedVisualConfig(data, chatVariables);
-  const styledData = namedVisualConfig === undefined ? data : applyVisualAppearance(data, namedVisualConfig);
 
-  if (placeholder) return applyVisualConfig(styledData, chatVariables[placeholder[1]], true);
-  if (rawImage) return styledData;
+  if (namedVisualConfig !== undefined) {
+    const resolved = applyVisualConfig(data, namedVisualConfig, false);
+    return visualConfigHasImage(namedVisualConfig) ? brandSpecialNpcVisualData(resolved) : resolved;
+  }
 
-  return namedVisualConfig === undefined ? styledData : applyVisualConfig(styledData, namedVisualConfig, false);
+  if (placeholder) return applyVisualConfig(data, chatVariables[placeholder[1]], true);
+  return data;
 }
 
 export async function resolveCharacterVisualConfigWithExtensions(
@@ -295,14 +320,14 @@ export async function resolveCharacterVisualConfigWithExtensions(
   const namedVisualConfig = resolveNamedVisualConfig(data, chatVariables);
   const extendedVisualConfig =
     namedVisualConfig === undefined ? undefined : await resolveGalleryExtension(namedVisualConfig);
-  const styledData = extendedVisualConfig === undefined ? data : applyVisualAppearance(data, extendedVisualConfig);
 
-  if (placeholder) return applyVisualConfig(styledData, chatVariables[placeholder[1]], true);
-  if (rawImage) return styledData;
+  if (extendedVisualConfig !== undefined) {
+    const resolved = applyVisualConfig(data, extendedVisualConfig, false);
+    return visualConfigHasImage(extendedVisualConfig) ? brandSpecialNpcVisualData(resolved) : resolved;
+  }
 
-  return extendedVisualConfig === undefined
-    ? styledData
-    : applyVisualConfig(styledData, extendedVisualConfig, false);
+  if (placeholder) return applyVisualConfig(data, chatVariables[placeholder[1]], true);
+  return data;
 }
 
 export function harmonizeAccent(

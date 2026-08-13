@@ -9,6 +9,7 @@ import type { CharacterData } from '../types';
 import { getSmartArray, hasArrayContent, hasText, normalizeDisplayText } from './common';
 import { prioritizeImageSourceGroups } from './imageSourcePriority';
 import { normalizeImageUrlForBrowser, normalizePortraitMediaUrlForBrowser } from './imageUrl';
+import { isSpecialNpcVisualData } from './themeService';
 
 export type TabKey =
   'profile' | 'skills' | 'equipment' | 'inventory' | 'divinity' | 'characterStory' | 'backstory' | 'statusEffects';
@@ -472,7 +473,7 @@ export function buildCharacterViewModel(
   const imageSourceGroups = prioritizeImageSourceGroups(image.sourceGroups, imageSourcePriority);
   const imageUrls = imageSourceGroups.map(sources => sources[0]);
   const imageUrl = imageUrls[0] ?? image.url;
-  const isSpecialNpc = !presentationProfile && imageUrls.length > 0;
+  const isSpecialNpc = !presentationProfile && isSpecialNpcVisualData(data) && imageUrls.length > 0;
   const storyBookLink = resolveDxStoryBookLink(presentationProfile);
   const hasDivinity =
     hasText(divinityGodTitle) ||

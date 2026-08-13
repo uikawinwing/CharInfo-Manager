@@ -52,13 +52,13 @@ test('a character without an image uses the normal layout', () => {
   assert.equal(vm.presentationProfile, null);
 });
 
-test('非 DX 角色的显式图片使用 Special NPC 布局', () => {
+test('非 DX 角色的正文显式图片不再授予 Special NPC 布局', () => {
   const vm = buildCharacterViewModel({
     姓名: '傲雪',
     角色图片: 'https://example.com/aoxue.png',
   });
 
-  assert.equal(vm.layoutKind, 'special_npc');
+  assert.equal(vm.layoutKind, 'default');
   assert.equal(vm.imageUrl, 'https://example.com/aoxue.png');
   assert.equal(vm.presentationProfile, null);
 });

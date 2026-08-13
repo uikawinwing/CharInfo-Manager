@@ -292,6 +292,8 @@ v0.1.7 不增加新的视觉设计或故事功能。目标是把当前工作线�
 
 #### Checkpoint 2 — 路由与只读数据边界
 
+状态：✅ Special NPC 路由白名单 / Viewer legacy gallery 只读边界 / test / lint / production build / 实际 SillyTavern Special NPC 已验证
+
 - DX 只认可信 DX placeholder + loader；不得通过姓名、profile、metadata 或手造字段升级。
 - Special NPC 只由 `char_info.profiles[姓名]` 与暂时兼容的 `char_info_visuals[姓名]` 授予。
 - `<char_info>` 内图片 URL、普通变量占位符及其他图片字段不得改变普通／Special 路由。

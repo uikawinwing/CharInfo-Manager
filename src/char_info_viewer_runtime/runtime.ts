@@ -7,7 +7,6 @@ import { projectCharInfoMessage } from '../char_info_viewer/runtime/charInfoMess
 import { selectRecentMessageIds } from '../char_info_viewer/runtime/recentMessages';
 import RuntimeRoot from './RuntimeRoot.vue';
 import { collectChangedAffinityNames, collectCurrentCharacterSnapshots } from './currentCharacterLibrary';
-import { migrateLegacyExternalGalleries } from './legacyGalleryMigration';
 import { mountCharInfoCardHosts, type MountedNativeCardHost } from './nativeMessageMount';
 import {
   defaultRuntimeSettings,
@@ -253,17 +252,6 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   };
 
   const resetSettings = (): CharInfoUiSettings => updateSettings(defaultRuntimeSettings());
-
-  const migrateLegacyGalleries = () => {
-    try {
-      const currentVariables = getVariables({ type: 'chat' });
-      if (migrateLegacyExternalGalleries(currentVariables).migratedNames.length === 0) return;
-
-      updateVariablesWith(variables => migrateLegacyExternalGalleries(variables).variables, { type: 'chat' });
-    } catch (error) {
-      console.warn('[CharInfo Runtime] 旧图库迁移失败：', error);
-    }
-  };
 
   const openWorldbookLibrary = () => {
     if (!started) return;
@@ -555,7 +543,6 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     });
     listen(tavern_events.CHAT_CHANGED, () => {
       closeCreatorEditor();
-      migrateLegacyGalleries();
       resetLibraryForChat();
       closeSettings();
       clearMessages();
@@ -571,7 +558,6 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       started = true;
       const startRevision = ++lifecycleRevision;
 
-      migrateLegacyGalleries();
       initializeLibrary();
       const $appRoot = createScriptIdDiv().addClass('char-info-runtime-root').appendTo('body');
       appRoot = $appRoot[0];
