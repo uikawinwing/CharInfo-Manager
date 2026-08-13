@@ -335,13 +335,17 @@ export function resolveCharacterVisualConfig(
   const baseData = stripUntrustedImageData(data);
   const namedVisualConfig = resolveNamedVisualConfig(data, chatVariables);
 
-  if (namedVisualConfig !== undefined) {
-    const resolved = applyVisualConfig(baseData, namedVisualConfig, false);
-    if (visualConfigHasImage(namedVisualConfig)) return brandSpecialNpcVisualData(resolved);
-    return hasLegacySyntax ? brandDeprecatedVisualSyntaxData(resolved) : resolved;
+  if (hasLegacySyntax) {
+    const resolved = namedVisualConfig === undefined ? baseData : applyVisualAppearance(baseData, namedVisualConfig);
+    return brandDeprecatedVisualSyntaxData(resolved);
   }
 
-  return hasLegacySyntax ? brandDeprecatedVisualSyntaxData(baseData) : baseData;
+  if (namedVisualConfig !== undefined) {
+    const resolved = applyVisualConfig(baseData, namedVisualConfig, false);
+    return visualConfigHasImage(namedVisualConfig) ? brandSpecialNpcVisualData(resolved) : resolved;
+  }
+
+  return baseData;
 }
 
 export async function resolveCharacterVisualConfigWithExtensions(
@@ -356,13 +360,17 @@ export async function resolveCharacterVisualConfigWithExtensions(
   const extendedVisualConfig =
     namedVisualConfig === undefined ? undefined : await resolveGalleryExtension(namedVisualConfig);
 
-  if (extendedVisualConfig !== undefined) {
-    const resolved = applyVisualConfig(baseData, extendedVisualConfig, false);
-    if (visualConfigHasImage(extendedVisualConfig)) return brandSpecialNpcVisualData(resolved);
-    return hasLegacySyntax ? brandDeprecatedVisualSyntaxData(resolved) : resolved;
+  if (hasLegacySyntax) {
+    const resolved = extendedVisualConfig === undefined ? baseData : applyVisualAppearance(baseData, extendedVisualConfig);
+    return brandDeprecatedVisualSyntaxData(resolved);
   }
 
-  return hasLegacySyntax ? brandDeprecatedVisualSyntaxData(baseData) : baseData;
+  if (extendedVisualConfig !== undefined) {
+    const resolved = applyVisualConfig(baseData, extendedVisualConfig, false);
+    return visualConfigHasImage(extendedVisualConfig) ? brandSpecialNpcVisualData(resolved) : resolved;
+  }
+
+  return baseData;
 }
 
 export function harmonizeAccent(

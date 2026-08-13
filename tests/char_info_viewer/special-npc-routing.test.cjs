@@ -26,14 +26,20 @@ test('同名 char_info.profiles 的有效立绘授予 Special NPC 路由', () =>
   assert.equal(hasDeprecatedVisualSyntax(data), false);
 });
 
-test('无立绘角色继续使用普通无图路径，正文显式立绘不得授予 Special NPC', () => {
+test('无立绘角色继续使用普通无图路径，正文旧图片语法优先于残留 v2 profile', () => {
   const normal = resolveCharacterVisualConfig(
     { 姓名: '特别角色' },
     { char_info: { profiles: { 特别角色: {} } } },
   );
   const portrait = resolveCharacterVisualConfig(
     { 姓名: '普通立绘角色', 角色图片: 'https://example.com/portrait.png' },
-    { char_info: { profiles: { 普通立绘角色: {} } } },
+    {
+      char_info: {
+        profiles: {
+          普通立绘角色: { gallery: [{ sources: ['https://example.com/v2.png'] }] },
+        },
+      },
+    },
   );
 
   assert.equal(buildCharacterViewModel(normal).layoutKind, 'default');
