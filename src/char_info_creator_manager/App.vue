@@ -487,15 +487,38 @@
                             placeholder="https://…/portrait.webp"
                             @input="image.previewSourceIndex = 0"
                           />
-                          <button
-                            type="button"
-                            class="remove-source-button"
-                            :disabled="image.sources.length === 1"
-                            :aria-label="`删除第 ${sourceIndex + 1} 个图片地址`"
-                            @click="removeImageSource(image, sourceIndex)"
-                          >
-                            ×
-                          </button>
+                          <span class="source-order-actions">
+                            <button
+                              type="button"
+                              class="source-order-button"
+                              :disabled="sourceIndex === 0"
+                              :aria-label="`上移第 ${sourceIndex + 1} 个图片地址`"
+                              title="提高优先级"
+                              @click="moveImageSource(image, sourceIndex, -1)"
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              class="source-order-button"
+                              :disabled="sourceIndex === image.sources.length - 1"
+                              :aria-label="`下移第 ${sourceIndex + 1} 个图片地址`"
+                              title="降低优先级"
+                              @click="moveImageSource(image, sourceIndex, 1)"
+                            >
+                              ↓
+                            </button>
+                            <button
+                              type="button"
+                              class="remove-source-button"
+                              :disabled="image.sources.length === 1"
+                              :aria-label="`删除第 ${sourceIndex + 1} 个图片地址`"
+                              title="删除"
+                              @click="removeImageSource(image, sourceIndex)"
+                            >
+                              ×
+                            </button>
+                          </span>
                         </span>
                       </label>
                       <button type="button" class="add-source-button" @click="addImageSource(image)">
@@ -664,8 +687,9 @@ const props = withDefaults(
   defineProps<{
     initialWorldbookName?: string;
     initialEntryUid?: number;
+    debugEnabled?: boolean;
   }>(),
-  { initialWorldbookName: '', initialEntryUid: undefined },
+  { initialWorldbookName: '', initialEntryUid: undefined, debugEnabled: false },
 );
 const emit = defineEmits<{ close: [] }>();
 const steps: { id: StepId; shortLabel: string; title: string }[] = [
@@ -820,6 +844,19 @@ function resolveGalleryPreviewUrl(image: EditableGalleryImage): string {
   return sources[Math.min(image.previewSourceIndex, Math.max(0, sources.length - 1))] ?? '';
 }
 
+function debugGalleryPreview(image: EditableGalleryImage, event: string, details: Record<string, unknown> = {}) {
+  if (!props.debugEnabled) return;
+  const sources = resolveGalleryPreviewSources(image);
+  console.info('[CharInfo][ImageFallback][Creator]', {
+    event,
+    character: profile.characterName,
+    imageTitle: image.title,
+    sourceIndex: image.previewSourceIndex,
+    url: sources[image.previewSourceIndex] ?? '',
+    ...details,
+  });
+}
+
 const galleryPreviewElements = new Map<number, HTMLImageElement>();
 const galleryPreviewTimeouts = new Map<number, MediaSourceTimeout>();
 const visibleGalleryPreviewIds = new Set<number>();
@@ -829,7 +866,9 @@ function galleryPreviewTimeoutFor(image: EditableGalleryImage): MediaSourceTimeo
   let timeout = galleryPreviewTimeouts.get(image.id);
   if (timeout) return timeout;
   timeout = createMediaSourceTimeout(() => {
-    if (visibleGalleryPreviewIds.has(image.id)) advanceGalleryPreviewSource(image);
+    if (!visibleGalleryPreviewIds.has(image.id)) return;
+    debugGalleryPreview(image, 'timeout');
+    advanceGalleryPreviewSource(image, 'timeout');
   });
   galleryPreviewTimeouts.set(image.id, timeout);
   return timeout;
@@ -839,19 +878,28 @@ function clearGalleryPreviewTimeout(image: EditableGalleryImage) {
   galleryPreviewTimeouts.get(image.id)?.clear();
 }
 
-function advanceGalleryPreviewSource(image: EditableGalleryImage) {
+function advanceGalleryPreviewSource(image: EditableGalleryImage, reason: 'error' | 'timeout') {
   clearGalleryPreviewTimeout(image);
   const sources = resolveGalleryPreviewSources(image);
-  const nextIndex = nextMediaSourceIndex(image.previewSourceIndex, sources.length);
-  if (nextIndex !== null) image.previewSourceIndex = nextIndex;
+  const fromIndex = image.previewSourceIndex;
+  const nextIndex = nextMediaSourceIndex(fromIndex, sources.length);
+  if (nextIndex !== null) {
+    image.previewSourceIndex = nextIndex;
+    debugGalleryPreview(image, 'fallback', { reason, fromIndex, toIndex: nextIndex });
+    debugGalleryPreview(image, 'try');
+    return;
+  }
+  debugGalleryPreview(image, 'all_failed', { reason, fromIndex });
 }
 
 function onGalleryPreviewLoad(image: EditableGalleryImage) {
   clearGalleryPreviewTimeout(image);
+  debugGalleryPreview(image, 'loaded');
 }
 
 function onGalleryPreviewError(image: EditableGalleryImage) {
-  advanceGalleryPreviewSource(image);
+  debugGalleryPreview(image, 'error');
+  advanceGalleryPreviewSource(image, 'error');
 }
 
 function setGalleryPreviewElement(image: EditableGalleryImage, element: unknown) {
@@ -872,6 +920,7 @@ function setGalleryPreviewElement(image: EditableGalleryImage, element: unknown)
   }
 
   visibleGalleryPreviewIds.add(image.id);
+  debugGalleryPreview(image, 'try');
   galleryPreviewTimeoutFor(image).arm();
 }
 
@@ -884,6 +933,7 @@ function initializeGalleryPreviewObserver() {
       if (!image) return;
       if (entry.isIntersecting) {
         visibleGalleryPreviewIds.add(imageId);
+        debugGalleryPreview(image, 'try');
         galleryPreviewTimeoutFor(image).arm();
       } else {
         visibleGalleryPreviewIds.delete(imageId);
@@ -1287,6 +1337,14 @@ function addImageSource(image: EditableGalleryImage) {
 function removeImageSource(image: EditableGalleryImage, sourceIndex: number) {
   if (image.sources.length <= 1) return;
   image.sources.splice(sourceIndex, 1);
+  image.previewSourceIndex = 0;
+}
+
+function moveImageSource(image: EditableGalleryImage, sourceIndex: number, offset: -1 | 1) {
+  const targetIndex = sourceIndex + offset;
+  if (targetIndex < 0 || targetIndex >= image.sources.length) return;
+  const [source] = image.sources.splice(sourceIndex, 1);
+  image.sources.splice(targetIndex, 0, source);
   image.previewSourceIndex = 0;
 }
 
@@ -2360,10 +2418,16 @@ code {
 
 .source-input-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 38px;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 7px;
 }
 
+.source-order-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.source-order-button,
 .remove-source-button,
 .add-source-button {
   color: var(--text-secondary);
@@ -2373,8 +2437,19 @@ code {
   cursor: pointer;
 }
 
+.source-order-button,
 .remove-source-button {
+  width: 34px;
   min-height: 42px;
+}
+
+.source-order-button:disabled,
+.remove-source-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.remove-source-button {
   color: var(--danger);
 }
 

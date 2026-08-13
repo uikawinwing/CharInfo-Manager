@@ -315,10 +315,12 @@ v0.1.7 不增加新的视觉设计或故事功能。目标是把当前工作线�
 
 #### Checkpoint 4 — Viewer 玩家 Save 与图片 fallback bug
 
-状态：🟡 图片 fallback 已修复并提交；Special NPC Viewer Save 根因已定位并修复，等待当前 SillyTavern session 刷新后的现场确认。
+状态：🟡 图片 fallback 与 Special NPC Viewer Save 已修复；Save 桌面位置已在当前 SillyTavern 实机确认，写入菜单与 fallback 仍待可交互 DevTools session 完成现场回归。
 
 - Viewer 卡片必须保留给玩家使用的 Save 操作；点击后可选择写入 MVU 角色状态或聊天世界书。Special NPC 不得因为 side-rail 分支而硬编码隐藏该入口；只读 Viewer 仍不得显示写入操作。
 - 修复 Creator Preview 与 Special Viewer 的备用图床：`URL0` error 或长时间 pending 时必须可靠尝试 `URL1`；进入“立绘无法加载”状态后，用户点击重试也应切换到下一备用 source（耗尽后再 wrap），不能永久卡回同一失败源。
+- Creator 允许作者对同一图片的 `sources[]` 逐条上移／下移，明确保存 URL0、URL1 等默认 fallback 顺序；玩家侧 hostname 优先级仍是独立的本机覆盖层。
+- Runtime Settings 增加默认关闭的 Debug 模式；开启后 Viewer 与从 Runtime 打开的 Creator 使用 `[CharInfo][ImageFallback]` Console 日志记录实际尝试 URL、source index、error／timeout、fallback、loaded、all failed 与 retry。
 - 增加真实行为覆盖，不再只依赖正则静态测试。
 - 修复后在当前 SillyTavern session 实测 Save 菜单与图片 fallback。
 - 完成后停止。

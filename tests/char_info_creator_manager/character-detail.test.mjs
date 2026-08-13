@@ -29,7 +29,7 @@ test('只有编辑角色资料才从 Viewer 调用 Creator controller', () => {
     librarySource,
     /@click="emit\('edit', selectedWorldbookName, detailCharacter\.entry\.uid\)"/u,
   );
-  assert.match(runtimeSource, /openCreatorManager\(\{ worldbookName, entryUid, forceMobileLayout:/u);
+  assert.match(runtimeSource, /openCreatorManager\(\{[\s\S]*?worldbookName,[\s\S]*?entryUid,[\s\S]*?forceMobileLayout:/u);
   assert.doesNotMatch(runtimeSource, /getCreatorManagerHostBridge|creatorManager\.open/u);
 });
 

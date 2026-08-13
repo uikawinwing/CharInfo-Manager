@@ -11,6 +11,7 @@ export type CharInfoUiSettings = {
   activeFloorLimit: number;
   effectsEnabled: boolean;
   forceMobileLayout: boolean;
+  debugEnabled: boolean;
   imageSourcePriorityEnabled: boolean;
   imageSourcePriority: string[];
 };
@@ -24,6 +25,7 @@ const DEFAULT_SETTINGS: CharInfoUiSettings = {
   activeFloorLimit: DEFAULT_ACTIVE_FLOOR_LIMIT,
   effectsEnabled: true,
   forceMobileLayout: false,
+  debugEnabled: false,
   imageSourcePriorityEnabled: false,
   imageSourcePriority: [...DEFAULT_IMAGE_SOURCE_PRIORITY],
 };
@@ -38,6 +40,7 @@ const SettingsSchema = z
       .catch(DEFAULT_SETTINGS.activeFloorLimit),
     effectsEnabled: z.boolean().catch(DEFAULT_SETTINGS.effectsEnabled),
     forceMobileLayout: z.boolean().catch(DEFAULT_SETTINGS.forceMobileLayout),
+    debugEnabled: z.boolean().catch(DEFAULT_SETTINGS.debugEnabled),
     imageSourcePriorityEnabled: z.boolean().catch(DEFAULT_SETTINGS.imageSourcePriorityEnabled),
     imageSourcePriority: z
       .unknown()

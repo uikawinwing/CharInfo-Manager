@@ -11,6 +11,7 @@
           :yaml-text="card.yamlText"
           :message-id="message.messageId"
           :effects-enabled="state.settings.effectsEnabled"
+          :debug-enabled="state.settings.debugEnabled"
           :image-source-priority="activeImageSourcePriority"
           embedded
         />
@@ -282,6 +283,7 @@
           :yaml-text="selectedCharacterYaml"
           :message-id="state.library.messageId"
           :effects-enabled="state.settings.effectsEnabled"
+          :debug-enabled="state.settings.debugEnabled"
           :image-source-priority="activeImageSourcePriority"
           :entrance-quote-override="selectedCharacter.innerThought"
           embedded
@@ -366,6 +368,14 @@
               <small>适用于较宽手机或窄屏浏览器；关闭时自动判断。</small>
             </span>
             <input v-model="forceMobileLayoutDraft" type="checkbox" @change="applySettings" />
+          </label>
+
+          <label class="char-info-settings-switch">
+            <span>
+              <strong>Debug 模式</strong>
+              <small>在浏览器 Console 输出图片来源尝试、失败、超时、切换与成功记录。</small>
+            </span>
+            <input v-model="debugEnabledDraft" type="checkbox" @change="applySettings" />
           </label>
 
           <section class="char-info-settings-priority" aria-labelledby="char-info-image-source-priority-label">
@@ -503,6 +513,7 @@ const viewerWindowPosition = ref<{ left: number; top: number } | null>(null);
 const floorLimitDraft = ref(props.state.settings.activeFloorLimit);
 const effectsEnabledDraft = ref(props.state.settings.effectsEnabled);
 const forceMobileLayoutDraft = ref(props.state.settings.forceMobileLayout);
+const debugEnabledDraft = ref(props.state.settings.debugEnabled);
 const imageSourcePriorityEnabledDraft = ref(props.state.settings.imageSourcePriorityEnabled);
 const imageSourcePriorityDraft = ref([...props.state.settings.imageSourcePriority]);
 const settingsMessage = ref('');
@@ -803,6 +814,7 @@ function replaceSettingsDraft(settings: CharInfoUiSettings): void {
   floorLimitDraft.value = settings.activeFloorLimit;
   effectsEnabledDraft.value = settings.effectsEnabled;
   forceMobileLayoutDraft.value = settings.forceMobileLayout;
+  debugEnabledDraft.value = settings.debugEnabled;
   imageSourcePriorityEnabledDraft.value = settings.imageSourcePriorityEnabled;
   imageSourcePriorityDraft.value = [...settings.imageSourcePriority];
 }
@@ -813,6 +825,7 @@ function applySettings(): void {
     activeFloorLimit: Number(floorLimitDraft.value),
     effectsEnabled: effectsEnabledDraft.value,
     forceMobileLayout: forceMobileLayoutDraft.value,
+    debugEnabled: debugEnabledDraft.value,
     imageSourcePriorityEnabled: imageSourcePriorityEnabledDraft.value,
     imageSourcePriority: priorityNormalization.priorities,
   });

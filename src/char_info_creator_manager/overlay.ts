@@ -15,6 +15,7 @@ export type CreatorManagerOverlay = {
 
 export type CreatorManagerOverlayOptions = {
   forceMobileLayout?: boolean;
+  debugEnabled?: boolean;
   worldbookName?: string;
   entryUid?: number;
 };
@@ -135,6 +136,7 @@ export function createCreatorManagerOverlay(
           initialView: 'editor',
           initialWorldbookName: options.worldbookName,
           initialEntryUid: options.entryUid,
+          debugEnabled: options.debugEnabled ?? false,
           onClose: close,
         });
         managerController = mountedApp.mount(mountPoint) as CreatorManagerController;

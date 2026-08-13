@@ -314,6 +314,7 @@ const props = defineProps<{
   importButtonText: string;
   showImportMenu: boolean;
   readOnly: boolean;
+  debugEnabled: boolean;
   specialNpc: boolean;
 }>();
 
@@ -353,6 +354,19 @@ const activePortraitSources = computed(
     [props.vm.imageUrls[activePortraitIndex.value] ?? props.vm.imageUrl].filter(Boolean),
 );
 const activePortraitUrl = computed(() => activePortraitSources.value[activePortraitSourceIndex.value] ?? '');
+
+function debugPortraitFallback(event: string, details: Record<string, unknown> = {}): void {
+  if (!props.debugEnabled) return;
+  console.info('[CharInfo][ImageFallback][Viewer]', {
+    event,
+    character: props.vm.nameText,
+    portraitIndex: activePortraitIndex.value,
+    sourceIndex: activePortraitSourceIndex.value,
+    url: activePortraitUrl.value,
+    ...details,
+  });
+}
+
 const hasMultiplePortraits = computed(() => props.vm.imageSourceGroups.length > 1 || props.vm.imageUrls.length > 1);
 const isVideoPortrait = computed(() => normalizePortraitMediaUrlForBrowser(activePortraitUrl.value)?.kind === 'video');
 const portraitMediaUrl = computed(() => {
@@ -470,44 +484,55 @@ function openCharacterStory(): void {
 }
 
 const portraitLoadTimeout = createMediaSourceTimeout(() => {
-  advancePortraitSource();
+  debugPortraitFallback('timeout');
+  advancePortraitSource('timeout');
 });
 
 function retryPortraitLoad(): void {
   portraitLoadFailed.value = false;
   portraitLoaded.value = false;
-  const nextIndex = nextMediaSourceIndex(activePortraitSourceIndex.value, activePortraitSources.value.length);
-  activePortraitSourceIndex.value = nextIndex ?? 0;
+  const fromIndex = activePortraitSourceIndex.value;
+  const nextIndex = nextMediaSourceIndex(fromIndex, activePortraitSources.value.length) ?? 0;
+  activePortraitSourceIndex.value = nextIndex;
   portraitRetryAttempt.value += 1;
+  debugPortraitFallback('retry', { fromIndex, toIndex: nextIndex });
 }
 
 function onPortraitLoaded(): void {
   portraitLoadTimeout.clear();
   portraitLoaded.value = true;
   portraitLoadFailed.value = false;
+  debugPortraitFallback('loaded');
 }
 
-function advancePortraitSource(): void {
+function advancePortraitSource(reason: 'error' | 'timeout'): void {
   portraitLoadTimeout.clear();
   portraitLoaded.value = false;
-  const nextIndex = nextMediaSourceIndex(activePortraitSourceIndex.value, activePortraitSources.value.length);
+  const fromIndex = activePortraitSourceIndex.value;
+  const nextIndex = nextMediaSourceIndex(fromIndex, activePortraitSources.value.length);
   if (nextIndex !== null) {
     activePortraitSourceIndex.value = nextIndex;
     portraitRetryAttempt.value = 0;
+    debugPortraitFallback('fallback', { reason, fromIndex, toIndex: nextIndex });
     return;
   }
   portraitLoadFailed.value = true;
+  debugPortraitFallback('all_failed', { reason, fromIndex });
 }
 
 function onPortraitLoadError(): void {
-  advancePortraitSource();
+  debugPortraitFallback('error');
+  advancePortraitSource('error');
 }
 
 watch(
   portraitMediaUrl,
   url => {
     portraitLoadTimeout.clear();
-    if (url && !portraitLoadFailed.value) portraitLoadTimeout.arm();
+    if (url && !portraitLoadFailed.value) {
+      debugPortraitFallback('try');
+      portraitLoadTimeout.arm();
+    }
   },
   { immediate: true },
 );

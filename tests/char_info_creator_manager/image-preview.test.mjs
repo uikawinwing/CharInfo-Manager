@@ -27,7 +27,10 @@ test('管理器相册预览使用统一的图片 URL 规范化函数', () => {
   assert.match(appSource, /:src="resolveGalleryPreviewUrl\(image\)"/);
   assert.match(appSource, /@load="onGalleryPreviewLoad\(image\)"/);
   assert.match(appSource, /@error="onGalleryPreviewError\(image\)"/);
-  assert.match(appSource, /nextMediaSourceIndex\(image\.previewSourceIndex, sources\.length\)/);
+  assert.match(appSource, /nextMediaSourceIndex\(fromIndex, sources\.length\)/);
+  assert.match(appSource, /@click="moveImageSource\(image, sourceIndex, -1\)"/);
+  assert.match(appSource, /@click="moveImageSource\(image, sourceIndex, 1\)"/);
+  assert.match(appSource, /\[CharInfo\]\[ImageFallback\]\[Creator\]/);
   assert.match(appSource, /IntersectionObserver/u);
   assert.match(appSource, /image\.sources\[sourceIndex\]/);
 });

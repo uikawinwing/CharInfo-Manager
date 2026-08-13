@@ -244,6 +244,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     state.settings.activeFloorLimit = nextSettings.activeFloorLimit;
     state.settings.effectsEnabled = nextSettings.effectsEnabled;
     state.settings.forceMobileLayout = nextSettings.forceMobileLayout;
+    state.settings.debugEnabled = nextSettings.debugEnabled;
     state.settings.imageSourcePriorityEnabled = nextSettings.imageSourcePriorityEnabled;
     state.settings.imageSourcePriority = nextSettings.imageSourcePriority;
     replaceVariables(mergeRuntimeSettings(getVariables({ type: 'script' }), nextSettings), { type: 'script' });
@@ -271,7 +272,12 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
   const editWorldbookCharacter = (worldbookName: string, entryUid?: number) => {
     try {
-      openCreatorManager({ worldbookName, entryUid, forceMobileLayout: state.settings.forceMobileLayout });
+      openCreatorManager({
+        worldbookName,
+        entryUid,
+        forceMobileLayout: state.settings.forceMobileLayout,
+        debugEnabled: state.settings.debugEnabled,
+      });
       closeWorldbookLibrary();
     } catch (error) {
       console.error('[CharInfo Runtime] 角色资料编辑器打开失败：', error);

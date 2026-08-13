@@ -86,7 +86,7 @@ test('玩家世界书库与独立 Creator 编辑器都接收强制移动布局�
   assert.match(runtimeSource, /forceMobileLayout: state\.settings\.forceMobileLayout/u);
   assert.match(
     runtimeSource,
-    /openCreatorManager\(\{ worldbookName, entryUid, forceMobileLayout: state\.settings\.forceMobileLayout \}\)/u,
+    /openCreatorManager\(\{[\s\S]*?worldbookName,[\s\S]*?entryUid,[\s\S]*?forceMobileLayout: state\.settings\.forceMobileLayout,[\s\S]*?debugEnabled: state\.settings\.debugEnabled,[\s\S]*?\}\)/u,
   );
   assert.match(managerOverlaySource, /setForceMobileLayout\(value: boolean\): void;/u);
   assert.match(

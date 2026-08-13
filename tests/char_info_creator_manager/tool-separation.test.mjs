@@ -28,7 +28,7 @@ test('世界书角色库属于 Viewer，未加载 Creator 也可浏览图库和�
 });
 
 test('Creator Manager 只在玩家选择编辑时打开，并接收准确世界书与条目', () => {
-  assert.match(runtimeSource, /openCreatorManager\(\{ worldbookName, entryUid, forceMobileLayout:/u);
+  assert.match(runtimeSource, /openCreatorManager\(\{[\s\S]*?worldbookName,[\s\S]*?entryUid,[\s\S]*?forceMobileLayout:/u);
   assert.match(creatorControllerSource, /createCreatorManagerOverlay\(options\)/u);
   assert.match(creatorEntrySource, /export \{ closeCreatorManager, openCreatorManager \} from '\.\/controller';/u);
   assert.match(creatorOverlaySource, /initialWorldbookName: options\.worldbookName/u);

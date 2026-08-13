@@ -87,6 +87,7 @@
         :import-button-text="importButtonText"
         :show-import-menu="showImportMenu"
         :read-only="props.readOnly"
+        :debug-enabled="props.debugEnabled"
         :special-npc="shouldShowSpecialNpcLayout"
         @toggle-attribute-formula="toggleAttributeFormula"
         @toggle-import-menu="toggleImportMenu"
@@ -532,6 +533,7 @@ const props = withDefaults(
     embedded?: boolean;
     readOnly?: boolean;
     effectsEnabled?: boolean;
+    debugEnabled?: boolean;
     imageSourcePriority?: string[];
     entranceQuoteOverride?: string;
   }>(),
@@ -539,6 +541,7 @@ const props = withDefaults(
     embedded: false,
     readOnly: false,
     effectsEnabled: true,
+    debugEnabled: false,
     imageSourcePriority: () => [],
     entranceQuoteOverride: undefined,
   },
