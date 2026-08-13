@@ -514,6 +514,7 @@ import {
   cloneCharacterDataWithVisualOverrides,
   hasDeprecatedVisualSyntax,
   resolveCharacterVisualConfigWithExtensions,
+  resolveCharacterVisualPreview,
   resolveTheme,
 } from './services/themeService';
 import { parseCharacterYaml, parseCharacterYamlLoose } from './services/yamlParser';
@@ -538,6 +539,8 @@ const props = withDefaults(
     debugEnabled?: boolean;
     imageSourcePriority?: string[];
     entranceQuoteOverride?: string;
+    previewMode?: boolean;
+    visualConfigOverride?: { characterName: string; config: unknown };
   }>(),
   {
     embedded: false,
@@ -546,6 +549,8 @@ const props = withDefaults(
     debugEnabled: false,
     imageSourcePriority: () => [],
     entranceQuoteOverride: undefined,
+    previewMode: false,
+    visualConfigOverride: undefined,
   },
 );
 
@@ -562,6 +567,7 @@ const initializingViewer = ref(true);
 const loadingDxCharacter = ref(false);
 const theme = ref<ThemeResolved | null>(null);
 const activeTab = ref<TabKey>('profile');
+let previewBaseData: CharacterData | null = null;
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const bgLayerRef = ref<HTMLElement | null>(null);
@@ -719,6 +725,17 @@ watch(
   },
 );
 
+watch(
+  () => props.visualConfigOverride,
+  async () => {
+    if (!props.previewMode || !previewBaseData) return;
+    await applyParsedCharacterData(previewBaseData, parseMode.value, parseWarnings.value);
+    await nextTick();
+    setupParticleEngine();
+  },
+  { deep: true },
+);
+
 async function initFromYaml() {
   const yamlText = props.yamlText.trim();
 
@@ -730,6 +747,7 @@ async function initFromYaml() {
   parseWarnings.value = [];
   theme.value = null;
   loadingDxCharacter.value = false;
+  previewBaseData = null;
 
   if (!yamlText) {
     parseError.value = { message: '未检测到 YAML 数据。' };
@@ -737,7 +755,7 @@ async function initFromYaml() {
   }
 
   const dxCharacterReference = parseDxCharacterReference(yamlText);
-  if (dxCharacterReference.kind === 'reference') {
+  if (!props.previewMode && dxCharacterReference.kind === 'reference') {
     loadingDxCharacter.value = true;
     try {
       const dxCharacterData = await loadDxCharacterReference(dxCharacterReference.reference);
@@ -768,7 +786,8 @@ async function initFromYaml() {
     return;
   }
 
-  await applyParsedCharacterData(stripUntrustedDxReference(parsed.data), parsed.mode ?? 'strict', parsed.warnings ?? []);
+  previewBaseData = stripUntrustedDxReference(parsed.data);
+  await applyParsedCharacterData(previewBaseData, parsed.mode ?? 'strict', parsed.warnings ?? []);
 
   nextTick(() => setupParticleEngine());
 }
@@ -779,6 +798,7 @@ function scheduleDxCharacterAutoImport(
   characterName: string,
   reference: string,
 ) {
+  if (props.previewMode || props.readOnly) return;
   if (dxCharacterAutoImportTimer) clearTimeout(dxCharacterAutoImportTimer);
   dxCharacterAutoImportTimer = setTimeout(() => {
     dxCharacterAutoImportTimer = null;
@@ -884,10 +904,13 @@ async function applyParsedCharacterData(
   mode: 'strict' | 'loose' | 'builtin',
   warnings: string[] = [],
 ) {
-  const resolvedData = await resolveCharacterVisualConfigWithExtensions(
-    data,
-    getVariables({ type: 'chat' }),
-  );
+  const resolvedData = props.previewMode
+    ? resolveCharacterVisualPreview(
+        data,
+        props.visualConfigOverride?.characterName ?? '',
+        props.visualConfigOverride?.config,
+      )
+    : await resolveCharacterVisualConfigWithExtensions(data, getVariables({ type: 'chat' }));
   deprecatedVisualSyntaxWarning.value = hasDeprecatedVisualSyntax(resolvedData)
     ? '检测到旧版角色图片语法。当前版本已不再支持此写法，因此本角色将以普通无图版显示。若你是该角色的作者，请在角色视觉编辑器中重新保存，以升级至 v2。'
     : '';
@@ -931,7 +954,8 @@ async function tryLooseParse() {
       return;
     }
 
-    await applyParsedCharacterData(stripUntrustedDxReference(parsed.data), parsed.mode ?? 'loose', parsed.warnings ?? []);
+    previewBaseData = stripUntrustedDxReference(parsed.data);
+    await applyParsedCharacterData(previewBaseData, parsed.mode ?? 'loose', parsed.warnings ?? []);
     await nextTick();
     setupParticleEngine();
   } finally {

@@ -150,10 +150,12 @@ test('只有可信 DX 维纳丝资料会显示 DX 专属角色故事入口', asy
 
 test('App 只把保留占位符 loader 产物作为可信 DX 路由', () => {
   assert.match(appSource, /await applyParsedCharacterData\(dxCharacterData\.data, 'builtin'\);/);
+  assert.match(appSource, /previewBaseData = stripUntrustedDxReference\(parsed\.data\);/);
   assert.match(
     appSource,
-    /await applyParsedCharacterData\(stripUntrustedDxReference\(parsed\.data\), parsed\.mode \?\? 'strict', parsed\.warnings \?\? \[\]\);/,
+    /await applyParsedCharacterData\(previewBaseData, parsed\.mode \?\? 'strict', parsed\.warnings \?\? \[\]\);/,
   );
+  assert.match(appSource, /if \(!props\.previewMode && dxCharacterReference\.kind === 'reference'\)/);
   assert.match(
     appSource,
     /cloneLoadedDxCharacterDataWithOverrides\(resolvedData, \{[\s\S]*?登场台词: props\.entranceQuoteOverride/u,

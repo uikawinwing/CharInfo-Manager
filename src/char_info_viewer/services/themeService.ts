@@ -338,6 +338,19 @@ function applyVisualConfig(data: CharacterData, visualConfig: unknown, clearImag
   return applyImageSourceGroups(resolvedAppearance, imageSourceGroups, !url && !isVersionedProfile);
 }
 
+export function resolveCharacterVisualPreview(
+  data: CharacterData,
+  characterName: string,
+  visualConfig: unknown,
+): CharacterData {
+  const baseData = stripUntrustedImageData(data);
+  const expectedName = characterName.trim();
+  if (!expectedName || resolveCharacterName(baseData) !== expectedName) return baseData;
+
+  const resolved = applyVisualConfig(baseData, visualConfig, false);
+  return visualConfigHasImage(visualConfig) ? brandSpecialNpcVisualData(resolved) : resolved;
+}
+
 export function resolveCharacterVisualConfig(
   data: CharacterData,
   chatVariables: Record<string, unknown>,

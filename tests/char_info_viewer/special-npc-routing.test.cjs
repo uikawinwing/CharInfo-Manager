@@ -7,6 +7,7 @@ const { buildCharacterViewModel } = require('../../src/char_info_viewer/services
 const {
   hasDeprecatedVisualSyntax,
   resolveCharacterVisualConfig,
+  resolveCharacterVisualPreview,
 } = require('../../src/char_info_viewer/services/themeService.ts');
 
 test('同名 char_info.profiles 的有效立绘授予 Special NPC 路由', () => {
@@ -24,6 +25,24 @@ test('同名 char_info.profiles 的有效立绘授予 Special NPC 路由', () =>
   assert.equal(data.角色图片, 'https://example.com/special.png');
   assert.equal(buildCharacterViewModel(data).layoutKind, 'special_npc');
   assert.equal(hasDeprecatedVisualSyntax(data), false);
+});
+
+test('Creator 草稿预览只把视觉资料授予同名角色', () => {
+  const visualConfig = {
+    schema_version: 1,
+    custom_racecolor: '#112233',
+    custom_tiercolor: '#445566',
+    登场台词: '草稿台词',
+    gallery: [{ title: '草稿立绘', sources: ['https://example.com/draft.png'] }],
+  };
+  const matching = resolveCharacterVisualPreview({ 姓名: '预览角色' }, '预览角色', visualConfig);
+  const mismatch = resolveCharacterVisualPreview({ 姓名: '另一个角色' }, '预览角色', visualConfig);
+
+  assert.equal(buildCharacterViewModel(matching).layoutKind, 'special_npc');
+  assert.equal(matching.角色图片, 'https://example.com/draft.png');
+  assert.equal(matching.登场台词, '草稿台词');
+  assert.equal(buildCharacterViewModel(mismatch).layoutKind, 'default');
+  assert.equal(buildCharacterViewModel(mismatch).imageUrl, '');
 });
 
 test('无立绘角色继续使用普通无图路径，正文旧图片语法优先于残留 v2 profile', () => {

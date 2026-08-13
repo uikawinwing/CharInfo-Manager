@@ -10,6 +10,9 @@
         </div>
 
         <div class="header-actions">
+          <button class="secondary-button viewer-preview-trigger" type="button" :disabled="!canPreviewViewer" @click="openViewerPreview">
+            预览
+          </button>
           <button class="close-button" type="button" aria-label="关闭" @click="emit('close')">×</button>
         </div>
       </header>
@@ -640,6 +643,25 @@
           </section>
         </form>
       </div>
+
+      <section v-if="viewerPreviewOpen" class="creator-viewer-preview" role="dialog" aria-modal="true" aria-label="角色卡预览">
+        <header class="dialog-header creator-viewer-preview-header">
+          <strong>角色卡预览 · {{ profile.characterName || '未命名角色' }}</strong>
+          <button class="close-button" type="button" aria-label="关闭预览" @click="closeViewerPreview">×</button>
+        </header>
+        <div class="creator-viewer-preview-stage">
+          <ViewerApp
+            :key="viewerPreviewKey"
+            :yaml-text="viewerPreviewYaml"
+            :message-id="-1"
+            :debug-enabled="props.debugEnabled"
+            :visual-config-override="viewerPreviewVisualOverride"
+            embedded
+            read-only
+            preview-mode
+          />
+        </div>
+      </section>
     </main>
   </div>
 </template>
@@ -682,7 +704,9 @@ import {
   serializeGalleryPackWorkshopSource,
 } from './galleryPackStorage';
 import { buildWorldbookList } from '../char_info_shared/worldbookList';
+import ViewerApp from '../char_info_viewer/App.vue';
 import { evaluateManagedEjs } from './ejsRuntime';
+import { buildCreatorViewerPreviewYaml, buildCreatorViewerVisualOverride } from './viewerPreview';
 
 interface EditableGalleryImage {
   id: number;
@@ -747,6 +771,7 @@ const applyMessage = ref('');
 const galleryPackDownloadMessage = ref('');
 let nextImageId = 1;
 const loadError = ref('');
+const viewerPreviewOpen = ref(false);
 
 const profile = reactive<EditableProfile>(toEditableProfile(createEmptyProfile()));
 
@@ -828,6 +853,13 @@ function replaceProfile(value: CharacterVisualProfile) {
 }
 
 const selectedEntry = computed(() => entries.value.find(entry => entry.uid === selectedEntryUid.value) ?? null);
+const canPreviewViewer = computed(() => !!selectedEntry.value && profile.characterName.trim().length > 0);
+const viewerPreviewProfile = computed(() => toFullSerializableProfile());
+const viewerPreviewYaml = computed(() =>
+  buildCreatorViewerPreviewYaml(selectedEntry.value, viewerPreviewProfile.value),
+);
+const viewerPreviewVisualOverride = computed(() => buildCreatorViewerVisualOverride(viewerPreviewProfile.value));
+const viewerPreviewKey = computed(() => `${selectedEntryUid.value ?? 'none'}:${profile.characterName.trim()}`);
 const configuredGalleryCount = computed(
   () => profile.gallery.filter(image => image.sources.some(source => isHttpsUrl(source))).length,
 );
@@ -1308,6 +1340,23 @@ function isNarrowViewport(): boolean {
   return typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches;
 }
 
+function openViewerPreview() {
+  if (!canPreviewViewer.value) return;
+  viewerPreviewOpen.value = true;
+}
+
+function closeViewerPreview() {
+  viewerPreviewOpen.value = false;
+}
+
+function onEscape() {
+  if (viewerPreviewOpen.value) {
+    closeViewerPreview();
+    return;
+  }
+  emit('close');
+}
+
 function canVisitStep(step: StepId): boolean {
   if (step === 1) return true;
   if (!selectedEntry.value) return false;
@@ -1700,6 +1749,34 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.viewer-preview-trigger {
+  min-height: 40px;
+}
+
+.creator-viewer-preview {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  inset: 0;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg);
+}
+
+.creator-viewer-preview-header {
+  flex: 0 0 auto;
+}
+
+.creator-viewer-preview-stage {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  padding: 16px;
+  overflow: auto;
+  place-items: center;
 }
 
 .phase-badge {

@@ -146,7 +146,7 @@ src/char_info_viewer/dx/
 ### 4.2 图库功能
 
 - ✅ Viewer 玩家详情可以显示图片、视频和备用图床资料。
-- ✅ v0.1.7 已补齐 Creator Preview 与 Special Viewer 的备用源状态机：`error`、长时间 pending 与失败页手动 Retry 都会按 `sources[]` 顺序前进，耗尽后才 wrap；仍待最终现场故障注入回归。
+- ✅ v0.1.7 已补齐 Creator Preview 与 Special Viewer 的备用源状态机：`error`、长时间 pending 与失败页手动 Retry 都会按 `sources[]` 顺序前进，耗尽后才 wrap；Master 已在 SillyTavern 实机确认 `URL0 error → URL1 try → URL1 loaded`，pending/timeout 路径已有自动回归，仍可在最终验收时补一次现场 timeout 注入。
 - ✅ Viewer Runtime 已停止把 `status.externalGalleries.partners` 自动迁移并写回 `char_info.profiles`；Viewer 保持只读。旧 status gallery 的显式迁移与兼容输出留给 Creator 后续功能。
 - ⬜ status gallery 的显式 Import-to-draft、保存时兼容输出及安全移除旧 EJS 属于 Creator UX，默认放到 v0.1.8，不扩大 v0.1.7。
 - ⬜ 独立 Gallery Lightbox 尚未实现。
@@ -207,17 +207,18 @@ galleryExtension
 
 ### 5.4 Creator 使用真实 Viewer 预览
 
-状态：⬜
+状态：🟡 v0.1.7 已完成实现与自动回归，待 SillyTavern 实机打开／关闭与实时草稿更新验收。
 
-当前 Creator 只有单张相册图片预览，不是完整 Viewer。v0.1.7 增加的“应用已保存版本到当前聊天”只用于作者保存后精确执行当前角色的 CharInfo managed EJS 并强制刷新，不等于真实 Viewer 草稿预览。
+Creator 现可直接挂载真实 `ViewerApp` 预览未保存 draft；“应用已保存版本到当前聊天”仍是另一条保存后 EJS 工作流，两者不得混为一谈。
 
-尚未实现：
+已实现：
 
 - 在 Creator 内挂载真实 Viewer 进行完整角色卡预览。
-- 使用草稿颜色、图库和台词预览但不写入聊天变量或世界书。
-- 预览模式禁止 DX 自动注入和普通导入副作用。
+- 使用草稿颜色、完整图库／备用源和台词实时预览但不写入聊天变量或世界书。
+- Preview 使用最小角色骨架，并尽量读取当前世界书条目的静态种族／身份；不会执行条目正文 EJS。
+- 预览模式禁止 DX 自动注入和普通导入副作用，也不读取当前聊天的视觉 profile。
 - 角色姓名与 profile 不匹配时禁止借用另一个角色的视觉资料。
-- 反复打开／关闭预览时的生命周期与监听器清理验证。
+- Preview 使用 `v-if` 生命周期，关闭时卸载真实 Viewer；仍需 SillyTavern 实机重复打开／关闭验收监听器清理。
 
 ### 5.5 Gallery Lightbox
 
@@ -333,8 +334,8 @@ v0.1.7 不增加新的视觉设计或故事功能。目标是把当前工作线�
 - 主立绘仍保留浏览器 `loading="lazy"`；先只修已确认的 proxy/cache mismatch，不同时修改第二个性能变量。若现场仍明显偏慢，再继续测 lazy-load 时序。
 - Current NPC Panel 的心里话覆盖曾丢失 Special NPC 内部视觉身份，已修复并在当前 SillyTavern 实机确认千爻保持 Special NPC 有图版。
 - ✅ 当前角色列表的 ↻ 已改成 Force Refresh CharInfo：重新读取 latest MVU snapshot + chat variables，并对当前 active CharInfo floors 做受控 teardown / remount；不隐式执行任何世界书 EJS。
-- ✅ Creator 保存成功后可“应用已保存版本到当前聊天”：只提取当前条目中通过 `inspectManagedBlock()` 验证的 CharInfo managed EJS，并通过 ST-Prompt-Template `prepareContext()` + `evalTemplate()` 精确执行该片段，再调用 `saveVariables()` 持久化 `setLocalVar()` 的修改；不触发其他世界书条目，随后验证 chat variables 并调用同一 Force Refresh。完整 draft Viewer Preview 仍留在后续 Checkpoint 9。
-- 仍需完成 Special NPC 桌面／手机、普通无图版、可信 DX、Editor lifecycle、Save 两种写入、图片 fallback 故障注入、Debug Console / Network 的最终实际回归。
+- ✅ Creator 保存成功后可“应用已保存版本到当前聊天”：只提取当前条目中通过 `inspectManagedBlock()` 验证的 CharInfo managed EJS，并通过 ST-Prompt-Template `prepareContext()` + `evalTemplate()` 精确执行该片段，再调用 `saveVariables()` 持久化 `setLocalVar()` 的修改；不触发其他世界书条目，随后验证 chat variables 并调用同一 Force Refresh。未保存 draft 的真实 Viewer Preview 也已提前至 v0.1.7 实现，最终实机验收见 5.4。
+- 仍需完成 Special NPC 桌面／手机、普通无图版、可信 DX、Editor lifecycle、Save 两种写入、图片 fallback 的现场 timeout 注入、Debug Console / Network 的最终实际回归；`URL0 error → URL1 loaded` 已由 Master 实机确认。
 - 运行 lint、test、build，并检查最终 diff、production DX 泄漏与只读边界。
 - v0.1.7 完成后停止。
 
@@ -360,11 +361,10 @@ v0.1.7 不增加新的视觉设计或故事功能。目标是把当前工作线�
 - 不重构普通无图版。
 - 完成后停止。
 
-#### Checkpoint 9 — Creator 真实 Viewer 预览
+#### Checkpoint 9 — Creator 真实 Viewer 预览（已提前至 v0.1.7）
 
-- 使用真实 Viewer，不再制作第二套假预览。
-- 预览完全只读，并隔离 DX 自动注入、MVU 导入和世界书写入。
-- 完成后停止。
+- 实现状态与最终实机验收见 5.4；v0.1.8 不再重复实现第二份 Preview。
+- 后续这里只处理 Preview 被实际使用后发现的独立缺陷，不扩展成另一套 Viewer。
 
 #### Checkpoint 10 — Gallery / status compatibility Creator UX
 
