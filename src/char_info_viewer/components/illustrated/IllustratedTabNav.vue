@@ -1,42 +1,46 @@
 <template>
   <nav class="illustrated-tabs" :class="{ 'is-side-rail': sideRail }" aria-label="角色资料分页">
-    <button
-      v-if="homeTab"
-      class="illustrated-tab-button illustrated-home-button"
-      :class="{ active: activeTab === homeTab.key }"
-      :aria-current="activeTab === homeTab.key ? 'page' : undefined"
-      type="button"
-      @click="$emit('setTab', homeTab.key)"
-    >
-      <span v-if="sideRail" class="illustrated-tab-icon" aria-hidden="true">{{ tabIcon(homeTab.key) }}</span>
-      <span class="illustrated-tab-label">{{ homeTab.label }}</span>
-    </button>
-
-    <div class="illustrated-tab-scroll">
+    <div class="illustrated-tab-navigation-group">
       <button
-        v-for="tab in detailTabs"
-        :key="tab.key"
-        class="illustrated-tab-button"
-        :class="{ active: activeTab === tab.key }"
-        :aria-current="activeTab === tab.key ? 'page' : undefined"
+        v-if="homeTab"
+        class="illustrated-tab-button illustrated-home-button"
+        :class="{ active: activeTab === homeTab.key }"
+        :aria-current="activeTab === homeTab.key ? 'page' : undefined"
         type="button"
-        @click="$emit('setTab', tab.key)"
+        @click="$emit('setTab', homeTab.key)"
       >
-        <span v-if="sideRail" class="illustrated-tab-icon" aria-hidden="true">{{ tabIcon(tab.key) }}</span>
-        <span class="illustrated-tab-label">{{ tab.label }}</span>
+        <span v-if="sideRail" class="illustrated-tab-icon" aria-hidden="true">{{ tabIcon(homeTab.key) }}</span>
+        <span class="illustrated-tab-label">{{ homeTab.label }}</span>
       </button>
+
+      <div class="illustrated-tab-scroll">
+        <button
+          v-for="tab in detailTabs"
+          :key="tab.key"
+          class="illustrated-tab-button"
+          :class="{ active: activeTab === tab.key }"
+          :aria-current="activeTab === tab.key ? 'page' : undefined"
+          type="button"
+          @click="$emit('setTab', tab.key)"
+        >
+          <span v-if="sideRail" class="illustrated-tab-icon" aria-hidden="true">{{ tabIcon(tab.key) }}</span>
+          <span class="illustrated-tab-label">{{ tab.label }}</span>
+        </button>
+      </div>
     </div>
 
-    <button
-      v-if="showImportAction"
-      class="illustrated-nav-save-button"
-      :disabled="importing"
-      type="button"
-      aria-label="保存或导入"
-      @click.stop="$emit('toggleImportMenu')"
-    >
-      {{ importing ? '保存中' : '保存' }}
-    </button>
+    <div v-if="showImportAction" class="illustrated-nav-action">
+      <button
+        class="illustrated-nav-save-button"
+        :disabled="importing"
+        type="button"
+        aria-label="保存或导入"
+        @click.stop="$emit('toggleImportMenu')"
+      >
+        <span class="illustrated-save-icon" aria-hidden="true">↓</span>
+        <span>{{ importing ? '保存中' : '保存' }}</span>
+      </button>
+    </div>
   </nav>
 </template>
 
@@ -76,6 +80,11 @@ function tabIcon(key: IllustratedTabKey): string {
 </script>
 
 <style scoped>
+.illustrated-tab-navigation-group,
+.illustrated-nav-action {
+  display: contents;
+}
+
 .illustrated-tabs {
   position: relative;
   z-index: 5;
@@ -164,6 +173,10 @@ function tabIcon(key: IllustratedTabKey): string {
   padding-left: 12px;
 }
 
+.illustrated-save-icon {
+  display: none;
+}
+
 .illustrated-nav-save-button {
   position: relative;
   flex: 0 0 auto;
@@ -242,7 +255,7 @@ function tabIcon(key: IllustratedTabKey): string {
     width: 72px;
     min-height: 0;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     margin: 0;
     border-top: 0;
     border-left: 1px solid rgba(255, 255, 255, 0.08);
@@ -250,11 +263,61 @@ function tabIcon(key: IllustratedTabKey): string {
     background: rgba(4, 5, 9, 0.82);
   }
 
+  .illustrated-tabs.is-side-rail .illustrated-tab-navigation-group {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: center;
+  }
+
   .illustrated-tabs.is-side-rail .illustrated-tab-scroll {
     flex: 0 1 auto;
     flex-direction: column;
     gap: 3px;
     overflow: visible;
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-nav-action {
+    display: flex;
+    flex: 0 0 auto;
+    width: 100%;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.22);
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-nav-save-button {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    min-height: 62px;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 7px 3px;
+    color: var(--illustrated-race-accent);
+    background: rgba(var(--illustrated-race-accent-rgb), 0.1);
+    border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.26);
+    border-radius: 10px;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-nav-save-button:hover:not(:disabled) {
+    background: rgba(var(--illustrated-race-accent-rgb), 0.16);
+    border-color: rgba(var(--illustrated-race-accent-rgb), 0.42);
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-save-icon {
+    display: block;
+    font-size: 15px;
+    line-height: 1;
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-nav-save-button::after {
+    display: none;
   }
 
   .illustrated-tabs.is-side-rail .illustrated-tab-button,

@@ -25,6 +25,9 @@ test('Special NPC 沿用有立绘页面，并将导航作为桌面右侧栏和�
   assert.match(navigation, /@media \(min-width: 901px\)/);
   assert.match(navigation, /flex:\s*0 0 72px/);
   assert.match(navigation, /illustrated-tab-icon/);
+  assert.match(navigation, /\.illustrated-tabs\.is-side-rail \.illustrated-tab-navigation-group\s*\{[\s\S]*?flex:\s*1 1 auto;[\s\S]*?justify-content:\s*center/);
+  assert.match(navigation, /\.illustrated-tabs\.is-side-rail \.illustrated-nav-action\s*\{[\s\S]*?margin-top:\s*10px;[\s\S]*?border-top:/);
+  assert.match(navigation, /\.illustrated-tabs\.is-side-rail \.illustrated-nav-save-button\s*\{[\s\S]*?flex-direction:\s*column;[\s\S]*?border-radius:\s*10px/);
   assert.match(navigation, /grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\)/);
   assert.match(navigation, /\.illustrated-tabs\.is-side-rail \.illustrated-tab-scroll\s*\{[\s\S]*?display:\s*contents/);
   assert.doesNotMatch(navigation, /\b(?:d)?vh\b/);
