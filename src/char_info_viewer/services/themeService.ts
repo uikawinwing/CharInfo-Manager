@@ -3,7 +3,9 @@ import { isLoadedDxCharacterData } from '../dx';
 import { resolveGalleryExtension } from './galleryPackService.ts';
 
 const SPECIAL_NPC_VISUAL_BRAND = Symbol('char_info_special_npc_visual');
+const DEPRECATED_VISUAL_SYNTAX_BRAND = Symbol('char_info_deprecated_visual_syntax');
 type SpecialNpcVisualData = CharacterData & { [SPECIAL_NPC_VISUAL_BRAND]?: true };
+type DeprecatedVisualSyntaxData = CharacterData & { [DEPRECATED_VISUAL_SYNTAX_BRAND]?: true };
 
 function brandSpecialNpcVisualData(data: CharacterData): CharacterData {
   Object.defineProperty(data, SPECIAL_NPC_VISUAL_BRAND, {
@@ -16,6 +18,19 @@ function brandSpecialNpcVisualData(data: CharacterData): CharacterData {
 
 export function isSpecialNpcVisualData(data: CharacterData): boolean {
   return (data as SpecialNpcVisualData)[SPECIAL_NPC_VISUAL_BRAND] === true;
+}
+
+function brandDeprecatedVisualSyntaxData(data: CharacterData): CharacterData {
+  Object.defineProperty(data, DEPRECATED_VISUAL_SYNTAX_BRAND, {
+    value: true,
+    enumerable: false,
+    configurable: false,
+  });
+  return data;
+}
+
+export function hasDeprecatedVisualSyntax(data: CharacterData): boolean {
+  return (data as DeprecatedVisualSyntaxData)[DEPRECATED_VISUAL_SYNTAX_BRAND] === true;
 }
 
 export const raceColorMap: Record<string, string> = {
@@ -201,6 +216,26 @@ function resolveCharacterName(data: CharacterData): string {
   return typeof data.姓名 === 'string' ? data.姓名.trim() : '';
 }
 
+function hasUntrustedImageSyntax(data: CharacterData): boolean {
+  return [data.角色图片, data.立绘, data.特殊立绘, data.图片, data.portrait, data.image].some(
+    value => typeof value === 'string' && value.trim().length > 0,
+  );
+}
+
+function stripUntrustedImageData(data: CharacterData): CharacterData {
+  const resolved = { ...data };
+  delete resolved.角色图片;
+  delete resolved.立绘;
+  delete resolved.特殊立绘;
+  delete resolved.图片;
+  delete resolved.portrait;
+  delete resolved.image;
+  delete resolved.__char_info_image_urls;
+  delete resolved.__char_info_image_source_groups;
+  delete resolved.__char_info_randomize_initial_image;
+  return resolved;
+}
+
 function resolveNamedVisualConfig(data: CharacterData, chatVariables: Record<string, unknown>): unknown {
   const name = resolveCharacterName(data);
   if (!name) return undefined;
@@ -296,17 +331,17 @@ export function resolveCharacterVisualConfig(
 ): CharacterData {
   if (isLoadedDxCharacterData(data)) return data;
 
-  const rawImage = typeof data.角色图片 === 'string' ? data.角色图片.trim() : '';
-  const placeholder = rawImage.match(/^\[\[([a-z0-9][a-z0-9_-]*)\]\]$/i);
+  const hasLegacySyntax = hasUntrustedImageSyntax(data);
+  const baseData = stripUntrustedImageData(data);
   const namedVisualConfig = resolveNamedVisualConfig(data, chatVariables);
 
   if (namedVisualConfig !== undefined) {
-    const resolved = applyVisualConfig(data, namedVisualConfig, false);
-    return visualConfigHasImage(namedVisualConfig) ? brandSpecialNpcVisualData(resolved) : resolved;
+    const resolved = applyVisualConfig(baseData, namedVisualConfig, false);
+    if (visualConfigHasImage(namedVisualConfig)) return brandSpecialNpcVisualData(resolved);
+    return hasLegacySyntax ? brandDeprecatedVisualSyntaxData(resolved) : resolved;
   }
 
-  if (placeholder) return applyVisualConfig(data, chatVariables[placeholder[1]], true);
-  return data;
+  return hasLegacySyntax ? brandDeprecatedVisualSyntaxData(baseData) : baseData;
 }
 
 export async function resolveCharacterVisualConfigWithExtensions(
@@ -315,19 +350,19 @@ export async function resolveCharacterVisualConfigWithExtensions(
 ): Promise<CharacterData> {
   if (isLoadedDxCharacterData(data)) return data;
 
-  const rawImage = typeof data.角色图片 === 'string' ? data.角色图片.trim() : '';
-  const placeholder = rawImage.match(/^\[\[([a-z0-9][a-z0-9_-]*)\]\]$/i);
+  const hasLegacySyntax = hasUntrustedImageSyntax(data);
+  const baseData = stripUntrustedImageData(data);
   const namedVisualConfig = resolveNamedVisualConfig(data, chatVariables);
   const extendedVisualConfig =
     namedVisualConfig === undefined ? undefined : await resolveGalleryExtension(namedVisualConfig);
 
   if (extendedVisualConfig !== undefined) {
-    const resolved = applyVisualConfig(data, extendedVisualConfig, false);
-    return visualConfigHasImage(extendedVisualConfig) ? brandSpecialNpcVisualData(resolved) : resolved;
+    const resolved = applyVisualConfig(baseData, extendedVisualConfig, false);
+    if (visualConfigHasImage(extendedVisualConfig)) return brandSpecialNpcVisualData(resolved);
+    return hasLegacySyntax ? brandDeprecatedVisualSyntaxData(resolved) : resolved;
   }
 
-  if (placeholder) return applyVisualConfig(data, chatVariables[placeholder[1]], true);
-  return data;
+  return hasLegacySyntax ? brandDeprecatedVisualSyntaxData(baseData) : baseData;
 }
 
 export function harmonizeAccent(

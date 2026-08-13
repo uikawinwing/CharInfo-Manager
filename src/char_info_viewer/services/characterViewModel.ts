@@ -8,7 +8,7 @@ import {
 import type { CharacterData } from '../types';
 import { getSmartArray, hasArrayContent, hasText, normalizeDisplayText } from './common';
 import { prioritizeImageSourceGroups } from './imageSourcePriority';
-import { normalizeImageUrlForBrowser, normalizePortraitMediaUrlForBrowser } from './imageUrl';
+import { normalizePortraitMediaUrlForBrowser } from './imageUrl';
 import { isSpecialNpcVisualData } from './themeService';
 
 export type TabKey =
@@ -395,7 +395,8 @@ function resolveCharacterImage(
   presentationProfile: CharacterPresentationProfile | null,
 ): CharacterImageResolution {
   const isDxProfile = presentationProfile?.edition === 'dx';
-  const configuredSourceGroups = isDxProfile ? [] : resolveConfiguredImageSourceGroups(data);
+  const configuredSourceGroups =
+    isDxProfile || (!presentationProfile && !isSpecialNpcVisualData(data)) ? [] : resolveConfiguredImageSourceGroups(data);
   const configuredUrls = configuredSourceGroups.map(sources => sources[0]);
 
   if (presentationProfile) {
@@ -410,14 +411,11 @@ function resolveCharacterImage(
     };
   }
 
-  const fromData = textFromUnknown(pickField(data, '特殊立绘', '角色图片', '立绘', '图片', 'portrait', 'image'));
-  if (fromData) {
-    const url = normalizePortraitMediaUrlForBrowser(fromData)?.url ?? normalizeImageUrlForBrowser(fromData);
-    const urls = configuredUrls.length > 0 ? configuredUrls : [url];
+  if (configuredUrls.length > 0) {
     return {
-      url: urls[0],
-      urls,
-      sourceGroups: configuredSourceGroups.length > 0 ? configuredSourceGroups : urls.map(url => [url]),
+      url: configuredUrls[0],
+      urls: configuredUrls,
+      sourceGroups: configuredSourceGroups,
       randomizeInitialImage: configuredUrls.length > 1 && data.__char_info_randomize_initial_image === true,
       source: 'data',
     };

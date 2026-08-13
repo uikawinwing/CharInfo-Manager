@@ -75,6 +75,9 @@
       <div v-if="looseParseWarning" class="parse-warning-card">
         {{ looseParseWarning }}
       </div>
+      <div v-if="deprecatedVisualSyntaxWarning" class="parse-warning-card">
+        {{ deprecatedVisualSyntaxWarning }}
+      </div>
 
       <IllustratedCharacterSheet
         v-if="(shouldShowIllustratedLayout || shouldShowSpecialNpcLayout) && vm"
@@ -505,7 +508,12 @@ import {
 } from './services/characterViewModel';
 import { importToMvuVariables, mergeDxCharacterIntoMvuData, saveToChatWorldbook } from './services/importService';
 import { createParticleEngine, type ParticleEngine } from './services/particleEngine';
-import { applyTheme, resolveCharacterVisualConfigWithExtensions, resolveTheme } from './services/themeService';
+import {
+  applyTheme,
+  hasDeprecatedVisualSyntax,
+  resolveCharacterVisualConfigWithExtensions,
+  resolveTheme,
+} from './services/themeService';
 import { parseCharacterYaml, parseCharacterYamlLoose } from './services/yamlParser';
 import {
   cloneLoadedDxCharacterDataWithOverrides,
@@ -543,6 +551,7 @@ const parseError = ref<FriendlyYamlError | null>(null);
 const originalYamlText = ref('');
 const parseMode = ref<'strict' | 'loose' | 'builtin'>('strict');
 const parseWarnings = ref<string[]>([]);
+const deprecatedVisualSyntaxWarning = ref('');
 const looseParsing = ref(false);
 const initializingViewer = ref(true);
 const loadingDxCharacter = ref(false);
@@ -874,6 +883,9 @@ async function applyParsedCharacterData(
     data,
     getVariables({ type: 'chat' }),
   );
+  deprecatedVisualSyntaxWarning.value = hasDeprecatedVisualSyntax(resolvedData)
+    ? '检测到旧版角色图片语法。当前版本已不再支持此写法，因此本角色将以普通无图版显示。若你是该角色的作者，请在角色视觉编辑器中重新保存，以升级至 v2。'
+    : '';
   sheetData.value =
     props.entranceQuoteOverride === undefined
       ? resolvedData

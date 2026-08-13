@@ -7,7 +7,7 @@ test('主题服务提供聊天变量视觉配置解析入口', () => {
   assert.equal(typeof resolveCharacterVisualConfig, 'function');
 });
 
-test('一个角色图片占位符读取 URL 和两种自定义颜色', () => {
+test('普通角色图片占位符不读取任意变量中的图片或配色', () => {
   const data = resolveCharacterVisualConfig(
     {
       姓名: '傲雪',
@@ -22,9 +22,9 @@ test('一个角色图片占位符读取 URL 和两种自定义颜色', () => {
     },
   );
 
-  assert.equal(data.角色图片, 'https://example.com/aoxue.png');
-  assert.equal(data.custom_racecolor, '#78C8F0');
-  assert.equal(data.custom_tiercolor, '#A855F7');
+  assert.equal(data.角色图片, undefined);
+  assert.equal(data.custom_racecolor, undefined);
+  assert.equal(data.custom_tiercolor, undefined);
 });
 
 test('没有角色图片字段时按姓名读取 CharInfo 自有资料，并读取配色和登场台词', () => {
@@ -250,7 +250,7 @@ test('姓名视觉配置缺失时保持普通资料；图片无效时仍应用�
   assert.equal(invalid.登场台词, '不应注入');
 });
 
-test('旧版字符串图片变量仍可由同一种占位符读取', () => {
+test('普通字符串图片变量占位符不再作为 Viewer 图片来源', () => {
   const data = resolveCharacterVisualConfig(
     {
       姓名: '傲雪',
@@ -261,12 +261,12 @@ test('旧版字符串图片变量仍可由同一种占位符读取', () => {
     },
   );
 
-  assert.equal(data.角色图片, 'https://example.com/aoxue.png');
+  assert.equal(data.角色图片, undefined);
   assert.equal(data.custom_racecolor, undefined);
   assert.equal(data.custom_tiercolor, undefined);
 });
 
-test('错误或缺失的占位符配置不会成为图片 URL 或 CSS 颜色', () => {
+test('普通图片占位符无论配置是否存在都完全忽略', () => {
   const invalid = resolveCharacterVisualConfig(
     {
       姓名: '傲雪',
@@ -288,10 +288,10 @@ test('错误或缺失的占位符配置不会成为图片 URL 或 CSS 颜色', (
     {},
   );
 
-  assert.equal(invalid.角色图片, '');
+  assert.equal(invalid.角色图片, undefined);
   assert.equal(invalid.custom_racecolor, undefined);
   assert.equal(invalid.custom_tiercolor, undefined);
-  assert.equal(missing.角色图片, '');
+  assert.equal(missing.角色图片, undefined);
 });
 
 test('自定义种族色和层级色覆盖自动主题色', () => {

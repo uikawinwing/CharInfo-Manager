@@ -59,7 +59,7 @@ test('非 DX 角色的正文显式图片不再授予 Special NPC 布局', () => 
   });
 
   assert.equal(vm.layoutKind, 'default');
-  assert.equal(vm.imageUrl, 'https://example.com/aoxue.png');
+  assert.equal(vm.imageUrl, '');
   assert.equal(vm.presentationProfile, null);
 });
 
@@ -384,11 +384,23 @@ test('inject_var 与 display_only 只由 DX 引用入口解释，手动导入使
 test('gallery keeps animated GIF and MP4 URLs away from the static Catbox image proxy', () => {
   const gifUrl = 'https://files.catbox.moe/animated.gif';
   const mp4Url = 'https://files.catbox.moe/animated.mp4';
-  const vm = buildCharacterViewModel({
-    姓名: '动态媒体角色',
-    角色图片: 'https://files.catbox.moe/main.png',
-    __char_info_image_urls: ['https://files.catbox.moe/main.png', gifUrl, mp4Url],
-  });
+  const data = resolveCharacterVisualConfig(
+    { 姓名: '动态媒体角色' },
+    {
+      char_info: {
+        profiles: {
+          动态媒体角色: {
+            gallery: [
+              { sources: ['https://files.catbox.moe/main.png'] },
+              { sources: [gifUrl] },
+              { sources: [mp4Url] },
+            ],
+          },
+        },
+      },
+    },
+  );
+  const vm = buildCharacterViewModel(data);
 
   assert.equal(vm.imageUrls[1], gifUrl);
   assert.equal(vm.imageUrls[2], mp4Url);

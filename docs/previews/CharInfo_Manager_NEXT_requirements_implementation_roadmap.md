@@ -296,7 +296,7 @@ v0.1.7 不增加新的视觉设计或故事功能。目标是把当前工作线�
 
 - DX 只认可信 DX placeholder + loader；不得通过姓名、profile、metadata 或手造字段升级。
 - Special NPC 只由 `char_info.profiles[姓名]` 与暂时兼容的 `char_info_visuals[姓名]` 授予。
-- `<char_info>` 内图片 URL、普通变量占位符及其他图片字段不得改变普通／Special 路由。
+- `<char_info>` 内直接图片 URL、普通变量占位符及其他旧图片字段一律忽略，不进入 Viewer 图片数据；角色回退为真正的无图 Normal，并复用现有解析 warning 样式提示作者在角色视觉编辑器中重新保存、升级至 v2。
 - Viewer Runtime 停止把 `status.externalGalleries` 迁移并写回 `char_info.profiles`；Viewer 保持只读。
 - 旧 status gallery 如需兼容，只能作为只读 fallback；显式迁移与兼容输出留给 Creator 后续功能。
 - 普通无图版不得因本 checkpoint 发生布局或视觉变化。
