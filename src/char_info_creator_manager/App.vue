@@ -620,10 +620,22 @@
                   {{ saveMessage }}
                 </strong>
                 <span v-if="validationErrors.length">{{ validationErrors[0] }}</span>
+                <span v-if="applyMessage">{{ applyMessage }}</span>
               </div>
-              <button class="primary-button" type="submit" :disabled="!canSave">
-                {{ saving ? '正在写入…' : '保存并写入所选条目' }}
-              </button>
+              <div class="save-actions">
+                <button
+                  v-if="saveState === 'success'"
+                  class="secondary-button"
+                  type="button"
+                  :disabled="applyingSavedProfile"
+                  @click="applySavedProfileToCurrentChat"
+                >
+                  {{ applyingSavedProfile ? '正在应用…' : '应用已保存版本到当前聊天' }}
+                </button>
+                <button class="primary-button" type="submit" :disabled="!canSave">
+                  {{ saving ? '正在写入…' : '保存并写入所选条目' }}
+                </button>
+              </div>
             </div>
           </section>
         </form>
@@ -653,6 +665,7 @@ import {
   createEmptyProfile,
   DEFAULT_RACE_COLOR,
   DEFAULT_TIER_COLOR,
+  extractManagedEjsBlock,
   hasUnmanagedVisualEjs,
   inspectManagedBlock,
   isHttpsUrl,
@@ -669,6 +682,7 @@ import {
   serializeGalleryPackWorkshopSource,
 } from './galleryPackStorage';
 import { buildWorldbookList } from '../char_info_shared/worldbookList';
+import { evaluateManagedEjs } from './ejsRuntime';
 
 interface EditableGalleryImage {
   id: number;
@@ -688,8 +702,9 @@ const props = withDefaults(
     initialWorldbookName?: string;
     initialEntryUid?: number;
     debugEnabled?: boolean;
+    onForceRefresh?: () => void | Promise<void>;
   }>(),
-  { initialWorldbookName: '', initialEntryUid: undefined, debugEnabled: false },
+  { initialWorldbookName: '', initialEntryUid: undefined, debugEnabled: false, onForceRefresh: undefined },
 );
 const emit = defineEmits<{ close: [] }>();
 const steps: { id: StepId; shortLabel: string; title: string }[] = [
@@ -725,8 +740,10 @@ const galleryProfileId = ref('');
 const loadingGalleryExtension = ref(false);
 const galleryExtensionMessage = ref('');
 const saving = ref(false);
+const applyingSavedProfile = ref(false);
 const saveState = ref<'idle' | 'success' | 'error'>('idle');
 const saveMessage = ref('选择世界书条目后即可写入。');
+const applyMessage = ref('');
 const galleryPackDownloadMessage = ref('');
 let nextImageId = 1;
 const loadError = ref('');
@@ -1493,6 +1510,47 @@ async function saveToEntry() {
   }
 }
 
+async function applySavedProfileToCurrentChat() {
+  const worldbookName = selectedWorldbookName.value;
+  const entry = selectedEntry.value;
+  if (!entry || applyingSavedProfile.value) return;
+
+  applyingSavedProfile.value = true;
+  applyMessage.value = '正在只执行当前角色的 CharInfo 受管理 EJS…';
+  try {
+    const latestEntries = await getWorldbook(worldbookName);
+    const latestEntry = latestEntries.find(item => item.uid === entry.uid);
+    if (!latestEntry) throw new Error(`找不到世界书条目 #${entry.uid}。`);
+
+    const managed = extractManagedEjsBlock(latestEntry.content);
+    await evaluateManagedEjs(managed.code, props.debugEnabled);
+
+    const chatVariables = getVariables({ type: 'chat' });
+    const charInfo = chatVariables.char_info;
+    const profiles = charInfo && typeof charInfo === 'object' ? (charInfo as { profiles?: unknown }).profiles : undefined;
+    const appliedProfile =
+      profiles && typeof profiles === 'object'
+        ? (profiles as Record<string, unknown>)[managed.profile.characterName]
+        : undefined;
+    if (!appliedProfile || typeof appliedProfile !== 'object') {
+      throw new Error('EJS 已执行，但当前聊天变量中没有读回该角色的 CharInfo profile。');
+    }
+
+    await props.onForceRefresh?.();
+    applyMessage.value = `已把「${managed.profile.characterName}」的已保存视觉资料应用到当前聊天并强制刷新 CharInfo。`;
+    console.info('[CharInfo Creator Manager] Managed EJS applied to current chat', {
+      worldbook: worldbookName,
+      entryUid: entry.uid,
+      character: managed.profile.characterName,
+    });
+  } catch (error) {
+    console.error('[CharInfo Creator Manager] Failed to apply managed EJS:', error);
+    applyMessage.value = `应用失败：${error instanceof Error ? error.message : String(error)}`;
+  } finally {
+    applyingSavedProfile.value = false;
+  }
+}
+
 watch(selectedWorldbookName, worldbookName => {
   entrySearch.value = '';
   entryPickerOpen.value = false;
@@ -1873,6 +1931,13 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+}
+
+.save-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .step-label {

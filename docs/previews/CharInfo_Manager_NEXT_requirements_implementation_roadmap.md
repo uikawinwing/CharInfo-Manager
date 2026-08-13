@@ -209,7 +209,7 @@ galleryExtension
 
 状态：⬜
 
-当前 Creator 只有单张相册图片预览，不是完整 Viewer。
+当前 Creator 只有单张相册图片预览，不是完整 Viewer。v0.1.7 增加的“应用已保存版本到当前聊天”只用于作者保存后精确执行当前角色的 CharInfo managed EJS 并强制刷新，不等于真实 Viewer 草稿预览。
 
 尚未实现：
 
@@ -332,7 +332,8 @@ v0.1.7 不增加新的视觉设计或故事功能。目标是把当前工作线�
 - Chrome Network / DOM 与源码对照发现：角色静态 Catbox PNG 原本会被 Viewer / Creator 改写成 `wsrv.nl` proxy URL，导致无法复用其他脚本／预加载器已缓存的原始 Catbox URL，并增加一次代理回源。v0.1.7 已让角色立绘与 Creator Preview 保留作者原始 URL；DX 明确使用的背景 proxy 不改。
 - 主立绘仍保留浏览器 `loading="lazy"`；先只修已确认的 proxy/cache mismatch，不同时修改第二个性能变量。若现场仍明显偏慢，再继续测 lazy-load 时序。
 - Current NPC Panel 的心里话覆盖曾丢失 Special NPC 内部视觉身份，已修复并在当前 SillyTavern 实机确认千爻保持 Special NPC 有图版。
-- 当前角色列表的 ↻ 仅重新读取 latest MVU snapshot + chat variables，不会重跑世界书 EJS、reload 脚本或重新挂载聊天卡；v0.1.7 收尾前需决定删除，或明确改成“重新读取 + 强制重渲染 CharInfo”。EJS 重跑不得隐式绑定普通刷新动作。
+- ✅ 当前角色列表的 ↻ 已改成 Force Refresh CharInfo：重新读取 latest MVU snapshot + chat variables，并对当前 active CharInfo floors 做受控 teardown / remount；不隐式执行任何世界书 EJS。
+- ✅ Creator 保存成功后可“应用已保存版本到当前聊天”：只提取当前条目中通过 `inspectManagedBlock()` 验证的 CharInfo managed EJS，并通过 ST-Prompt-Template `prepareContext()` + `evalTemplate()` 精确执行该片段；不触发其他世界书条目，执行后验证 chat variables 并调用同一 Force Refresh。完整 draft Viewer Preview 仍留在后续 Checkpoint 9。
 - 仍需完成 Special NPC 桌面／手机、普通无图版、可信 DX、Editor lifecycle、Save 两种写入、图片 fallback 故障注入、Debug Console / Network 的最终实际回归。
 - 运行 lint、test、build，并检查最终 diff、production DX 泄漏与只读边界。
 - v0.1.7 完成后停止。

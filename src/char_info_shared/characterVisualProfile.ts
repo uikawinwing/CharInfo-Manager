@@ -316,6 +316,24 @@ export function hasUnmanagedVisualEjs(content: string): boolean {
   );
 }
 
+export function extractManagedEjsBlock(content: string): { profile: CharacterVisualProfile; code: string } {
+  const inspection = inspectManagedBlock(content);
+  if (inspection.state !== 'valid') {
+    throw new Error(
+      inspection.state === 'absent'
+        ? '当前条目没有 CharInfo 受管理 EJS。'
+        : inspection.state === 'malformed' || inspection.state === 'multiple'
+          ? inspection.reason
+          : '无法读取 CharInfo 受管理 EJS。',
+    );
+  }
+
+  return {
+    profile: inspection.profile,
+    code: content.slice(inspection.start, inspection.end),
+  };
+}
+
 export function buildManagedEjsBlock(input: CharacterVisualProfile): string {
   const profile = normalizeProfile(input);
   const errors = validateProfile(profile);

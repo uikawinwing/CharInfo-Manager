@@ -277,6 +277,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         entryUid,
         forceMobileLayout: state.settings.forceMobileLayout,
         debugEnabled: state.settings.debugEnabled,
+        onForceRefresh: forceRefreshCharInfo,
       });
       closeWorldbookLibrary();
     } catch (error) {
@@ -428,6 +429,24 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     });
   };
 
+  const forceRefreshCharInfo = async () => {
+    await refreshLibrary();
+    if (!started) return;
+
+    const messageIds = Array.from(activeFloorIds);
+    messageIds.forEach(messageId => {
+      remountAttempts.delete(messageId);
+      removeMessage(messageId);
+    });
+    messageIds.forEach(messageId => {
+      try {
+        renderMessage(messageId);
+      } catch (error) {
+        console.error(`[CharInfo Runtime] 第 ${messageId} 楼强制刷新失败：`, error);
+      }
+    });
+  };
+
   const flushDirtyMessages = () => {
     dirtyFlushTimer = null;
     if (!started) return;
@@ -572,7 +591,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         state,
         onCloseLibraryList: closeLibraryList,
         onCloseLibraryViewer: closeLibraryViewer,
-        onRefreshLibrary: () => void refreshLibrary(),
+        onRefreshLibrary: () => void forceRefreshCharInfo(),
         onOpenLibraryList: openLibraryList,
         onOpenLibraryCharacter: openLibraryCharacter,
         onOpenWorldbookLibrary: openWorldbookLibrary,
