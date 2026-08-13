@@ -333,7 +333,7 @@ v0.1.7 不增加新的视觉设计或故事功能。目标是把当前工作线�
 - 主立绘仍保留浏览器 `loading="lazy"`；先只修已确认的 proxy/cache mismatch，不同时修改第二个性能变量。若现场仍明显偏慢，再继续测 lazy-load 时序。
 - Current NPC Panel 的心里话覆盖曾丢失 Special NPC 内部视觉身份，已修复并在当前 SillyTavern 实机确认千爻保持 Special NPC 有图版。
 - ✅ 当前角色列表的 ↻ 已改成 Force Refresh CharInfo：重新读取 latest MVU snapshot + chat variables，并对当前 active CharInfo floors 做受控 teardown / remount；不隐式执行任何世界书 EJS。
-- ✅ Creator 保存成功后可“应用已保存版本到当前聊天”：只提取当前条目中通过 `inspectManagedBlock()` 验证的 CharInfo managed EJS，并通过 ST-Prompt-Template `prepareContext()` + `evalTemplate()` 精确执行该片段；不触发其他世界书条目，执行后验证 chat variables 并调用同一 Force Refresh。完整 draft Viewer Preview 仍留在后续 Checkpoint 9。
+- ✅ Creator 保存成功后可“应用已保存版本到当前聊天”：只提取当前条目中通过 `inspectManagedBlock()` 验证的 CharInfo managed EJS，并通过 ST-Prompt-Template `prepareContext()` + `evalTemplate()` 精确执行该片段，再调用 `saveVariables()` 持久化 `setLocalVar()` 的修改；不触发其他世界书条目，随后验证 chat variables 并调用同一 Force Refresh。完整 draft Viewer Preview 仍留在后续 Checkpoint 9。
 - 仍需完成 Special NPC 桌面／手机、普通无图版、可信 DX、Editor lifecycle、Save 两种写入、图片 fallback 故障注入、Debug Console / Network 的最终实际回归。
 - 运行 lint、test、build，并检查最终 diff、production DX 泄漏与只读边界。
 - v0.1.7 完成后停止。

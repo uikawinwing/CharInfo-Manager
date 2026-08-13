@@ -30,6 +30,9 @@ test('精确 EJS 执行优先使用官方 evalTemplate API', async () => {
     async evaltemplate() {
       throw new Error('legacy casing should not be preferred');
     },
+    async saveVariables() {
+      calls.push(['saveVariables']);
+    },
   };
 
   await withFakeWindow(fakeWindow, () => evaluateManagedEjs('managed-only', true));
@@ -40,6 +43,7 @@ test('精确 EJS 执行优先使用官方 evalTemplate API', async () => {
   assert.deepEqual(calls[1][2], { marker: 'current-chat' });
   assert.equal(calls[1][3].logging, true);
   assert.equal(calls[1][3].when, 'char-info-creator-apply');
+  assert.deepEqual(calls[2], ['saveVariables']);
 });
 
 test('兼容本地旧 d.ts 的 evaltemplate 大小写', async () => {
@@ -54,8 +58,27 @@ test('兼容本地旧 d.ts 的 evaltemplate 大小写', async () => {
       evaluated = code;
       return '';
     },
+    async saveVariables() {},
   };
 
   await withFakeWindow(fakeWindow, () => evaluateManagedEjs('managed-only', false));
   assert.equal(evaluated, 'managed-only');
+});
+
+test('缺少 saveVariables 时拒绝假装应用成功', async () => {
+  const fakeWindow = {};
+  fakeWindow.parent = fakeWindow;
+  fakeWindow.EjsTemplate = {
+    async prepareContext() {
+      return {};
+    },
+    async evalTemplate() {
+      return '';
+    },
+  };
+
+  await assert.rejects(
+    withFakeWindow(fakeWindow, () => evaluateManagedEjs('managed-only', false)),
+    /未检测到 ST-Prompt-Template 的 EjsTemplate 接口/,
+  );
 });
