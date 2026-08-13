@@ -511,6 +511,7 @@ import { importToMvuVariables, mergeDxCharacterIntoMvuData, saveToChatWorldbook 
 import { createParticleEngine, type ParticleEngine } from './services/particleEngine';
 import {
   applyTheme,
+  cloneCharacterDataWithVisualOverrides,
   hasDeprecatedVisualSyntax,
   resolveCharacterVisualConfigWithExtensions,
   resolveTheme,
@@ -519,6 +520,7 @@ import { parseCharacterYaml, parseCharacterYamlLoose } from './services/yamlPars
 import {
   cloneLoadedDxCharacterDataWithOverrides,
   enqueueDxCharacterImport,
+  isLoadedDxCharacterData,
   loadDxCharacterReference,
   messageContainsDxCharacterReference,
   parseDxCharacterReference,
@@ -889,17 +891,22 @@ async function applyParsedCharacterData(
   deprecatedVisualSyntaxWarning.value = hasDeprecatedVisualSyntax(resolvedData)
     ? '检测到旧版角色图片语法。当前版本已不再支持此写法，因此本角色将以普通无图版显示。若你是该角色的作者，请在角色视觉编辑器中重新保存，以升级至 v2。'
     : '';
-  sheetData.value =
+  const displayData =
     props.entranceQuoteOverride === undefined
       ? resolvedData
-      : cloneLoadedDxCharacterDataWithOverrides(resolvedData, {
-          登场台词: props.entranceQuoteOverride,
-        });
+      : isLoadedDxCharacterData(resolvedData)
+        ? cloneLoadedDxCharacterDataWithOverrides(resolvedData, {
+            登场台词: props.entranceQuoteOverride,
+          })
+        : cloneCharacterDataWithVisualOverrides(resolvedData, {
+            登场台词: props.entranceQuoteOverride,
+          });
+  sheetData.value = displayData;
   illustratedFallbackActive.value = false;
   parseError.value = null;
   parseMode.value = mode;
   parseWarnings.value = warnings;
-  theme.value = resolveTheme(resolvedData);
+  theme.value = resolveTheme(displayData);
   if (viewerRootRef.value) applyTheme(theme.value, viewerRootRef.value);
 }
 

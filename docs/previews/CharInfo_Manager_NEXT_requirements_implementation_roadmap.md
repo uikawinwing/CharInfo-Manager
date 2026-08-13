@@ -101,7 +101,7 @@ src/char_info_viewer/dx/
 
 ### 3.4 Viewer 与 Creator Manager 模块边界
 
-状态：🟡 当前工作区先完成过双脚本拆分；v0.1.7 将重新合并为单安装脚本
+状态：✅ v0.1.7 已重新合并为单安装脚本；Viewer / Creator 内部职责继续分离
 
 - 对用户与发布只保留一个 CharInfo Manager 脚本，避免同时安装、更新和管理 Viewer / Creator 两份脚本。
 - 源码职责仍保持分离：Viewer Runtime 负责玩家功能，Creator Manager 只负责编辑和保存角色视觉资料。
@@ -146,8 +146,8 @@ src/char_info_viewer/dx/
 ### 4.2 图库功能
 
 - ✅ Viewer 玩家详情可以显示图片、视频和备用图床资料。
-- 🟡 立绘首页已有上一张／下一张与备用源代码，但真实页面存在 `URL0` 失败后无法可靠切到 `URL1` 的已知 bug；v0.1.7 必须重新验证并修复 Creator Preview 与 Special Viewer 两条路径。
-- 🟡 Runtime 目前会把 `status.externalGalleries.partners` 自动迁移并写回 `char_info.profiles`；这违反 Viewer 只读边界，v0.1.7 必须移除写回。旧 status gallery 可作为只读 fallback 来源。
+- ✅ v0.1.7 已补齐 Creator Preview 与 Special Viewer 的备用源状态机：`error`、长时间 pending 与失败页手动 Retry 都会按 `sources[]` 顺序前进，耗尽后才 wrap；仍待最终现场故障注入回归。
+- ✅ Viewer Runtime 已停止把 `status.externalGalleries.partners` 自动迁移并写回 `char_info.profiles`；Viewer 保持只读。旧 status gallery 的显式迁移与兼容输出留给 Creator 后续功能。
 - ⬜ status gallery 的显式 Import-to-draft、保存时兼容输出及安全移除旧 EJS 属于 Creator UX，默认放到 v0.1.8，不扩大 v0.1.7。
 - ⬜ 独立 Gallery Lightbox 尚未实现。
 - ⬜ 键盘左右键、Escape、手机滑动和手机底部关闭控制尚未实现。
@@ -327,9 +327,13 @@ v0.1.7 不增加新的视觉设计或故事功能。目标是把当前工作线�
 
 #### Checkpoint 5 — 图片加载异常与 v0.1.7 收尾
 
-- 使用 Chrome Network / DOM 先诊断同一 PNG 在 CharInfo 中明显更慢的原因。
-- 如果确认是重复请求、错误 proxy、lazy-load、retry 或其他实现 bug，则在 v0.1.7 修复；如果只是一般优化机会则记录并延期。
-- 完成 Special NPC 桌面／手机、普通无图版、可信 DX、Editor lifecycle、图片 fallback、Console / Network 的实际回归。
+状态：🟡 已确认并修复一条实际图片慢路径；最终现场回归与 Git 收口仍未完成。
+
+- Chrome Network / DOM 与源码对照发现：角色静态 Catbox PNG 原本会被 Viewer / Creator 改写成 `wsrv.nl` proxy URL，导致无法复用其他脚本／预加载器已缓存的原始 Catbox URL，并增加一次代理回源。v0.1.7 已让角色立绘与 Creator Preview 保留作者原始 URL；DX 明确使用的背景 proxy 不改。
+- 主立绘仍保留浏览器 `loading="lazy"`；先只修已确认的 proxy/cache mismatch，不同时修改第二个性能变量。若现场仍明显偏慢，再继续测 lazy-load 时序。
+- Current NPC Panel 的心里话覆盖曾丢失 Special NPC 内部视觉身份，已修复并在当前 SillyTavern 实机确认千爻保持 Special NPC 有图版。
+- 当前角色列表的 ↻ 仅重新读取 latest MVU snapshot + chat variables，不会重跑世界书 EJS、reload 脚本或重新挂载聊天卡；v0.1.7 收尾前需决定删除，或明确改成“重新读取 + 强制重渲染 CharInfo”。EJS 重跑不得隐式绑定普通刷新动作。
+- 仍需完成 Special NPC 桌面／手机、普通无图版、可信 DX、Editor lifecycle、Save 两种写入、图片 fallback 故障注入、Debug Console / Network 的最终实际回归。
 - 运行 lint、test、build，并检查最终 diff、production DX 泄漏与只读边界。
 - v0.1.7 完成后停止。
 

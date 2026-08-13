@@ -43,11 +43,10 @@ export function normalizePortraitMediaUrlForBrowser(url: string): NormalizedPort
 
   const pathname = parsed.pathname.toLowerCase();
   const kind: PortraitMediaKind = /\.(mp4|webm)$/.test(pathname) ? 'video' : 'image';
-  const shouldKeepOriginalImage = /\.(gif|apng|webp|avif)$/.test(pathname);
 
   return {
-    // 图片代理可能压平动画帧，也不能代理视频流。
-    url: kind === 'video' || shouldKeepOriginalImage ? trimmed : normalizeImageUrlForBrowser(trimmed),
+    // 立绘保留作者原始 URL，确保浏览器缓存、预加载与 sources fallback 使用同一资源地址。
+    url: trimmed,
     kind,
   };
 }

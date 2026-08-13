@@ -13,9 +13,12 @@ test('Catbox 动态 WebP、AVIF、GIF 和 APNG 保留原始 URL，避免代理�
   }
 });
 
-test('Catbox 普通 PNG 仍使用图片代理', () => {
-  const result = normalizePortraitMediaUrlForBrowser('https://files.catbox.moe/static.png');
+test('Catbox 静态立绘保留原始 URL，以复用浏览器缓存与作者 fallback 顺序', () => {
+  const url = 'https://files.catbox.moe/static.png';
+  const result = normalizePortraitMediaUrlForBrowser(url);
 
-  assert.equal(result.kind, 'image');
-  assert.match(result.url, /^https:\/\/wsrv\.nl\/\?url=/);
+  assert.deepEqual(result, {
+    url,
+    kind: 'image',
+  });
 });

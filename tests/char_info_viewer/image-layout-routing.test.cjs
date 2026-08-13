@@ -14,7 +14,10 @@ const {
   parseDxCharacterReference,
   resolveDxCharacterProfile,
 } = require('../../src/char_info_viewer/dx/index.ts');
-const { resolveCharacterVisualConfig } = require('../../src/char_info_viewer/services/themeService.ts');
+const {
+  cloneCharacterDataWithVisualOverrides,
+  resolveCharacterVisualConfig,
+} = require('../../src/char_info_viewer/services/themeService.ts');
 const { parseCharacterYaml } = require('../../src/char_info_viewer/services/yamlParser.ts');
 const appSource = readFileSync(path.join(__dirname, '../../src/char_info_viewer/App.vue'), 'utf8');
 const dxRegistrySource = readFileSync(path.join(__dirname, '../../src/char_info_viewer/dx/dx_character_profiles.worldentry.txt'), 'utf8');
@@ -156,6 +159,8 @@ test('App 只把保留占位符 loader 产物作为可信 DX 路由', () => {
     /cloneLoadedDxCharacterDataWithOverrides\(resolvedData, \{[\s\S]*?登场台词: props\.entranceQuoteOverride/u,
   );
   assert.match(appSource, /buildCharacterViewModel\(sheetData\.value, props\.imageSourcePriority\)/);
+  assert.match(appSource, /isLoadedDxCharacterData\(resolvedData\)[\s\S]*?cloneLoadedDxCharacterDataWithOverrides\(resolvedData/);
+  assert.match(appSource, /cloneCharacterDataWithVisualOverrides\(resolvedData, \{[\s\S]*?登场台词: props\.entranceQuoteOverride/);
 });
 
 test('未知 DX ref 不会阻止普通同名 profile 的图片、颜色和台词', () => {
@@ -180,6 +185,34 @@ test('未知 DX ref 不会阻止普通同名 profile 的图片、颜色和台词
   assert.equal(vm.imageUrl, 'https://example.com/ordinary.png');
   assert.equal(resolved.custom_tiercolor, '#654321');
   assert.equal(resolved.登场台词, '普通资料台词');
+});
+
+test('Current NPC 心里话覆盖后仍保留 Special NPC 视觉身份与图库', () => {
+  const resolved = resolveCharacterVisualConfig(
+    { 姓名: '千爻', 登场台词: '原始台词' },
+    {
+      char_info: {
+        profiles: {
+          千爻: {
+            gallery: [
+              { sources: ['https://example.com/qianyao-main.png', 'https://example.com/qianyao-backup.png'] },
+            ],
+          },
+        },
+      },
+    },
+  );
+  const overridden = cloneCharacterDataWithVisualOverrides(resolved, { 登场台词: '当前心里话' });
+  const vm = buildCharacterViewModel(overridden);
+
+  assert.equal(vm.layoutKind, 'special_npc');
+  assert.deepEqual(vm.imageUrls, [
+    'https://example.com/qianyao-main.png',
+  ]);
+  assert.deepEqual(vm.imageSourceGroups, [
+    ['https://example.com/qianyao-main.png', 'https://example.com/qianyao-backup.png'],
+  ]);
+  assert.equal(overridden.登场台词, '当前心里话');
 });
 
 test('DX loader 身份不随对象展开泄露，受控台词 clone 才保留 DX presentation', async t => {

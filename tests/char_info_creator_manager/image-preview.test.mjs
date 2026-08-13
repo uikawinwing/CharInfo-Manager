@@ -4,12 +4,11 @@ import test from 'node:test';
 
 import { normalizePortraitMediaUrlForBrowser } from '../../src/char_info_viewer/services/imageUrl.ts';
 
-test('管理器预览会代理 Catbox 静态图片', () => {
+test('管理器预览保留 Catbox 静态图片原始 URL，避免绕过浏览器缓存', () => {
   const originalUrl = 'https://files.catbox.moe/nx2kd6.png';
   const previewUrl = normalizePortraitMediaUrlForBrowser(originalUrl)?.url ?? '';
 
-  assert.match(previewUrl, /^https:\/\/wsrv\.nl\/\?url=/);
-  assert.match(decodeURIComponent(previewUrl), /files\.catbox\.moe\/nx2kd6\.png/);
+  assert.equal(previewUrl, originalUrl);
 });
 
 test('管理器预览保留动态图片与其他图床的原始地址', () => {

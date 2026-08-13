@@ -33,6 +33,19 @@ export function hasDeprecatedVisualSyntax(data: CharacterData): boolean {
   return (data as DeprecatedVisualSyntaxData)[DEPRECATED_VISUAL_SYNTAX_BRAND] === true;
 }
 
+export function cloneCharacterDataWithVisualOverrides(
+  data: CharacterData,
+  overrides: Pick<CharacterData, '登场台词'>,
+): CharacterData {
+  const clone: CharacterData = {
+    ...data,
+    ...(overrides.登场台词 === undefined ? {} : { 登场台词: overrides.登场台词 }),
+  };
+  if (isSpecialNpcVisualData(data)) brandSpecialNpcVisualData(clone);
+  if (hasDeprecatedVisualSyntax(data)) brandDeprecatedVisualSyntaxData(clone);
+  return clone;
+}
+
 export const raceColorMap: Record<string, string> = {
   神祗: '#FFFFFF',
   龙族: '#FFD700',
