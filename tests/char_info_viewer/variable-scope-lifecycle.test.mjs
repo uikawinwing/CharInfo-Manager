@@ -8,7 +8,7 @@ const themeSource = await readFile(new URL('src/char_info_viewer/services/themeS
 const importServiceSource = await readFile(new URL('src/char_info_viewer/services/importService.ts', repoRoot), 'utf8');
 const ejsProfileSource = await readFile(new URL('src/char_info_shared/characterVisualProfile.ts', repoRoot), 'utf8');
 const creatorManagerSource = await readFile(new URL('src/char_info_creator_manager/App.vue', repoRoot), 'utf8');
-const creatorManagerEntrySource = await readFile(new URL('src/char_info_creator_manager/index.ts', repoRoot), 'utf8');
+const creatorManagerControllerSource = await readFile(new URL('src/char_info_creator_manager/controller.ts', repoRoot), 'utf8');
 const viewerRuntimeSource = await readFile(new URL('src/char_info_viewer_runtime/runtime.ts', repoRoot), 'utf8');
 const previewBuilderSource = await readFile(new URL('docs/previews/char_info_ejs_builder.html', repoRoot), 'utf8');
 
@@ -64,7 +64,8 @@ test('角色库的 MVU 更新事件只触发刷新，资料始终重新读取 la
   assert.match(viewerRuntimeSource, /const startRevision = \+\+lifecycleRevision/);
   assert.match(viewerRuntimeSource, /!started \|\| lifecycleRevision !== startRevision/);
   assert.match(viewerRuntimeSource, /started = false;\s*lifecycleRevision \+= 1/);
-  assert.match(creatorManagerEntrySource, /eventOn\(tavern_events\.CHAT_CHANGED, destroyOverlays\)/);
+  assert.match(viewerRuntimeSource, /tavern_events\.CHAT_CHANGED[\s\S]*?closeCreatorEditor\(\)/);
+  assert.match(creatorManagerControllerSource, /overlay\?\.destroy\(\);[\s\S]*?overlay = null/);
 });
 
 test('Creator 首屏优先打开 Viewer 指定的世界书与条目，所有世界书切换路径共用单次读取', () => {

@@ -4,6 +4,10 @@ import test from 'node:test';
 
 const creatorAppSource = readFileSync(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
 const creatorEntrySource = readFileSync(new URL('../../src/char_info_creator_manager/index.ts', import.meta.url), 'utf8');
+const creatorControllerSource = readFileSync(
+  new URL('../../src/char_info_creator_manager/controller.ts', import.meta.url),
+  'utf8',
+);
 const creatorOverlaySource = readFileSync(new URL('../../src/char_info_creator_manager/overlay.ts', import.meta.url), 'utf8');
 const runtimeSource = readFileSync(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
 const runtimeRootSource = readFileSync(new URL('../../src/char_info_viewer_runtime/RuntimeRoot.vue', import.meta.url), 'utf8');
@@ -11,13 +15,12 @@ const playerLibrarySource = readFileSync(
   new URL('../../src/char_info_viewer_runtime/WorldbookCharacterLibrary.vue', import.meta.url),
   'utf8',
 );
-const creatorBundle = readFileSync(new URL('../../dist/char_info_creator_manager/index.js', import.meta.url), 'utf8');
 
 test('世界书角色库属于 Viewer，未加载 Creator 也可浏览图库和切换条目', () => {
   const openWorldbook = runtimeSource.match(/const openWorldbookLibrary = \(\) => \{([\s\S]*?)\n\s{2}\};/u)?.[1] ?? '';
   assert.match(runtimeRootSource, /<WorldbookCharacterLibrary/u);
   assert.match(runtimeSource, /state\.library\.worldbookOpen = true/u);
-  assert.doesNotMatch(openWorldbook, /getCreatorManagerHostBridge|creatorManager/u);
+  assert.doesNotMatch(openWorldbook, /openCreatorManager|closeCreatorManager/u);
   assert.match(playerLibrarySource, /角色图库/u);
   assert.match(playerLibrarySource, /toggleCharacter/u);
   assert.match(playerLibrarySource, /setCharacterEntryEnabled/u);
@@ -25,19 +28,20 @@ test('世界书角色库属于 Viewer，未加载 Creator 也可浏览图库和�
 });
 
 test('Creator Manager 只在玩家选择编辑时打开，并接收准确世界书与条目', () => {
-  assert.match(runtimeSource, /creatorManager\.open\(\{ worldbookName, entryUid, forceMobileLayout:/u);
-  assert.match(creatorEntrySource, /createCreatorManagerOverlay\(options\)/u);
+  assert.match(runtimeSource, /openCreatorManager\(\{ worldbookName, entryUid, forceMobileLayout:/u);
+  assert.match(creatorControllerSource, /createCreatorManagerOverlay\(options\)/u);
+  assert.match(creatorEntrySource, /export \{ closeCreatorManager, openCreatorManager \} from '\.\/controller';/u);
   assert.match(creatorOverlaySource, /initialWorldbookName: options\.worldbookName/u);
   assert.match(creatorOverlaySource, /initialEntryUid: options\.entryUid/u);
   assert.match(creatorAppSource, /props\.initialWorldbookName/u);
   assert.match(creatorAppSource, /entries\.value\.find\(entry => entry\.uid === props\.initialEntryUid\)/u);
 });
 
-test('Creator 的可达界面只有编辑器，不再提供玩家角色库入口', () => {
+test('Creator 模块的可达界面只有编辑器，不再提供玩家角色库入口', () => {
   assert.doesNotMatch(creatorAppSource, /class="manager-view-switch"/u);
   assert.doesNotMatch(creatorAppSource, /@click="switchManagerView\('library'\)"/u);
-  assert.doesNotMatch(creatorBundle, /世界书角色库|条目开关后的读回验证失败/u);
-  assert.match(creatorBundle, /角色视觉编辑器/u);
+  assert.doesNotMatch(creatorAppSource, /WorldbookCharacterLibrary|条目开关后的读回验证失败/u);
+  assert.match(creatorOverlaySource, /角色视觉编辑器/u);
 });
 
 test('玩家详情正文只读，只有 Creator 负责资料编辑与保存', () => {

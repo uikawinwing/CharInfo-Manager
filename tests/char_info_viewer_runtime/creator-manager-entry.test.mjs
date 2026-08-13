@@ -16,31 +16,35 @@ const creatorManagerSource = await readFile(
   new URL('../../src/char_info_creator_manager/App.vue', import.meta.url),
   'utf8',
 );
-const creatorManagerEntrySource = await readFile(
+const creatorManagerControllerSource = await readFile(
+  new URL('../../src/char_info_creator_manager/controller.ts', import.meta.url),
+  'utf8',
+);
+const creatorManagerIndexSource = await readFile(
   new URL('../../src/char_info_creator_manager/index.ts', import.meta.url),
   'utf8',
 );
-const bridgeSource = await readFile(
+const legacyBridgeSource = await readFile(
   new URL('../../src/char_info_shared/creatorManagerHostBridge.ts', import.meta.url),
   'utf8',
 );
 
-test('Viewer 自己提供玩家世界书库，只通过共享桥接打开 Creator 编辑器', () => {
+test('Viewer 与 Creator 共用一个脚本，但 Viewer 只依赖窄 Creator controller', () => {
   assert.doesNotMatch(runtimeSource, /appendInexistentScriptButtons/u);
   assert.doesNotMatch(runtimeSource, /getButtonEvent\('世界书角色库'\)/u);
   assert.doesNotMatch(runtimeSource, /char_info_creator_manager\/overlay/u);
-  assert.match(runtimeSource, /getCreatorManagerHostBridge\(\)/u);
+  assert.match(runtimeSource, /openCreatorManager/u);
+  assert.match(runtimeSource, /closeCreatorManager/u);
+  assert.doesNotMatch(runtimeSource, /getCreatorManagerHostBridge|registerCreatorManagerHostBridge/u);
+  assert.match(creatorManagerControllerSource, /createCreatorManagerOverlay/u);
+  assert.match(creatorManagerIndexSource, /export \{ closeCreatorManager, openCreatorManager \} from '\.\/controller';/u);
+  assert.doesNotMatch(legacyBridgeSource, /__charInfoCreatorManagerHostBridge|registerCreatorManagerHostBridge/u);
   assert.match(runtimeRootSource, /<WorldbookCharacterLibrary/u);
-  assert.match(runtimeSource, /state\.library\.worldbookOpen = true/u);
-  assert.match(creatorManagerEntrySource, /createCreatorManagerOverlay/u);
-  assert.match(creatorManagerEntrySource, /registerCreatorManagerHostBridge/u);
-  assert.match(bridgeSource, /CREATOR_MANAGER_HOST_BRIDGE_VERSION = 2/u);
   assert.match(runtimeRootSource, /当前聊天角色/u);
   assert.match(runtimeRootSource, /世界书角色/u);
-  assert.match(runtimeRootSource, /aria-label="打开世界书角色库"[\s\S]*?@click="props\.onOpenWorldbookLibrary"/u);
 });
 
-test('当前聊天与世界书角色库由 Viewer 独立切换，不依赖 Creator', () => {
+test('当前聊天与世界书角色库由 Viewer 独立切换，不依赖 Creator 状态', () => {
   const openCharacter =
     runtimeSource.match(/const openLibraryCharacter = \(name: string\) => \{([\s\S]*?)\n\s{2}\};/u)?.[1] ?? '';
   const openWorldbook = runtimeSource.match(/const openWorldbookLibrary = \(\) => \{([\s\S]*?)\n\s{2}\};/u)?.[1] ?? '';
@@ -50,7 +54,7 @@ test('当前聊天与世界书角色库由 Viewer 独立切换，不依赖 Creat
   assert.doesNotMatch(openCharacter, /library\.listOpen = false;/u);
   assert.match(openWorldbook, /closeLibrary\(\);/u);
   assert.match(openWorldbook, /state\.library\.worldbookOpen = true/u);
-  assert.doesNotMatch(openWorldbook, /getCreatorManagerHostBridge|creatorManager/u);
+  assert.doesNotMatch(openWorldbook, /openCreatorManager|closeCreatorManager/u);
   assert.match(
     runtimeSource,
     /const openCurrentChatLibrary = \(\) => \{[\s\S]*?closeWorldbookLibrary\(\);[\s\S]*?openLibraryList\(\);/u,
@@ -59,19 +63,17 @@ test('当前聊天与世界书角色库由 Viewer 独立切换，不依赖 Creat
   assert.match(runtimeRootSource, /@click="closeViewerWindow"/u);
   assert.match(runtimeRootSource, /onCloseLibraryList: \(\) => void;/u);
   assert.match(runtimeRootSource, /onCloseLibraryViewer: \(\) => void;/u);
-  assert.match(runtimeRootSource, /class="char-info-library-list-dialog"[\s\S]*?'with-viewer'/u);
-  assert.match(runtimeRootSource, /class="char-info-library-overlay"[\s\S]*?'with-list'/u);
 });
 
-test('角色视觉编辑器由 Creator Manager 的独立全屏 iframe 挂载，Viewer 不拥有其生命周期', () => {
-  assert.doesNotMatch(runtimeSource, /destroyCreatorEditor/u);
-  assert.doesNotMatch(runtimeSource, /char_info_creator_manager/u);
-  assert.match(creatorManagerEntrySource, /eventOn\(tavern_events\.CHAT_CHANGED, destroyOverlays\)/u);
-  assert.match(creatorManagerEntrySource, /chatChangedSubscription\.stop\(\)/u);
-  assert.match(creatorManagerEntrySource, /window\.addEventListener\('pagehide', destroy/u);
-
+test('Creator overlay 保持独立 iframe，但生命周期由同 bundle controller 管理', () => {
   assert.doesNotMatch(runtimeRootSource, /CreatorManager/u);
   assert.doesNotMatch(runtimeRootSource, /state\.creator/u);
+  assert.doesNotMatch(runtimeSource, /createCreatorManagerOverlay|CreatorManagerOverlay/u);
+  assert.match(creatorManagerControllerSource, /openCreatorManager/u);
+  assert.match(creatorManagerControllerSource, /closeCreatorManager\(\);[\s\S]*?createCreatorManagerOverlay\(options\)/u);
+  assert.match(creatorManagerControllerSource, /overlay\?\.destroy\(\);[\s\S]*?overlay = null/u);
+  assert.match(runtimeSource, /tavern_events\.CHAT_CHANGED[\s\S]*?closeCreatorEditor\(\)/u);
+  assert.match(runtimeSource, /stop\(options = \{\}\)[\s\S]*?closeCreatorEditor\(\)/u);
 
   assert.match(overlaySource, /createScriptIdIframe/u);
   assert.match(overlaySource, /zIndex: '2147483000'/u);
@@ -81,31 +83,14 @@ test('角色视觉编辑器由 Creator Manager 的独立全屏 iframe 挂载，V
   assert.match(overlaySource, /removeEventListener\('scroll'/u);
 });
 
-test('Creator 编辑器按目标重建，并在聊天切换或卸载时销毁', () => {
+test('关闭 Creator 会真正卸载 Vue、样式和 iframe，不留下常驻 Editor', () => {
   assert.match(overlaySource, /destroy\(\): void;/u);
   assert.match(
     overlaySource,
-    /const close = \(\) => \{[\s\S]*?managerViewportCleanup\?\.\(\);[\s\S]*?\$managerOverlay\?\.hide\(\);[\s\S]*?\};/u,
+    /const teardown = \(\) => \{[\s\S]*?mountedApp\?\.unmount\(\);[\s\S]*?teleportedStyle\?\.destroy\(\);[\s\S]*?\$managerOverlay\?\.remove\(\);/u,
   );
-  assert.doesNotMatch(
-    overlaySource.match(/const close = \(\) => \{[\s\S]*?\n {2}\};/u)?.[0] ?? '',
-    /unmount\(\)|teleportedStyle\?\.destroy\(\)|\.remove\(\)/u,
-  );
-  assert.match(
-    overlaySource,
-    /const destroy = \(\) => \{[\s\S]*?mountedApp\?\.unmount\(\);[\s\S]*?teleportedStyle\?\.destroy\(\);[\s\S]*?\$managerOverlay\?\.remove\(\);/u,
-  );
-  assert.match(creatorManagerEntrySource, /overlay\?\.destroy\(\);[\s\S]*?createCreatorManagerOverlay\(options\)/u);
-  assert.match(creatorManagerEntrySource, /const destroyOverlays = \(\) => \{[\s\S]*?overlay\?\.destroy\(\)/u);
-  assert.match(creatorManagerEntrySource, /eventOn\(tavern_events\.CHAT_CHANGED, destroyOverlays\)/u);
-  assert.doesNotMatch(runtimeSource, /\.destroy\(\)/u);
-});
-
-test('Creator Manager 作为独立脚本提供桥接，Viewer 只依赖共享接口', () => {
-  assert.match(creatorManagerEntrySource, /const bridge: CreatorManagerHostBridge/u);
-  assert.match(creatorManagerEntrySource, /createCreatorManagerOverlay\(options\)/u);
-  assert.match(runtimeSource, /creatorManager\.open\(\{ worldbookName, entryUid, forceMobileLayout:/u);
-  assert.doesNotMatch(runtimeSource, /createCreatorManagerOverlay|CreatorManagerOverlay/u);
+  assert.match(overlaySource, /const close = teardown;[\s\S]*?const destroy = teardown;/u);
+  assert.doesNotMatch(overlaySource, /\$managerOverlay\?\.hide\(\)/u);
 });
 
 test('Creator Manager 样式不修改 ST 宿主页的 html 或 body', () => {

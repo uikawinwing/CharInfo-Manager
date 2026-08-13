@@ -24,13 +24,13 @@ test('Viewer 详情展示图库并支持图片、视频和备用源回退', () =
   assert.match(librarySource, /detailGalleryIndexes\[key\] = \(detailGalleryIndexes\[key\] \?\? 0\) \+ 1/u);
 });
 
-test('只有编辑角色资料才从 Viewer 动态调用 Creator', () => {
+test('只有编辑角色资料才从 Viewer 调用 Creator controller', () => {
   assert.match(
     librarySource,
     /@click="emit\('edit', selectedWorldbookName, detailCharacter\.entry\.uid\)"/u,
   );
-  assert.match(runtimeSource, /const creatorManager = getCreatorManagerHostBridge\(\)/u);
-  assert.match(runtimeSource, /creatorManager\.open\(\{ worldbookName, entryUid, forceMobileLayout:/u);
+  assert.match(runtimeSource, /openCreatorManager\(\{ worldbookName, entryUid, forceMobileLayout:/u);
+  assert.doesNotMatch(runtimeSource, /getCreatorManagerHostBridge|creatorManager\.open/u);
 });
 
 test('玩家详情保持世界书正文只读，不在 Viewer 中写角色资料', () => {

@@ -67,13 +67,8 @@ export function createCreatorManagerOverlay(
     };
   };
 
-  const close = () => {
+  const teardown = () => {
     managerViewportCleanup?.();
-    $managerOverlay?.hide();
-  };
-
-  const destroy = () => {
-    close();
     mountedApp?.unmount();
     mountedApp = null;
     managerController = null;
@@ -84,6 +79,9 @@ export function createCreatorManagerOverlay(
     $managerOverlay = null;
     $managerIframe = null;
   };
+
+  const close = teardown;
+  const destroy = teardown;
 
   const open = () => {
     if ($managerOverlay) {

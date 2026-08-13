@@ -1,19 +1,28 @@
 import assert from 'node:assert/strict';
-import { readFileSync, statSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const viewerBundlePath = new URL('../../dist/char_info_viewer_runtime/index.js', import.meta.url);
-const creatorBundlePath = new URL('../../dist/char_info_creator_manager/index.js', import.meta.url);
+const webpackSource = await readFile(new URL('../../webpack.config.ts', import.meta.url), 'utf8');
+const runtimeSource = await readFile(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
+const creatorIndexSource = await readFile(new URL('../../src/char_info_creator_manager/index.ts', import.meta.url), 'utf8');
+const creatorControllerSource = await readFile(
+  new URL('../../src/char_info_creator_manager/controller.ts', import.meta.url),
+  'utf8',
+);
+const legacyBridgeSource = await readFile(
+  new URL('../../src/char_info_shared/creatorManagerHostBridge.ts', import.meta.url),
+  'utf8',
+);
 
-test('Viewer 包含玩家世界书库但不包含 Creator 编辑器，Creator 只包含编辑实现', () => {
-  const viewerBundle = readFileSync(viewerBundlePath, 'utf8');
-  const creatorBundle = readFileSync(creatorBundlePath, 'utf8');
+test('Viewer 与 Creator 合并为一个脚本 entry，但内部模块仍保持分离', () => {
+  assert.match(webpackSource, /internalModuleEntries = new Set\(\['src\/char_info_creator_manager\/index\.ts'\]\)/u);
+  assert.match(runtimeSource, /from '\.\.\/char_info_creator_manager\/controller'/u);
+  assert.match(creatorControllerSource, /createCreatorManagerOverlay/u);
+  assert.match(creatorIndexSource, /export \{ closeCreatorManager, openCreatorManager \} from '\.\/controller';/u);
+});
 
-  assert.doesNotMatch(viewerBundle, /char_info_creator_manager|data-v-02fe2442/u);
-  assert.match(viewerBundle, /世界书角色库/u);
-  assert.match(viewerBundle, /条目开关后的读回验证失败/u);
-  assert.match(creatorBundle, /char-info-creator-manager/u);
-  assert.doesNotMatch(creatorBundle, /世界书角色库|条目开关后的读回验证失败/u);
-  assert.ok(statSync(creatorBundlePath).size > 100 * 1024);
-  assert.ok(statSync(creatorBundlePath).size < statSync(viewerBundlePath).size);
+test('单脚本通信不再依赖 host window bridge', () => {
+  assert.doesNotMatch(runtimeSource, /creatorManagerHostBridge|getCreatorManagerHostBridge/u);
+  assert.doesNotMatch(creatorControllerSource, /window\.|registerCreatorManagerHostBridge|HOST_BRIDGE/u);
+  assert.doesNotMatch(legacyBridgeSource, /__charInfoCreatorManagerHostBridge|registerCreatorManagerHostBridge|getCreatorManagerHostBridge/u);
 });

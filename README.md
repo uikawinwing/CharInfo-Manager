@@ -123,10 +123,9 @@ DX 占位符使用 `__dx_character_ref: dx_...`，并从世界书禁用条目 `c
 
 ### 玩家角色库与角色资料编辑器
 
-Viewer 运行脚本 `dist/char_info_viewer_runtime/index.js` 提供常驻悬浮入口、当前聊天角色库和世界书角色库。玩家可以查看角色详情与图库，也可以启用或禁用世界书角色，不需要加载编辑器。
+只需在酒馆助手中安装 `dist/char_info_viewer_runtime/index.js`。这个 CharInfo Manager 脚本同时提供常驻 Viewer、当前聊天角色库、世界书角色库和 Creator Editor。
 
-请在酒馆助手中同时安装 `dist/char_info_viewer_runtime/index.js` 与
-`dist/char_info_creator_manager/index.js`。Creator Manager 只负责编辑并保存角色资料、头像、图库与配色；玩家从世界书角色详情选择“编辑角色资料”时才会调用它。没有安装 Creator Manager 时，Viewer 的浏览、图库与角色开关仍可正常使用。旧的 CharInfo 正则／`$1` iframe 入口不再需要。
+Viewer 与 Creator 在源码中仍保持独立模块和职责：玩家浏览、图库和世界书角色开关由 Viewer Runtime 管理；只有玩家选择“编辑角色资料”时才会按需挂载 Creator Editor，用于保存角色资料、头像、图库与配色。关闭 Editor 后会卸载其 Vue、样式和 iframe，不保持编辑器常驻。旧的 CharInfo 正则／`$1` iframe 入口不再需要。
 
 - 读取酒馆中的全部世界书，并将当前角色卡绑定的主世界书与附加世界书置顶。
 - 在可搜索选择器中查找目标世界书，再读取其中的角色条目。

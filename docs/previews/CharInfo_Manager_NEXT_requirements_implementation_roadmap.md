@@ -271,6 +271,8 @@ v0.1.7 不增加新的视觉设计或故事功能。目标是把当前工作线�
 
 #### Checkpoint 0 — 保存 pre-0.1.7 工作区
 
+状态：✅ `checkpoint/pre-0.1.7` / `860ffa4`
+
 - 审查当前尚未提交的 DX 门禁、DX 目录、双脚本拆分、玩家角色库等现有工作。
 - 排除明确的临时／生成物，不凭文件名删除可能属于既有迁移的内容。
 - 运行 lint、test、build，确认当前基线仍可工作。
@@ -278,6 +280,8 @@ v0.1.7 不增加新的视觉设计或故事功能。目标是把当前工作线�
 - 完成后停止。
 
 #### Checkpoint 1 — Viewer / Creator 单脚本 reunification
+
+状态：✅ 源码 / test / lint / production build / 实际 SillyTavern lifecycle 已验证
 
 - 用户只安装和管理一个 CharInfo Manager 脚本。
 - Viewer、Creator、shared、runtime 模块继续分目录、分职责。

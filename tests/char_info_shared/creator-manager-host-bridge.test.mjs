@@ -1,27 +1,14 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import {
-  CREATOR_MANAGER_HOST_BRIDGE_KEY,
-  CREATOR_MANAGER_HOST_BRIDGE_VERSION,
-  getCreatorManagerHostBridge,
-  registerCreatorManagerHostBridge,
-} from '../../src/char_info_shared/creatorManagerHostBridge.ts';
+const bridgeSource = await readFile(
+  new URL('../../src/char_info_shared/creatorManagerHostBridge.ts', import.meta.url),
+  'utf8',
+);
 
-test('Creator Manager 宿主桥接只接受当前版本且在注销时不删除后来者', () => {
-  const host = {};
-  const bridge = {
-    version: CREATOR_MANAGER_HOST_BRIDGE_VERSION,
-    open() {},
-    close() {},
-  };
-
-  assert.equal(getCreatorManagerHostBridge(host), null);
-  const unregister = registerCreatorManagerHostBridge(host, bridge);
-  assert.equal(getCreatorManagerHostBridge(host), bridge);
-
-  host[CREATOR_MANAGER_HOST_BRIDGE_KEY] = { ...bridge, version: CREATOR_MANAGER_HOST_BRIDGE_VERSION + 1 };
-  assert.equal(getCreatorManagerHostBridge(host), null);
-  unregister();
-  assert.ok(host[CREATOR_MANAGER_HOST_BRIDGE_KEY]);
+test('Viewer 与 Creator 合包后不再保留可调用的全局宿主桥接', () => {
+  assert.doesNotMatch(bridgeSource, /__charInfoCreatorManagerHostBridge/u);
+  assert.doesNotMatch(bridgeSource, /registerCreatorManagerHostBridge|getCreatorManagerHostBridge/u);
+  assert.match(bridgeSource, /Deprecated compatibility stub/u);
 });

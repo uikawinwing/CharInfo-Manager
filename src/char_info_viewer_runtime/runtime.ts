@@ -2,9 +2,7 @@ import { createPinia } from 'pinia';
 import { createApp, markRaw, reactive, type App } from 'vue';
 
 import { createScriptIdDiv, teleportStyle } from '@util/script';
-import {
-  getCreatorManagerHostBridge,
-} from '../char_info_shared/creatorManagerHostBridge';
+import { closeCreatorManager, openCreatorManager } from '../char_info_creator_manager/controller';
 import { projectCharInfoMessage } from '../char_info_viewer/runtime/charInfoMessage';
 import { selectRecentMessageIds } from '../char_info_viewer/runtime/recentMessages';
 import RuntimeRoot from './RuntimeRoot.vue';
@@ -115,7 +113,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   };
 
   const closeCreatorEditor = () => {
-    getCreatorManagerHostBridge()?.close();
+    closeCreatorManager();
   };
 
   const resetLibraryForChat = () => {
@@ -284,13 +282,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   };
 
   const editWorldbookCharacter = (worldbookName: string, entryUid?: number) => {
-    const creatorManager = getCreatorManagerHostBridge();
-    if (!creatorManager) {
-      toastr.warning('角色资料编辑器未加载，请先加载 Creator Manager 脚本。');
-      return;
-    }
     try {
-      creatorManager.open({ worldbookName, entryUid, forceMobileLayout: state.settings.forceMobileLayout });
+      openCreatorManager({ worldbookName, entryUid, forceMobileLayout: state.settings.forceMobileLayout });
       closeWorldbookLibrary();
     } catch (error) {
       console.error('[CharInfo Runtime] 角色资料编辑器打开失败：', error);
@@ -561,6 +554,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       scheduleRecentScan();
     });
     listen(tavern_events.CHAT_CHANGED, () => {
+      closeCreatorEditor();
       migrateLegacyGalleries();
       resetLibraryForChat();
       closeSettings();
@@ -639,6 +633,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       mutationObserver?.disconnect();
       mutationObserver = null;
       eventStops.splice(0).forEach(stop => stop());
+      closeCreatorEditor();
       closeLibrary();
       closeSettings();
       clearMessages();

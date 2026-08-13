@@ -113,6 +113,6 @@ test('runs the migration before the initial card scan and after a chat change', 
   );
 
   assert.match(runtimeSource, /started = true;[\s\S]*?migrateLegacyGalleries\(\);[\s\S]*?initializeLibrary\(\);/);
-  assert.match(runtimeSource, /tavern_events\.CHAT_CHANGED, \(\) => \{\s*migrateLegacyGalleries\(\);/);
+  assert.match(runtimeSource, /tavern_events\.CHAT_CHANGED, \(\) => \{[\s\S]*?closeCreatorEditor\(\);[\s\S]*?migrateLegacyGalleries\(\);/);
   assert.match(runtimeSource, /updateVariablesWith\([\s\S]*?\{ type: 'chat' \}/);
 });
