@@ -73,7 +73,7 @@
 import { computed, ref, useId, watch } from 'vue';
 
 import type { CharacterViewModel } from '../../services/characterViewModel';
-import type { CharacterPresentationProfile } from '../../dx';
+import type { CharacterPresentationProfile } from '@/char_info_viewer/dxRuntime';
 import { buildDivinitySections } from './divinitySections';
 import IllustratedDefaultDivinityPanel from './IllustratedDefaultDivinityPanel.vue';
 import { venusNameFrameCssVars } from './venusAssets';

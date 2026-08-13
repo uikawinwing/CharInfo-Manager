@@ -4,7 +4,7 @@ import {
   type CharacterStoryBookLink,
   type CharacterPresentationProfile,
   isLoadedDxCharacterData,
-} from '../dx';
+} from '@/char_info_viewer/dxRuntime';
 import type { CharacterData } from '../types';
 import { getSmartArray, hasArrayContent, hasText, normalizeDisplayText } from './common';
 import { prioritizeImageSourceGroups } from './imageSourcePriority';

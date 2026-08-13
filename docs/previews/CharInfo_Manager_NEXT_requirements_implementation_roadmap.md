@@ -304,6 +304,8 @@ v0.1.7 不增加新的视觉设计或故事功能。目标是把当前工作线�
 
 #### Checkpoint 3 — DX production 防泄漏
 
+状态：✅ DX stable adapter / production no-op replacement / stale DX dist cleanup / emitted asset anti-leak scan / 248 tests / lint / production + development build 已验证
+
 - `pnpm watch` 继续包含真实 DX，供本地开发与 Live Server / SillyTavern 调试。
 - `pnpm build` 的公开 dist 必须物理排除 DX 实现、registry、专用资料和可识别角色数据，而不是只在 runtime 设为 disabled。
 - 处理独立 DX entry 与主 Viewer 静态 import 两条泄漏路径。

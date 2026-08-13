@@ -15,7 +15,8 @@ const legacyBridgeSource = await readFile(
 );
 
 test('Viewer 与 Creator 合并为一个脚本 entry，但内部模块仍保持分离', () => {
-  assert.match(webpackSource, /internalModuleEntries = new Set\(\['src\/char_info_creator_manager\/index\.ts'\]\)/u);
+  assert.match(webpackSource, /'src\/char_info_creator_manager\/index\.ts'/u);
+  assert.match(webpackSource, /'src\/char_info_viewer\/dx\/index\.ts'/u);
   assert.match(runtimeSource, /from '\.\.\/char_info_creator_manager\/controller'/u);
   assert.match(creatorControllerSource, /createCreatorManagerOverlay/u);
   assert.match(creatorIndexSource, /export \{ closeCreatorManager, openCreatorManager \} from '\.\/controller';/u);

@@ -1,5 +1,5 @@
 import type { CharacterData, ThemeResolved } from '../types';
-import { isLoadedDxCharacterData } from '../dx';
+import { isLoadedDxCharacterData } from '@/char_info_viewer/dxRuntime';
 import { resolveGalleryExtension } from './galleryPackService.ts';
 
 const SPECIAL_NPC_VISUAL_BRAND = Symbol('char_info_special_npc_visual');

@@ -521,7 +521,7 @@ import {
   loadDxCharacterReference,
   messageContainsDxCharacterReference,
   parseDxCharacterReference,
-} from './dx';
+} from '@/char_info_viewer/dxRuntime';
 import type { CharacterData, FriendlyYamlError, ThemeResolved } from './types';
 import IllustratedCharacterSheet from './components/illustrated/IllustratedCharacterSheet.vue';
 

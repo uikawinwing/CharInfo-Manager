@@ -29,6 +29,54 @@ interface Entry {
   html?: string;
 }
 
+const DX_PRIVATE_BUILD_SIGNATURES = [
+  'dx_venus',
+  'dx_anastasia',
+  'dx_iris',
+  'dx_seren',
+  'char_info_dx_characters',
+  '__CHAR_INFO_DX_CHARACTER_REGISTRY_CACHE__',
+  '$dx_venus_appear',
+  '$dx_anastasia_appear',
+  '$dx_iris_appear',
+  '维纳丝·珀菈·索伦蒂斯',
+  '安娜斯塔西娅·佛罗伦丝·瓦雷利乌斯',
+  '艾璃丝·赛瑞利亚',
+  '瑟涟·赛瑞利亚',
+] as const;
+
+function clean_private_dx_output(compiler: webpack.Compiler) {
+  if (compiler.options.mode !== 'production') return;
+
+  compiler.hooks.beforeRun.tap('clean_private_dx_output', () => {
+    fs.rmSync(path.join(import.meta.dirname, 'dist/char_info_viewer/dx'), { recursive: true, force: true });
+  });
+}
+
+function assert_no_dx_leaks(compiler: webpack.Compiler) {
+  if (compiler.options.mode !== 'production') return;
+
+  compiler.hooks.thisCompilation.tap('assert_no_dx_leaks', compilation => {
+    compilation.hooks.processAssets.tap(
+      {
+        name: 'assert_no_dx_leaks',
+        stage: webpack.Compilation.PROCESS_ASSETS_STAGE_REPORT,
+      },
+      assets => {
+        for (const [filename, asset] of Object.entries(assets)) {
+          const content = asset.source().toString();
+          for (const signature of DX_PRIVATE_BUILD_SIGNATURES) {
+            if (!content.includes(signature)) continue;
+            compilation.errors.push(
+              new webpack.WebpackError(`DX private signature leaked into production asset ${filename}: ${signature}`),
+            );
+          }
+        }
+      },
+    );
+  });
+}
+
 function parse_entry(script_file: string) {
   const html = path.join(path.dirname(script_file), 'index.html');
   if (fs.existsSync(html)) {
@@ -50,7 +98,10 @@ function common_path(lhs: string, rhs: string) {
 
 function glob_script_files() {
   const results: string[] = [];
-  const internalModuleEntries = new Set(['src/char_info_creator_manager/index.ts']);
+  const internalModuleEntries = new Set([
+    'src/char_info_creator_manager/index.ts',
+    'src/char_info_viewer/dx/index.ts',
+  ]);
 
   fs.globSync(`{示例,src}/**/index.{ts,tsx,js,jsx}`)
     .filter(file => !internalModuleEntries.has(file.replaceAll('\\', '/')))
@@ -442,6 +493,8 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
         { apply: watch_tavern_helper },
         { apply: schema_dump },
         { apply: tavern_sync },
+        { apply: clean_private_dx_output },
+        { apply: assert_no_dx_leaks },
         new VueLoaderPlugin(),
         unpluginAutoImport({
           dts: true,
@@ -467,6 +520,16 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
           __VUE_PROD_DEVTOOLS__: process.env.CI !== 'true',
           __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
         }),
+      )
+      .concat(
+        argv.mode === 'production'
+          ? [
+              new webpack.NormalModuleReplacementPlugin(
+                /^@\/char_info_viewer\/dxRuntime$/,
+                path.join(import.meta.dirname, 'src/char_info_viewer/dx/disabled.ts'),
+              ),
+            ]
+          : [],
       )
       .concat(
         should_obfuscate
