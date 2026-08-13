@@ -313,12 +313,14 @@ v0.1.7 不增加新的视觉设计或故事功能。目标是把当前工作线�
 - 不修改 DX UI 布局、视觉或角色 presentation。
 - 完成后停止。
 
-#### Checkpoint 4 — Creator Save 与图片 fallback bug
+#### Checkpoint 4 — Viewer 玩家 Save 与图片 fallback bug
 
-- 用已连接的 Chrome DevTools 检查实际 SillyTavern DOM / CSS / state，修复 Creator Save button 源码存在但实际不可见／不可用的问题。
-- 修复 Creator Preview 与 Special Viewer 的备用图床：`URL0` 失败时必须可靠尝试 `URL1`，Retry 不能永久卡回失败源。
+状态：🟡 图片 fallback 已修复并提交；Special NPC Viewer Save 根因已定位并修复，等待当前 SillyTavern session 刷新后的现场确认。
+
+- Viewer 卡片必须保留给玩家使用的 Save 操作；点击后可选择写入 MVU 角色状态或聊天世界书。Special NPC 不得因为 side-rail 分支而硬编码隐藏该入口；只读 Viewer 仍不得显示写入操作。
+- 修复 Creator Preview 与 Special Viewer 的备用图床：`URL0` error 或长时间 pending 时必须可靠尝试 `URL1`；进入“立绘无法加载”状态后，用户点击重试也应切换到下一备用 source（耗尽后再 wrap），不能永久卡回同一失败源。
 - 增加真实行为覆盖，不再只依赖正则静态测试。
-- 修复后在当前 SillyTavern session 实测。
+- 修复后在当前 SillyTavern session 实测 Save 菜单与图片 fallback。
 - 完成后停止。
 
 #### Checkpoint 5 — 图片加载异常与 v0.1.7 收尾

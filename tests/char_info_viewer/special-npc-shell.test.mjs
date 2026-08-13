@@ -19,6 +19,7 @@ const appPath = new URL('../../src/char_info_viewer/App.vue', import.meta.url);
 test('Special NPC 沿用有立绘页面，并将导航作为桌面右侧栏和移动底栏', async () => {
   const [sheet, navigation] = await Promise.all([readFile(shellPath, 'utf8'), readFile(navigationPath, 'utf8')]);
   assert.match(sheet, /<IllustratedTabNav[\s\S]*?v-if="specialNpc"[\s\S]*?side-rail/);
+  assert.match(sheet, /v-if="specialNpc"[\s\S]*?:show-import-action="!readOnly"/);
   assert.match(sheet, /'is-special-npc': specialNpc/);
   assert.match(navigation, /\.illustrated-tabs\.is-side-rail/);
   assert.match(navigation, /@media \(min-width: 901px\)/);

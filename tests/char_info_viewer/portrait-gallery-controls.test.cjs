@@ -34,4 +34,5 @@ test('同一张立绘失败或卡住时都会按 sources 顺序切换备用图�
   assert.match(source, /nextMediaSourceIndex\(activePortraitSourceIndex\.value, activePortraitSources\.value\.length\)/);
   assert.match(source, /portraitLoadTimeout\.arm\(\)/);
   assert.match(source, /portraitLoadTimeout\.clear\(\)/);
+  assert.match(source, /retryPortraitLoad[\s\S]*nextMediaSourceIndex\(activePortraitSourceIndex\.value, activePortraitSources\.value\.length\)/);
 });

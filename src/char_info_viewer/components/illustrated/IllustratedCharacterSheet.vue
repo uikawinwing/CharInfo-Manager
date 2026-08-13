@@ -246,7 +246,7 @@
         :active-tab="activeSpecialTab"
         :importing="importing"
         :import-button-text="importButtonText"
-        :show-import-action="false"
+        :show-import-action="!readOnly"
         @set-tab="activeSpecialTab = $event"
         @toggle-import-menu="$emit('toggleImportMenu')"
       />
@@ -476,7 +476,8 @@ const portraitLoadTimeout = createMediaSourceTimeout(() => {
 function retryPortraitLoad(): void {
   portraitLoadFailed.value = false;
   portraitLoaded.value = false;
-  activePortraitSourceIndex.value = 0;
+  const nextIndex = nextMediaSourceIndex(activePortraitSourceIndex.value, activePortraitSources.value.length);
+  activePortraitSourceIndex.value = nextIndex ?? 0;
   portraitRetryAttempt.value += 1;
 }
 
