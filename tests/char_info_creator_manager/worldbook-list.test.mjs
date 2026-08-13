@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildWorldbookList } from '../../src/char_info_creator_manager/worldbookList.ts';
+import { buildWorldbookList } from '../../src/char_info_shared/worldbookList.ts';
 
 test('当前角色绑定世界书置顶，其余世界书仍然可选', () => {
   assert.deepEqual(

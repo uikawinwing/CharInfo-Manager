@@ -19,6 +19,15 @@
   </template>
 
   <Teleport v-if="state.library" :to="state.library.host">
+    <WorldbookCharacterLibrary
+      v-if="state.library.worldbookOpen"
+      :force-mobile-layout="state.settings.forceMobileLayout"
+      @close="onCloseWorldbookLibrary"
+      @open-current-chat="onOpenCurrentChatLibrary"
+      @edit-library="worldbookName => onEditWorldbookCharacter(worldbookName)"
+      @edit="onEditWorldbookCharacter"
+    />
+
     <button
       v-if="!state.library.listOpen && !state.library.viewerOpen"
       class="char-info-library-floating-button"
@@ -449,6 +458,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type CSSPro
 import { dump } from 'js-yaml';
 
 import ViewerApp from '../char_info_viewer/App.vue';
+import WorldbookCharacterLibrary from './WorldbookCharacterLibrary.vue';
 import { normalizeImageSourcePriorityEntries } from '../char_info_viewer/services/imageSourcePriority';
 import { buildCurrentCharacterViewerData } from './currentCharacterLibrary';
 import {
@@ -469,6 +479,9 @@ const props = defineProps<{
   onOpenLibraryList: () => void;
   onOpenLibraryCharacter: (name: string) => void;
   onOpenWorldbookLibrary: () => void;
+  onCloseWorldbookLibrary: () => void;
+  onOpenCurrentChatLibrary: () => void;
+  onEditWorldbookCharacter: (worldbookName: string, entryUid?: number) => void;
   onMoveLibraryButton: (position: { left: number; top: number }) => void;
   onOpenSettings: () => void;
   onCloseSettings: () => void;

@@ -1,0 +1,898 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="移动端角色资料库全屏安全区布局预览。" />
+    <title>角色资料库 · 移动端安全区预览</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --safe-top: max(env(safe-area-inset-top, 0px), 38px);
+        --safe-bottom: max(env(safe-area-inset-bottom, 0px), 18px);
+        --gold: #e7c67f;
+        --gold-rgb: 231, 198, 127;
+        --mint: #58dfb2;
+        --text: #f7f3ed;
+        --muted: #9d9aa4;
+        --line: rgba(231, 198, 127, 0.18);
+        --surface: #12131a;
+        --surface-raised: #191a22;
+        --phone-width: 430px;
+        font-family: Inter, 'Noto Sans SC', 'Microsoft YaHei UI', sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+        margin: 0;
+      }
+
+      body {
+        display: grid;
+        padding: 18px 14px 92px;
+        place-items: center;
+        overflow-x: hidden;
+        background:
+          radial-gradient(circle at 50% 0%, rgba(103, 72, 125, 0.28), transparent 34%),
+          linear-gradient(160deg, #211c28 0%, #0a0b0f 58%, #050608 100%);
+        color: var(--text);
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        color: inherit;
+      }
+
+      .phone {
+        position: relative;
+        display: flex;
+        width: min(100%, var(--phone-width));
+        height: min(900px, calc(100dvh - 112px));
+        min-height: 640px;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 34px;
+        background:
+          radial-gradient(circle at 15% 0%, rgba(122, 92, 168, 0.18), transparent 34%),
+          linear-gradient(160deg, #13141b 0%, #0d0f15 68%, #101219 100%);
+        box-shadow:
+          0 36px 90px rgba(0, 0, 0, 0.58),
+          inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      }
+
+      .safe-zone {
+        position: relative;
+        display: flex;
+        min-height: var(--safe-top);
+        flex: 0 0 var(--safe-top);
+        align-items: center;
+        justify-content: space-between;
+        padding: max(env(safe-area-inset-top, 0px), 8px) 18px 4px;
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 11px;
+        letter-spacing: 0.02em;
+      }
+
+      .camera-hole {
+        position: absolute;
+        top: max(env(safe-area-inset-top, 0px), 8px);
+        left: 50%;
+        width: 82px;
+        height: 22px;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        border-radius: 999px;
+        background: #020305;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.85);
+        transform: translateX(-50%);
+      }
+
+      .system-icons {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .system-icons i {
+        display: block;
+        width: 12px;
+        height: 7px;
+        border: 1px solid currentColor;
+        border-radius: 2px;
+      }
+
+      .system-icons i:last-child {
+        width: 16px;
+      }
+
+      .screen {
+        display: flex;
+        min-height: 0;
+        flex: 1 1 auto;
+        flex-direction: column;
+      }
+
+      .topbar {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 58px;
+        padding: 9px 14px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .title-group {
+        min-width: 0;
+      }
+
+      .title-group h1 {
+        margin: 0;
+        font-family: Georgia, 'Noto Serif SC', serif;
+        font-size: 20px;
+        letter-spacing: 0.04em;
+        line-height: 1.2;
+      }
+
+      .title-group p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .top-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .topbar-display-status {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 6px;
+        color: #aaa7b1;
+        font-size: 11px;
+      }
+
+      .topbar-display-status::before {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--mint);
+        box-shadow: 0 0 10px rgba(88, 223, 178, 0.5);
+        content: '';
+      }
+
+      .icon-button {
+        display: grid;
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        place-items: center;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 13px;
+        background: rgba(255, 255, 255, 0.045);
+        cursor: pointer;
+      }
+
+      .icon-button svg,
+      .dock-button svg,
+      .search-icon {
+        width: 21px;
+        height: 21px;
+        fill: none;
+        stroke: currentcolor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 1.8;
+      }
+
+      .source-switch {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+        margin: 10px 14px 0;
+        padding: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 14px;
+        background: rgba(0, 0, 0, 0.18);
+      }
+
+      .source-switch button {
+        min-height: 42px;
+        padding: 8px 10px;
+        border: 0;
+        border-radius: 10px;
+        background: transparent;
+        color: #aaa7b1;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .source-switch button.active {
+        background: rgba(var(--gold-rgb), 0.13);
+        color: #f2d69b;
+        box-shadow: inset 0 0 0 1px rgba(var(--gold-rgb), 0.22);
+      }
+
+      .controls {
+        display: grid;
+        flex: 0 0 auto;
+        gap: 10px;
+        padding: 12px 14px 8px;
+      }
+
+      .search-field {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+
+      .search-field .search-icon {
+        position: absolute;
+        left: 13px;
+        color: #777985;
+        pointer-events: none;
+      }
+
+      .search-field input {
+        width: 100%;
+        min-height: 44px;
+        padding: 10px 14px 10px 43px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 13px;
+        outline: none;
+        background: rgba(0, 0, 0, 0.24);
+        color: #fff;
+      }
+
+      .search-field input:focus {
+        border-color: rgba(var(--gold-rgb), 0.7);
+        box-shadow: 0 0 0 3px rgba(var(--gold-rgb), 0.08);
+      }
+
+      .filters {
+        display: flex;
+        gap: 7px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+
+      .filters button {
+        min-height: 34px;
+        flex: 0 0 auto;
+        padding: 6px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.045);
+        color: #aaa7b1;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 650;
+      }
+
+      .filters button.active {
+        border-color: rgba(var(--gold-rgb), 0.58);
+        background: rgba(var(--gold-rgb), 0.12);
+        color: #f6dfad;
+      }
+
+      .list-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 5px 16px 7px;
+        color: #aaa7b1;
+        font-size: 11px;
+      }
+
+      .character-list {
+        display: grid;
+        min-height: 0;
+        flex: 1 1 auto;
+        align-content: start;
+        gap: 7px;
+        padding: 0 12px 14px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+      }
+
+      .character-card {
+        display: grid;
+        grid-template-columns: 48px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 11px;
+        min-height: 72px;
+        padding: 10px;
+        border: 1px solid transparent;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.042);
+        text-align: left;
+      }
+
+      .character-card.selected {
+        border-color: rgba(var(--gold-rgb), 0.5);
+        background: linear-gradient(90deg, rgba(var(--gold-rgb), 0.1), transparent 72%), rgba(255, 255, 255, 0.045);
+      }
+
+      .avatar {
+        width: 48px;
+        height: 48px;
+        overflow: hidden;
+        border: 1px solid rgba(var(--gold-rgb), 0.42);
+        border-radius: 14px;
+        background: #20222b;
+      }
+
+      .avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .character-copy {
+        display: grid;
+        min-width: 0;
+        gap: 5px;
+      }
+
+      .character-copy strong {
+        overflow: hidden;
+        font-size: 15px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .character-copy small {
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 11px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .character-meta {
+        display: grid;
+        justify-items: end;
+        gap: 7px;
+      }
+
+      .affinity {
+        color: #f2b6c5;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .presence {
+        padding: 4px 7px;
+        border-radius: 999px;
+        background: rgba(88, 223, 178, 0.13);
+        color: #83e8c6;
+        font-size: 10px;
+      }
+
+      .presence.away {
+        background: rgba(255, 255, 255, 0.07);
+        color: #9d9aa4;
+      }
+
+      .home-indicator {
+        display: flex;
+        min-height: var(--safe-bottom);
+        flex: 0 0 var(--safe-bottom);
+        align-items: end;
+        justify-content: center;
+        padding-bottom: 7px;
+      }
+
+      .home-indicator::after {
+        width: 116px;
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.8);
+        content: '';
+      }
+
+      .bottom-dock {
+        display: grid;
+        min-height: 72px;
+        flex: 0 0 auto;
+        grid-template-columns: 1fr 1fr 1.18fr 1fr 1fr;
+        align-items: end;
+        gap: 3px;
+        padding: 7px 7px 4px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(14, 16, 22, 0.94);
+        backdrop-filter: blur(18px);
+      }
+
+      .dock-button {
+        display: grid;
+        min-height: 54px;
+        gap: 4px;
+        padding: 5px 2px;
+        place-items: center;
+        border: 0;
+        border-radius: 11px;
+        background: transparent;
+        color: #9b9da7;
+        cursor: pointer;
+        font-size: 10px;
+        touch-action: manipulation;
+      }
+
+      .dock-button.active {
+        color: var(--mint);
+      }
+
+      .dock-button.primary {
+        position: relative;
+        min-height: 66px;
+        margin: -14px 3px 0;
+        border: 1px solid rgba(88, 223, 178, 0.42);
+        border-radius: 18px;
+        background: radial-gradient(circle at 50% 18%, rgba(88, 223, 178, 0.2), transparent 58%), #171d20;
+        box-shadow:
+          0 -8px 24px rgba(0, 0, 0, 0.28),
+          inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        color: var(--mint);
+        font-weight: 750;
+      }
+
+      .dock-button.primary:active {
+        transform: translateY(1px);
+      }
+
+      .dock-button svg {
+        width: 22px;
+        height: 22px;
+      }
+
+      .layout-b .topbar {
+        min-height: 54px;
+      }
+
+      .layout-b .source-switch {
+        margin-top: 8px;
+      }
+
+      .layout-b .controls {
+        grid-template-columns: 1fr;
+        padding-bottom: 6px;
+      }
+
+      .layout-b .filters {
+        display: none;
+      }
+
+      .layout-b .character-list {
+        padding-bottom: 8px;
+      }
+
+      .layout-c .topbar {
+        min-height: 72px;
+        align-items: end;
+        padding-bottom: 12px;
+        border-bottom: 0;
+      }
+
+      .layout-c .source-switch {
+        order: 1;
+        margin-top: 0;
+        border-radius: 0;
+        border-right: 0;
+        border-left: 0;
+        background: rgba(0, 0, 0, 0.12);
+      }
+
+      .layout-c .controls {
+        order: 2;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+      }
+
+      .layout-c .filters {
+        max-width: 116px;
+      }
+
+      .layout-c .filters button {
+        display: none;
+      }
+
+      .layout-c .filters button.active {
+        display: block;
+      }
+
+      .layout-c .list-head {
+        order: 3;
+        padding-top: 10px;
+      }
+
+      .layout-c .character-list {
+        order: 4;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .layout-c .character-card {
+        grid-template-columns: 44px minmax(0, 1fr);
+        min-height: 104px;
+        align-content: center;
+      }
+
+      .layout-c .avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+      }
+
+      .layout-c .character-meta {
+        grid-column: 1 / -1;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        justify-items: start;
+      }
+
+      .layout-c .presence {
+        justify-self: end;
+      }
+
+      .layout-c .home-indicator {
+        order: 5;
+      }
+
+      .prototype-switcher {
+        position: fixed;
+        right: 50%;
+        bottom: max(16px, env(safe-area-inset-bottom, 0px));
+        z-index: 20;
+        display: grid;
+        grid-template-columns: 42px minmax(150px, auto) 42px;
+        align-items: center;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 999px;
+        background: rgba(4, 5, 8, 0.94);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.48);
+        transform: translateX(50%);
+        backdrop-filter: blur(18px);
+      }
+
+      .prototype-switcher button {
+        width: 42px;
+        height: 42px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+        font-size: 20px;
+      }
+
+      .prototype-label {
+        padding: 0 12px;
+        color: #d8d7dc;
+        font-size: 12px;
+        font-weight: 700;
+        text-align: center;
+        white-space: nowrap;
+      }
+
+      .toast {
+        position: absolute;
+        right: 18px;
+        bottom: calc(var(--safe-bottom) + 16px);
+        left: 18px;
+        z-index: 10;
+        padding: 10px 13px;
+        border: 1px solid rgba(88, 223, 178, 0.28);
+        border-radius: 12px;
+        background: rgba(20, 49, 42, 0.94);
+        color: #b8f6df;
+        font-size: 12px;
+        text-align: center;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(8px);
+        transition: 180ms ease;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @media (max-width: 470px) {
+        body {
+          padding: 0 0 76px;
+          place-items: start center;
+          background: #050608;
+        }
+
+        .phone {
+          width: 100%;
+          height: calc(100dvh - 76px);
+          min-height: 560px;
+          border: 0;
+          border-radius: 0;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="phone" id="phone" aria-label="角色资料库移动端布局预览"></main>
+
+    <nav class="prototype-switcher" aria-label="布局方案切换">
+      <button id="previous-variant" type="button" aria-label="上一个方案">‹</button>
+      <span class="prototype-label" id="variant-label"></span>
+      <button id="next-variant" type="button" aria-label="下一个方案">›</button>
+    </nav>
+
+    <script>
+      const variants = [
+        { key: 'A', name: '安全顶栏' },
+        { key: 'B', name: '拇指热区 · 推荐' },
+        { key: 'C', name: '单手网格' },
+      ];
+
+      const characters = [
+        {
+          name: '伊丽莎白',
+          subtitle: '神明 · 第一位血族 · 最初的始祖',
+          affinity: '♡ 15',
+          presence: '在场',
+          avatar: '../../../assets/char_info_viewer/portraits/venus_divinity.png',
+        },
+        {
+          name: '安娜塔西亚',
+          subtitle: '人类 · 北境公爵之女',
+          affinity: '♡ 8',
+          presence: '在场',
+          avatar: '../../../assets/char_info_viewer/portraits/anna.png',
+        },
+        {
+          name: '艾莉丝',
+          subtitle: '人类 · 王都骑士',
+          affinity: '♡ 5',
+          presence: '不在场',
+          avatar: '../../../assets/char_info_viewer/portraits/alice.png',
+        },
+        {
+          name: '维纳斯',
+          subtitle: '神明 · 黄昏之主',
+          affinity: '♡ 12',
+          presence: '不在场',
+          avatar: '../../../assets/char_info_viewer/portraits/venus.png',
+        },
+        {
+          name: '塞壬',
+          subtitle: '海妖 · 潮汐歌者',
+          affinity: '♡ 3',
+          presence: '不在场',
+          avatar: '../../../assets/char_info_viewer/portraits/siren.png',
+        },
+      ];
+
+      const icons = {
+        close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>',
+        refresh:
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></svg>',
+        settings:
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19 15.2 21 16l-2 3.5-1.6-1.3a7.8 7.8 0 0 1-2.7 1.6L14.4 22h-4.8l-.3-2.2a7.8 7.8 0 0 1-2.7-1.6L5 19.5 3 16l2-.8a8.2 8.2 0 0 1 0-3.2L3 11l2-3.5 1.6 1.3a7.8 7.8 0 0 1 2.7-1.6L9.6 5h4.8l.3 2.2a7.8 7.8 0 0 1 2.7 1.6L19 7.5 21 11l-2 .8a8.2 8.2 0 0 1 0 3.4Z"/></svg>',
+        search:
+          '<svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16.2 16.2 4 4"/></svg>',
+        filter: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>',
+        home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 11 8-7 8 7"/><path d="M6.5 10v10h11V10M9.5 20v-6h5v6"/></svg>',
+      };
+
+      let currentFilter = '全部';
+      let toastTimer;
+
+      function safeZone() {
+        return '<div class="safe-zone"><span>9:41</span><span class="camera-hole" aria-hidden="true"></span><span class="system-icons" aria-hidden="true"><i></i><i></i><i></i></span></div>';
+      }
+
+      function topbar(displayOnly = false) {
+        return `
+          <header class="topbar">
+            <div class="title-group">
+              <h1>角色资料库</h1>
+              <p>当前聊天角色</p>
+            </div>
+            ${
+              displayOnly
+                ? '<span class="topbar-display-status">5 位角色</span>'
+                : `<div class="top-actions">
+                    <button class="icon-button refresh-action" type="button" aria-label="刷新角色资料">${icons.refresh}</button>
+                    <button class="icon-button close-action" type="button" aria-label="关闭角色资料库">${icons.close}</button>
+                  </div>`
+            }
+          </header>`;
+      }
+
+      function sourceSwitch() {
+        return `
+          <div class="source-switch" role="group" aria-label="角色资料来源">
+            <button class="active" type="button">当前聊天角色</button>
+            <button type="button">世界书角色</button>
+          </div>`;
+      }
+
+      function controls() {
+        return `
+          <section class="controls">
+            <label class="search-field">
+              ${icons.search}
+              <input id="character-search" type="search" placeholder="搜索姓名、种族或身份" autocomplete="off" />
+            </label>
+            <div class="filters" aria-label="角色筛选">
+              ${['全部', '在场', '不在场'].map(label => `<button class="${label === currentFilter ? 'active' : ''}" type="button" data-filter="${label}">${label}</button>`).join('')}
+            </div>
+          </section>`;
+      }
+
+      function characterList() {
+        return `
+          <div class="list-head"><span>角色</span><span id="result-count">${characters.length} 位</span></div>
+          <section class="character-list" id="character-list" aria-label="角色列表">
+            ${characters
+              .map(
+                (character, index) => `
+              <button class="character-card ${index === 0 ? 'selected' : ''}" type="button" data-name="${character.name}" data-presence="${character.presence}">
+                <span class="avatar"><img src="${character.avatar}" alt="${character.name}头像" /></span>
+                <span class="character-copy"><strong>${character.name}</strong><small>${character.subtitle}</small></span>
+                <span class="character-meta"><span class="affinity">${character.affinity}</span><span class="presence ${character.presence === '在场' ? '' : 'away'}">${character.presence}</span></span>
+              </button>`,
+              )
+              .join('')}
+          </section>`;
+      }
+
+      function bottomDock() {
+        return `
+          <nav class="bottom-dock" aria-label="角色资料库操作">
+            <button class="dock-button search-action" type="button">${icons.search}<span>搜索</span></button>
+            <button class="dock-button filter-action" type="button">${icons.filter}<span>筛选</span></button>
+            <button class="dock-button primary return-action" type="button">${icons.home}<span>返回游戏</span></button>
+            <button class="dock-button refresh-action" type="button">${icons.refresh}<span>刷新</span></button>
+            <button class="dock-button settings-action" type="button">${icons.settings}<span>设置</span></button>
+          </nav>`;
+      }
+
+      function renderVariant(key) {
+        const phone = document.querySelector('#phone');
+        phone.className = `phone layout-${key.toLowerCase()}`;
+
+        if (key === 'A') {
+          phone.innerHTML = `${safeZone()}<div class="screen">${topbar()}${sourceSwitch()}${controls()}${characterList()}<div class="home-indicator"></div></div><div class="toast" role="status"></div>`;
+        } else if (key === 'B') {
+          phone.innerHTML = `${safeZone()}<div class="screen">${topbar(true)}${sourceSwitch()}${controls()}${characterList()}${bottomDock()}<div class="home-indicator"></div></div><div class="toast" role="status"></div>`;
+        } else {
+          phone.innerHTML = `${safeZone()}<div class="screen">${topbar()}${sourceSwitch()}${controls()}${characterList()}<div class="home-indicator"></div></div><div class="toast" role="status"></div>`;
+        }
+
+        document.querySelector('#variant-label').textContent =
+          `${key} — ${variants.find(item => item.key === key).name}`;
+        bindInteractions();
+      }
+
+      function showToast(message) {
+        const toast = document.querySelector('.toast');
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 1300);
+      }
+
+      function applyFilters() {
+        const query = (document.querySelector('#character-search')?.value || '').trim().toLocaleLowerCase('zh-Hans-CN');
+        let count = 0;
+        document.querySelectorAll('.character-card').forEach(card => {
+          const matchesFilter = currentFilter === '全部' || card.dataset.presence === currentFilter;
+          const matchesSearch = !query || card.textContent.toLocaleLowerCase('zh-Hans-CN').includes(query);
+          card.hidden = !(matchesFilter && matchesSearch);
+          if (!card.hidden) count += 1;
+        });
+        document.querySelector('#result-count').textContent = `${count} 位`;
+      }
+
+      function cycleFilter() {
+        const values = ['全部', '在场', '不在场'];
+        currentFilter = values[(values.indexOf(currentFilter) + 1) % values.length];
+        document
+          .querySelectorAll('[data-filter]')
+          .forEach(button => button.classList.toggle('active', button.dataset.filter === currentFilter));
+        applyFilters();
+        showToast(`已切换为：${currentFilter}`);
+      }
+
+      function bindInteractions() {
+        document.querySelector('#character-search')?.addEventListener('input', applyFilters);
+        document.querySelectorAll('[data-filter]').forEach(button =>
+          button.addEventListener('click', () => {
+            currentFilter = button.dataset.filter;
+            document
+              .querySelectorAll('[data-filter]')
+              .forEach(item => item.classList.toggle('active', item === button));
+            applyFilters();
+          }),
+        );
+        document.querySelectorAll('.source-switch button').forEach(button =>
+          button.addEventListener('click', () => {
+            document
+              .querySelectorAll('.source-switch button')
+              .forEach(item => item.classList.toggle('active', item === button));
+            showToast(`已切换至${button.textContent}`);
+          }),
+        );
+        document.querySelectorAll('.character-card').forEach(card =>
+          card.addEventListener('click', () => {
+            document
+              .querySelectorAll('.character-card')
+              .forEach(item => item.classList.toggle('selected', item === card));
+            showToast(`已打开${card.dataset.name}的角色资料`);
+          }),
+        );
+        document
+          .querySelectorAll('.refresh-action')
+          .forEach(button => button.addEventListener('click', () => showToast('角色资料已刷新')));
+        document.querySelector('.close-action')?.addEventListener('click', () => showToast('关闭操作会返回游戏界面'));
+        document
+          .querySelector('.return-action')
+          ?.addEventListener('click', () => showToast('返回游戏：角色库会保持当前状态'));
+        document.querySelector('.settings-action')?.addEventListener('click', () => showToast('打开角色查看器设置'));
+        document
+          .querySelector('.search-action')
+          ?.addEventListener('click', () => document.querySelector('#character-search')?.focus());
+        document.querySelector('.filter-action')?.addEventListener('click', cycleFilter);
+      }
+
+      function switchVariant(offset) {
+        const params = new URLSearchParams(location.search);
+        const currentKey = params.get('variant')?.toUpperCase() || 'B';
+        const index = variants.findIndex(item => item.key === currentKey);
+        const next = variants[(Math.max(index, 0) + offset + variants.length) % variants.length];
+        params.set('variant', next.key);
+        history.replaceState(null, '', `${location.pathname}?${params.toString()}`);
+        renderVariant(next.key);
+      }
+
+      document.querySelector('#previous-variant').addEventListener('click', () => switchVariant(-1));
+      document.querySelector('#next-variant').addEventListener('click', () => switchVariant(1));
+      document.addEventListener('keydown', event => {
+        if (
+          ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName) ||
+          document.activeElement?.isContentEditable
+        )
+          return;
+        if (event.key === 'ArrowLeft') switchVariant(-1);
+        if (event.key === 'ArrowRight') switchVariant(1);
+      });
+
+      const initialVariant = new URLSearchParams(location.search).get('variant')?.toUpperCase();
+      renderVariant(variants.some(item => item.key === initialVariant) ? initialVariant : 'B');
+    </script>
+  </body>
+</html>

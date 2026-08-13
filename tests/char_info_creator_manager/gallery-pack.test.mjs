@@ -12,7 +12,7 @@ import {
   buildManagedEjsBlock,
   createEmptyProfile,
   inspectManagedBlock,
-} from '../../src/char_info_creator_manager/ejsProfile.ts';
+} from '../../src/char_info_shared/characterVisualProfile.ts';
 import {
   deleteGalleryPackProfile,
   saveGalleryPackProfile,

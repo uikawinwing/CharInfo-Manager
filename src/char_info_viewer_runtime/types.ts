@@ -21,6 +21,7 @@ export type RuntimeLibraryView = {
   characters: CurrentCharacterSnapshot[];
   listOpen: boolean;
   viewerOpen: boolean;
+  worldbookOpen: boolean;
   unreadCharacterNames: string[];
   floatingButtonPosition: CharInfoFloatingButtonPosition | null;
   loading: boolean;

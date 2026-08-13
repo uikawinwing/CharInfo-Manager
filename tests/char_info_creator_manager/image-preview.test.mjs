@@ -29,27 +29,58 @@ test('管理器相册预览使用统一的图片 URL 规范化函数', () => {
   assert.match(appSource, /image\.sources\[sourceIndex\]/);
 });
 
-test('角色封面加载失败时依次尝试备用图床，全部失败后显示占位', () => {
+test('Creator 在初始化资料前先建立编辑器状态', () => {
   const appSource = readFileSync(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
+  const profileInitialization = appSource.indexOf(
+    'const profile = reactive<EditableProfile>(toEditableProfile(createEmptyProfile()));',
+  );
+  const requiredDeclarations = [
+    "const activeStep = ref<StepId>(1);",
+    "const furthestStep = ref<StepId>(1);",
+    'const customizeColors = ref(false);',
+    'const useExtendedGallery = ref(false);',
+    "const galleryPackWorldbookName = ref('');",
+    "const galleryPackId = ref('');",
+    "const galleryProfileId = ref('');",
+    'const loadingGalleryExtension = ref(false);',
+    "const galleryExtensionMessage = ref('');",
+    'const saving = ref(false);',
+    "const saveState = ref<'idle' | 'success' | 'error'>('idle');",
+    "const saveMessage = ref('选择世界书条目后即可写入。');",
+    "const galleryPackDownloadMessage = ref('');",
+    'let nextImageId = 1;',
+  ];
 
-  assert.match(appSource, /:src="resolveCharacterCoverUrl\(character\)"/);
-  assert.match(appSource, /@error="onCharacterCoverError\(character\)"/);
-  assert.match(appSource, /characterCoverSourceIndexes\[character\.entry\.uid\] = sourceIndex \+ 1/);
-  assert.match(appSource, /return sources\[sourceIndex\] \?\? ''/);
+  for (const declaration of requiredDeclarations) {
+    const declarationIndex = appSource.indexOf(declaration);
+    assert.notEqual(declarationIndex, -1, `缺少 Creator 编辑器状态：${declaration}`);
+    assert.ok(declarationIndex < profileInitialization, `${declaration} 必须在创建初始资料前完成初始化`);
+  }
 });
 
-test('角色库保留紧凑列表，并提供图片卡片与仅卡片视图可见的列数选择', () => {
-  const appSource = readFileSync(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
+test('Viewer 玩家角色封面依次尝试备用图床，全部失败后显示占位', () => {
+  const librarySource = readFileSync(
+    new URL('../../src/char_info_viewer_runtime/WorldbookCharacterLibrary.vue', import.meta.url),
+    'utf8',
+  );
 
-  assert.match(appSource, /characterLibraryLayout = ref<CharacterLibraryLayout>\('compact'\)/);
-  assert.match(appSource, /图片卡片/);
-  assert.match(appSource, /v-if="characterLibraryLayout === 'cards'" class="character-card-columns"/);
-  assert.match(appSource, /characterLibraryCardColumnOptions = \[2, 3, 4, 5, 6\]/);
-  assert.match(appSource, /loading="lazy"/);
-  assert.match(appSource, /未配置图片/);
-  assert.match(appSource, /image-card-view \.character-cover-button[\s\S]*aspect-ratio: 4 \/ 5/);
-  assert.match(appSource, /image-card-view\.card-columns-6[\s\S]*repeat\(6, minmax\(0, 1fr\)\)/);
-  assert.match(appSource, /image-card-view\.card-columns-6[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(librarySource, /:src="coverUrl\(character\)"/u);
+  assert.match(librarySource, /@error="advanceCover\(character\)"/u);
+  assert.match(librarySource, /coverIndexes\[character\.entry\.uid\] = \(coverIndexes\[character\.entry\.uid\] \?\? 0\) \+ 1/u);
+  assert.match(librarySource, /return imageSources\(character\)\[coverIndexes\[character\.entry\.uid\] \?\? 0\] \?\? ''/u);
+});
+
+test('Viewer 玩家角色库保留紧凑列表与自适应图片卡片', () => {
+  const librarySource = readFileSync(
+    new URL('../../src/char_info_viewer_runtime/WorldbookCharacterLibrary.vue', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(librarySource, /const layout = ref<'list' \| 'cards'>\('list'\)/u);
+  assert.match(librarySource, /图片卡片/u);
+  assert.match(librarySource, /loading="lazy"/u);
+  assert.match(librarySource, /\.character-library-grid\.image-card-view \{ grid-template-columns: repeat\(auto-fit/u);
+  assert.match(librarySource, /\.character-library-grid \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/u);
 });
 
 test('相册步骤只提供外部图床快捷入口，不实现自动上传', () => {

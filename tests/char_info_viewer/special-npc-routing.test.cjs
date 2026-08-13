@@ -34,7 +34,7 @@ test('无立绘角色继续使用普通无图路径，显式立绘同样是 Spec
   assert.equal(buildCharacterViewModel(portrait).layoutKind, 'special_npc');
 });
 
-test('有效 DX 引用优先于同名立绘资料', () => {
+test('手造 DX 引用仍使用同名立绘的 Special NPC 路由', () => {
   const data = resolveCharacterVisualConfig(
     { 姓名: '维纳丝·珀菈·索伦蒂斯', __dx_character_ref: 'dx_venus' },
     {
@@ -46,5 +46,5 @@ test('有效 DX 引用优先于同名立绘资料', () => {
     },
   );
 
-  assert.equal(buildCharacterViewModel(data).layoutKind, 'illustrated');
+  assert.equal(buildCharacterViewModel(data).layoutKind, 'special_npc');
 });

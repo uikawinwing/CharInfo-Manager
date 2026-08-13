@@ -1,9 +1,10 @@
-import { characterStoryBookMap, type CharacterStoryBookLink } from '../characterStoryBookMap';
 import {
   resolveDxCharacterProfile,
-  resolveDxCharacterNameProfile,
+  resolveDxStoryBookLink,
+  type CharacterStoryBookLink,
   type CharacterPresentationProfile,
-} from '../dxCharacterRoster';
+  isLoadedDxCharacterData,
+} from '../dx';
 import type { CharacterData } from '../types';
 import { getSmartArray, hasArrayContent, hasText, normalizeDisplayText } from './common';
 import { prioritizeImageSourceGroups } from './imageSourcePriority';
@@ -379,11 +380,13 @@ function resolveConfiguredImageSourceGroups(data: CharacterData): string[][] {
   }, []);
 }
 
-function resolveCharacterPresentationProfileForData(data: CharacterData, nameText: string): CharacterPresentationProfile | null {
+function resolveCharacterPresentationProfileForData(
+  data: CharacterData,
+  nameText: string,
+): CharacterPresentationProfile | null {
+  if (!isLoadedDxCharacterData(data)) return null;
   const reference = textFromUnknown(pickField(data, '__dx_character_ref'));
-  const dxProfile = resolveDxCharacterProfile(reference, nameText);
-  if (dxProfile) return dxProfile;
-  return resolveDxCharacterNameProfile(nameText);
+  return resolveDxCharacterProfile(reference, nameText);
 }
 
 function resolveCharacterImage(
@@ -470,7 +473,7 @@ export function buildCharacterViewModel(
   const imageUrls = imageSourceGroups.map(sources => sources[0]);
   const imageUrl = imageUrls[0] ?? image.url;
   const isSpecialNpc = !presentationProfile && imageUrls.length > 0;
-  const storyBookLink = characterStoryBookMap[nameText] ?? null;
+  const storyBookLink = resolveDxStoryBookLink(presentationProfile);
   const hasDivinity =
     hasText(divinityGodTitle) ||
     !!divinityKingdom ||

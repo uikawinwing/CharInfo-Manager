@@ -2,96 +2,55 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const appSource = readFileSync(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
-const indexSource = readFileSync(new URL('../../src/char_info_creator_manager/index.ts', import.meta.url), 'utf8');
-const overlaySource = readFileSync(new URL('../../src/char_info_creator_manager/overlay.ts', import.meta.url), 'utf8');
+const creatorAppSource = readFileSync(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
+const creatorEntrySource = readFileSync(new URL('../../src/char_info_creator_manager/index.ts', import.meta.url), 'utf8');
+const creatorOverlaySource = readFileSync(new URL('../../src/char_info_creator_manager/overlay.ts', import.meta.url), 'utf8');
 const runtimeSource = readFileSync(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
-const runtimeRootSource = readFileSync(
-  new URL('../../src/char_info_viewer_runtime/RuntimeRoot.vue', import.meta.url),
+const runtimeRootSource = readFileSync(new URL('../../src/char_info_viewer_runtime/RuntimeRoot.vue', import.meta.url), 'utf8');
+const playerLibrarySource = readFileSync(
+  new URL('../../src/char_info_viewer_runtime/WorldbookCharacterLibrary.vue', import.meta.url),
   'utf8',
 );
+const creatorBundle = readFileSync(new URL('../../dist/char_info_creator_manager/index.js', import.meta.url), 'utf8');
 
-test('世界书角色库只从当前角色悬浮面板进入，并由运行时独占管理器', () => {
-  assert.match(indexSource, /'世界书角色库', '角色视觉编辑器', '角色视觉编辑', '角色资料库', 'CharInfo 设置'/);
-  assert.doesNotMatch(indexSource, /createCreatorManagerOverlay/);
-  assert.doesNotMatch(indexSource, /appendInexistentScriptButtons/);
-  assert.match(runtimeSource, /const RUNTIME_MANAGER_OWNER_KEY = '__charInfoWorldbookManagerOwner'/);
-  assert.match(runtimeSource, /setManagerOwnership\('runtime'\)/);
-  assert.match(runtimeSource, /setManagerOwnership\(null\)/);
-  assert.match(
-    runtimeSource,
-    /import \{ createCreatorManagerOverlay \} from '\.\.\/char_info_creator_manager\/overlay';/,
-  );
-  assert.doesNotMatch(runtimeSource, /import\('\.\.\/char_info_creator_manager\/overlay'\)/);
-  assert.doesNotMatch(runtimeSource, /appendInexistentScriptButtons/);
-  assert.match(runtimeRootSource, /aria-label="打开世界书角色库"[\s\S]*?@click="props\.onOpenWorldbookLibrary"/);
-  assert.match(overlaySource, /initialView/);
-  assert.match(appSource, /class="manager-view-switch"/);
-  assert.match(appSource, /@click="switchManagerView\('library'\)"/);
-  assert.match(appSource, /@click="switchManagerView\('editor'\)"/);
+test('世界书角色库属于 Viewer，未加载 Creator 也可浏览图库和切换条目', () => {
+  const openWorldbook = runtimeSource.match(/const openWorldbookLibrary = \(\) => \{([\s\S]*?)\n\s{2}\};/u)?.[1] ?? '';
+  assert.match(runtimeRootSource, /<WorldbookCharacterLibrary/u);
+  assert.match(runtimeSource, /state\.library\.worldbookOpen = true/u);
+  assert.doesNotMatch(openWorldbook, /getCreatorManagerHostBridge|creatorManager/u);
+  assert.match(playerLibrarySource, /角色图库/u);
+  assert.match(playerLibrarySource, /toggleCharacter/u);
+  assert.match(playerLibrarySource, /setCharacterEntryEnabled/u);
+  assert.match(playerLibrarySource, /updateWorldbookWith/u);
 });
 
-test('编辑器五步表单中不再夹入角色封面库', () => {
-  const stepOneStart = appSource.indexOf('id="manager-step-1"');
-  const editorFormStart = appSource.indexOf('<form', stepOneStart);
-  const stepOneSource = appSource.slice(stepOneStart, editorFormStart);
-
-  assert.ok(stepOneStart >= 0 && editorFormStart > stepOneStart);
-  assert.doesNotMatch(stepOneSource, /class="character-library"/);
+test('Creator Manager 只在玩家选择编辑时打开，并接收准确世界书与条目', () => {
+  assert.match(runtimeSource, /creatorManager\.open\(\{ worldbookName, entryUid, forceMobileLayout:/u);
+  assert.match(creatorEntrySource, /createCreatorManagerOverlay\(options\)/u);
+  assert.match(creatorOverlaySource, /initialWorldbookName: options\.worldbookName/u);
+  assert.match(creatorOverlaySource, /initialEntryUid: options\.entryUid/u);
+  assert.match(creatorAppSource, /props\.initialWorldbookName/u);
+  assert.match(creatorAppSource, /entries\.value\.find\(entry => entry\.uid === props\.initialEntryUid\)/u);
 });
 
-test('世界书角色库在独立页面提供搜索、筛选、启停与查看详情', () => {
-  const libraryPageStart = appSource.indexOf('class="library-page"');
-  const libraryPageEnd = appSource.indexOf('</section>', libraryPageStart);
-  const libraryPageSource = appSource.slice(libraryPageStart, libraryPageEnd);
-
-  assert.ok(libraryPageStart >= 0 && libraryPageEnd > libraryPageStart);
-  assert.match(libraryPageSource, /搜索角色、条目名或种族/);
-  assert.match(libraryPageSource, /character-library-filter-buttons/);
-  assert.match(libraryPageSource, /toggleCharacterEntry/);
-  assert.match(libraryPageSource, /openCharacterDetails/);
+test('Creator 的可达界面只有编辑器，不再提供玩家角色库入口', () => {
+  assert.doesNotMatch(creatorAppSource, /class="manager-view-switch"/u);
+  assert.doesNotMatch(creatorAppSource, /@click="switchManagerView\('library'\)"/u);
+  assert.doesNotMatch(creatorBundle, /世界书角色库|条目开关后的读回验证失败/u);
+  assert.match(creatorBundle, /角色视觉编辑器/u);
 });
 
-test('世界书角色库保持桌面宽屏布局并提供明确的资料源切换', () => {
-  assert.doesNotMatch(appSource, /library-detail-open/);
-  assert.match(appSource, /class="character-source-switch"/);
-  assert.match(appSource, /aria-pressed="false"[^>]*>\s*当前聊天角色/u);
-  assert.match(appSource, /aria-pressed="true">世界书角色</);
-  assert.match(appSource, /props\.onOpenCurrentChatLibrary/);
-  assert.match(appSource, /\.manager-dialog \{[\s\S]*?width: min\(1420px, 100%\)/);
-  assert.doesNotMatch(appSource, /\.manager-dialog\.library-dialog \{[\s\S]*?width: min\(390px,/);
-  assert.match(appSource, /\.library-page \{[\s\S]*?overflow-y: auto/);
+test('玩家详情正文只读，只有 Creator 负责资料编辑与保存', () => {
+  assert.match(playerLibrarySource, /角色条目内容/u);
+  assert.match(playerLibrarySource, /<b>只读<\/b>/u);
+  assert.doesNotMatch(playerLibrarySource, /saveToEntry|upsertManagedEjsBlock|保存设定正文/u);
+  assert.match(creatorAppSource, /saveToEntry/u);
+  assert.match(creatorAppSource, /upsertManagedEjsBlock/u);
 });
 
-test('世界书角色详情作为第二悬浮窗口打开，不遮蔽或停用角色菜单', () => {
-  assert.match(appSource, /:aria-hidden="detailCharacter && viewMode !== 'library'/);
-  assert.match(appSource, /:inert="detailCharacter && viewMode !== 'library'/);
-  assert.match(appSource, /:aria-modal="viewMode === 'library' \? 'false' : 'true'"/);
-  assert.match(appSource, /\.character-detail-layer \{[\s\S]*?position: fixed/);
-  assert.match(appSource, /\.character-detail-dialog \{[\s\S]*?width: min\(1240px, 100%\)/);
-  assert.match(appSource, /@click="openCharacterDetails\(character\)"/);
-});
-
-test('世界书角色库保留搜索、筛选、世界书选择和视图切换', () => {
-  assert.match(appSource, /class="library-header-worldbook"/);
-  assert.match(appSource, /class="library-search-field"/);
-  assert.match(appSource, /class="character-library-control-row"/);
-  assert.match(appSource, /找到 \{\{ visibleCharacterEntries\.length \}\} 个角色/);
-  assert.match(appSource, /class="character-cover-silhouette"/);
-  assert.match(appSource, /characterLibraryLayout === 'cards'/);
-});
-
-test('管理器弹窗固定在手机可视视口，不混入页面滚动坐标', () => {
-  assert.match(overlaySource, /position:\s*'fixed'/);
-  assert.doesNotMatch(overlaySource, /hostWindow\.scroll[XY]/);
-});
-
-test('缓存的管理器重开时恢复其初始工具视图，并清除残留详情与筛选菜单', () => {
-  assert.match(
-    appSource,
-    /function resetToInitialView\(\) \{[\s\S]*?mobileCharacterLibraryFilterOpen\.value = false;[\s\S]*?worldbookPickerOpen\.value = false;[\s\S]*?entryPickerOpen\.value = false;[\s\S]*?closeCharacterDetails\(\);[\s\S]*?switchManagerView\(props\.initialView\);/u,
-  );
-  assert.match(appSource, /defineExpose\(\{ resetToInitialView \}\);/u);
-  assert.match(overlaySource, /let managerController: CreatorManagerController \| null = null;/u);
-  assert.match(overlaySource, /managerController\?\.resetToInitialView\(\);[\s\S]*?\$managerOverlay\.show\(\);/u);
+test('Creator 编辑器仍以独立 iframe 挂载并固定在可视视口', () => {
+  assert.match(creatorOverlaySource, /createScriptIdIframe/u);
+  assert.match(creatorOverlaySource, /position:\s*'fixed'/u);
+  assert.match(creatorOverlaySource, /visualViewport/u);
+  assert.doesNotMatch(creatorOverlaySource, /hostWindow\.scroll[XY]/u);
 });

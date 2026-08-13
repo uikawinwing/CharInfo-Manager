@@ -9,7 +9,7 @@ import {
   MANAGED_BLOCK_START,
   upsertManagedEjsBlock,
   validateProfile,
-} from '../../src/char_info_creator_manager/ejsProfile.ts';
+} from '../../src/char_info_shared/characterVisualProfile.ts';
 
 const profile = {
   ...createEmptyProfile('傲雪'),

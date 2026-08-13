@@ -12,14 +12,17 @@ import {
   readCharacterEntryBody,
   replaceCharacterEntryBody,
   setCharacterEntryEnabled,
-} from '../../src/char_info_creator_manager/characterEntryLibrary.ts';
+} from '../../src/char_info_shared/characterEntryLibrary.ts';
 import {
   buildManagedEjsBlock,
   createEmptyProfile,
   inspectManagedBlock,
-} from '../../src/char_info_creator_manager/ejsProfile.ts';
+} from '../../src/char_info_shared/characterVisualProfile.ts';
 
-const appSource = readFileSync(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
+const librarySource = readFileSync(
+  new URL('../../src/char_info_viewer_runtime/WorldbookCharacterLibrary.vue', import.meta.url),
+  'utf8',
+);
 
 const irisProfile = {
   ...createEmptyProfile('Iris'),
@@ -362,8 +365,8 @@ test('尚未进入变量的角色只从受控 YAML 路径提取静态种族', ()
 
 test('角色库种族依次使用聊天变量、世界书正文和标题元数据', () => {
   assert.match(
-    appSource,
-    /race:\s+encountered\?\.race\s+\|\|\s+inferCharacterRace\(entryBody, character\.title\.displayName\)\s+\|\|\s+character\.title\.raceText\s+\|\|\s+''/u,
+    librarySource,
+    /race:\s+match\?\.race\s+\|\|\s+inferCharacterRace\(body, character\.profile\.characterName\)\s+\|\|\s+character\.title\.raceText\s+\|\|\s+''/u,
   );
 });
 

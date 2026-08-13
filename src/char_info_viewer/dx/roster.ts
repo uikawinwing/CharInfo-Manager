@@ -1,9 +1,9 @@
-import { characterImageMap } from './characterImageMap';
+import { characterImageMap } from './images';
 import {
   normalizeImageUrlForBrowser,
   normalizePortraitMediaUrlForBrowser,
   type PortraitMediaKind,
-} from './services/imageUrl';
+} from '../services/imageUrl';
 
 export type DxCharacterId = 'dx_venus' | 'dx_anastasia' | 'dx_iris' | 'dx_seren';
 export type DxDivinityVariant = 'default' | 'venusCurtain';
@@ -91,11 +91,6 @@ export function resolveDxCharacterProfile(reference: string, name: string): Char
   if (!entry || entry.name !== name) return null;
 
   return createDxCharacterPresentationProfile(entry);
-}
-
-export function resolveDxCharacterNameProfile(name: string): CharacterPresentationProfile | null {
-  const entry = findDxCharacterByName(name);
-  return entry ? createDxCharacterPresentationProfile(entry) : null;
 }
 
 function createDxCharacterPresentationProfile(entry: DxCharacterRosterEntry): CharacterPresentationProfile | null {

@@ -1,6 +1,6 @@
-import { parseCharacterYaml } from './services/yamlParser';
-import type { CharacterData } from './types';
-import { findDxCharacterById } from './dxCharacterRoster';
+import { parseCharacterYaml } from '../services/yamlParser';
+import type { CharacterData } from '../types';
+import { findDxCharacterById } from './roster';
 
 const dxCharacterRegistryEntryName = 'char_info_dx_characters';
 const dxCharacterReferencePattern = /^__dx_character_ref\s*:\s*(dx_[a-z0-9][a-z0-9_-]*)\s*$/i;
@@ -40,6 +40,12 @@ type SharedRegistryCacheWindow = Window &
 const sharedRegistryCacheKey = '__CHAR_INFO_DX_CHARACTER_REGISTRY_CACHE__';
 const settledRegistryCacheLifetimeMs = 5000;
 const localRegistryCache: RegistryCache = new Map();
+type LoadedDxIdentity = Readonly<{
+  reference: string;
+  name: string;
+}>;
+
+const loadedDxCharacterData = new WeakMap<object, LoadedDxIdentity>();
 
 export function parseDxCharacterReference(source: string): DxCharacterReference {
   const trimmedSource = source.trim();
@@ -89,12 +95,40 @@ export async function loadDxCharacterReference(
     : injectData;
   assertRosterName(reference, 'display_only 合并后', displayData, rosterEntry.name);
 
+  const data: CharacterData = { ...displayData, __dx_character_ref: reference };
+  loadedDxCharacterData.set(data, { reference, name: rosterEntry.name });
+
   return {
     reference,
-    data: { ...displayData, __dx_character_ref: reference },
+    data,
     injectData,
     appearVariableName,
   };
+}
+
+export function isLoadedDxCharacterData(data: unknown): data is CharacterData {
+  if (!data || typeof data !== 'object') return false;
+  const loadedIdentity = loadedDxCharacterData.get(data);
+  if (!loadedIdentity) return false;
+  const candidate = data as CharacterData;
+  if (typeof candidate.__dx_character_ref !== 'string' || typeof candidate.姓名 !== 'string') return false;
+  if (candidate.__dx_character_ref !== loadedIdentity.reference || candidate.姓名 !== loadedIdentity.name) return false;
+
+  const rosterEntry = findDxCharacterById(loadedIdentity.reference);
+  return rosterEntry?.hasRegistryData === true && rosterEntry.name === candidate.姓名;
+}
+
+export function cloneLoadedDxCharacterDataWithOverrides(
+  data: CharacterData,
+  overrides: Pick<CharacterData, '登场台词'>,
+): CharacterData {
+  const clone: CharacterData = {
+    ...data,
+    ...(overrides.登场台词 === undefined ? {} : { 登场台词: overrides.登场台词 }),
+  };
+  const loadedIdentity = loadedDxCharacterData.get(data);
+  if (loadedIdentity && isLoadedDxCharacterData(data)) loadedDxCharacterData.set(clone, loadedIdentity);
+  return clone;
 }
 
 function assertRosterName(reference: string, source: string, data: CharacterData, expectedName: string): void {
@@ -204,7 +238,7 @@ function readAttribute(attributes: string, name: string): string | null {
 }
 
 function readTagContent(source: string, tag: 'inject_var' | 'display_only', required: boolean): string | null {
-  const matches = [...source.matchAll(new RegExp(`<${tag}>\\s*([\\s\\S]*?)\\s*</${tag}>`, 'gi'))];
+  const matches = [...source.matchAll(new RegExp(`<${tag}>\\s*([\\s\\S]*?)\\s*<\\/${tag}>`, 'gi'))];
   if (matches.length === 1) return matches[0][1];
   if (matches.length === 0 && !required) return null;
   throw new Error(matches.length === 0 ? `专属资料缺少 <${tag}>。` : `专属资料包含重复的 <${tag}>。`);

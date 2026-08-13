@@ -2,7 +2,7 @@ import {
   normalizeGalleryExtensionReference,
   validateGalleryExtensionReference,
   type GalleryExtensionReference,
-} from '../char_info_shared/galleryPack.ts';
+} from './galleryPack.ts';
 
 export interface GalleryImage {
   title: string;

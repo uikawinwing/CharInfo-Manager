@@ -505,14 +505,15 @@ import {
 } from './services/characterViewModel';
 import { importToMvuVariables, mergeDxCharacterIntoMvuData, saveToChatWorldbook } from './services/importService';
 import { createParticleEngine, type ParticleEngine } from './services/particleEngine';
-import { enqueueDxCharacterImport } from './services/dxCharacterImportQueue';
 import { applyTheme, resolveCharacterVisualConfigWithExtensions, resolveTheme } from './services/themeService';
 import { parseCharacterYaml, parseCharacterYamlLoose } from './services/yamlParser';
 import {
+  cloneLoadedDxCharacterDataWithOverrides,
+  enqueueDxCharacterImport,
   loadDxCharacterReference,
   messageContainsDxCharacterReference,
   parseDxCharacterReference,
-} from './dxCharacterData';
+} from './dx';
 import type { CharacterData, FriendlyYamlError, ThemeResolved } from './types';
 import IllustratedCharacterSheet from './components/illustrated/IllustratedCharacterSheet.vue';
 
@@ -753,7 +754,7 @@ async function initFromYaml() {
     return;
   }
 
-  await applyParsedCharacterData(parsed.data, parsed.mode ?? 'strict', parsed.warnings ?? []);
+  await applyParsedCharacterData(stripUntrustedDxReference(parsed.data), parsed.mode ?? 'strict', parsed.warnings ?? []);
 
   nextTick(() => setupParticleEngine());
 }
@@ -869,20 +870,27 @@ async function applyParsedCharacterData(
   mode: 'strict' | 'loose' | 'builtin',
   warnings: string[] = [],
 ) {
-  const resolvedData = await resolveCharacterVisualConfigWithExtensions(data, getVariables({ type: 'chat' }));
+  const resolvedData = await resolveCharacterVisualConfigWithExtensions(
+    data,
+    getVariables({ type: 'chat' }),
+  );
   sheetData.value =
     props.entranceQuoteOverride === undefined
       ? resolvedData
-      : {
-          ...resolvedData,
+      : cloneLoadedDxCharacterDataWithOverrides(resolvedData, {
           登场台词: props.entranceQuoteOverride,
-        };
+        });
   illustratedFallbackActive.value = false;
   parseError.value = null;
   parseMode.value = mode;
   parseWarnings.value = warnings;
   theme.value = resolveTheme(resolvedData);
   if (viewerRootRef.value) applyTheme(theme.value, viewerRootRef.value);
+}
+
+function stripUntrustedDxReference(data: CharacterData): CharacterData {
+  const { __dx_character_ref: _reservedDxReference, ...ordinaryData } = data;
+  return ordinaryData;
 }
 
 function useIllustratedFallback() {
@@ -901,7 +909,7 @@ async function tryLooseParse() {
       return;
     }
 
-    await applyParsedCharacterData(parsed.data, parsed.mode ?? 'loose', parsed.warnings ?? []);
+    await applyParsedCharacterData(stripUntrustedDxReference(parsed.data), parsed.mode ?? 'loose', parsed.warnings ?? []);
     await nextTick();
     setupParticleEngine();
   } finally {

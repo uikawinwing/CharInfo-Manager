@@ -2,7 +2,9 @@ import { createPinia } from 'pinia';
 import { createApp, markRaw, reactive, type App } from 'vue';
 
 import { createScriptIdDiv, teleportStyle } from '@util/script';
-import { createCreatorManagerOverlay } from '../char_info_creator_manager/overlay';
+import {
+  getCreatorManagerHostBridge,
+} from '../char_info_shared/creatorManagerHostBridge';
 import { projectCharInfoMessage } from '../char_info_viewer/runtime/charInfoMessage';
 import { selectRecentMessageIds } from '../char_info_viewer/runtime/recentMessages';
 import RuntimeRoot from './RuntimeRoot.vue';
@@ -31,7 +33,6 @@ const CREATOR_BUTTON_NAME = '角色视觉编辑器';
 const LEGACY_CREATOR_BUTTON_NAME = '角色视觉编辑';
 const SETTINGS_HOST_CLASS = 'char-info-settings-host';
 const SETTINGS_BUTTON_NAME = 'CharInfo 设置';
-const RUNTIME_MANAGER_OWNER_KEY = '__charInfoWorldbookManagerOwner';
 
 type MountedMessage = {
   messageId: number;
@@ -75,13 +76,6 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     settings: readRuntimeSettings(getVariables({ type: 'script' })),
     settingsView: null,
   });
-  const worldbookManager = createCreatorManagerOverlay('library', {
-    forceMobileLayout: state.settings.forceMobileLayout,
-    onOpenCurrentChatLibrary: () => {
-      worldbookManager.close();
-      openLibraryList();
-    },
-  });
   const mountedMessages = new Map<number, MountedMessage>();
   const remountAttempts = new Map<number, RemountAttempt>();
   const activeFloorIds = new Set<number>();
@@ -103,20 +97,11 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     state.settingsView = null;
   };
 
-  const setManagerOwnership = (owner: 'runtime' | null) => {
-    const hostWindow = window.parent !== window ? window.parent : window;
-    const hostState = hostWindow as Window & Record<string, unknown>;
-    if (owner) {
-      hostState[RUNTIME_MANAGER_OWNER_KEY] = owner;
-      return;
-    }
-    delete hostState[RUNTIME_MANAGER_OWNER_KEY];
-  };
-
   const closeLibrary = () => {
     if (!state.library) return;
     state.library.listOpen = false;
     state.library.viewerOpen = false;
+    state.library.worldbookOpen = false;
   };
 
   const closeLibraryList = () => {
@@ -129,12 +114,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     state.library.viewerOpen = false;
   };
 
-  const closeWorldbookManager = () => {
-    worldbookManager.close();
-  };
-
-  const destroyWorldbookManager = () => {
-    worldbookManager.destroy();
+  const closeCreatorEditor = () => {
+    getCreatorManagerHostBridge()?.close();
   };
 
   const resetLibraryForChat = () => {
@@ -147,6 +128,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     library.characters = [];
     library.listOpen = false;
     library.viewerOpen = false;
+    library.worldbookOpen = false;
     library.unreadCharacterNames = [];
     library.loading = false;
     library.error = '';
@@ -207,9 +189,10 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
   const openLibraryList = () => {
     if (!started) return;
-    closeWorldbookManager();
+    closeCreatorEditor();
     closeSettings();
     if (!state.library) return;
+    state.library.worldbookOpen = false;
     state.library.listOpen = true;
     void refreshLibrary();
   };
@@ -244,6 +227,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       characters: [],
       listOpen: false,
       viewerOpen: false,
+      worldbookOpen: false,
       unreadCharacterNames: [],
       floatingButtonPosition: readRuntimeFloatingButtonPosition(getVariables({ type: 'script' })),
       loading: false,
@@ -263,7 +247,6 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     state.settings.activeFloorLimit = nextSettings.activeFloorLimit;
     state.settings.effectsEnabled = nextSettings.effectsEnabled;
     state.settings.forceMobileLayout = nextSettings.forceMobileLayout;
-    worldbookManager.setForceMobileLayout(nextSettings.forceMobileLayout);
     state.settings.imageSourcePriorityEnabled = nextSettings.imageSourcePriorityEnabled;
     state.settings.imageSourcePriority = nextSettings.imageSourcePriority;
     replaceVariables(mergeRuntimeSettings(getVariables({ type: 'script' }), nextSettings), { type: 'script' });
@@ -286,18 +269,38 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
   const openWorldbookLibrary = () => {
     if (!started) return;
-    closeLibraryList();
+    closeLibrary();
     closeSettings();
+    if (state.library) state.library.worldbookOpen = true;
+  };
+
+  const closeWorldbookLibrary = () => {
+    if (state.library) state.library.worldbookOpen = false;
+  };
+
+  const openCurrentChatLibrary = () => {
+    closeWorldbookLibrary();
+    openLibraryList();
+  };
+
+  const editWorldbookCharacter = (worldbookName: string, entryUid?: number) => {
+    const creatorManager = getCreatorManagerHostBridge();
+    if (!creatorManager) {
+      toastr.warning('角色资料编辑器未加载，请先加载 Creator Manager 脚本。');
+      return;
+    }
     try {
-      worldbookManager.open();
+      creatorManager.open({ worldbookName, entryUid, forceMobileLayout: state.settings.forceMobileLayout });
+      closeWorldbookLibrary();
     } catch (error) {
-      console.error('[CharInfo Runtime] 世界书角色库打开失败：', error);
+      console.error('[CharInfo Runtime] 角色资料编辑器打开失败：', error);
+      toastr.warning('角色资料编辑器暂时无法打开。');
     }
   };
 
   const openSettings = () => {
     if (!started) return;
-    closeWorldbookManager();
+    closeCreatorEditor();
     closeLibrary();
     if (state.settingsView) return;
 
@@ -559,7 +562,6 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     });
     listen(tavern_events.CHAT_CHANGED, () => {
       migrateLegacyGalleries();
-      destroyWorldbookManager();
       resetLibraryForChat();
       closeSettings();
       clearMessages();
@@ -574,7 +576,6 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       if (started) return;
       started = true;
       const startRevision = ++lifecycleRevision;
-      setManagerOwnership('runtime');
 
       migrateLegacyGalleries();
       initializeLibrary();
@@ -589,6 +590,9 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         onOpenLibraryList: openLibraryList,
         onOpenLibraryCharacter: openLibraryCharacter,
         onOpenWorldbookLibrary: openWorldbookLibrary,
+        onCloseWorldbookLibrary: closeWorldbookLibrary,
+        onOpenCurrentChatLibrary: openCurrentChatLibrary,
+        onEditWorldbookCharacter: editWorldbookCharacter,
         onMoveLibraryButton: updateLibraryButtonPosition,
         onOpenSettings: openSettings,
         onCloseSettings: closeSettings,
@@ -635,8 +639,6 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       mutationObserver?.disconnect();
       mutationObserver = null;
       eventStops.splice(0).forEach(stop => stop());
-      destroyWorldbookManager();
-      setManagerOwnership(null);
       closeLibrary();
       closeSettings();
       clearMessages();
