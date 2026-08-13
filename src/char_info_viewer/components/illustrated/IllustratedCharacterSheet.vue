@@ -294,6 +294,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect
 
 import type { CharacterViewModel } from '../../services/characterViewModel';
 import { normalizePortraitMediaUrlForBrowser } from '../../services/imageUrl';
+import { createMediaSourceTimeout, nextMediaSourceIndex } from '../../services/mediaSourceFallback';
 import type { AttributeView, IllustratedTab, IllustratedTabKey } from './types';
 import IllustratedCharacterPanel from './IllustratedCharacterPanel.vue';
 import IllustratedDivinityPanel from './IllustratedDivinityPanel.vue';
@@ -468,6 +469,10 @@ function openCharacterStory(): void {
   showCharacterStoryWarning('当前月历不支持打开该读本，请更新月历功能后重试。');
 }
 
+const portraitLoadTimeout = createMediaSourceTimeout(() => {
+  advancePortraitSource();
+});
+
 function retryPortraitLoad(): void {
   portraitLoadFailed.value = false;
   portraitLoaded.value = false;
@@ -476,19 +481,35 @@ function retryPortraitLoad(): void {
 }
 
 function onPortraitLoaded(): void {
+  portraitLoadTimeout.clear();
   portraitLoaded.value = true;
   portraitLoadFailed.value = false;
 }
 
-function onPortraitLoadError(): void {
+function advancePortraitSource(): void {
+  portraitLoadTimeout.clear();
   portraitLoaded.value = false;
-  if (activePortraitSourceIndex.value < activePortraitSources.value.length - 1) {
-    activePortraitSourceIndex.value += 1;
+  const nextIndex = nextMediaSourceIndex(activePortraitSourceIndex.value, activePortraitSources.value.length);
+  if (nextIndex !== null) {
+    activePortraitSourceIndex.value = nextIndex;
     portraitRetryAttempt.value = 0;
     return;
   }
   portraitLoadFailed.value = true;
 }
+
+function onPortraitLoadError(): void {
+  advancePortraitSource();
+}
+
+watch(
+  portraitMediaUrl,
+  url => {
+    portraitLoadTimeout.clear();
+    if (url && !portraitLoadFailed.value) portraitLoadTimeout.arm();
+  },
+  { immediate: true },
+);
 
 function switchPortrait(offset: number): void {
   const count = props.vm.imageUrls.length;
@@ -560,6 +581,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (overviewDensityFrame !== undefined) cancelAnimationFrame(overviewDensityFrame);
   overviewResizeObserver?.disconnect();
+  portraitLoadTimeout.dispose();
 });
 
 watch(

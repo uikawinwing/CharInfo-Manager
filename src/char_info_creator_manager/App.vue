@@ -449,10 +449,14 @@
                   <div class="image-preview">
                     <img
                       v-if="resolveGalleryPreviewUrl(image)"
+                      :key="`${image.id}:${image.previewSourceIndex}:${resolveGalleryPreviewUrl(image)}`"
+                      :ref="element => setGalleryPreviewElement(image, element)"
+                      :data-gallery-image-id="image.id"
                       :src="resolveGalleryPreviewUrl(image)"
                       :alt="image.title || `第 ${index + 1} 张立绘`"
                       loading="lazy"
                       referrerpolicy="no-referrer"
+                      @load="onGalleryPreviewLoad(image)"
                       @error="onGalleryPreviewError(image)"
                     />
                     <span v-else aria-hidden="true">▧</span>
@@ -609,6 +613,11 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 
 import { normalizePortraitMediaUrlForBrowser } from '../char_info_viewer/services/imageUrl';
+import {
+  createMediaSourceTimeout,
+  nextMediaSourceIndex,
+  type MediaSourceTimeout,
+} from '../char_info_viewer/services/mediaSourceFallback';
 import {
   createStableGalleryId,
   DEFAULT_EMBEDDED_GALLERY_LIMIT,
@@ -811,9 +820,78 @@ function resolveGalleryPreviewUrl(image: EditableGalleryImage): string {
   return sources[Math.min(image.previewSourceIndex, Math.max(0, sources.length - 1))] ?? '';
 }
 
-function onGalleryPreviewError(image: EditableGalleryImage) {
+const galleryPreviewElements = new Map<number, HTMLImageElement>();
+const galleryPreviewTimeouts = new Map<number, MediaSourceTimeout>();
+const visibleGalleryPreviewIds = new Set<number>();
+let galleryPreviewObserver: IntersectionObserver | null = null;
+
+function galleryPreviewTimeoutFor(image: EditableGalleryImage): MediaSourceTimeout {
+  let timeout = galleryPreviewTimeouts.get(image.id);
+  if (timeout) return timeout;
+  timeout = createMediaSourceTimeout(() => {
+    if (visibleGalleryPreviewIds.has(image.id)) advanceGalleryPreviewSource(image);
+  });
+  galleryPreviewTimeouts.set(image.id, timeout);
+  return timeout;
+}
+
+function clearGalleryPreviewTimeout(image: EditableGalleryImage) {
+  galleryPreviewTimeouts.get(image.id)?.clear();
+}
+
+function advanceGalleryPreviewSource(image: EditableGalleryImage) {
+  clearGalleryPreviewTimeout(image);
   const sources = resolveGalleryPreviewSources(image);
-  if (image.previewSourceIndex < sources.length - 1) image.previewSourceIndex += 1;
+  const nextIndex = nextMediaSourceIndex(image.previewSourceIndex, sources.length);
+  if (nextIndex !== null) image.previewSourceIndex = nextIndex;
+}
+
+function onGalleryPreviewLoad(image: EditableGalleryImage) {
+  clearGalleryPreviewTimeout(image);
+}
+
+function onGalleryPreviewError(image: EditableGalleryImage) {
+  advanceGalleryPreviewSource(image);
+}
+
+function setGalleryPreviewElement(image: EditableGalleryImage, element: unknown) {
+  const previous = galleryPreviewElements.get(image.id);
+  if (previous) galleryPreviewObserver?.unobserve(previous);
+
+  if (!(element instanceof HTMLImageElement)) {
+    galleryPreviewElements.delete(image.id);
+    visibleGalleryPreviewIds.delete(image.id);
+    clearGalleryPreviewTimeout(image);
+    return;
+  }
+
+  galleryPreviewElements.set(image.id, element);
+  if (galleryPreviewObserver) {
+    galleryPreviewObserver.observe(element);
+    return;
+  }
+
+  visibleGalleryPreviewIds.add(image.id);
+  galleryPreviewTimeoutFor(image).arm();
+}
+
+function initializeGalleryPreviewObserver() {
+  if (typeof IntersectionObserver === 'undefined') return;
+  galleryPreviewObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      const imageId = Number((entry.target as HTMLImageElement).dataset.galleryImageId);
+      const image = profile.gallery.find(candidate => candidate.id === imageId);
+      if (!image) return;
+      if (entry.isIntersecting) {
+        visibleGalleryPreviewIds.add(imageId);
+        galleryPreviewTimeoutFor(image).arm();
+      } else {
+        visibleGalleryPreviewIds.delete(imageId);
+        clearGalleryPreviewTimeout(image);
+      }
+    });
+  });
+  galleryPreviewElements.forEach(element => galleryPreviewObserver?.observe(element));
 }
 
 const filteredEntries = computed(() => {
@@ -1376,7 +1454,17 @@ watch(selectedEntryUid, uid => {
 });
 
 onMounted(() => {
+  initializeGalleryPreviewObserver();
   void loadWorldbooks();
+});
+
+onBeforeUnmount(() => {
+  galleryPreviewObserver?.disconnect();
+  galleryPreviewObserver = null;
+  galleryPreviewTimeouts.forEach(timeout => timeout.dispose());
+  galleryPreviewTimeouts.clear();
+  galleryPreviewElements.clear();
+  visibleGalleryPreviewIds.clear();
 });
 </script>
 
