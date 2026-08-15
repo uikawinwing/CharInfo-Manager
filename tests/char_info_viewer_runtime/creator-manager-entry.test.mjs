@@ -100,6 +100,18 @@ test('Creator Manager 样式不修改 ST 宿主页的 html 或 body', () => {
   assert.match(creatorManagerSource, /\.manager-root \{[\s\S]*?font-family:/u);
 });
 
+test('Creator 桌面编辑器保持固定窗口高度，步骤内容只在内部滚动', () => {
+  assert.match(
+    creatorManagerSource,
+    /\.manager-dialog \{[\s\S]*?height: min\(\d+px, calc\(100% - 8px\)\);[\s\S]*?max-height: calc\(100% - 8px\);/u,
+  );
+  assert.match(creatorManagerSource, /\.dialog-body \{[\s\S]*?min-height: 0;[\s\S]*?overflow: hidden;/u);
+  assert.match(
+    creatorManagerSource,
+    /\.target-panel,[\s\S]*?\.editor-panel \{[\s\S]*?min-height: 0;[\s\S]*?overflow-y: auto;/u,
+  );
+});
+
 test('当前聊天资料库和设置宿主明确使用动态视口尺寸，避免 ST 移动端 html 高度为零', () => {
   assert.match(
     runtimeRootSource,
@@ -110,6 +122,12 @@ test('当前聊天资料库和设置宿主明确使用动态视口尺寸，避�
 
 test('当前聊天资料库由悬浮入口打开角色列表，并完整显示角色立绘', () => {
   assert.match(runtimeRootSource, /class="char-info-library-floating-button"/u);
+  assert.match(runtimeRootSource, /@click="openLibraryFromFloatingButton\(\$event\)"/u);
+  assert.match(runtimeRootSource, /function getAnchoredListWindowPosition\(buttonRect: DOMRect\)/u);
+  assert.match(
+    runtimeRootSource,
+    /listWindowPosition\.value =[\s\S]*?getAnchoredListWindowPosition\(buttonRect\)[\s\S]*?props\.onOpenLibraryList\(\);/u,
+  );
   assert.doesNotMatch(
     runtimeRootSource,
     /v-if="state\.library\.characters\.length > 0 && !state\.library\.listOpen && !state\.library\.viewerOpen"/u,

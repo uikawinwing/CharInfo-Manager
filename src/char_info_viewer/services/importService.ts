@@ -8,6 +8,7 @@ type TavernApiLike = {
   getOrCreateChatWorldbook?: (chat: 'current', desiredName: string) => Promise<string>;
   createWorldbookEntries?: (bookName: string, entries: Array<Record<string, any>>) => Promise<unknown>;
   getChatWorldbookName?: (chat: 'current') => Promise<string | null>;
+  getWorldbook?: (bookName: string) => Promise<Array<Record<string, any>>>;
 };
 
 function getApi(): TavernApiLike {
@@ -19,7 +20,25 @@ function ensureString(val: unknown): string {
   return val ? normalizeDisplayText(val) : '';
 }
 
+function stringifyArrayItem(val: unknown): string {
+  if (val === undefined || val === null) return '';
+  if (typeof val !== 'object' || Array.isArray(val)) return normalizeDisplayText(val);
+
+  return Object.entries(val as Record<string, unknown>)
+    .map(([key, value]) => {
+      const normalizedKey = normalizeDisplayText(key);
+      const normalizedValue =
+        value && typeof value === 'object'
+          ? stringifyArrayItem(value)
+          : normalizeDisplayText(value);
+      return normalizedKey && normalizedValue ? `${normalizedKey}: ${normalizedValue}` : '';
+    })
+    .filter(Boolean)
+    .join('； ');
+}
+
 function ensureArray(val: unknown): string[] {
+  if (Array.isArray(val)) return val.map(stringifyArrayItem).filter(Boolean);
   return getSmartArray(val);
 }
 
@@ -273,12 +292,47 @@ export function mergeCharacterIntoMvuData(data: CharacterData, currentVars: Mvu.
   return charName;
 }
 
+async function waitForCondition(
+  predicate: () => boolean | Promise<boolean>,
+  timeoutMs = 2500,
+  intervalMs = 50,
+): Promise<boolean> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    if (await predicate()) return true;
+    await new Promise(resolve => setTimeout(resolve, intervalMs));
+  }
+  return false;
+}
+
 export async function importToMvuVariables(data: CharacterData, targetScope: MessageVariableScope): Promise<void> {
   await waitGlobalInitialized('Mvu');
   const currentVars = Mvu.getMvuData(targetScope);
-  mergeCharacterIntoMvuData(data, currentVars);
+  const characterName = mergeCharacterIntoMvuData(data, currentVars);
 
-  await Mvu.replaceMvuData(currentVars, targetScope);
+  const writeResult = Promise.resolve(Mvu.replaceMvuData(currentVars, targetScope));
+  const writeSettled = writeResult.then(
+    () => true,
+    error => {
+      throw error;
+    },
+  );
+  const readBackVerified = waitForCondition(() =>
+    _.has(Mvu.getMvuData(targetScope), `stat_data.关系列表.${characterName}`),
+  );
+
+  const result = await Promise.race([
+    writeSettled.then(() => 'settled' as const),
+    readBackVerified.then(verified => (verified ? ('verified' as const) : ('timeout' as const))),
+  ]);
+
+  if (result === 'verified') {
+    void writeResult.catch(error => console.error('[CharInfo Viewer] MVU write rejected after read-back success:', error));
+    return;
+  }
+  if (result === 'settled') return;
+
+  await writeResult;
 }
 
 export function mergeDxCharacterIntoMvuData(
@@ -296,13 +350,22 @@ export function mergeDxCharacterIntoMvuData(
   return 'imported';
 }
 
-function formatWorldbookContent(originalYaml: string): string {
+function stripCharInfoWrapper(originalYaml: string): string {
   const content = String(originalYaml ?? '').trim();
+  const wrapped = content.match(/^<char_info\b[^>]*>\s*([\s\S]*?)\s*<\/char_info>$/i);
+  return (wrapped?.[1] ?? content).trim();
+}
+
+function formatWorldbookContent(originalYaml: string): string {
+  const content = stripCharInfoWrapper(originalYaml);
   if (!content) return '---';
   return /^---(?:\r?\n|$)/.test(content) ? content : `---\n${content}`;
 }
 
-export async function saveToChatWorldbook(data: CharacterData, originalYaml: string): Promise<Record<string, unknown>> {
+export async function saveToChatWorldbook(
+  data: CharacterData,
+  originalYaml: string,
+): Promise<Record<string, unknown>> {
   const api = getApi();
   if (typeof api.getOrCreateChatWorldbook !== 'function' || typeof api.createWorldbookEntries !== 'function') {
     throw new Error('未检测到 Worldbook API。');
@@ -342,8 +405,36 @@ export async function saveToChatWorldbook(data: CharacterData, originalYaml: str
   };
 
   console.info('[CharInfo Viewer] Creating chat worldbook entry', { bookName, entry: newEntry });
-  const apiResult = await api.createWorldbookEntries(bookName, [newEntry]);
-  console.info('[CharInfo Viewer] Chat worldbook entry created', { bookName, apiResult });
+  const writeResult = Promise.resolve(api.createWorldbookEntries(bookName, [newEntry]));
+  const writeSettled = writeResult.then(
+    apiResult => ({ kind: 'settled' as const, apiResult }),
+    error => {
+      throw error;
+    },
+  );
 
+  const readBackVerified =
+    typeof api.getWorldbook === 'function'
+      ? waitForCondition(async () => {
+          const entries = await api.getWorldbook!(bookName!);
+          return entries.some(entry => entry?.name === characterName && entry?.content === content);
+        }).then(verified => ({ kind: verified ? ('verified' as const) : ('timeout' as const) }))
+      : new Promise<{ kind: 'unavailable' }>(() => undefined);
+
+  const result = await Promise.race([writeSettled, readBackVerified]);
+  if (result.kind === 'settled') {
+    console.info('[CharInfo Viewer] Chat worldbook entry created', { bookName, apiResult: result.apiResult });
+    return { bookName, entry: newEntry, apiResult: result.apiResult };
+  }
+  if (result.kind === 'verified') {
+    void writeResult.catch(error =>
+      console.error('[CharInfo Viewer] Worldbook write rejected after read-back success:', error),
+    );
+    console.info('[CharInfo Viewer] Chat worldbook entry verified by read-back', { bookName, characterName });
+    return { bookName, entry: newEntry, apiResult: 'verified-by-readback' };
+  }
+
+  const apiResult = await writeResult;
+  console.info('[CharInfo Viewer] Chat worldbook entry created after read-back timeout', { bookName, apiResult });
   return { bookName, entry: newEntry, apiResult };
 }

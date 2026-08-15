@@ -43,6 +43,18 @@ export interface CharacterData {
   [key: string]: any;
 }
 
+export type ViewerSaveFeedback = {
+  target: 'chat-variable' | 'worldbook';
+  phase: 'pending' | 'success' | 'error';
+  message: string;
+  successMessage?: string;
+};
+
+export type ViewerSaveState = {
+  phase: 'pending' | 'success' | 'error';
+  label: string;
+};
+
 export interface ParseSuccess {
   success: true;
   data: CharacterData;

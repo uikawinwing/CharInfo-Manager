@@ -32,9 +32,15 @@ export type RuntimeSettingsView = {
   host: HTMLElement;
 };
 
+export type RuntimeSaveState = {
+  phase: 'pending' | 'success' | 'error';
+  label: string;
+};
+
 export type RuntimeViewState = {
   messages: RuntimeMessageView[];
   library: RuntimeLibraryView | null;
   settings: CharInfoUiSettings;
   settingsView: RuntimeSettingsView | null;
+  saveStateByCard: Record<string, RuntimeSaveState>;
 };

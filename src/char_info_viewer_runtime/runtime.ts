@@ -18,6 +18,7 @@ import {
   type CharInfoFloatingButtonPosition,
   type CharInfoUiSettings,
 } from './runtimeSettings';
+import type { ViewerSaveFeedback } from '../char_info_viewer/types';
 import type { RuntimeMessageView, RuntimeViewState } from './types';
 
 const MAX_CARDS_PER_MESSAGE = 4;
@@ -72,6 +73,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     library: null,
     settings: readRuntimeSettings(getVariables({ type: 'script' })),
     settingsView: null,
+    saveStateByCard: {},
   });
   const mountedMessages = new Map<number, MountedMessage>();
   const remountAttempts = new Map<number, RemountAttempt>();
@@ -89,6 +91,18 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   const pendingAffinityNames = new Set<string>();
   let lifecycleRevision = 0;
   let started = false;
+
+  const setSaveState = (cardKey: string, phase: 'pending' | 'success' | 'error') => {
+    state.saveStateByCard[cardKey] = {
+      phase,
+      label: phase === 'pending' ? '保存中…' : phase === 'success' ? '✓ 已保存' : '保存失败',
+    };
+  };
+
+  const handleViewerSaveFeedback = (cardKey: string, feedback: ViewerSaveFeedback) => {
+    setSaveState(cardKey, feedback.phase);
+  };
+
   const closeSettings = () => {
     state.settingsView?.host.remove();
     state.settingsView = null;
@@ -603,6 +617,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         onCloseSettings: closeSettings,
         onUpdateSettings: updateSettings,
         onResetSettings: resetSettings,
+        saveFeedbackHandler: handleViewerSaveFeedback,
       }).use(createPinia());
       app.mount(appRoot);
 
@@ -639,6 +654,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
       if (dirtyFlushTimer) clearTimeout(dirtyFlushTimer);
       if (rescanTimer) clearTimeout(rescanTimer);
+      state.saveStateByCard = {};
       dirtyFlushTimer = null;
       rescanTimer = null;
       mutationObserver?.disconnect();

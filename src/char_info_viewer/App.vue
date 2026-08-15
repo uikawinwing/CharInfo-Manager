@@ -83,8 +83,8 @@
         v-if="(shouldShowIllustratedLayout || shouldShowSpecialNpcLayout) && vm"
         :vm="vm"
         :attributes="attributes"
-        :importing="importing"
-        :import-button-text="importButtonText"
+        :importing="saveBusy"
+        :import-button-text="saveButtonText"
         :show-import-menu="showImportMenu"
         :read-only="props.readOnly"
         :debug-enabled="props.debugEnabled"
@@ -460,12 +460,12 @@
             </section>
           </div>
 
-          <button v-if="!props.readOnly" class="import-action-btn" :disabled="importing" @click.stop="toggleImportMenu">
-            {{ importButtonText }}
+          <button v-if="!props.readOnly" class="import-action-btn" :disabled="saveBusy" @click.stop="toggleImportMenu">
+            {{ saveButtonText }}
           </button>
           <div v-if="!props.readOnly" class="import-action-menu" :class="{ show: showImportMenu }">
-            <button type="button" :disabled="importing" @click="onImportMvu">导入到角色状态</button>
-            <button type="button" :disabled="importing" @click="onImportWorldbook">导入到聊天世界书</button>
+            <button type="button" :disabled="saveBusy" @click="onImportMvu">保存在聊天变量</button>
+            <button type="button" :disabled="saveBusy" @click="onImportWorldbook">导入到聊天世界书</button>
           </div>
         </div>
       </div>
@@ -526,7 +526,7 @@ import {
   messageContainsDxCharacterReference,
   parseDxCharacterReference,
 } from '@/char_info_viewer/dxRuntime';
-import type { CharacterData, FriendlyYamlError, ThemeResolved } from './types';
+import type { CharacterData, FriendlyYamlError, ThemeResolved, ViewerSaveFeedback, ViewerSaveState } from './types';
 import IllustratedCharacterSheet from './components/illustrated/IllustratedCharacterSheet.vue';
 
 const props = withDefaults(
@@ -541,6 +541,8 @@ const props = withDefaults(
     entranceQuoteOverride?: string;
     previewMode?: boolean;
     visualConfigOverride?: { characterName: string; config: unknown };
+    saveFeedback?: (feedback: ViewerSaveFeedback) => void;
+    saveState?: ViewerSaveState;
   }>(),
   {
     embedded: false,
@@ -551,6 +553,8 @@ const props = withDefaults(
     entranceQuoteOverride: undefined,
     previewMode: false,
     visualConfigOverride: undefined,
+    saveFeedback: undefined,
+    saveState: undefined,
   },
 );
 
@@ -577,7 +581,23 @@ const showImportMenu = ref(false);
 const importing = ref(false);
 const defaultImportButtonText = '📥';
 const importButtonText = ref(defaultImportButtonText);
+const savePending = computed(() => props.saveState?.phase === 'pending');
+const usesRuntimeSaveState = computed(() => Boolean(props.saveFeedback));
+const saveBusy = computed(() => (usesRuntimeSaveState.value ? savePending.value : importing.value));
+const saveButtonText = computed(() =>
+  usesRuntimeSaveState.value ? props.saveState?.label || defaultImportButtonText : importButtonText.value,
+);
+watch(
+  () => props.saveState?.phase,
+  phase => {
+    if (!usesRuntimeSaveState.value || !phase || phase === 'pending') return;
+    importing.value = false;
+    importButtonText.value = defaultImportButtonText;
+  },
+);
+
 let importButtonResetTimer: ReturnType<typeof setTimeout> | null = null;
+let previewYamlRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 let dxCharacterAutoImportTimer: ReturnType<typeof setTimeout> | null = null;
 let dxCharacterAutoImportEventListener: EventOnReturn | null = null;
 let dxCharacterGenerationEndedEventListener: EventOnReturn | null = null;
@@ -734,6 +754,18 @@ watch(
     setupParticleEngine();
   },
   { deep: true },
+);
+
+watch(
+  () => props.yamlText,
+  () => {
+    if (!props.previewMode) return;
+    if (previewYamlRefreshTimer) clearTimeout(previewYamlRefreshTimer);
+    previewYamlRefreshTimer = setTimeout(() => {
+      previewYamlRefreshTimer = null;
+      void initFromYaml();
+    }, 80);
+  },
 );
 
 async function initFromYaml() {
@@ -989,35 +1021,53 @@ function flashImportButton(temp: string, duration = 1200) {
 
 async function onImportMvu() {
   const importData = mvuImportData.value || sheetData.value;
-  if (!importData || importing.value) return;
+  if (!importData || saveBusy.value) return;
   importing.value = true;
   closeImportMenu();
 
   try {
     const ok = window.confirm(
-      `确定要将角色 "${importData.姓名 || '未命名角色'}" 导入到角色状态吗？\n如果已存在同名角色，将会覆盖其数据。`,
+      `确定要将角色 "${importData.姓名 || '未命名角色'}" 保存在聊天变量吗？\n如果已存在同名角色，将会覆盖其数据。`,
     );
     if (!ok) return;
 
     if (parseMode.value === 'loose') {
-      const looseOk = window.confirm('当前资料由基础资料恢复而来，可能缺少技能、装备或嵌套内容。确认检查无误后再导入？');
+      const looseOk = window.confirm('当前资料由基础资料恢复而来，可能缺少技能、装备或嵌套内容。确认检查无误后再保存？');
       if (!looseOk) return;
     }
 
     importButtonText.value = '⏳';
+    const characterName = importData.姓名 || '角色';
+    props.saveFeedback?.({
+      target: 'chat-variable',
+      phase: 'pending',
+      message: `${characterName} 正在保存到聊天变量…`,
+      successMessage: `✓ ${characterName} 已保存到聊天变量。`,
+    });
     await importToMvuVariables(importData, { type: 'message', message_id: props.messageId });
-    flashImportButton('✅', 1600);
+    importing.value = false;
+    flashImportButton('✓ 已保存', 3000);
+    props.saveFeedback?.({
+      target: 'chat-variable',
+      phase: 'success',
+      message: `✓ ${characterName} 已保存到聊天变量。`,
+    });
   } catch (err: any) {
     console.error('MVU Import Error:', err);
+    props.saveFeedback?.({
+      target: 'chat-variable',
+      phase: 'error',
+      message: `✕ ${err?.message || '保存到聊天变量失败。'}`,
+    });
     flashImportButton('❌', 1800);
-    window.alert(`导入失败: ${err?.message || String(err)}`);
+    window.alert(`保存失败: ${err?.message || String(err)}`);
   } finally {
     importing.value = false;
   }
 }
 
 async function onImportWorldbook() {
-  if (!sheetData.value || importing.value) return;
+  if (!sheetData.value || saveBusy.value) return;
   importing.value = true;
   closeImportMenu();
 
@@ -1028,15 +1078,33 @@ async function onImportWorldbook() {
     }
 
     importButtonText.value = '⏳';
+    const characterName = sheetData.value.姓名 || '角色';
+    props.saveFeedback?.({
+      target: 'worldbook',
+      phase: 'pending',
+      message: `${characterName} 正在保存到聊天世界书…`,
+      successMessage: `✓ ${characterName} 已保存到聊天世界书。`,
+    });
     console.info('[CharInfo Viewer] Chat worldbook import started', {
       characterName: sheetData.value.姓名 || '未命名角色',
       yamlLength: originalYamlText.value.length,
     });
     const result = await saveToChatWorldbook(sheetData.value, originalYamlText.value);
+    importing.value = false;
+    flashImportButton('✓ 已保存', 3000);
+    props.saveFeedback?.({
+      target: 'worldbook',
+      phase: 'success',
+      message: `✓ ${characterName} 已保存到聊天世界书。`,
+    });
     console.info('[CharInfo Viewer] Chat worldbook import succeeded', result);
-    flashImportButton('✅', 1200);
   } catch (err: any) {
     console.error('Worldbook Save Error:', err);
+    props.saveFeedback?.({
+      target: 'worldbook',
+      phase: 'error',
+      message: `✕ ${err?.message || '保存到聊天世界书失败。'}`,
+    });
     flashImportButton('❌', 1800);
     window.alert(`保存失败: ${err?.message || String(err)}`);
   } finally {
@@ -1068,6 +1136,10 @@ onBeforeUnmount(() => {
   if (importButtonResetTimer) {
     clearTimeout(importButtonResetTimer);
     importButtonResetTimer = null;
+  }
+  if (previewYamlRefreshTimer) {
+    clearTimeout(previewYamlRefreshTimer);
+    previewYamlRefreshTimer = null;
   }
   if (dxCharacterAutoImportTimer) {
     clearTimeout(dxCharacterAutoImportTimer);

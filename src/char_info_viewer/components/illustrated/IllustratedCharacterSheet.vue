@@ -16,6 +16,13 @@
         isOverviewTab ? overviewDensityClass : null,
       ]"
     >
+      <canvas
+        v-if="specialNpc"
+        ref="detailWallpaperCanvas"
+        class="illustrated-mobile-detail-wallpaper"
+        :class="{ 'is-visible': !isOverviewTab && detailWallpaperReady }"
+        aria-hidden="true"
+      ></canvas>
       <aside class="illustrated-portrait-pane">
         <div v-if="!portraitLoaded && !portraitLoadFailed" class="illustrated-portrait-loading" role="status">
           <span aria-hidden="true">◇</span>
@@ -23,6 +30,7 @@
         </div>
         <video
           v-if="isVideoPortrait && !portraitLoadFailed"
+          ref="portraitVideoElement"
           :key="portraitMediaUrl"
           class="illustrated-portrait-video"
           :class="{ 'is-loaded': portraitLoaded }"
@@ -38,6 +46,7 @@
         ></video>
         <img
           v-else-if="!portraitLoadFailed"
+          ref="portraitImageElement"
           :key="portraitMediaUrl"
           class="illustrated-portrait-image"
           :class="{ 'is-loaded': portraitLoaded }"
@@ -113,13 +122,14 @@
         />
 
         <div ref="panelsElement" class="illustrated-panels">
-          <IllustratedPageTitle v-if="!isOverviewTab" :title="activeSpecialTabTitle" />
+          <div v-if="hideRedundantDetailTitle" class="illustrated-detail-title-spacer" aria-hidden="true"></div>
+          <IllustratedPageTitle v-else-if="!isOverviewTab" :title="activeSpecialTabTitle" />
 
           <IllustratedOverviewPanel
             v-if="activeSpecialTab === 'overview'"
             :class="overviewDensityClass"
             :attributes="attributes"
-            :resource-boxes="vm.resourceBoxes"
+            :resource-boxes="[]"
             :entrance-quote-text="vm.entranceQuoteText"
             @toggle-attribute-formula="$emit('toggleAttributeFormula', $event)"
             @open-entrance-quote="openEntranceQuoteDialog"
@@ -135,13 +145,34 @@
           />
 
           <template v-else-if="activeSpecialTab === 'skills'">
-            <IllustratedItemCard
-              v-for="(item, index) in vm.skills"
-              :key="`skill-${index}`"
-              :item="item"
-              :variant="specialNpc ? 'skill' : 'item'"
-              show-cost
-            />
+            <section
+              v-for="group in groupedSkills"
+              :key="`skill-group-${group.key}`"
+              class="illustrated-section illustrated-skill-group illustrated-group-panel"
+              :class="{ 'is-collapsed': isGroupCollapsed(`skill:${group.key}`) }"
+            >
+              <h3 class="illustrated-section-title illustrated-group-title">
+                <button
+                  class="illustrated-group-toggle"
+                  type="button"
+                  :aria-expanded="!isGroupCollapsed(`skill:${group.key}`)"
+                  @click="toggleGroup(`skill:${group.key}`)"
+                >
+                  <span class="illustrated-group-icon" aria-hidden="true">{{ group.icon }}</span>
+                  <span class="illustrated-group-label">{{ group.title }}</span>
+                  <span class="illustrated-group-chevron" aria-hidden="true"></span>
+                </button>
+              </h3>
+              <div v-show="!isGroupCollapsed(`skill:${group.key}`)" class="illustrated-group-body">
+                <IllustratedItemCard
+                  v-for="(item, index) in group.items"
+                  :key="`skill-${group.key}-${index}`"
+                  :item="item"
+                  :variant="specialNpc ? 'skill' : 'item'"
+                  show-cost
+                />
+              </div>
+            </section>
           </template>
 
           <template v-else-if="activeSpecialTab === 'equipment'">
@@ -160,24 +191,59 @@
           </template>
 
           <template v-else-if="activeSpecialTab === 'holdings'">
-            <section v-if="vm.equipments.length > 0" class="illustrated-section">
-              <h3 class="illustrated-section-title">装备</h3>
-              <IllustratedItemCard
-                v-for="(item, index) in vm.equipments"
-                :key="`holding-equipment-${index}`"
-                :item="item"
-                :variant="specialNpc ? 'holding' : 'item'"
-              />
+            <section
+              v-if="vm.equipments.length > 0"
+              class="illustrated-section illustrated-holding-section illustrated-group-panel"
+              :class="{ 'is-collapsed': isGroupCollapsed('holding:equipment') }"
+            >
+              <h3 class="illustrated-section-title illustrated-group-title">
+                <button
+                  class="illustrated-group-toggle"
+                  type="button"
+                  :aria-expanded="!isGroupCollapsed('holding:equipment')"
+                  @click="toggleGroup('holding:equipment')"
+                >
+                  <span class="illustrated-group-icon" aria-hidden="true">▣</span>
+                  <span class="illustrated-group-label">装备</span>
+                  <span class="illustrated-group-chevron" aria-hidden="true"></span>
+                </button>
+              </h3>
+              <div v-show="!isGroupCollapsed('holding:equipment')" class="illustrated-group-body">
+                <IllustratedItemCard
+                  v-for="(item, index) in vm.equipments"
+                  :key="`holding-equipment-${index}`"
+                  :item="item"
+                  :variant="specialNpc ? 'holding' : 'item'"
+                />
+              </div>
             </section>
 
-            <section v-for="section in vm.inventorySections" :key="`holding-${section.key}`" class="illustrated-section">
-              <h3 class="illustrated-section-title">{{ section.title }}</h3>
-              <IllustratedItemCard
-                v-for="(item, index) in section.items"
-                :key="`holding-${section.key}-${index}`"
-                :item="item"
-                :variant="specialNpc ? 'holding' : 'item'"
-              />
+            <section
+              v-for="section in vm.inventorySections"
+              :key="`holding-${section.key}`"
+              class="illustrated-section illustrated-holding-section illustrated-group-panel"
+              :class="{ 'is-collapsed': isGroupCollapsed(`holding:${section.key}`) }"
+            >
+              <h3 class="illustrated-section-title illustrated-group-title">
+                <button
+                  class="illustrated-group-toggle"
+                  type="button"
+                  :aria-expanded="!isGroupCollapsed(`holding:${section.key}`)"
+                  @click="toggleGroup(`holding:${section.key}`)"
+                >
+                  <span class="illustrated-group-icon" aria-hidden="true">◈</span>
+                  <span class="illustrated-group-label">{{ section.title }}</span>
+                  <span class="illustrated-group-chevron" aria-hidden="true"></span>
+                </button>
+              </h3>
+              <div v-show="!isGroupCollapsed(`holding:${section.key}`)" class="illustrated-group-body">
+                <IllustratedItemCard
+                  v-for="(item, index) in section.items"
+                  :key="`holding-${section.key}-${index}`"
+                  :item="item"
+                  :variant="specialNpc ? 'holding' : 'item'"
+                />
+              </div>
             </section>
           </template>
 
@@ -199,6 +265,7 @@
 
           <IllustratedCharacterPanel
             v-else-if="activeSpecialTab === 'characterPanel'"
+            :vm="vm"
             :attributes="attributes"
             :resource-boxes="vm.resourceBoxes"
             :status-effects="vm.statusEffects"
@@ -234,7 +301,7 @@
           :importing="importing"
           :import-button-text="importButtonText"
           :show-import-action="!readOnly"
-          @set-tab="activeSpecialTab = $event"
+          @set-tab="setActiveSpecialTab"
           @toggle-import-menu="$emit('toggleImportMenu')"
         />
       </section>
@@ -247,12 +314,12 @@
         :importing="importing"
         :import-button-text="importButtonText"
         :show-import-action="!readOnly"
-        @set-tab="activeSpecialTab = $event"
+        @set-tab="setActiveSpecialTab"
         @toggle-import-menu="$emit('toggleImportMenu')"
       />
 
       <div v-if="!readOnly" class="import-action-menu" :class="{ show: showImportMenu }">
-        <button type="button" :disabled="importing" @click="$emit('importMvu')">导入到角色状态</button>
+        <button type="button" :disabled="importing" @click="$emit('importMvu')">保存在聊天变量</button>
         <button type="button" :disabled="importing" @click="$emit('importWorldbook')">导入到聊天世界书</button>
       </div>
     </main>
@@ -292,7 +359,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 
-import type { CharacterViewModel } from '../../services/characterViewModel';
+import { itemType, type CharacterViewModel, type ItemObject } from '../../services/characterViewModel';
 import { normalizePortraitMediaUrlForBrowser } from '../../services/imageUrl';
 import { createMediaSourceTimeout, nextMediaSourceIndex } from '../../services/mediaSourceFallback';
 import type { AttributeView, IllustratedTab, IllustratedTabKey } from './types';
@@ -326,9 +393,57 @@ defineEmits<{
   fallbackToDefault: [];
 }>();
 
+type SkillGroupKey = 'active' | 'passive' | 'other';
+type SkillGroup = { key: SkillGroupKey; title: string; icon: string; items: ItemObject[] };
+
+function skillGroupKey(item: ItemObject): SkillGroupKey {
+  const type = itemType(item).trim();
+  if (type.includes('主动') || type.includes('主動')) return 'active';
+  if (type.includes('被动') || type.includes('被動')) return 'passive';
+  return 'other';
+}
+
+const groupedSkills = computed<SkillGroup[]>(() => {
+  const groups: SkillGroup[] = [
+    { key: 'active', title: '主动技能', icon: '◆', items: [] },
+    { key: 'passive', title: '被动技能', icon: '◎', items: [] },
+    { key: 'other', title: '其他技能', icon: '✦', items: [] },
+  ];
+
+  for (const skill of props.vm.skills) {
+    const group = groups.find(candidate => candidate.key === skillGroupKey(skill));
+    group?.items.push(skill);
+  }
+
+  return groups.filter(group => group.items.length > 0);
+});
+
+const collapsedGroupKeys = ref<string[]>([]);
+
+function isGroupCollapsed(key: string): boolean {
+  return collapsedGroupKeys.value.includes(key);
+}
+
+function toggleGroup(key: string): void {
+  collapsedGroupKeys.value = isGroupCollapsed(key)
+    ? collapsedGroupKeys.value.filter(candidate => candidate !== key)
+    : [...collapsedGroupKeys.value, key];
+}
+
+watch(
+  () => props.vm.nameText,
+  () => {
+    collapsedGroupKeys.value = [];
+  },
+);
+
 const activeSpecialTab = ref<IllustratedTabKey>('overview');
 const shellElement = ref<HTMLElement | null>(null);
 const panelsElement = ref<HTMLElement | null>(null);
+const portraitImageElement = ref<HTMLImageElement | null>(null);
+const portraitVideoElement = ref<HTMLVideoElement | null>(null);
+const detailWallpaperCanvas = ref<HTMLCanvasElement | null>(null);
+const detailWallpaperReady = ref(false);
 const overviewDensity = ref<'normal' | 'compact' | 'dense'>('normal');
 const overviewDensityClass = computed(() => `overview-density-${overviewDensity.value}`);
 const isEntranceQuoteDialogOpen = ref(false);
@@ -385,11 +500,11 @@ const tabs = computed<IllustratedTab[]>(() => {
   if (props.specialNpc) {
     return [
       { key: 'overview', label: '首页' },
+      { key: 'characterPanel', label: '面板' },
       { key: 'profile', label: '档案' },
       { key: 'skills', label: '技能' },
       { key: 'holdings', label: '持有' },
       { key: 'divinity', label: '登神' },
-      { key: 'characterPanel', label: '面板' },
     ];
   }
 
@@ -412,6 +527,7 @@ const tabs = computed<IllustratedTab[]>(() => {
 });
 const isOverviewTab = computed(() => activeSpecialTab.value === 'overview');
 const isDivinityTab = computed(() => activeSpecialTab.value === 'divinity');
+const hideRedundantDetailTitle = computed(() => props.specialNpc && !isOverviewTab.value);
 const activeSpecialTabTitle = computed(() => tabs.value.find(tab => tab.key === activeSpecialTab.value)?.label ?? '');
 const isVenusTheme = computed(() => props.vm.presentationProfile?.visualTheme === 'venus');
 const isAnastasiaTheme = computed(() => props.vm.presentationProfile?.visualTheme === 'anastasia');
@@ -427,6 +543,63 @@ const themeStyle = computed(() => {
   if (isAnastasiaTheme.value) return anastasiaPortraitCssVars;
   return undefined;
 });
+
+function captureDetailWallpaper(): void {
+  const canvas = detailWallpaperCanvas.value;
+  const shell = shellElement.value;
+  const source = isVideoPortrait.value ? portraitVideoElement.value : portraitImageElement.value;
+  if (!canvas || !shell || !source || !portraitLoaded.value || portraitLoadFailed.value) {
+    detailWallpaperReady.value = false;
+    return;
+  }
+
+  const sourceWidth = source instanceof HTMLVideoElement ? source.videoWidth : source.naturalWidth;
+  const sourceHeight = source instanceof HTMLVideoElement ? source.videoHeight : source.naturalHeight;
+  if (!sourceWidth || !sourceHeight) {
+    detailWallpaperReady.value = false;
+    return;
+  }
+
+  const cssWidth = Math.max(1, shell.clientWidth);
+  const cssHeight = Math.max(1, shell.clientHeight);
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.max(1, Math.round(cssWidth * pixelRatio));
+  canvas.height = Math.max(1, Math.round(cssHeight * pixelRatio));
+
+  const targetAspect = canvas.width / canvas.height;
+  const sourceAspect = sourceWidth / sourceHeight;
+  let sx = 0;
+  let sy = 0;
+  let sw = sourceWidth;
+  let sh = sourceHeight;
+
+  if (sourceAspect > targetAspect) {
+    sw = sourceHeight * targetAspect;
+    sx = (sourceWidth - sw) / 2;
+  } else {
+    sh = sourceWidth / targetAspect;
+    sy = (sourceHeight - sh) / 2;
+  }
+
+  try {
+    const context = canvas.getContext('2d');
+    if (!context) {
+      detailWallpaperReady.value = false;
+      return;
+    }
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(source, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    detailWallpaperReady.value = true;
+  } catch (_) {
+    detailWallpaperReady.value = false;
+  }
+}
+
+function setActiveSpecialTab(tab: IllustratedTabKey): void {
+  if (tab === activeSpecialTab.value) return;
+  if (activeSpecialTab.value === 'overview' && tab !== 'overview') captureDetailWallpaper();
+  activeSpecialTab.value = tab;
+}
 
 type CalendarFloatWidgetApi = {
   open?: () => void;
@@ -658,9 +831,9 @@ watchEffect(() => {
   --illustrated-race-accent-rgb: var(--race-color-rgb, 212, 175, 55);
   --illustrated-tier-accent: var(--tier-color, #d4af37);
   --illustrated-tier-accent-rgb: var(--tier-color-rgb, 212, 175, 55);
-  --illustrated-overview-width: 520px;
+  --illustrated-overview-width: 540px;
   --illustrated-flag-width: 128px;
-  --illustrated-flag-height: 128px;
+  --illustrated-flag-height: 156px;
   --illustrated-flag-gap: 12px;
   --illustrated-resource-width: 128px;
   --illustrated-resource-height: 72px;
@@ -1918,16 +2091,9 @@ watchEffect(() => {
 }
 
 .illustrated-panels::-webkit-scrollbar {
-  width: 6px;
-}
-
-.illustrated-panels::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.illustrated-panels::-webkit-scrollbar-thumb {
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.12);
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .illustrated-panels {
@@ -1936,8 +2102,8 @@ watchEffect(() => {
   min-height: 0;
   overflow-y: auto;
   padding-bottom: 22px;
-  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
-  scrollbar-width: thin;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .illustrated-shell.is-overview-tab .illustrated-panels {
@@ -1946,14 +2112,32 @@ watchEffect(() => {
 }
 
 @media (min-width: 901px) {
+  .illustrated-shell.is-special-npc.is-overview-tab .illustrated-data-pane {
+    padding-top: 72px;
+  }
+
+  .illustrated-shell.is-special-npc.is-overview-tab :deep(.illustrated-attribute-total) {
+    display: inline-block;
+    margin-top: 16px;
+    transform: none;
+  }
+
   .illustrated-shell.overview-density-compact .illustrated-data-pane {
     padding-top: 42px;
     padding-bottom: 26px;
   }
 
+  .illustrated-shell.is-special-npc.is-overview-tab.overview-density-compact .illustrated-data-pane {
+    padding-top: 64px;
+  }
+
   .illustrated-shell.overview-density-dense .illustrated-data-pane {
     padding-top: 28px;
     padding-bottom: 18px;
+  }
+
+  .illustrated-shell.is-special-npc.is-overview-tab.overview-density-dense .illustrated-data-pane {
+    padding-top: 56px;
   }
 }
 
@@ -1997,6 +2181,118 @@ watchEffect(() => {
   color: var(--illustrated-race-accent);
   font-size: 18px;
   font-weight: 700;
+}
+
+.illustrated-skill-group + .illustrated-skill-group,
+.illustrated-holding-section + .illustrated-holding-section {
+  margin-top: 24px;
+}
+
+.illustrated-group-panel {
+  overflow: hidden;
+  margin-inline: 10px 14px;
+  border: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.2);
+  border-radius: 4px;
+  background: rgba(5, 9, 14, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.illustrated-group-panel.is-collapsed {
+  background: rgba(5, 9, 14, 0.12);
+}
+
+.illustrated-group-body {
+  min-width: 0;
+  padding: 2px 10px 8px;
+}
+
+.illustrated-detail-title-spacer {
+  min-height: 38px;
+  margin: 0 0 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.illustrated-group-title {
+  margin: 0;
+}
+
+.illustrated-group-toggle {
+  display: grid;
+  grid-template-columns: 13px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 14px 8px 10px;
+  border: 0;
+  border-bottom: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.18);
+  background: linear-gradient(90deg, rgba(var(--illustrated-tier-accent-rgb), 0.08), rgba(5, 9, 14, 0.08));
+  color: color-mix(in srgb, var(--illustrated-race-accent) 68%, #d7e0e5);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+  text-align: left;
+  text-shadow: none;
+  cursor: pointer;
+}
+
+.illustrated-group-toggle:hover,
+.illustrated-group-toggle:focus-visible {
+  background: linear-gradient(90deg, rgba(var(--illustrated-tier-accent-rgb), 0.13), rgba(5, 9, 14, 0.1));
+  outline: none;
+}
+
+.illustrated-group-panel.is-collapsed .illustrated-group-toggle {
+  border-bottom-color: transparent;
+}
+
+.illustrated-group-icon {
+  color: var(--illustrated-race-accent);
+  font-size: 13px;
+  text-align: center;
+}
+
+.illustrated-group-label {
+  min-width: 0;
+}
+
+.illustrated-group-chevron {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  justify-self: end;
+  color: rgba(224, 233, 239, 0.72);
+  transition: transform 0.16s ease;
+  transform: rotate(0deg);
+}
+
+.illustrated-group-chevron::before,
+.illustrated-group-chevron::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  width: 6px;
+  height: 1.5px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.illustrated-group-chevron::before {
+  left: 1px;
+  transform: rotate(42deg);
+  transform-origin: right center;
+}
+
+.illustrated-group-chevron::after {
+  right: 1px;
+  transform: rotate(-42deg);
+  transform-origin: left center;
+}
+
+.illustrated-group-panel.is-collapsed .illustrated-group-chevron {
+  transform: rotate(-90deg);
 }
 
 .illustrated-shell.is-special-npc.is-detail-tab :deep(.illustrated-page-title) {
@@ -2155,6 +2451,10 @@ watchEffect(() => {
   background: rgba(255, 255, 255, 0.08);
 }
 
+.illustrated-mobile-detail-wallpaper {
+  display: none;
+}
+
 @media (min-width: 901px) {
   .illustrated-theme-anastasia .illustrated-shell.is-overview-tab .illustrated-panels {
     overflow-y: hidden;
@@ -2191,6 +2491,23 @@ watchEffect(() => {
     display: none;
   }
 
+  .illustrated-mobile-detail-wallpaper {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    pointer-events: none;
+    filter: saturate(0.82) brightness(0.72);
+    transition: opacity 0.18s ease;
+  }
+
+  .illustrated-mobile-detail-wallpaper.is-visible {
+    opacity: 0.34;
+  }
+
   .illustrated-portrait-pane::after {
     background: linear-gradient(to bottom, transparent 65%, var(--illustrated-bg) 100%);
   }
@@ -2215,6 +2532,13 @@ watchEffect(() => {
 
   .illustrated-shell.is-detail-tab .illustrated-data-pane {
     padding: 18px 24px 14px;
+    background: color-mix(in srgb, var(--illustrated-bg) 58%, transparent);
+    backdrop-filter: blur(1.5px);
+    -webkit-backdrop-filter: blur(1.5px);
+  }
+
+  .illustrated-shell.is-special-npc.is-skills-tab .illustrated-data-pane {
+    background: color-mix(in srgb, var(--illustrated-bg) 66%, transparent);
   }
 
   .illustrated-desktop-header {
@@ -2356,6 +2680,18 @@ watchEffect(() => {
     font-size: clamp(24px, 8cqw, 28px);
     line-height: 1.12;
     text-shadow: 0 3px 16px rgba(0, 0, 0, 0.94);
+  }
+
+  .illustrated-shell.is-special-npc.is-overview-tab
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-subtitle),
+  .illustrated-shell.is-special-npc.is-overview-tab
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-level-tier),
+  .illustrated-shell.is-special-npc.is-overview-tab
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-name-rail) {
+    display: none;
   }
 
   .illustrated-shell.is-special-npc.is-overview-tab
@@ -2633,6 +2969,40 @@ watchEffect(() => {
     text-shadow: none;
   }
 
+  .illustrated-detail-title-spacer {
+    min-height: 36px;
+    margin: 0 0 5px;
+  }
+
+  .illustrated-skill-group + .illustrated-skill-group,
+  .illustrated-holding-section + .illustrated-holding-section {
+    margin-top: 17px;
+  }
+
+  .illustrated-group-panel {
+    margin-inline: 6px;
+    border-color: rgba(var(--illustrated-tier-accent-rgb), 0.24);
+    background: rgba(3, 7, 11, 0.18);
+  }
+
+  .illustrated-group-body {
+    padding: 2px 6px 6px;
+  }
+
+  .illustrated-group-toggle {
+    grid-template-columns: 13px minmax(0, 1fr) 18px;
+    gap: 7px;
+    min-height: 34px;
+    padding: 7px 12px 7px 28px;
+    font-size: 12px;
+    letter-spacing: 0.07em;
+  }
+
+  .illustrated-group-chevron {
+    width: 13px;
+    height: 13px;
+  }
+
   .illustrated-mobile-overview-overlay {
     right: 14px;
     bottom: 18px;
@@ -2738,7 +3108,7 @@ watchEffect(() => {
 
   .import-action-menu {
     right: 10px;
-    bottom: 56px;
+    bottom: 64px;
     min-width: 170px;
   }
 }

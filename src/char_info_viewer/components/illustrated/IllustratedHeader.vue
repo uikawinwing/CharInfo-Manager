@@ -13,12 +13,6 @@
       <span class="rail-flourish right"></span>
     </div>
 
-    <div class="illustrated-level-tier">
-      <span class="illustrated-level">LV. {{ vm.levelText }}</span>
-      <span class="illustrated-badge-separator">✦</span>
-      <span class="illustrated-tier">{{ vm.tierText }}</span>
-    </div>
-
     <h1 class="illustrated-name">{{ vm.nameText }}</h1>
     <span ref="nameMeasurementElement" class="illustrated-name illustrated-name-measure" aria-hidden="true">
       {{ vm.nameText }}
@@ -29,6 +23,12 @@
         <span v-if="index > 0" class="illustrated-meta-sep">◆</span>
         <span>{{ item }}</span>
       </template>
+    </div>
+
+    <div class="illustrated-level-tier">
+      <span class="illustrated-level">LV. {{ vm.levelText }}</span>
+      <span class="illustrated-badge-separator">✦</span>
+      <span class="illustrated-tier">{{ vm.tierText }}</span>
     </div>
 
     <div v-if="ornate" class="illustrated-name-rail bottom" aria-hidden="true">
@@ -194,7 +194,8 @@ watch(() => props.vm.nameText, updateNameLayout, { flush: 'post' });
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 12px;
+  margin-top: 8px;
+  margin-bottom: 2px;
   padding: 4px 0;
 }
 

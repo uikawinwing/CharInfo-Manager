@@ -316,7 +316,7 @@ v0.1.7 不增加新的视觉设计或故事功能。目标是把当前工作线�
 
 #### Checkpoint 4 — Viewer 玩家 Save 与图片 fallback bug
 
-状态：🟡 图片 fallback 与 Special NPC Viewer Save 已修复；Save 桌面位置已在当前 SillyTavern 实机确认，写入菜单与 fallback 仍待可交互 DevTools session 完成现场回归。
+状态：✅ 图片 fallback 与 Special NPC Viewer Save 已完成实现；Save 两种写入、真实成功反馈与 `URL0 error → URL1 loaded` 已完成实机／自动回归。长时间 pending 的现场 timeout 注入统一留到最终跨模式回归。
 
 - Viewer 卡片必须保留给玩家使用的 Save 操作；点击后可选择写入 MVU 角色状态或聊天世界书。Special NPC 不得因为 side-rail 分支而硬编码隐藏该入口；只读 Viewer 仍不得显示写入操作。
 - 修复 Creator Preview 与 Special Viewer 的备用图床：`URL0` error 或长时间 pending 时必须可靠尝试 `URL1`；进入“立绘无法加载”状态后，用户点击重试也应切换到下一备用 source（耗尽后再 wrap），不能永久卡回同一失败源。
@@ -328,14 +328,15 @@ v0.1.7 不增加新的视觉设计或故事功能。目标是把当前工作线�
 
 #### Checkpoint 5 — 图片加载异常与 v0.1.7 收尾
 
-状态：🟡 已确认并修复一条实际图片慢路径；最终现场回归与 Git 收口仍未完成。
+状态：✅ v0.1.7 桌面与手机布局、最终跨模式 SillyTavern 回归、Creator Preview 生命周期、图片 fallback timeout 实机验证与 Workspace 清理均已完成；当前只剩 Git 收口。
 
 - Chrome Network / DOM 与源码对照发现：角色静态 Catbox PNG 原本会被 Viewer / Creator 改写成 `wsrv.nl` proxy URL，导致无法复用其他脚本／预加载器已缓存的原始 Catbox URL，并增加一次代理回源。v0.1.7 已让角色立绘与 Creator Preview 保留作者原始 URL；DX 明确使用的背景 proxy 不改。
 - 主立绘仍保留浏览器 `loading="lazy"`；先只修已确认的 proxy/cache mismatch，不同时修改第二个性能变量。若现场仍明显偏慢，再继续测 lazy-load 时序。
 - Current NPC Panel 的心里话覆盖曾丢失 Special NPC 内部视觉身份，已修复并在当前 SillyTavern 实机确认千爻保持 Special NPC 有图版。
 - ✅ 当前角色列表的 ↻ 已改成 Force Refresh CharInfo：重新读取 latest MVU snapshot + chat variables，并对当前 active CharInfo floors 做受控 teardown / remount；不隐式执行任何世界书 EJS。
 - ✅ Creator 保存成功后可“应用已保存版本到当前聊天”：只提取当前条目中通过 `inspectManagedBlock()` 验证的 CharInfo managed EJS，并通过 ST-Prompt-Template `prepareContext()` + `evalTemplate()` 精确执行该片段，再调用 `saveVariables()` 持久化 `setLocalVar()` 的修改；不触发其他世界书条目，随后验证 chat variables 并调用同一 Force Refresh。未保存 draft 的真实 Viewer Preview 也已提前至 v0.1.7 实现，最终实机验收见 5.4。
-- 仍需完成 Special NPC 桌面／手机、普通无图版、可信 DX、Editor lifecycle、Save 两种写入、图片 fallback 的现场 timeout 注入、Debug Console / Network 的最终实际回归；`URL0 error → URL1 loaded` 已由 Master 实机确认。
+- ✅ v0.1.7-desktop：Special NPC 桌面首页／面板布局、右侧分页顺序、五维旗帜比例与数值位置、登场台词空间、Save 两种写入反馈，以及本轮桌面交互均已由 Master 在 SillyTavern 实机确认。
+- ✅ v0.1.7-mobile 主要实现：Special NPC 手机首页只保留立绘／登场台词／姓名；六项底栏与 Save 操作重新收口；面板承接等级、层级、种族、身份、职业、五维与资源；资料页使用玩家最后看到的立绘静态快照作为半透明 wallpaper，并冻结动图当前帧；技能／持有页完成移动端字号层级、间距、gutter 与背景承托；登神页保持紧凑可滚动布局。首页切换到第二张立绘后进入面板仍沿用第二张 wallpaper 已由实机确认。普通无图版、可信 DX、Editor lifecycle、图片 fallback timeout 注入、Debug Console / Network 仍需在最终跨模式回归统一收口。
 - 运行 lint、test、build，并检查最终 diff、production DX 泄漏与只读边界。
 - v0.1.7 完成后停止。
 

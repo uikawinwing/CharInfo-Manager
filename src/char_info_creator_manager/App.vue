@@ -450,8 +450,22 @@
               <div class="gallery-list">
                 <article v-for="(image, index) in profile.gallery" :key="image.id" class="gallery-card">
                   <div class="image-preview">
+                    <video
+                      v-if="galleryPreviewMediaKind(image) === 'video'"
+                      :key="`${image.id}:${image.previewSourceIndex}:${resolveGalleryPreviewUrl(image)}`"
+                      :ref="element => setGalleryPreviewElement(image, element)"
+                      :data-gallery-image-id="image.id"
+                      :src="resolveGalleryPreviewUrl(image)"
+                      autoplay
+                      muted
+                      loop
+                      playsinline
+                      preload="auto"
+                      @loadeddata="onGalleryPreviewLoad(image)"
+                      @error="onGalleryPreviewError(image)"
+                    ></video>
                     <img
-                      v-if="resolveGalleryPreviewUrl(image)"
+                      v-else-if="resolveGalleryPreviewUrl(image)"
                       :key="`${image.id}:${image.previewSourceIndex}:${resolveGalleryPreviewUrl(image)}`"
                       :ref="element => setGalleryPreviewElement(image, element)"
                       :data-gallery-image-id="image.id"
@@ -463,6 +477,7 @@
                       @error="onGalleryPreviewError(image)"
                     />
                     <span v-else aria-hidden="true">▧</span>
+                    <span v-if="galleryPreviewMediaKind(image) === 'video'" class="gallery-media-kind">视频</span>
                     <b v-if="index === 0">主立绘</b>
                     <b v-else-if="isExtendedGalleryImage(index)" class="gallery-location-badge is-extension">
                       扩展图库
@@ -647,19 +662,48 @@
       <section v-if="viewerPreviewOpen" class="creator-viewer-preview" role="dialog" aria-modal="true" aria-label="角色卡预览">
         <header class="dialog-header creator-viewer-preview-header">
           <strong>角色卡预览 · {{ profile.characterName || '未命名角色' }}</strong>
-          <button class="close-button" type="button" aria-label="关闭预览" @click="closeViewerPreview">×</button>
+          <div class="creator-viewer-preview-toolbar">
+            <div class="creator-viewer-preview-source-state" aria-live="polite">
+              <span>预览资料</span>
+              <strong>{{ viewerPreviewSource === 'pasted' ? '自定义 CharInfo' : '示例资料' }}</strong>
+            </div>
+            <button class="secondary-button creator-viewer-preview-source-toggle" type="button" @click="toggleViewerPreviewSource">
+              {{ viewerPreviewSource === 'pasted' ? '使用示例资料' : '粘贴自己的 CharInfo' }}
+            </button>
+            <button class="close-button" type="button" aria-label="关闭预览" @click="closeViewerPreview">×</button>
+          </div>
         </header>
-        <div class="creator-viewer-preview-stage">
-          <ViewerApp
-            :key="viewerPreviewKey"
-            :yaml-text="viewerPreviewYaml"
-            :message-id="-1"
-            :debug-enabled="props.debugEnabled"
-            :visual-config-override="viewerPreviewVisualOverride"
-            embedded
-            read-only
-            preview-mode
-          />
+        <div v-if="viewerPreviewSource === 'pasted'" class="creator-viewer-preview-source">
+          <label class="creator-viewer-preview-input">
+            <span class="field-label">预览资料（完整 &lt;char_info&gt; 或纯 YAML）</span>
+            <textarea
+              v-model="viewerPreviewPastedText"
+              rows="7"
+              spellcheck="false"
+              placeholder="<char_info>\n姓名: ...\n...\n</char_info>"
+            ></textarea>
+            <small class="field-guidance">只用于当前预览；不会写入世界书、聊天变量或执行 EJS。</small>
+          </label>
+        </div>
+        <div ref="viewerPreviewStageRef" class="creator-viewer-preview-stage">
+          <div class="creator-viewer-preview-frame" :style="viewerPreviewFrameStyle">
+            <div ref="viewerPreviewCanvasRef" class="creator-viewer-preview-canvas" :style="viewerPreviewCanvasStyle">
+              <div v-if="viewerPreviewSource === 'pasted' && !viewerPreviewPastedText.trim()" class="creator-viewer-preview-empty">
+                粘贴完整 &lt;char_info&gt; 或纯 YAML 后，将在这里显示真实角色卡预览。
+              </div>
+              <ViewerApp
+                v-else
+                :key="viewerPreviewKey"
+                :yaml-text="viewerPreviewYaml"
+                :message-id="-1"
+                :debug-enabled="props.debugEnabled"
+                :visual-config-override="viewerPreviewVisualOverride"
+                embedded
+                read-only
+                preview-mode
+              />
+            </div>
+          </div>
         </div>
       </section>
     </main>
@@ -669,7 +713,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 
-import { normalizePortraitMediaUrlForBrowser } from '../char_info_viewer/services/imageUrl';
+import {
+  normalizePortraitMediaUrlForBrowser,
+  type NormalizedPortraitMedia,
+  type PortraitMediaKind,
+} from '../char_info_viewer/services/imageUrl';
 import {
   createMediaSourceTimeout,
   nextMediaSourceIndex,
@@ -706,7 +754,11 @@ import {
 import { buildWorldbookList } from '../char_info_shared/worldbookList';
 import ViewerApp from '../char_info_viewer/App.vue';
 import { evaluateManagedEjs } from './ejsRuntime';
-import { buildCreatorViewerPreviewYaml, buildCreatorViewerVisualOverride } from './viewerPreview';
+import {
+  buildCreatorViewerVisualOverride,
+  resolveCreatorViewerPreviewYaml,
+  type CreatorViewerPreviewSource,
+} from './viewerPreview';
 
 interface EditableGalleryImage {
   id: number;
@@ -771,7 +823,16 @@ const applyMessage = ref('');
 const galleryPackDownloadMessage = ref('');
 let nextImageId = 1;
 const loadError = ref('');
+
 const viewerPreviewOpen = ref(false);
+const viewerPreviewSource = ref<CreatorViewerPreviewSource>('sample');
+const viewerPreviewPastedText = ref('');
+const viewerPreviewScale = ref(1);
+const viewerPreviewCanvasWidth = ref(1200);
+const viewerPreviewCanvasHeight = ref(800);
+const viewerPreviewStageRef = ref<HTMLElement | null>(null);
+const viewerPreviewCanvasRef = ref<HTMLElement | null>(null);
+let viewerPreviewResizeObserver: ResizeObserver | null = null;
 
 const profile = reactive<EditableProfile>(toEditableProfile(createEmptyProfile()));
 
@@ -856,10 +917,17 @@ const selectedEntry = computed(() => entries.value.find(entry => entry.uid === s
 const canPreviewViewer = computed(() => !!selectedEntry.value && profile.characterName.trim().length > 0);
 const viewerPreviewProfile = computed(() => toFullSerializableProfile());
 const viewerPreviewYaml = computed(() =>
-  buildCreatorViewerPreviewYaml(selectedEntry.value, viewerPreviewProfile.value),
+  resolveCreatorViewerPreviewYaml(viewerPreviewProfile.value, viewerPreviewSource.value, viewerPreviewPastedText.value),
 );
 const viewerPreviewVisualOverride = computed(() => buildCreatorViewerVisualOverride(viewerPreviewProfile.value));
 const viewerPreviewKey = computed(() => `${selectedEntryUid.value ?? 'none'}:${profile.characterName.trim()}`);
+const viewerPreviewFrameStyle = computed(() => ({
+  width: `${Math.max(1, viewerPreviewCanvasWidth.value * viewerPreviewScale.value)}px`,
+  height: `${Math.max(1, viewerPreviewCanvasHeight.value * viewerPreviewScale.value)}px`,
+}));
+const viewerPreviewCanvasStyle = computed(() => ({
+  transform: `scale(${viewerPreviewScale.value})`,
+}));
 const configuredGalleryCount = computed(
   () => profile.gallery.filter(image => image.sources.some(source => isHttpsUrl(source))).length,
 );
@@ -880,17 +948,25 @@ const filteredWorldbooks = computed(() => {
   return worldbooks.value.filter(worldbook => worldbook.toLocaleLowerCase().includes(query));
 });
 
-function resolveGalleryPreviewSources(image: EditableGalleryImage): string[] {
-  return image.sources.reduce<string[]>((sources, value) => {
+function resolveGalleryPreviewSources(image: EditableGalleryImage): NormalizedPortraitMedia[] {
+  return image.sources.reduce<NormalizedPortraitMedia[]>((sources, value) => {
     const media = normalizePortraitMediaUrlForBrowser(value);
-    if (media?.kind === 'image' && !sources.includes(media.url)) sources.push(media.url);
+    if (media && !sources.some(source => source.url === media.url)) sources.push(media);
     return sources;
   }, []);
 }
 
-function resolveGalleryPreviewUrl(image: EditableGalleryImage): string {
+function resolveGalleryPreviewMedia(image: EditableGalleryImage): NormalizedPortraitMedia | null {
   const sources = resolveGalleryPreviewSources(image);
-  return sources[Math.min(image.previewSourceIndex, Math.max(0, sources.length - 1))] ?? '';
+  return sources[Math.min(image.previewSourceIndex, Math.max(0, sources.length - 1))] ?? null;
+}
+
+function resolveGalleryPreviewUrl(image: EditableGalleryImage): string {
+  return resolveGalleryPreviewMedia(image)?.url ?? '';
+}
+
+function galleryPreviewMediaKind(image: EditableGalleryImage): PortraitMediaKind | null {
+  return resolveGalleryPreviewMedia(image)?.kind ?? null;
 }
 
 function debugGalleryPreview(image: EditableGalleryImage, event: string, details: Record<string, unknown> = {}) {
@@ -901,12 +977,12 @@ function debugGalleryPreview(image: EditableGalleryImage, event: string, details
     character: profile.characterName,
     imageTitle: image.title,
     sourceIndex: image.previewSourceIndex,
-    url: sources[image.previewSourceIndex] ?? '',
+    url: sources[image.previewSourceIndex]?.url ?? '',
     ...details,
   });
 }
 
-const galleryPreviewElements = new Map<number, HTMLImageElement>();
+const galleryPreviewElements = new Map<number, HTMLImageElement | HTMLVideoElement>();
 const galleryPreviewTimeouts = new Map<number, MediaSourceTimeout>();
 const visibleGalleryPreviewIds = new Set<number>();
 let galleryPreviewObserver: IntersectionObserver | null = null;
@@ -955,7 +1031,7 @@ function setGalleryPreviewElement(image: EditableGalleryImage, element: unknown)
   const previous = galleryPreviewElements.get(image.id);
   if (previous) galleryPreviewObserver?.unobserve(previous);
 
-  if (!(element instanceof HTMLImageElement)) {
+  if (!(element instanceof HTMLImageElement) && !(element instanceof HTMLVideoElement)) {
     galleryPreviewElements.delete(image.id);
     visibleGalleryPreviewIds.delete(image.id);
     clearGalleryPreviewTimeout(image);
@@ -977,7 +1053,7 @@ function initializeGalleryPreviewObserver() {
   if (typeof IntersectionObserver === 'undefined') return;
   galleryPreviewObserver = new IntersectionObserver(entries => {
     entries.forEach(entry => {
-      const imageId = Number((entry.target as HTMLImageElement).dataset.galleryImageId);
+      const imageId = Number((entry.target as HTMLImageElement | HTMLVideoElement).dataset.galleryImageId);
       const image = profile.gallery.find(candidate => candidate.id === imageId);
       if (!image) return;
       if (entry.isIntersecting) {
@@ -1340,12 +1416,53 @@ function isNarrowViewport(): boolean {
   return typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches;
 }
 
+function updateViewerPreviewScale() {
+  const stage = viewerPreviewStageRef.value;
+  const canvas = viewerPreviewCanvasRef.value;
+  if (!stage || !canvas) return;
+
+  const stageStyle = window.getComputedStyle(stage);
+  const horizontalPadding = parseFloat(stageStyle.paddingLeft) + parseFloat(stageStyle.paddingRight);
+  const verticalPadding = parseFloat(stageStyle.paddingTop) + parseFloat(stageStyle.paddingBottom);
+  const naturalWidth = Math.max(1, canvas.scrollWidth, canvas.offsetWidth);
+  const naturalHeight = Math.max(1, canvas.scrollHeight, canvas.offsetHeight);
+
+  viewerPreviewCanvasWidth.value = naturalWidth;
+  viewerPreviewCanvasHeight.value = naturalHeight;
+
+  const availableWidth = Math.max(1, stage.clientWidth - horizontalPadding);
+  const availableHeight = Math.max(1, stage.clientHeight - verticalPadding);
+  const nextScale = Math.min(1, availableWidth / naturalWidth, availableHeight / naturalHeight);
+  viewerPreviewScale.value = Number.isFinite(nextScale) ? Math.max(0.1, nextScale) : 1;
+}
+
+async function initializeViewerPreviewScale() {
+  await nextTick();
+  viewerPreviewResizeObserver?.disconnect();
+  const stage = viewerPreviewStageRef.value;
+  const canvas = viewerPreviewCanvasRef.value;
+  if (!stage || !canvas) return;
+
+  viewerPreviewResizeObserver = new ResizeObserver(() => updateViewerPreviewScale());
+  viewerPreviewResizeObserver.observe(stage);
+  viewerPreviewResizeObserver.observe(canvas);
+  updateViewerPreviewScale();
+}
+
+function toggleViewerPreviewSource() {
+  viewerPreviewSource.value = viewerPreviewSource.value === 'pasted' ? 'sample' : 'pasted';
+}
+
 function openViewerPreview() {
   if (!canPreviewViewer.value) return;
+  viewerPreviewSource.value = 'sample';
   viewerPreviewOpen.value = true;
+  void initializeViewerPreviewScale();
 }
 
 function closeViewerPreview() {
+  viewerPreviewResizeObserver?.disconnect();
+  viewerPreviewResizeObserver = null;
   viewerPreviewOpen.value = false;
 }
 
@@ -1617,6 +1734,10 @@ watch(selectedEntryUid, uid => {
   furthestStep.value = 2;
   goToStep(2);
 });
+watch(viewerPreviewSource, () => {
+  if (!viewerPreviewOpen.value) return;
+  void nextTick(() => updateViewerPreviewScale());
+});
 
 onMounted(() => {
   initializeGalleryPreviewObserver();
@@ -1624,6 +1745,8 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  viewerPreviewResizeObserver?.disconnect();
+  viewerPreviewResizeObserver = null;
   galleryPreviewObserver?.disconnect();
   galleryPreviewObserver = null;
   galleryPreviewTimeouts.forEach(timeout => timeout.dispose());
@@ -1709,6 +1832,7 @@ button {
   z-index: 1;
   display: flex;
   width: min(1420px, 100%);
+  height: min(720px, calc(100% - 8px));
   max-height: calc(100% - 8px);
   overflow: hidden;
   flex-direction: column;
@@ -1756,27 +1880,113 @@ button {
 }
 
 .creator-viewer-preview {
-  position: absolute;
+  position: fixed;
   z-index: 20;
+  top: 50%;
+  left: 50%;
   display: flex;
-  flex-direction: column;
-  inset: 0;
+  width: min(1400px, calc(100vw - 24px));
+  height: calc(100dvh - 24px);
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
+  flex-direction: column;
+  transform: translate(-50%, -50%);
   background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  box-shadow: 0 24px 70px rgb(0 0 0 / 48%);
 }
 
 .creator-viewer-preview-header {
   flex: 0 0 auto;
+  gap: 16px;
+  padding: 12px 14px 12px 18px;
+}
+
+.creator-viewer-preview-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.creator-viewer-preview-source-state {
+  display: grid;
+  min-width: 92px;
+  gap: 1px;
+  text-align: right;
+}
+
+.creator-viewer-preview-source-state span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.creator-viewer-preview-source-state strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.creator-viewer-preview-source-toggle {
+  min-height: 34px;
+  padding: 7px 10px;
+}
+
+.creator-viewer-preview-source {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--border);
+}
+
+.creator-viewer-preview-input {
+  display: grid;
+  gap: 6px;
+}
+
+.creator-viewer-preview-input textarea {
+  min-height: 110px;
+  max-height: 220px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 .creator-viewer-preview-stage {
-  display: grid;
+  display: flex;
+  flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
-  padding: 16px;
-  overflow: auto;
+  padding: 12px;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+}
+
+.creator-viewer-preview-frame {
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 1px;
+  min-height: 1px;
+}
+
+.creator-viewer-preview-canvas {
+  width: 1200px;
+  max-width: none;
+  transform-origin: top left;
+  will-change: transform;
+}
+
+.creator-viewer-preview-empty {
+  display: grid;
+  min-height: 800px;
   place-items: center;
+  padding: 32px;
+  color: var(--text-muted);
+  text-align: center;
 }
 
 .phase-badge {
@@ -1810,6 +2020,7 @@ button {
   display: grid;
   min-height: 0;
   overflow: hidden;
+  flex: 1 1 auto;
   grid-template-columns: 272px minmax(0, 1fr);
 }
 .target-panel,
@@ -2519,11 +2730,29 @@ code {
   border-radius: 9px;
 }
 
-.image-preview img {
+.image-preview img,
+.image-preview video {
+  display: block;
   width: 100%;
   height: 100%;
   min-height: 104px;
   object-fit: cover;
+}
+
+.image-preview video {
+  pointer-events: none;
+}
+
+.image-preview .gallery-media-kind {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  padding: 3px 6px;
+  color: var(--text);
+  background: rgba(8, 12, 18, 0.78);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
 }
 
 .image-preview b {
@@ -3050,7 +3279,8 @@ pre {
   }
 
   .image-preview,
-  .image-preview img {
+  .image-preview img,
+  .image-preview video {
     min-height: 112px;
   }
 

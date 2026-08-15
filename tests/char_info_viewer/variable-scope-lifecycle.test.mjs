@@ -32,7 +32,7 @@ test('DX 角色自动导入绑定聊天、楼层与 swipe，事件只负责时�
 test('手动 MVU 导入写回卡片所属消息楼层而不是 latest', () => {
   assert.match(
     appSource,
-    /importToMvuVariables\(importData,\s*\{\s*type:\s*'message',\s*message_id:\s*props\.messageId\s*\}\)/,
+    /importToMvuVariables\([\s\S]{0,200}?message_id:\s*props\.messageId/,
   );
   assert.doesNotMatch(importServiceSource, /message_id:\s*'latest'/);
   assert.match(importServiceSource, /message_id:\s*number/);

@@ -38,7 +38,7 @@
         @click.stop="$emit('toggleImportMenu')"
       >
         <span class="illustrated-save-icon" aria-hidden="true">↓</span>
-        <span>{{ importing ? '保存中' : '保存' }}</span>
+        <span>{{ importing ? '保存中' : importButtonText === '📥' ? '保存' : importButtonText }}</span>
       </button>
     </div>
   </nav>
@@ -354,12 +354,18 @@ function tabIcon(key: IllustratedTabKey): string {
 @media (max-width: 900px) {
   .illustrated-tabs.is-side-rail {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr)) 44px;
     align-self: stretch;
     width: 100%;
     max-width: none;
-    min-height: 50px;
+    min-height: 58px;
     margin: 0;
+    overflow: visible;
+    border-top-color: rgba(var(--illustrated-race-accent-rgb), 0.2);
+    background: color-mix(in srgb, var(--illustrated-bg) 94%, transparent);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.22);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 
   .illustrated-tabs.is-side-rail .illustrated-tab-scroll {
@@ -374,15 +380,15 @@ function tabIcon(key: IllustratedTabKey): string {
     flex: 1 1 0;
     width: auto;
     min-width: 0;
-    min-height: 50px;
+    min-height: 58px;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
     padding: 0 2px;
-    font-size: 8px;
+    font-size: 10px;
   }
 
   .illustrated-tabs.is-side-rail .illustrated-tab-icon {
-    font-size: 13px;
+    font-size: 15px;
     line-height: 1;
   }
 
@@ -391,9 +397,47 @@ function tabIcon(key: IllustratedTabKey): string {
     right: auto;
     bottom: auto;
     left: 50%;
-    width: 24px;
-    height: 1px;
+    width: 28px;
+    height: 2px;
     transform: translateX(-50%);
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-nav-action {
+    position: static;
+    z-index: 2;
+    display: flex;
+    border-left: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.16);
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-nav-save-button {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    min-height: 58px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: rgba(var(--illustrated-race-accent-rgb), 0.06);
+    box-shadow: none;
+    color: var(--illustrated-race-accent);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-nav-save-button > span:last-child {
+    display: none;
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-save-icon {
+    display: block;
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .illustrated-tabs.is-side-rail .illustrated-nav-save-button::after {
+    display: none;
   }
 }
 
@@ -456,9 +500,9 @@ function tabIcon(key: IllustratedTabKey): string {
     flex: 1 1 0;
     width: auto;
     min-width: 0;
-    min-height: 50px;
+    min-height: 58px;
     padding: 0 2px;
-    font-size: 8px;
+    font-size: 10px;
   }
 
   .illustrated-tabs.is-side-rail .illustrated-home-button {
