@@ -380,12 +380,15 @@ const emit = defineEmits<{
   appearance: none;
   box-sizing: border-box;
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0;
-  width: min(88%, 520px);
-  margin: auto auto 10px;
-  padding: 4px 16px 10px;
+  width: min(94%, 540px);
+  min-height: 150px;
+  margin: 0 auto 10px;
+  padding: 18px 18px 14px;
   border: 0;
   background: none;
   box-shadow: none;
@@ -455,7 +458,7 @@ const emit = defineEmits<{
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 5;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.64);
 }
 
@@ -503,8 +506,8 @@ const emit = defineEmits<{
   }
 
   .illustrated-overview.overview-density-compact .illustrated-attribute {
-    min-height: 108px;
-    padding: 12px 5px 30px;
+    min-height: 136px;
+    padding: 12px 5px 36px;
   }
 
   .illustrated-overview.overview-density-compact .illustrated-resources {
@@ -541,8 +544,8 @@ const emit = defineEmits<{
   }
 
   .illustrated-overview.overview-density-dense .illustrated-attribute {
-    min-height: 88px;
-    padding: 9px 4px 24px;
+    min-height: 116px;
+    padding: 10px 4px 30px;
   }
 
   .illustrated-overview.overview-density-dense .illustrated-attribute-name {

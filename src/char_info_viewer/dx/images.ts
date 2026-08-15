@@ -5,4 +5,3 @@ export const characterImageMap: Record<string, string> = {
   艾璃丝·赛瑞利亚: 'https://files.catbox.moe/wa4anv.png',
   安娜斯塔西娅·佛罗伦丝·瓦雷利乌斯: 'https://files.catbox.moe/hrfym1.png',
 };
-

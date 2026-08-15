@@ -106,13 +106,13 @@ test('adds a gallery to an existing profile without replacing its visual fields'
   });
 });
 
-test('runs the migration before the initial card scan and after a chat change', () => {
+test('Viewer Runtime 不再执行 legacy gallery 迁移或写回聊天变量', () => {
   const runtimeSource = fs.readFileSync(
     path.resolve(__dirname, '../../src/char_info_viewer_runtime/runtime.ts'),
     'utf8',
   );
 
-  assert.match(runtimeSource, /started = true;[\s\S]*?migrateLegacyGalleries\(\);[\s\S]*?initializeLibrary\(\);/);
-  assert.match(runtimeSource, /tavern_events\.CHAT_CHANGED, \(\) => \{\s*migrateLegacyGalleries\(\);/);
-  assert.match(runtimeSource, /updateVariablesWith\([\s\S]*?\{ type: 'chat' \}/);
+  assert.doesNotMatch(runtimeSource, /migrateLegacyExternalGalleries|migrateLegacyGalleries/);
+  assert.doesNotMatch(runtimeSource, /updateVariablesWith\([\s\S]*?\{ type: 'chat' \}/);
+  assert.match(runtimeSource, /tavern_events\.CHAT_CHANGED, \(\) => \{[\s\S]*?closeCreatorEditor\(\);/);
 });

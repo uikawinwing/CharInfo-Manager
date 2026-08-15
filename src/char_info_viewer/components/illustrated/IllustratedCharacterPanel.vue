@@ -25,6 +25,15 @@
       </svg>
     </div>
 
+    <dl class="illustrated-mobile-character-summary">
+      <div><dt>姓名</dt><dd>{{ vm.nameText }}</dd></div>
+      <div><dt>生命层级</dt><dd class="is-tier">{{ vm.tierText }}</dd></div>
+      <div><dt>等级</dt><dd>{{ vm.levelText }}</dd></div>
+      <div><dt>种族</dt><dd>{{ vm.raceText }}</dd></div>
+      <div><dt>身份</dt><dd>{{ vm.identityText }}</dd></div>
+      <div><dt>职业</dt><dd>{{ vm.classText }}</dd></div>
+    </dl>
+
     <div v-if="resourceBoxes.length > 0" class="illustrated-panel-resources">
       <article v-for="resource in resourceBoxes" :key="resource.key">
         <span>{{ resource.label }}</span>
@@ -47,11 +56,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import type { ItemObject, ResourceBox } from '../../services/characterViewModel';
+import type { CharacterViewModel, ItemObject, ResourceBox } from '../../services/characterViewModel';
 import IllustratedItemCard from './IllustratedItemCard.vue';
 import type { AttributeView } from './types';
 
 const props = defineProps<{
+  vm: CharacterViewModel;
   attributes: AttributeView[];
   resourceBoxes: ResourceBox[];
   statusEffects: ItemObject[];
@@ -133,6 +143,10 @@ const radarValuePoints = computed(() =>
   text-anchor: middle;
 }
 
+.illustrated-mobile-character-summary {
+  display: none;
+}
+
 .illustrated-panel-resources {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -173,5 +187,68 @@ const radarValuePoints = computed(() =>
   color: var(--illustrated-race-accent);
   font-size: 14px;
   letter-spacing: 0.1em;
+}
+
+@media (max-width: 900px) {
+  .illustrated-character-panel {
+    gap: 14px;
+  }
+
+  .illustrated-radar-card {
+    padding: 8px 10px 2px;
+    border-color: rgba(var(--illustrated-race-accent-rgb), 0.16);
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  .illustrated-radar {
+    width: min(100%, 300px);
+  }
+
+  .illustrated-mobile-character-summary {
+    display: grid;
+    margin: 0;
+    padding: 12px 16px;
+    border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.22);
+    border-radius: 8px;
+    background: rgba(5, 7, 10, 0.28);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+
+  .illustrated-mobile-character-summary > div {
+    display: grid;
+    grid-template-columns: minmax(82px, 0.8fr) minmax(0, 1.4fr);
+    gap: 12px;
+    align-items: start;
+    padding: 9px 0;
+  }
+
+  .illustrated-mobile-character-summary > div + div {
+    border-top: 1px dashed rgba(255, 255, 255, 0.09);
+  }
+
+  .illustrated-mobile-character-summary dt,
+  .illustrated-mobile-character-summary dd {
+    margin: 0;
+  }
+
+  .illustrated-mobile-character-summary dt {
+    color: var(--illustrated-race-accent);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .illustrated-mobile-character-summary dd {
+    color: var(--illustrated-fg, #eef3f7);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.45;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  .illustrated-mobile-character-summary dd.is-tier {
+    color: var(--illustrated-tier-accent);
+  }
 }
 </style>

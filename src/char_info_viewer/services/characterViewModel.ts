@@ -1,13 +1,15 @@
-import { characterStoryBookMap, type CharacterStoryBookLink } from '../characterStoryBookMap';
 import {
   resolveDxCharacterProfile,
-  resolveDxCharacterNameProfile,
+  resolveDxStoryBookLink,
+  type CharacterStoryBookLink,
   type CharacterPresentationProfile,
-} from '../dxCharacterRoster';
+  isLoadedDxCharacterData,
+} from '@/char_info_viewer/dxRuntime';
 import type { CharacterData } from '../types';
 import { getSmartArray, hasArrayContent, hasText, normalizeDisplayText } from './common';
 import { prioritizeImageSourceGroups } from './imageSourcePriority';
-import { normalizeImageUrlForBrowser, normalizePortraitMediaUrlForBrowser } from './imageUrl';
+import { normalizePortraitMediaUrlForBrowser } from './imageUrl';
+import { isSpecialNpcVisualData } from './themeService';
 
 export type TabKey =
   'profile' | 'skills' | 'equipment' | 'inventory' | 'divinity' | 'characterStory' | 'backstory' | 'statusEffects';
@@ -379,11 +381,13 @@ function resolveConfiguredImageSourceGroups(data: CharacterData): string[][] {
   }, []);
 }
 
-function resolveCharacterPresentationProfileForData(data: CharacterData, nameText: string): CharacterPresentationProfile | null {
+function resolveCharacterPresentationProfileForData(
+  data: CharacterData,
+  nameText: string,
+): CharacterPresentationProfile | null {
+  if (!isLoadedDxCharacterData(data)) return null;
   const reference = textFromUnknown(pickField(data, '__dx_character_ref'));
-  const dxProfile = resolveDxCharacterProfile(reference, nameText);
-  if (dxProfile) return dxProfile;
-  return resolveDxCharacterNameProfile(nameText);
+  return resolveDxCharacterProfile(reference, nameText);
 }
 
 function resolveCharacterImage(
@@ -391,7 +395,8 @@ function resolveCharacterImage(
   presentationProfile: CharacterPresentationProfile | null,
 ): CharacterImageResolution {
   const isDxProfile = presentationProfile?.edition === 'dx';
-  const configuredSourceGroups = isDxProfile ? [] : resolveConfiguredImageSourceGroups(data);
+  const configuredSourceGroups =
+    isDxProfile || (!presentationProfile && !isSpecialNpcVisualData(data)) ? [] : resolveConfiguredImageSourceGroups(data);
   const configuredUrls = configuredSourceGroups.map(sources => sources[0]);
 
   if (presentationProfile) {
@@ -406,14 +411,11 @@ function resolveCharacterImage(
     };
   }
 
-  const fromData = textFromUnknown(pickField(data, '特殊立绘', '角色图片', '立绘', '图片', 'portrait', 'image'));
-  if (fromData) {
-    const url = normalizePortraitMediaUrlForBrowser(fromData)?.url ?? normalizeImageUrlForBrowser(fromData);
-    const urls = configuredUrls.length > 0 ? configuredUrls : [url];
+  if (configuredUrls.length > 0) {
     return {
-      url: urls[0],
-      urls,
-      sourceGroups: configuredSourceGroups.length > 0 ? configuredSourceGroups : urls.map(url => [url]),
+      url: configuredUrls[0],
+      urls: configuredUrls,
+      sourceGroups: configuredSourceGroups,
       randomizeInitialImage: configuredUrls.length > 1 && data.__char_info_randomize_initial_image === true,
       source: 'data',
     };
@@ -469,8 +471,8 @@ export function buildCharacterViewModel(
   const imageSourceGroups = prioritizeImageSourceGroups(image.sourceGroups, imageSourcePriority);
   const imageUrls = imageSourceGroups.map(sources => sources[0]);
   const imageUrl = imageUrls[0] ?? image.url;
-  const isSpecialNpc = !presentationProfile && imageUrls.length > 0;
-  const storyBookLink = characterStoryBookMap[nameText] ?? null;
+  const isSpecialNpc = !presentationProfile && isSpecialNpcVisualData(data) && imageUrls.length > 0;
+  const storyBookLink = resolveDxStoryBookLink(presentationProfile);
   const hasDivinity =
     hasText(divinityGodTitle) ||
     !!divinityKingdom ||

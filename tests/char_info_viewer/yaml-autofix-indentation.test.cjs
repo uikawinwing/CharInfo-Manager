@@ -279,11 +279,15 @@ test('无法修补的资料仍回退到宽松提取', () => {
   assert.equal(loose.mode, 'loose');
 });
 
-test('安娜资料会在自动解析中保留完整技能、装备、道具和登神要素', () => {
-  const anna = fs
-    .readFileSync(path.join(__dirname, '../../anna.sample.txt'), 'utf8')
-    .replace('<inject var>', '<char_info>')
-    .replace('</inject var>', '</char_info>');
+test('安娜 DX 注册资料会在解析中保留完整技能、装备和道具', () => {
+  const registry = fs.readFileSync(
+    path.join(__dirname, '../../src/char_info_viewer/dx/dx_character_profiles.worldentry.txt'),
+    'utf8',
+  );
+  const anna = registry.match(
+    /<dx_character id="dx_anastasia"[\s\S]*?<inject_var>\s*([\s\S]*?)\s*<\/inject_var>/u,
+  )?.[1];
+  assert.ok(anna);
   const parsed = parseCharacterYaml(anna);
 
   assert.equal(parsed.success, true);
@@ -291,7 +295,6 @@ test('安娜资料会在自动解析中保留完整技能、装备、道具和�
   assert.equal(parsed.data.技能.length, 4);
   assert.equal(parsed.data.装备.length, 3);
   assert.equal(parsed.data.道具.length, 1);
-  assert.equal(parsed.data.登神长阶.要素.length, 1);
 });
 
 test('自动兼容不会改写块标量正文中的方括号或 Tab', () => {

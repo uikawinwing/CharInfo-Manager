@@ -4,12 +4,13 @@ import test from 'node:test';
 import {
   buildManagedEjsBlock,
   createEmptyProfile,
+  extractManagedEjsBlock,
   inspectManagedBlock,
   MANAGED_BLOCK_END,
   MANAGED_BLOCK_START,
   upsertManagedEjsBlock,
   validateProfile,
-} from '../../src/char_info_creator_manager/ejsProfile.ts';
+} from '../../src/char_info_shared/characterVisualProfile.ts';
 
 const profile = {
   ...createEmptyProfile('傲雪'),
@@ -25,6 +26,16 @@ const profile = {
     { title: '雪林巡行', sources: ['https://files.catbox.moe/alternate.avif'] },
   ],
 };
+
+test('只提取经过验证的 CharInfo managed EJS，不执行条目其余内容', () => {
+  const block = buildManagedEjsBlock(profile);
+  const content = `条目前置正文\n${block}\n<%_ throw new Error('outside managed block'); _%>\n条目后置正文`;
+  const extracted = extractManagedEjsBlock(content);
+
+  assert.equal(extracted.code, block);
+  assert.deepEqual(extracted.profile, profile);
+  assert.throws(() => extractManagedEjsBlock('普通世界书正文'), /没有 CharInfo 受管理 EJS/);
+});
 
 test('v2 生成区块只保留一份可读 profile 配置', () => {
   const block = buildManagedEjsBlock(profile);

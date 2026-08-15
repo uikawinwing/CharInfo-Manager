@@ -11,7 +11,10 @@
           :yaml-text="card.yamlText"
           :message-id="message.messageId"
           :effects-enabled="state.settings.effectsEnabled"
+          :debug-enabled="state.settings.debugEnabled"
           :image-source-priority="activeImageSourcePriority"
+          :save-state="state.saveStateByCard[card.key]"
+          :save-feedback="feedback => props.saveFeedbackHandler(card.key, feedback)"
           embedded
         />
       </div>
@@ -19,13 +22,22 @@
   </template>
 
   <Teleport v-if="state.library" :to="state.library.host">
+    <WorldbookCharacterLibrary
+      v-if="state.library.worldbookOpen"
+      :force-mobile-layout="state.settings.forceMobileLayout"
+      @close="onCloseWorldbookLibrary"
+      @open-current-chat="onOpenCurrentChatLibrary"
+      @edit-library="worldbookName => onEditWorldbookCharacter(worldbookName)"
+      @edit="onEditWorldbookCharacter"
+    />
+
     <button
       v-if="!state.library.listOpen && !state.library.viewerOpen"
       class="char-info-library-floating-button"
       type="button"
       :style="floatingButtonStyle"
       :aria-label="floatingButtonAriaLabel"
-      @click="openLibraryFromFloatingButton"
+      @click="openLibraryFromFloatingButton($event)"
       @pointerdown="beginFloatingButtonDrag"
       @pointermove="moveFloatingButton"
       @pointerup="endFloatingButtonDrag"
@@ -273,6 +285,7 @@
           :yaml-text="selectedCharacterYaml"
           :message-id="state.library.messageId"
           :effects-enabled="state.settings.effectsEnabled"
+          :debug-enabled="state.settings.debugEnabled"
           :image-source-priority="activeImageSourcePriority"
           :entrance-quote-override="selectedCharacter.innerThought"
           embedded
@@ -357,6 +370,14 @@
               <small>适用于较宽手机或窄屏浏览器；关闭时自动判断。</small>
             </span>
             <input v-model="forceMobileLayoutDraft" type="checkbox" @change="applySettings" />
+          </label>
+
+          <label class="char-info-settings-switch">
+            <span>
+              <strong>Debug 模式</strong>
+              <small>在浏览器 Console 输出图片来源尝试、失败、超时、切换与成功记录。</small>
+            </span>
+            <input v-model="debugEnabledDraft" type="checkbox" @change="applySettings" />
           </label>
 
           <section class="char-info-settings-priority" aria-labelledby="char-info-image-source-priority-label">
@@ -449,6 +470,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type CSSPro
 import { dump } from 'js-yaml';
 
 import ViewerApp from '../char_info_viewer/App.vue';
+import type { ViewerSaveFeedback } from '../char_info_viewer/types';
+import WorldbookCharacterLibrary from './WorldbookCharacterLibrary.vue';
 import { normalizeImageSourcePriorityEntries } from '../char_info_viewer/services/imageSourcePriority';
 import { buildCurrentCharacterViewerData } from './currentCharacterLibrary';
 import {
@@ -469,11 +492,15 @@ const props = defineProps<{
   onOpenLibraryList: () => void;
   onOpenLibraryCharacter: (name: string) => void;
   onOpenWorldbookLibrary: () => void;
+  onCloseWorldbookLibrary: () => void;
+  onOpenCurrentChatLibrary: () => void;
+  onEditWorldbookCharacter: (worldbookName: string, entryUid?: number) => void;
   onMoveLibraryButton: (position: { left: number; top: number }) => void;
   onOpenSettings: () => void;
   onCloseSettings: () => void;
   onUpdateSettings: (settings: CharInfoUiSettings) => CharInfoUiSettings;
   onResetSettings: () => CharInfoUiSettings;
+  saveFeedbackHandler: (cardKey: string, feedback: ViewerSaveFeedback) => void;
 }>();
 
 const searchText = ref('');
@@ -490,6 +517,7 @@ const viewerWindowPosition = ref<{ left: number; top: number } | null>(null);
 const floorLimitDraft = ref(props.state.settings.activeFloorLimit);
 const effectsEnabledDraft = ref(props.state.settings.effectsEnabled);
 const forceMobileLayoutDraft = ref(props.state.settings.forceMobileLayout);
+const debugEnabledDraft = ref(props.state.settings.debugEnabled);
 const imageSourcePriorityEnabledDraft = ref(props.state.settings.imageSourcePriorityEnabled);
 const imageSourcePriorityDraft = ref([...props.state.settings.imageSourcePriority]);
 const settingsMessage = ref('');
@@ -504,6 +532,10 @@ const filterOptions: Array<{ value: LibraryFilter; label: string }> = [
 
 const FLOATING_BUTTON_SIZE = 58;
 const FLOATING_BUTTON_MARGIN = 8;
+const LIST_WINDOW_DESKTOP_BREAKPOINT = 720;
+const LIST_WINDOW_WIDTH = 390;
+const LIST_WINDOW_HEIGHT = 680;
+const LIST_WINDOW_ANCHOR_GAP = 12;
 const floatingButtonDrag = {
   pointerId: -1,
   startX: 0,
@@ -597,11 +629,32 @@ const floatingButtonAriaLabel = computed(() => {
   return unreadCount > 0 ? `打开当前角色列表，${unreadCount} 名角色的好感度有更新` : '打开当前角色列表';
 });
 
-function openLibraryFromFloatingButton(): void {
+function getAnchoredListWindowPosition(buttonRect: DOMRect): { left: number; top: number } {
+  const viewport = getHostViewport();
+  const width = Math.min(LIST_WINDOW_WIDTH, viewport.width - 24);
+  const height = Math.min(LIST_WINDOW_HEIGHT, viewport.height - 24);
+  const spaceRight = viewport.width - buttonRect.right;
+  const spaceLeft = buttonRect.left;
+  const openRight = spaceRight >= width + LIST_WINDOW_ANCHOR_GAP || spaceRight >= spaceLeft;
+  const left = openRight
+    ? buttonRect.right + LIST_WINDOW_ANCHOR_GAP
+    : buttonRect.left - width - LIST_WINDOW_ANCHOR_GAP;
+  const top = buttonRect.top + buttonRect.height / 2 - height / 2;
+  return clampListWindowPosition({ left, top });
+}
+
+function openLibraryFromFloatingButton(event: MouseEvent): void {
   if (floatingButtonDrag.suppressClick) {
     floatingButtonDrag.suppressClick = false;
     return;
   }
+
+  const buttonRect = (event.currentTarget as HTMLButtonElement).getBoundingClientRect();
+  const viewport = getHostViewport();
+  listWindowPosition.value =
+    !props.state.settings.forceMobileLayout && viewport.width > LIST_WINDOW_DESKTOP_BREAKPOINT
+      ? getAnchoredListWindowPosition(buttonRect)
+      : null;
   props.onOpenLibraryList();
 }
 
@@ -790,6 +843,7 @@ function replaceSettingsDraft(settings: CharInfoUiSettings): void {
   floorLimitDraft.value = settings.activeFloorLimit;
   effectsEnabledDraft.value = settings.effectsEnabled;
   forceMobileLayoutDraft.value = settings.forceMobileLayout;
+  debugEnabledDraft.value = settings.debugEnabled;
   imageSourcePriorityEnabledDraft.value = settings.imageSourcePriorityEnabled;
   imageSourcePriorityDraft.value = [...settings.imageSourcePriority];
 }
@@ -800,6 +854,7 @@ function applySettings(): void {
     activeFloorLimit: Number(floorLimitDraft.value),
     effectsEnabled: effectsEnabledDraft.value,
     forceMobileLayout: forceMobileLayoutDraft.value,
+    debugEnabled: debugEnabledDraft.value,
     imageSourcePriorityEnabled: imageSourcePriorityEnabledDraft.value,
     imageSourcePriority: priorityNormalization.priorities,
   });

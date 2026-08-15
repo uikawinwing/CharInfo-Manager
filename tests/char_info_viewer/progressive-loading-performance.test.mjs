@@ -8,7 +8,7 @@ const readSource = path => readFile(new URL(path, repoRoot), 'utf8');
 const [appSource, sheetSource, dxCharacterDataSource, runtimeRootSource] = await Promise.all([
   readSource('src/char_info_viewer/App.vue'),
   readSource('src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue'),
-  readSource('src/char_info_viewer/dxCharacterData.ts'),
+  readSource('src/char_info_viewer/dx/loader.ts'),
   readSource('src/char_info_viewer_runtime/RuntimeRoot.vue'),
 ]);
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { enqueueDxCharacterImport } from '../../src/char_info_viewer/services/dxCharacterImportQueue.ts';
+import { enqueueDxCharacterImport } from '../../src/char_info_viewer/dx/importQueue.ts';
 
 test('同一消息与 swipe 的 DX 角色导入会串行执行', async () => {
   const order = [];

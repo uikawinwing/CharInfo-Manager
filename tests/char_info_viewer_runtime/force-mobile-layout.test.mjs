@@ -82,11 +82,11 @@ test('设置开关和角色库强制移动布局沿用 720px 布局契约', () =
   assert.doesNotMatch(runtimeRootSource, /768\s*[×x]\s*1388/u);
 });
 
-test('强制移动布局同步到独立 iframe 中的世界书角色库', () => {
+test('玩家世界书库与独立 Creator 编辑器都接收强制移动布局设置', () => {
   assert.match(runtimeSource, /forceMobileLayout: state\.settings\.forceMobileLayout/u);
   assert.match(
     runtimeSource,
-    /state\.settings\.forceMobileLayout\s*=\s*nextSettings\.forceMobileLayout;[\s\S]*?worldbookManager\.setForceMobileLayout\(nextSettings\.forceMobileLayout\)/u,
+    /openCreatorManager\(\{[\s\S]*?worldbookName,[\s\S]*?entryUid,[\s\S]*?forceMobileLayout: state\.settings\.forceMobileLayout,[\s\S]*?debugEnabled: state\.settings\.debugEnabled,[\s\S]*?\}\)/u,
   );
   assert.match(managerOverlaySource, /setForceMobileLayout\(value: boolean\): void;/u);
   assert.match(

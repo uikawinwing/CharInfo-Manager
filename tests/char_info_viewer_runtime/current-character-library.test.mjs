@@ -133,3 +133,27 @@ test('资料库列表优先使用 avatarUrl 图片，并保留无头像时的姓
   assert.match(source, /<img[\s\S]*v-if="character\.avatarUrl[^"]*"[\s\S]*:src="character\.avatarUrl"/);
   assert.match(source, /v-else[\s\S]*character\.name\.slice\(0,\s*1\)/);
 });
+
+test('手动刷新会重读变量并强制重挂当前 CharInfo floors', async () => {
+  const source = await readFile(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
+
+  assert.match(source, /const forceRefreshCharInfo = async \(\) => \{/);
+  assert.match(source, /await refreshLibrary\(\)/);
+  assert.match(source, /const messageIds = Array\.from\(activeFloorIds\)/);
+  assert.match(source, /removeMessage\(messageId\)/);
+  assert.match(source, /renderMessage\(messageId\)/);
+  assert.match(source, /onRefreshLibrary: \(\) => void forceRefreshCharInfo\(\)/);
+});
+
+test('Creator 应用已保存资料时复用同一 Force Refresh callback', async () => {
+  const runtimeSource = await readFile(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
+  const overlaySource = await readFile(new URL('../../src/char_info_creator_manager/overlay.ts', import.meta.url), 'utf8');
+  const appSource = await readFile(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
+
+  assert.match(runtimeSource, /onForceRefresh: forceRefreshCharInfo/);
+  assert.match(overlaySource, /onForceRefresh: options\.onForceRefresh/);
+  assert.match(appSource, /extractManagedEjsBlock\(latestEntry\.content\)/);
+  assert.match(appSource, /evaluateManagedEjs\(managed\.code, props\.debugEnabled\)/);
+  assert.match(appSource, /await props\.onForceRefresh\?\.\(\)/);
+  assert.match(appSource, /应用已保存版本到当前聊天/);
+});

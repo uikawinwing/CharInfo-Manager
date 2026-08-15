@@ -2,12 +2,11 @@ import { createPinia } from 'pinia';
 import { createApp, markRaw, reactive, type App } from 'vue';
 
 import { createScriptIdDiv, teleportStyle } from '@util/script';
-import { createCreatorManagerOverlay } from '../char_info_creator_manager/overlay';
+import { closeCreatorManager, openCreatorManager } from '../char_info_creator_manager/controller';
 import { projectCharInfoMessage } from '../char_info_viewer/runtime/charInfoMessage';
 import { selectRecentMessageIds } from '../char_info_viewer/runtime/recentMessages';
 import RuntimeRoot from './RuntimeRoot.vue';
 import { collectChangedAffinityNames, collectCurrentCharacterSnapshots } from './currentCharacterLibrary';
-import { migrateLegacyExternalGalleries } from './legacyGalleryMigration';
 import { mountCharInfoCardHosts, type MountedNativeCardHost } from './nativeMessageMount';
 import {
   defaultRuntimeSettings,
@@ -19,6 +18,7 @@ import {
   type CharInfoFloatingButtonPosition,
   type CharInfoUiSettings,
 } from './runtimeSettings';
+import type { ViewerSaveFeedback } from '../char_info_viewer/types';
 import type { RuntimeMessageView, RuntimeViewState } from './types';
 
 const MAX_CARDS_PER_MESSAGE = 4;
@@ -31,7 +31,6 @@ const CREATOR_BUTTON_NAME = '角色视觉编辑器';
 const LEGACY_CREATOR_BUTTON_NAME = '角色视觉编辑';
 const SETTINGS_HOST_CLASS = 'char-info-settings-host';
 const SETTINGS_BUTTON_NAME = 'CharInfo 设置';
-const RUNTIME_MANAGER_OWNER_KEY = '__charInfoWorldbookManagerOwner';
 
 type MountedMessage = {
   messageId: number;
@@ -74,13 +73,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     library: null,
     settings: readRuntimeSettings(getVariables({ type: 'script' })),
     settingsView: null,
-  });
-  const worldbookManager = createCreatorManagerOverlay('library', {
-    forceMobileLayout: state.settings.forceMobileLayout,
-    onOpenCurrentChatLibrary: () => {
-      worldbookManager.close();
-      openLibraryList();
-    },
+    saveStateByCard: {},
   });
   const mountedMessages = new Map<number, MountedMessage>();
   const remountAttempts = new Map<number, RemountAttempt>();
@@ -98,25 +91,28 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   const pendingAffinityNames = new Set<string>();
   let lifecycleRevision = 0;
   let started = false;
+
+  const setSaveState = (cardKey: string, phase: 'pending' | 'success' | 'error') => {
+    state.saveStateByCard[cardKey] = {
+      phase,
+      label: phase === 'pending' ? '保存中…' : phase === 'success' ? '✓ 已保存' : '保存失败',
+    };
+  };
+
+  const handleViewerSaveFeedback = (cardKey: string, feedback: ViewerSaveFeedback) => {
+    setSaveState(cardKey, feedback.phase);
+  };
+
   const closeSettings = () => {
     state.settingsView?.host.remove();
     state.settingsView = null;
-  };
-
-  const setManagerOwnership = (owner: 'runtime' | null) => {
-    const hostWindow = window.parent !== window ? window.parent : window;
-    const hostState = hostWindow as Window & Record<string, unknown>;
-    if (owner) {
-      hostState[RUNTIME_MANAGER_OWNER_KEY] = owner;
-      return;
-    }
-    delete hostState[RUNTIME_MANAGER_OWNER_KEY];
   };
 
   const closeLibrary = () => {
     if (!state.library) return;
     state.library.listOpen = false;
     state.library.viewerOpen = false;
+    state.library.worldbookOpen = false;
   };
 
   const closeLibraryList = () => {
@@ -129,12 +125,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     state.library.viewerOpen = false;
   };
 
-  const closeWorldbookManager = () => {
-    worldbookManager.close();
-  };
-
-  const destroyWorldbookManager = () => {
-    worldbookManager.destroy();
+  const closeCreatorEditor = () => {
+    closeCreatorManager();
   };
 
   const resetLibraryForChat = () => {
@@ -147,6 +139,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     library.characters = [];
     library.listOpen = false;
     library.viewerOpen = false;
+    library.worldbookOpen = false;
     library.unreadCharacterNames = [];
     library.loading = false;
     library.error = '';
@@ -207,9 +200,10 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
   const openLibraryList = () => {
     if (!started) return;
-    closeWorldbookManager();
+    closeCreatorEditor();
     closeSettings();
     if (!state.library) return;
+    state.library.worldbookOpen = false;
     state.library.listOpen = true;
     void refreshLibrary();
   };
@@ -244,6 +238,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       characters: [],
       listOpen: false,
       viewerOpen: false,
+      worldbookOpen: false,
       unreadCharacterNames: [],
       floatingButtonPosition: readRuntimeFloatingButtonPosition(getVariables({ type: 'script' })),
       loading: false,
@@ -263,7 +258,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     state.settings.activeFloorLimit = nextSettings.activeFloorLimit;
     state.settings.effectsEnabled = nextSettings.effectsEnabled;
     state.settings.forceMobileLayout = nextSettings.forceMobileLayout;
-    worldbookManager.setForceMobileLayout(nextSettings.forceMobileLayout);
+    state.settings.debugEnabled = nextSettings.debugEnabled;
     state.settings.imageSourcePriorityEnabled = nextSettings.imageSourcePriorityEnabled;
     state.settings.imageSourcePriority = nextSettings.imageSourcePriority;
     replaceVariables(mergeRuntimeSettings(getVariables({ type: 'script' }), nextSettings), { type: 'script' });
@@ -273,31 +268,41 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
   const resetSettings = (): CharInfoUiSettings => updateSettings(defaultRuntimeSettings());
 
-  const migrateLegacyGalleries = () => {
-    try {
-      const currentVariables = getVariables({ type: 'chat' });
-      if (migrateLegacyExternalGalleries(currentVariables).migratedNames.length === 0) return;
-
-      updateVariablesWith(variables => migrateLegacyExternalGalleries(variables).variables, { type: 'chat' });
-    } catch (error) {
-      console.warn('[CharInfo Runtime] 旧图库迁移失败：', error);
-    }
-  };
-
   const openWorldbookLibrary = () => {
     if (!started) return;
-    closeLibraryList();
+    closeLibrary();
     closeSettings();
+    if (state.library) state.library.worldbookOpen = true;
+  };
+
+  const closeWorldbookLibrary = () => {
+    if (state.library) state.library.worldbookOpen = false;
+  };
+
+  const openCurrentChatLibrary = () => {
+    closeWorldbookLibrary();
+    openLibraryList();
+  };
+
+  const editWorldbookCharacter = (worldbookName: string, entryUid?: number) => {
     try {
-      worldbookManager.open();
+      openCreatorManager({
+        worldbookName,
+        entryUid,
+        forceMobileLayout: state.settings.forceMobileLayout,
+        debugEnabled: state.settings.debugEnabled,
+        onForceRefresh: forceRefreshCharInfo,
+      });
+      closeWorldbookLibrary();
     } catch (error) {
-      console.error('[CharInfo Runtime] 世界书角色库打开失败：', error);
+      console.error('[CharInfo Runtime] 角色资料编辑器打开失败：', error);
+      toastr.warning('角色资料编辑器暂时无法打开。');
     }
   };
 
   const openSettings = () => {
     if (!started) return;
-    closeWorldbookManager();
+    closeCreatorEditor();
     closeLibrary();
     if (state.settingsView) return;
 
@@ -438,6 +443,24 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     });
   };
 
+  const forceRefreshCharInfo = async () => {
+    await refreshLibrary();
+    if (!started) return;
+
+    const messageIds = Array.from(activeFloorIds);
+    messageIds.forEach(messageId => {
+      remountAttempts.delete(messageId);
+      removeMessage(messageId);
+    });
+    messageIds.forEach(messageId => {
+      try {
+        renderMessage(messageId);
+      } catch (error) {
+        console.error(`[CharInfo Runtime] 第 ${messageId} 楼强制刷新失败：`, error);
+      }
+    });
+  };
+
   const flushDirtyMessages = () => {
     dirtyFlushTimer = null;
     if (!started) return;
@@ -558,8 +581,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       scheduleRecentScan();
     });
     listen(tavern_events.CHAT_CHANGED, () => {
-      migrateLegacyGalleries();
-      destroyWorldbookManager();
+      closeCreatorEditor();
       resetLibraryForChat();
       closeSettings();
       clearMessages();
@@ -574,9 +596,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       if (started) return;
       started = true;
       const startRevision = ++lifecycleRevision;
-      setManagerOwnership('runtime');
 
-      migrateLegacyGalleries();
       initializeLibrary();
       const $appRoot = createScriptIdDiv().addClass('char-info-runtime-root').appendTo('body');
       appRoot = $appRoot[0];
@@ -585,15 +605,19 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         state,
         onCloseLibraryList: closeLibraryList,
         onCloseLibraryViewer: closeLibraryViewer,
-        onRefreshLibrary: () => void refreshLibrary(),
+        onRefreshLibrary: () => void forceRefreshCharInfo(),
         onOpenLibraryList: openLibraryList,
         onOpenLibraryCharacter: openLibraryCharacter,
         onOpenWorldbookLibrary: openWorldbookLibrary,
+        onCloseWorldbookLibrary: closeWorldbookLibrary,
+        onOpenCurrentChatLibrary: openCurrentChatLibrary,
+        onEditWorldbookCharacter: editWorldbookCharacter,
         onMoveLibraryButton: updateLibraryButtonPosition,
         onOpenSettings: openSettings,
         onCloseSettings: closeSettings,
         onUpdateSettings: updateSettings,
         onResetSettings: resetSettings,
+        saveFeedbackHandler: handleViewerSaveFeedback,
       }).use(createPinia());
       app.mount(appRoot);
 
@@ -630,13 +654,13 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
       if (dirtyFlushTimer) clearTimeout(dirtyFlushTimer);
       if (rescanTimer) clearTimeout(rescanTimer);
+      state.saveStateByCard = {};
       dirtyFlushTimer = null;
       rescanTimer = null;
       mutationObserver?.disconnect();
       mutationObserver = null;
       eventStops.splice(0).forEach(stop => stop());
-      destroyWorldbookManager();
-      setManagerOwnership(null);
+      closeCreatorEditor();
       closeLibrary();
       closeSettings();
       clearMessages();

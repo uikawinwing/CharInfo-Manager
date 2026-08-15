@@ -16,24 +16,35 @@ const creatorManagerSource = await readFile(
   new URL('../../src/char_info_creator_manager/App.vue', import.meta.url),
   'utf8',
 );
-const creatorManagerEntrySource = await readFile(
+const creatorManagerControllerSource = await readFile(
+  new URL('../../src/char_info_creator_manager/controller.ts', import.meta.url),
+  'utf8',
+);
+const creatorManagerIndexSource = await readFile(
   new URL('../../src/char_info_creator_manager/index.ts', import.meta.url),
   'utf8',
 );
+const legacyBridgeSource = await readFile(
+  new URL('../../src/char_info_shared/creatorManagerHostBridge.ts', import.meta.url),
+  'utf8',
+);
 
-test('主 CharInfo 运行脚本将世界书角色库入口放入当前角色菜单', () => {
+test('Viewer 与 Creator 共用一个脚本，但 Viewer 只依赖窄 Creator controller', () => {
   assert.doesNotMatch(runtimeSource, /appendInexistentScriptButtons/u);
   assert.doesNotMatch(runtimeSource, /getButtonEvent\('世界书角色库'\)/u);
-  assert.match(runtimeSource, /setManagerOwnership\('runtime'\)/u);
-  assert.match(runtimeSource, /setManagerOwnership\(null\)/u);
-  assert.match(creatorManagerEntrySource, /'世界书角色库'/u);
-  assert.doesNotMatch(creatorManagerEntrySource, /createCreatorManagerOverlay/u);
+  assert.doesNotMatch(runtimeSource, /char_info_creator_manager\/overlay/u);
+  assert.match(runtimeSource, /openCreatorManager/u);
+  assert.match(runtimeSource, /closeCreatorManager/u);
+  assert.doesNotMatch(runtimeSource, /getCreatorManagerHostBridge|registerCreatorManagerHostBridge/u);
+  assert.match(creatorManagerControllerSource, /createCreatorManagerOverlay/u);
+  assert.match(creatorManagerIndexSource, /export \{ closeCreatorManager, openCreatorManager \} from '\.\/controller';/u);
+  assert.doesNotMatch(legacyBridgeSource, /__charInfoCreatorManagerHostBridge|registerCreatorManagerHostBridge/u);
+  assert.match(runtimeRootSource, /<WorldbookCharacterLibrary/u);
   assert.match(runtimeRootSource, /当前聊天角色/u);
   assert.match(runtimeRootSource, /世界书角色/u);
-  assert.match(runtimeRootSource, /aria-label="打开世界书角色库"[\s\S]*?@click="props\.onOpenWorldbookLibrary"/u);
 });
 
-test('角色资料与角色菜单是独立窗口：选择角色和切换世界书不会关闭当前菜单', () => {
+test('当前聊天与世界书角色库由 Viewer 独立切换，不依赖 Creator 状态', () => {
   const openCharacter =
     runtimeSource.match(/const openLibraryCharacter = \(name: string\) => \{([\s\S]*?)\n\s{2}\};/u)?.[1] ?? '';
   const openWorldbook = runtimeSource.match(/const openWorldbookLibrary = \(\) => \{([\s\S]*?)\n\s{2}\};/u)?.[1] ?? '';
@@ -41,35 +52,28 @@ test('角色资料与角色菜单是独立窗口：选择角色和切换世界�
   assert.match(openCharacter, /library\.listOpen = true;/u);
   assert.match(openCharacter, /library\.viewerOpen = true;/u);
   assert.doesNotMatch(openCharacter, /library\.listOpen = false;/u);
-  assert.doesNotMatch(openWorldbook, /closeLibrary\(\);/u);
-  assert.match(openWorldbook, /closeLibraryList\(\);/u);
+  assert.match(openWorldbook, /closeLibrary\(\);/u);
+  assert.match(openWorldbook, /state\.library\.worldbookOpen = true/u);
+  assert.doesNotMatch(openWorldbook, /openCreatorManager|closeCreatorManager/u);
   assert.match(
     runtimeSource,
-    /createCreatorManagerOverlay\('library', \{[\s\S]*?onOpenCurrentChatLibrary: \(\) => \{[\s\S]*?worldbookManager\.close\(\);[\s\S]*?openLibraryList\(\);/u,
+    /const openCurrentChatLibrary = \(\) => \{[\s\S]*?closeWorldbookLibrary\(\);[\s\S]*?openLibraryList\(\);/u,
   );
   assert.match(runtimeRootSource, /@click="closeListWindow"/u);
   assert.match(runtimeRootSource, /@click="closeViewerWindow"/u);
   assert.match(runtimeRootSource, /onCloseLibraryList: \(\) => void;/u);
   assert.match(runtimeRootSource, /onCloseLibraryViewer: \(\) => void;/u);
-  assert.match(runtimeRootSource, /class="char-info-library-list-dialog"[\s\S]*?'with-viewer'/u);
-  assert.match(runtimeRootSource, /class="char-info-library-overlay"[\s\S]*?'with-list'/u);
 });
 
-test('角色视觉编辑器通过独立全屏 iframe 打开，避免 ST 层级和滚动污染', () => {
-  assert.match(runtimeSource, /worldbookManager/u);
-  assert.match(
-    runtimeSource,
-    /import \{ createCreatorManagerOverlay \} from '\.\.\/char_info_creator_manager\/overlay';/u,
-  );
-  assert.doesNotMatch(runtimeSource, /import\('\.\.\/char_info_creator_manager\/overlay'\)/u);
-  assert.doesNotMatch(runtimeSource, /worldbookManagerLoad|managerOpenRevision/u);
-  assert.match(runtimeSource, /tavern_events\.CHAT_CHANGED[\s\S]*?destroyWorldbookManager\(\);/u);
-  assert.match(runtimeSource, /stop\(options = \{\}\) \{[\s\S]*?destroyWorldbookManager\(\);/u);
-  assert.doesNotMatch(runtimeSource, /creatorEditor/u);
-  assert.doesNotMatch(runtimeSource, /worldbookLibrary/u);
-
+test('Creator overlay 保持独立 iframe，但生命周期由同 bundle controller 管理', () => {
   assert.doesNotMatch(runtimeRootSource, /CreatorManager/u);
   assert.doesNotMatch(runtimeRootSource, /state\.creator/u);
+  assert.doesNotMatch(runtimeSource, /createCreatorManagerOverlay|CreatorManagerOverlay/u);
+  assert.match(creatorManagerControllerSource, /openCreatorManager/u);
+  assert.match(creatorManagerControllerSource, /closeCreatorManager\(\);[\s\S]*?createCreatorManagerOverlay\(options\)/u);
+  assert.match(creatorManagerControllerSource, /overlay\?\.destroy\(\);[\s\S]*?overlay = null/u);
+  assert.match(runtimeSource, /tavern_events\.CHAT_CHANGED[\s\S]*?closeCreatorEditor\(\)/u);
+  assert.match(runtimeSource, /stop\(options = \{\}\)[\s\S]*?closeCreatorEditor\(\)/u);
 
   assert.match(overlaySource, /createScriptIdIframe/u);
   assert.match(overlaySource, /zIndex: '2147483000'/u);
@@ -79,40 +83,14 @@ test('角色视觉编辑器通过独立全屏 iframe 打开，避免 ST 层级�
   assert.match(overlaySource, /removeEventListener\('scroll'/u);
 });
 
-test('世界书角色库关闭后复用已挂载界面，聊天切换与运行时停止才彻底销毁', () => {
+test('关闭 Creator 会真正卸载 Vue、样式和 iframe，不留下常驻 Editor', () => {
   assert.match(overlaySource, /destroy\(\): void;/u);
   assert.match(
     overlaySource,
-    /const close = \(\) => \{[\s\S]*?managerViewportCleanup\?\.\(\);[\s\S]*?\$managerOverlay\?\.hide\(\);[\s\S]*?\};/u,
+    /const teardown = \(\) => \{[\s\S]*?mountedApp\?\.unmount\(\);[\s\S]*?teleportedStyle\?\.destroy\(\);[\s\S]*?\$managerOverlay\?\.remove\(\);/u,
   );
-  assert.doesNotMatch(
-    overlaySource.match(/const close = \(\) => \{[\s\S]*?\n {2}\};/u)?.[0] ?? '',
-    /unmount\(\)|teleportedStyle\?\.destroy\(\)|\.remove\(\)/u,
-  );
-  assert.match(
-    overlaySource,
-    /const destroy = \(\) => \{[\s\S]*?mountedApp\?\.unmount\(\);[\s\S]*?teleportedStyle\?\.destroy\(\);[\s\S]*?\$managerOverlay\?\.remove\(\);/u,
-  );
-  assert.match(
-    overlaySource,
-    /if \(\$managerOverlay\) \{[\s\S]*?\$managerOverlay\.show\(\);[\s\S]*?startManagerViewportSync\(\);[\s\S]*?return;/u,
-  );
-
-  assert.match(runtimeSource, /const destroyWorldbookManager = \(\) => \{\s*worldbookManager\.destroy\(\);\s*\};/u);
-  assert.match(
-    runtimeSource,
-    /tavern_events\.CHAT_CHANGED[\s\S]*?destroyWorldbookManager\(\);[\s\S]*?resetLibraryForChat\(\);/u,
-  );
-  assert.match(runtimeSource, /stop\(options = \{\}\) \{[\s\S]*?destroyWorldbookManager\(\);/u);
-  assert.match(
-    runtimeSource,
-    /onOpenCurrentChatLibrary:[\s\S]*?worldbookManager\.close\(\);[\s\S]*?openLibraryList\(\);/u,
-  );
-});
-
-test('世界书管理器打进主运行脚本，不依赖浏览器无法解析的裸 chunk 路径', () => {
-  assert.match(runtimeSource, /const worldbookManager = createCreatorManagerOverlay\('library'(?:,\s*\{)?/u);
-  assert.doesNotMatch(runtimeSource, /Promise<CreatorManagerOverlay>|\.then\(manager =>/u);
+  assert.match(overlaySource, /const close = teardown;[\s\S]*?const destroy = teardown;/u);
+  assert.doesNotMatch(overlaySource, /\$managerOverlay\?\.hide\(\)/u);
 });
 
 test('Creator Manager 样式不修改 ST 宿主页的 html 或 body', () => {
@@ -120,6 +98,18 @@ test('Creator Manager 样式不修改 ST 宿主页的 html 或 body', () => {
   assert.doesNotMatch(creatorManagerSource, /:global\(body\)/u);
   assert.match(creatorManagerSource, /:global\(#char-info-creator-manager\)[\s\S]*?width: 100%;[\s\S]*?height: 100%;/u);
   assert.match(creatorManagerSource, /\.manager-root \{[\s\S]*?font-family:/u);
+});
+
+test('Creator 桌面编辑器保持固定窗口高度，步骤内容只在内部滚动', () => {
+  assert.match(
+    creatorManagerSource,
+    /\.manager-dialog \{[\s\S]*?height: min\(\d+px, calc\(100% - 8px\)\);[\s\S]*?max-height: calc\(100% - 8px\);/u,
+  );
+  assert.match(creatorManagerSource, /\.dialog-body \{[\s\S]*?min-height: 0;[\s\S]*?overflow: hidden;/u);
+  assert.match(
+    creatorManagerSource,
+    /\.target-panel,[\s\S]*?\.editor-panel \{[\s\S]*?min-height: 0;[\s\S]*?overflow-y: auto;/u,
+  );
 });
 
 test('当前聊天资料库和设置宿主明确使用动态视口尺寸，避免 ST 移动端 html 高度为零', () => {
@@ -132,6 +122,12 @@ test('当前聊天资料库和设置宿主明确使用动态视口尺寸，避�
 
 test('当前聊天资料库由悬浮入口打开角色列表，并完整显示角色立绘', () => {
   assert.match(runtimeRootSource, /class="char-info-library-floating-button"/u);
+  assert.match(runtimeRootSource, /@click="openLibraryFromFloatingButton\(\$event\)"/u);
+  assert.match(runtimeRootSource, /function getAnchoredListWindowPosition\(buttonRect: DOMRect\)/u);
+  assert.match(
+    runtimeRootSource,
+    /listWindowPosition\.value =[\s\S]*?getAnchoredListWindowPosition\(buttonRect\)[\s\S]*?props\.onOpenLibraryList\(\);/u,
+  );
   assert.doesNotMatch(
     runtimeRootSource,
     /v-if="state\.library\.characters\.length > 0 && !state\.library\.listOpen && !state\.library\.viewerOpen"/u,
@@ -178,7 +174,7 @@ test('当前聊天资料库由悬浮入口打开角色列表，并完整显示�
   );
   assert.match(
     viewerSource,
-    /props\.entranceQuoteOverride === undefined[\s\S]*?\.\.\.resolvedData,[\s\S]*?登场台词: props\.entranceQuoteOverride/u,
+    /props\.entranceQuoteOverride === undefined[\s\S]*?cloneLoadedDxCharacterDataWithOverrides\(resolvedData, \{[\s\S]*?登场台词: props\.entranceQuoteOverride/u,
   );
 });
 

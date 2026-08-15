@@ -16,7 +16,7 @@ const overviewSource = await readFile(overviewPath, 'utf8');
 test('Anastasia desktop overview uses the shared flag geometry', () => {
   assert.match(
     sheetSource,
-    /\.illustrated-wrapper\s*\{[^}]*--illustrated-flag-width:\s*128px;[^}]*--illustrated-flag-height:\s*128px;/,
+    /\.illustrated-wrapper\s*\{[^}]*--illustrated-flag-width:\s*128px;[^}]*--illustrated-flag-height:\s*156px;/,
   );
   assert.doesNotMatch(overviewSource, /illustrated-theme-anastasia[^\n]*illustrated-attributes/);
 });

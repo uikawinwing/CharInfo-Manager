@@ -1,5 +1,50 @@
 import type { CharacterData, ThemeResolved } from '../types';
+import { isLoadedDxCharacterData } from '@/char_info_viewer/dxRuntime';
 import { resolveGalleryExtension } from './galleryPackService.ts';
+
+const SPECIAL_NPC_VISUAL_BRAND = Symbol('char_info_special_npc_visual');
+const DEPRECATED_VISUAL_SYNTAX_BRAND = Symbol('char_info_deprecated_visual_syntax');
+type SpecialNpcVisualData = CharacterData & { [SPECIAL_NPC_VISUAL_BRAND]?: true };
+type DeprecatedVisualSyntaxData = CharacterData & { [DEPRECATED_VISUAL_SYNTAX_BRAND]?: true };
+
+function brandSpecialNpcVisualData(data: CharacterData): CharacterData {
+  Object.defineProperty(data, SPECIAL_NPC_VISUAL_BRAND, {
+    value: true,
+    enumerable: false,
+    configurable: false,
+  });
+  return data;
+}
+
+export function isSpecialNpcVisualData(data: CharacterData): boolean {
+  return (data as SpecialNpcVisualData)[SPECIAL_NPC_VISUAL_BRAND] === true;
+}
+
+function brandDeprecatedVisualSyntaxData(data: CharacterData): CharacterData {
+  Object.defineProperty(data, DEPRECATED_VISUAL_SYNTAX_BRAND, {
+    value: true,
+    enumerable: false,
+    configurable: false,
+  });
+  return data;
+}
+
+export function hasDeprecatedVisualSyntax(data: CharacterData): boolean {
+  return (data as DeprecatedVisualSyntaxData)[DEPRECATED_VISUAL_SYNTAX_BRAND] === true;
+}
+
+export function cloneCharacterDataWithVisualOverrides(
+  data: CharacterData,
+  overrides: Pick<CharacterData, '登场台词'>,
+): CharacterData {
+  const clone: CharacterData = {
+    ...data,
+    ...(overrides.登场台词 === undefined ? {} : { 登场台词: overrides.登场台词 }),
+  };
+  if (isSpecialNpcVisualData(data)) brandSpecialNpcVisualData(clone);
+  if (hasDeprecatedVisualSyntax(data)) brandDeprecatedVisualSyntaxData(clone);
+  return clone;
+}
 
 export const raceColorMap: Record<string, string> = {
   神祗: '#FFFFFF',
@@ -184,6 +229,26 @@ function resolveCharacterName(data: CharacterData): string {
   return typeof data.姓名 === 'string' ? data.姓名.trim() : '';
 }
 
+function hasUntrustedImageSyntax(data: CharacterData): boolean {
+  return [data.角色图片, data.立绘, data.特殊立绘, data.图片, data.portrait, data.image].some(
+    value => typeof value === 'string' && value.trim().length > 0,
+  );
+}
+
+function stripUntrustedImageData(data: CharacterData): CharacterData {
+  const resolved = { ...data };
+  delete resolved.角色图片;
+  delete resolved.立绘;
+  delete resolved.特殊立绘;
+  delete resolved.图片;
+  delete resolved.portrait;
+  delete resolved.image;
+  delete resolved.__char_info_image_urls;
+  delete resolved.__char_info_image_source_groups;
+  delete resolved.__char_info_randomize_initial_image;
+  return resolved;
+}
+
 function resolveNamedVisualConfig(data: CharacterData, chatVariables: Record<string, unknown>): unknown {
   const name = resolveCharacterName(data);
   if (!name) return undefined;
@@ -242,6 +307,13 @@ function applyImageSourceGroups(
   };
 }
 
+function visualConfigHasImage(visualConfig: unknown): boolean {
+  if (typeof visualConfig === 'string') return normalizeVisualConfigUrl(visualConfig) !== null;
+  const config = asRecord(visualConfig);
+  if (!config) return false;
+  return normalizeVisualConfigUrl(config.url) !== null || normalizeVisualConfigGallery(config.gallery).length > 0;
+}
+
 function applyVisualConfig(data: CharacterData, visualConfig: unknown, clearImageOnFailure: boolean): CharacterData {
   const resolvedAppearance = applyVisualAppearance(data, visualConfig);
   const fallback = clearImageOnFailure ? { ...resolvedAppearance, 角色图片: '' } : resolvedAppearance;
@@ -266,42 +338,65 @@ function applyVisualConfig(data: CharacterData, visualConfig: unknown, clearImag
   return applyImageSourceGroups(resolvedAppearance, imageSourceGroups, !url && !isVersionedProfile);
 }
 
+export function resolveCharacterVisualPreview(
+  data: CharacterData,
+  characterName: string,
+  visualConfig: unknown,
+): CharacterData {
+  const baseData = stripUntrustedImageData(data);
+  const expectedName = characterName.trim();
+  if (!expectedName || resolveCharacterName(baseData) !== expectedName) return baseData;
+
+  const resolved = applyVisualConfig(baseData, visualConfig, false);
+  return visualConfigHasImage(visualConfig) ? brandSpecialNpcVisualData(resolved) : resolved;
+}
+
 export function resolveCharacterVisualConfig(
   data: CharacterData,
   chatVariables: Record<string, unknown>,
 ): CharacterData {
-  if (typeof data.__dx_character_ref === 'string' && data.__dx_character_ref.trim()) return data;
+  if (isLoadedDxCharacterData(data)) return data;
 
-  const rawImage = typeof data.角色图片 === 'string' ? data.角色图片.trim() : '';
-  const placeholder = rawImage.match(/^\[\[([a-z0-9][a-z0-9_-]*)\]\]$/i);
+  const hasLegacySyntax = hasUntrustedImageSyntax(data);
+  const baseData = stripUntrustedImageData(data);
   const namedVisualConfig = resolveNamedVisualConfig(data, chatVariables);
-  const styledData = namedVisualConfig === undefined ? data : applyVisualAppearance(data, namedVisualConfig);
 
-  if (placeholder) return applyVisualConfig(styledData, chatVariables[placeholder[1]], true);
-  if (rawImage) return styledData;
+  if (hasLegacySyntax) {
+    const resolved = namedVisualConfig === undefined ? baseData : applyVisualAppearance(baseData, namedVisualConfig);
+    return brandDeprecatedVisualSyntaxData(resolved);
+  }
 
-  return namedVisualConfig === undefined ? styledData : applyVisualConfig(styledData, namedVisualConfig, false);
+  if (namedVisualConfig !== undefined) {
+    const resolved = applyVisualConfig(baseData, namedVisualConfig, false);
+    return visualConfigHasImage(namedVisualConfig) ? brandSpecialNpcVisualData(resolved) : resolved;
+  }
+
+  return baseData;
 }
 
 export async function resolveCharacterVisualConfigWithExtensions(
   data: CharacterData,
   chatVariables: Record<string, unknown>,
 ): Promise<CharacterData> {
-  if (typeof data.__dx_character_ref === 'string' && data.__dx_character_ref.trim()) return data;
+  if (isLoadedDxCharacterData(data)) return data;
 
-  const rawImage = typeof data.角色图片 === 'string' ? data.角色图片.trim() : '';
-  const placeholder = rawImage.match(/^\[\[([a-z0-9][a-z0-9_-]*)\]\]$/i);
+  const hasLegacySyntax = hasUntrustedImageSyntax(data);
+  const baseData = stripUntrustedImageData(data);
   const namedVisualConfig = resolveNamedVisualConfig(data, chatVariables);
   const extendedVisualConfig =
     namedVisualConfig === undefined ? undefined : await resolveGalleryExtension(namedVisualConfig);
-  const styledData = extendedVisualConfig === undefined ? data : applyVisualAppearance(data, extendedVisualConfig);
 
-  if (placeholder) return applyVisualConfig(styledData, chatVariables[placeholder[1]], true);
-  if (rawImage) return styledData;
+  if (hasLegacySyntax) {
+    const resolved = extendedVisualConfig === undefined ? baseData : applyVisualAppearance(baseData, extendedVisualConfig);
+    return brandDeprecatedVisualSyntaxData(resolved);
+  }
 
-  return extendedVisualConfig === undefined
-    ? styledData
-    : applyVisualConfig(styledData, extendedVisualConfig, false);
+  if (extendedVisualConfig !== undefined) {
+    const resolved = applyVisualConfig(baseData, extendedVisualConfig, false);
+    return visualConfigHasImage(extendedVisualConfig) ? brandSpecialNpcVisualData(resolved) : resolved;
+  }
+
+  return baseData;
 }
 
 export function harmonizeAccent(

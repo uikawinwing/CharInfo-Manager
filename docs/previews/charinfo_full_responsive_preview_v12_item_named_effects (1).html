@@ -1,0 +1,827 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CharInfo Full Responsive Preview</title>
+<style>
+*{box-sizing:border-box} :root{--bg:#12151c;--deep:#0b0e13;--text:#eceef1;--muted:#7b828c;--line:rgba(255,255,255,.08);--char:#796b87;--char-rgb:121,107,135;--myth:#b35f54;--leg:#aa884f;--epic:#7f6b8f;--rare:#657f94;--fine:#6e8f78;--common:#7a7e86;--special:#8f7d9d;--key:#b08e92;--desc:#747980}
+html,body{margin:0;background:#26282d;color:var(--text);font-family:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif}body{padding:18px}
+.toolbar,.stage{width:min(1200px,96vw);margin:auto}.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.toolbar strong{font-size:13px}.switch{display:flex;gap:6px}.switch button{padding:7px 12px;border:1px solid #393d45;border-radius:6px;background:#171a20;color:#858c95;cursor:pointer}.switch button.active{color:#ddd5e3;border-color:#675c73;background:#211d27}
+.viewer{position:relative;overflow:hidden;background:radial-gradient(circle at 68% -8%,rgba(var(--char-rgb),.06),transparent 28rem),var(--bg);border:1px solid #343841;box-shadow:0 20px 54px #0007}
+.viewer.desktop{width:100%;height:min(800px,76vw);min-height:680px;border-radius:16px;display:grid;grid-template-columns:45% minmax(0,1fr) 72px}.viewer.mobile{width:min(414px,100%);aspect-ratio:2/3;border-radius:10px;display:block;margin:auto;position:relative;overflow:hidden}
+.portrait{position:relative;overflow:hidden}.portrait img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}.portrait:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent 62%,rgba(18,21,28,.86))}
+.data{min-width:0;min-height:0;overflow:hidden}.desktop .data{padding:46px 38px 30px 44px}.mobile .data{position:absolute;inset:0 0 50px;padding:0}
+.page{display:none;width:100%;height:100%;min-height:0}.page.active{display:flex;flex-direction:column}.scroll{flex:1;min-height:0;overflow:auto;scrollbar-width:none}.scroll::-webkit-scrollbar{display:none}.mobile .scroll{padding:0 13px 16px}
+.mhead{display:none;height:38px;flex:0 0 38px;align-items:center;justify-content:space-between;padding:0 13px;border-bottom:1px solid var(--line);background:#0c0f14}.mobile .mhead{display:flex}.mhead strong{font-size:13px}.mhead small{font-size:9px;color:#666d75}.ptitle{margin:0 0 13px;padding-bottom:9px;border-bottom:1px solid var(--line);font:18px "Noto Serif SC",serif}.mobile .ptitle{display:none}
+.homewrap{height:100%;display:flex;flex-direction:column}.head{text-align:center;display:flex;flex-direction:column;align-items:center;gap:7px;margin-bottom:18px}.name{margin:0;color:#f6f6f4;font:700 clamp(30px,3.3vw,38px)/1.15 "Noto Serif SC",serif}.sub{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;color:#d8dce1;font-size:13px}.sep{color:#847591;font-size:8px}.tier{position:relative;display:flex;gap:14px;align-items:center;margin-top:6px;padding:4px 50px;color:#aa9db4;font:700 12px "Noto Serif SC",serif}.tier:before,.tier:after{content:"";position:absolute;top:50%;width:38px;height:1px;background:linear-gradient(90deg,transparent,#796b87,transparent);opacity:.55}.tier:before{right:100%}.tier:after{left:100%}
+.attrs{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;width:min(100%,520px);margin:4px auto}.attr{width:128px;min-height:128px;padding:15px 5px 36px;text-align:center;background:#0005;border:1px solid #ffffff0d;border-top:2px solid #9caeb8;clip-path:polygon(0 0,100% 0,100% 85%,50% 100%,0 85%)}.attr b{display:block;font-size:16px}.attr strong{display:block;margin-top:7px;color:#c8d6de;font:700 31px "Noto Serif SC",serif}
+.res{position:relative;width:min(100%,520px);display:grid;grid-template-columns:repeat(3,1fr);margin:18px auto 0;padding:12px 0;border-top:1px solid #ffffff12;border-bottom:1px solid #ffffff12}.r{text-align:center;position:relative}.r+.r:before{content:"";position:absolute;left:0;top:10%;bottom:10%;width:1px;background:#ffffff14}.r span{display:block;color:#9eabb4;font:700 12px "Noto Serif SC",serif}.r strong{display:block;margin-top:5px;font:700 22px "Noto Serif SC",serif}.quote{width:min(100%,520px);margin:20px auto 0;padding-top:17px;border-top:1px solid var(--line);text-align:center;color:#d5d6d8;font:14px/1.7 "Noto Serif SC",serif}
+.mobart{display:none}.mobile .home{position:relative;overflow:hidden}.mobile .mobart{display:block;position:absolute;inset:0;background:linear-gradient(180deg,transparent 42%,#090b0f42 57%,#090b0fed 100%),url("https://files.catbox.moe/x3oecs.png") center top/cover}.mobile .homewrap{position:relative;z-index:2;justify-content:flex-end;padding:0 17px 20px}.mobile .head{margin:0}.mobile .name{font-size:28px;text-shadow:0 3px 16px #000}.mobile .sub{font-size:10px;text-shadow:0 2px 5px #000}.mobile .tier{font-size:10px;padding:3px 36px}.mobile .attrs,.mobile .res{display:none}.mobile .quote{order:-1;margin:0 0 10px;padding:0;border:0;font-size:11px;text-shadow:0 2px 8px #000}
+
+.mobile .mobile-stats-hud{
+  display:grid;
+}
+.mobile-stats-hud{
+  display:none;
+}
+.mobile .mobile-stats-hud{
+  width:100%;
+  margin:10px auto 0;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  border-top:1px solid rgba(255,255,255,.10);
+  border-bottom:1px solid rgba(255,255,255,.08);
+  background:rgba(6,8,12,.34);
+  backdrop-filter:blur(3px);
+}
+.mobile-stat{
+  position:relative;
+  min-width:0;
+  padding:6px 2px 7px;
+  text-align:center;
+}
+.mobile-stat+.mobile-stat:before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:22%;
+  bottom:22%;
+  width:1px;
+  background:rgba(255,255,255,.07);
+}
+.mobile-stat small{
+  display:block;
+  color:#b8bec5;
+  font-size:8px;
+  line-height:1;
+}
+.mobile-stat strong{
+  display:block;
+  margin-top:3px;
+  color:#e3e5e7;
+  font:700 13px/1 "Noto Serif SC",serif;
+}
+.mobile .mobile-resource-hud{
+  display:grid;
+}
+.mobile-resource-hud{
+  display:none;
+}
+.mobile .mobile-resource-hud{
+  width:100%;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  background:rgba(6,8,12,.34);
+  backdrop-filter:blur(3px);
+}
+.mobile-resource{
+  position:relative;
+  padding:6px 3px 7px;
+  text-align:center;
+}
+.mobile-resource+.mobile-resource:before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:22%;
+  bottom:22%;
+  width:1px;
+  background:rgba(255,255,255,.07);
+}
+.mobile-resource small{
+  display:block;
+  color:#949ca5;
+  font:700 7.5px/1 "Noto Serif SC",serif;
+  letter-spacing:.08em;
+}
+.mobile-resource strong{
+  display:block;
+  margin-top:3px;
+  color:#e8e8e6;
+  font:700 11px/1 "Noto Serif SC",serif;
+}
+.profile-stack{
+  width:min(100%,560px);
+  margin:0 auto;
+  display:grid;
+  gap:12px;
+}
+.profile-card{
+  position:relative;
+  padding:16px 18px 17px;
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:7px;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.018),transparent 42%),
+    rgba(5,7,10,.52);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.025),
+    0 8px 20px rgba(0,0,0,.10);
+}
+.profile-card::before{
+  content:"";
+  position:absolute;
+  top:0;
+  left:50%;
+  width:54px;
+  height:1px;
+  transform:translateX(-50%);
+  background:linear-gradient(90deg,transparent,rgba(var(--char-rgb),.55),transparent);
+}
+.profile-card h3{
+  margin:0 0 10px;
+  color:#c7bdcc;
+  font-family:"Noto Serif SC","Source Han Serif SC",serif;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.12em;
+  text-align:center;
+}
+.profile-card p{
+  max-width:46em;
+  margin:0 auto;
+  color:#d5d8dc;
+  font-size:11.5px;
+  line-height:1.72;
+  text-align:justify;
+  text-justify:inter-ideograph;
+}
+.profile-card.backstory{
+  padding-top:18px;
+  padding-bottom:19px;
+}
+.profile-card.backstory p{
+  color:#cfd3d7;
+  line-height:1.78;
+}
+.mobile .profile-stack{
+  width:100%;
+  gap:9px;
+}
+.mobile .profile-card{
+  padding:12px 13px 13px;
+  border-radius:5px;
+}
+.mobile .profile-card h3{
+  margin-bottom:7px;
+  font-size:10.5px;
+}
+.mobile .profile-card p{
+  font-size:10px;
+  line-height:1.62;
+}
+.skill,.item{padding:13px 0 14px;border-bottom:1px solid var(--line)}
+.skilltop{display:grid;grid-template-columns:minmax(0,1fr) max-content;gap:10px}
+.stitle{min-width:0;display:flex;gap:6px}
+.sname{font-size:15px;font-weight:800;overflow-wrap:anywhere}
+.mode{color:#b6a9bf;font-size:9px;margin-right:5px}
+.cost{text-align:right;color:#a4a09a;font-size:9px;max-width:130px}
+.cost b{display:block;color:#c3beb6}
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
+.tag{padding:2px 6px;border:1px solid #ffffff18;border-radius:2px;color:#7c838b;font-size:8px}
+.effects{display:grid;gap:6px;margin-top:9px}
+.eff{margin:0;color:#dde0e3;font-size:11px;line-height:1.52}
+.desc{margin:8px 0 0 14px;color:var(--desc);font:italic 9.3px/1.5 "Noto Serif SC",serif}
+
+/* default fallback */
+.diamond{font-size:10px;line-height:1;padding-top:3px;color:#b8a0cf}
+.key{margin-right:.38em;font-weight:800;color:#b8a0cf}
+
+/* explicit rarity mapping */
+.skill.myth .diamond,
+.skill.myth .key{
+  color:#df8d74;
+  text-shadow:0 0 8px rgba(223,141,116,.22);
+}
+.skill.leg .diamond,
+.skill.leg .key{
+  color:#d7b15e;
+  text-shadow:0 0 8px rgba(215,177,94,.20);
+}
+.skill.epic .diamond,
+.skill.epic .key{
+  color:#b89fda;
+  text-shadow:0 0 8px rgba(184,159,218,.18);
+}
+.skill.rare .diamond,
+.skill.rare .key{
+  color:#8cabca;
+  text-shadow:0 0 8px rgba(140,171,202,.18);
+}
+.item{
+  --item-rarity:#d9dde3;
+  --item-rarity-shadow:rgba(217,221,227,.10);
+}
+.item.epic{--item-rarity:#bba3d5;--item-rarity-shadow:rgba(187,163,213,.16)}
+.item.rare{--item-rarity:#8eaac0;--item-rarity-shadow:rgba(142,170,192,.14)}
+.item.fine{--item-rarity:#8fb197;--item-rarity-shadow:rgba(143,177,151,.13)}
+.item.common{--item-rarity:#a4a7ae;--item-rarity-shadow:rgba(164,167,174,.10)}
+.item.special{--item-rarity:#c0abd5;--item-rarity-shadow:rgba(192,171,213,.15)}
+
+.ihead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.ihead h3{
+  margin:0;
+  font-size:14px;
+  color:#eef0f2;
+}
+.item-name{
+  display:flex;
+  align-items:flex-start;
+  gap:6px;
+}
+.item-diamond{
+  color:var(--item-rarity);
+  font-size:11px;
+  line-height:1;
+  padding-top:3px;
+  text-shadow:0 0 8px var(--item-rarity-shadow);
+  filter:brightness(1.18) saturate(1.08);
+}
+.item-title{
+  color:var(--item-rarity);
+  text-shadow:0 0 8px var(--item-rarity-shadow);
+  filter:brightness(1.07);
+}
+.item-effects{
+  display:grid;
+  gap:5px;
+  margin-top:8px;
+}
+.item-effect-line{
+  margin:0;
+  color:#d8dce0;
+  font-size:11px;
+  line-height:1.55;
+}
+.item-effect-key{
+  margin-right:.38em;
+  color:var(--item-rarity);
+  font-weight:800;
+  text-shadow:0 0 8px var(--item-rarity-shadow);
+}
+.mobile .item-effects{
+  gap:4px;
+  margin-top:6px;
+}
+.mobile .item-effect-line{
+  font-size:10px;
+  line-height:1.5;
+}
+.item-kind{font-size:9px;color:#707780;white-space:nowrap;flex:0 0 auto;padding-top:2px}
+.item p{font-size:11px;line-height:1.55}
+.item .desc{font-size:9.3px}
+
+.holding-section{
+  width:min(100%,560px);
+  margin:0 auto 20px;
+}
+.holding-section:last-child{
+  margin-bottom:0;
+}
+.holding-title{
+  position:relative;
+  margin:0;
+  padding:6px 0 9px;
+  color:#bbb2c0;
+  font:700 13px "Noto Serif SC","Source Han Serif SC",serif;
+  letter-spacing:.12em;
+  text-align:center;
+}
+.holding-title::before,
+.holding-title::after{
+  content:"";
+  position:absolute;
+  top:50%;
+  width:28%;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(var(--char-rgb),.28));
+}
+.holding-title::before{
+  right:calc(50% + 44px);
+}
+.holding-title::after{
+  left:calc(50% + 44px);
+  transform:scaleX(-1);
+}
+.mobile .holding-section{
+  width:100%;
+  margin-bottom:14px;
+}
+.mobile .holding-title{
+  padding-top:4px;
+  font-size:11px;
+}
+
+.status{
+  width:min(100%,560px);
+  margin:0 auto;
+  display:grid;
+  gap:10px;
+}
+.status article{
+  position:relative;
+  padding:14px 16px 15px;
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:7px;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.018),transparent 42%),
+    rgba(5,7,10,.52);
+}
+.status article::before{
+  content:"";
+  position:absolute;
+  top:0;
+  left:50%;
+  width:46px;
+  height:1px;
+  transform:translateX(-50%);
+  background:linear-gradient(90deg,transparent,rgba(var(--char-rgb),.48),transparent);
+}
+.status strong{
+  display:block;
+  color:#dedfe2;
+  font-size:12px;
+  text-align:center;
+}
+.status small{
+  display:block;
+  margin-top:4px;
+  color:#777f88;
+  font-size:8.8px;
+  text-align:center;
+}
+.status p{
+  max-width:44em;
+  margin:8px auto 0;
+  color:#cfd2d6;
+  font-size:10.5px;
+  line-height:1.58;
+  text-align:center;
+}
+.mobile .status{
+  width:100%;
+  gap:8px;
+}
+.mobile .status article{
+  padding:11px 12px 12px;
+}
+.mobile .status p{
+  font-size:10px;
+  line-height:1.52;
+}
+
+.panel-stack{
+  width:min(100%,560px);
+  margin:0 auto;
+  display:grid;
+  gap:12px;
+}
+.panel-card{
+  position:relative;
+  padding:16px 18px 17px;
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:7px;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.018),transparent 42%),
+    rgba(5,7,10,.52);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.025),
+    0 8px 20px rgba(0,0,0,.10);
+}
+.panel-card::before{
+  content:"";
+  position:absolute;
+  top:0;
+  left:50%;
+  width:54px;
+  height:1px;
+  transform:translateX(-50%);
+  background:linear-gradient(90deg,transparent,rgba(var(--char-rgb),.55),transparent);
+}
+.panel-title{
+  margin:0 0 10px;
+  color:#c7bdcc;
+  font-family:"Noto Serif SC","Source Han Serif SC",serif;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.12em;
+  text-align:center;
+}
+.radar-wrap{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:250px;
+}
+.radar-svg{
+  width:min(100%,320px);
+  height:auto;
+  overflow:visible;
+}
+.panel-resources{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:0;
+  border-top:1px solid rgba(255,255,255,.06);
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.panel-resource{
+  position:relative;
+  padding:12px 6px 13px;
+  text-align:center;
+}
+.panel-resource + .panel-resource::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:18%;
+  bottom:18%;
+  width:1px;
+  background:rgba(255,255,255,.08);
+}
+.panel-resource small{
+  display:block;
+  color:#99a6af;
+  font:700 11px/1 "Noto Serif SC",serif;
+  letter-spacing:.1em;
+}
+.panel-resource strong{
+  display:block;
+  margin-top:6px;
+  color:#efefeb;
+  font:700 22px/1 "Noto Serif SC",serif;
+}
+.panel-status-list{
+  display:grid;
+  gap:9px;
+}
+.panel-status-item{
+  padding:10px 0 0;
+  border-top:1px solid rgba(255,255,255,.05);
+}
+.panel-status-item:first-child{
+  padding-top:0;
+  border-top:0;
+}
+.panel-status-item strong{
+  display:block;
+  color:#dfdfe1;
+  font-size:12px;
+  text-align:center;
+}
+.panel-status-item small{
+  display:block;
+  margin-top:4px;
+  color:#7a828b;
+  font-size:9px;
+  text-align:center;
+}
+.panel-status-item p{
+  max-width:44em;
+  margin:7px auto 0;
+  color:#cfd2d6;
+  font-size:10.5px;
+  line-height:1.58;
+  text-align:center;
+}
+.mobile .panel-stack{
+  width:100%;
+  gap:9px;
+}
+.mobile .panel-card{
+  padding:12px 13px 13px;
+  border-radius:5px;
+}
+.mobile .panel-title{
+  margin-bottom:8px;
+  font-size:10.5px;
+}
+.mobile .radar-wrap{
+  min-height:205px;
+}
+.mobile .radar-svg{
+  width:min(100%,260px);
+}
+.mobile .panel-resource small{
+  font-size:8px;
+}
+.mobile .panel-resource strong{
+  font-size:16px;
+}
+.mobile .panel-status-item strong{
+  font-size:10.8px;
+}
+.mobile .panel-status-item small{
+  font-size:8.2px;
+}
+.mobile .panel-status-item p{
+  font-size:9.7px;
+  line-height:1.52;
+}
+
+.dtabs{display:flex;flex-direction:column;justify-content:center;gap:3px;padding:14px 6px;border-left:1px solid #ffffff10;background:#090b0fd4}.tab{position:relative;min-height:62px;border:0;background:none;color:#666e78;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}.tab .ico{font-size:15px}.tab .lab{font-size:9px}.tab.active{color:#d5cedb}.tab.active:before{content:"";position:absolute;left:-7px;top:10px;bottom:10px;width:2px;background:var(--char)}.tab.active:after{content:"";position:absolute;z-index:-1;inset:5px -2px 5px -13px;background:linear-gradient(90deg,#796b8720,transparent)}
+.mtabs{position:absolute;left:0;right:0;bottom:0;height:50px;display:grid;grid-template-columns:repeat(6,minmax(46px,1fr));overflow-x:auto;border-top:1px solid var(--line);background:#080a0e;scrollbar-width:none}.mtabs::-webkit-scrollbar{display:none}.mtab{min-width:46px;border:0;background:none;color:#656c75;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}.mtab .ico{font-size:13px}.mtab .lab{font-size:8px}.mtab.active{color:#aa9db4}.mtab.active:before{content:"";position:absolute;top:0;width:24px;height:1px;background:var(--char)}
+/* fix: mode-specific nav visibility must come AFTER base nav rules */
+.viewer.desktop .dtabs{display:flex}
+.viewer.desktop .mtabs{display:none !important}
+.viewer.desktop .portrait{display:block}
+.viewer.mobile .portrait{display:none !important}
+.viewer.mobile .dtabs{display:none !important}
+.viewer.mobile .mtabs{display:grid !important;position:absolute;left:0;right:0;bottom:0;width:100%}
+
+@media(max-width:980px){.viewer.desktop{grid-template-columns:43% minmax(0,1fr) 64px}.desktop .data{padding:36px 24px 24px 28px}.attr{width:108px;min-height:110px;padding-bottom:30px}.attrs{max-width:350px}}
+</style>
+</head><body>
+<div class="toolbar"><strong>CharInfo Viewer · Full UI Preview</strong><div class="switch"><button id="d" class="active">Desktop</button><button id="m">Mobile</button></div></div>
+<div class="stage"><main id="v" class="viewer desktop">
+<aside class="portrait"><img src="https://files.catbox.moe/x3oecs.png" alt="仲夏夜之梦"></aside>
+<section class="data">
+
+<section class="page home active" data-page="overview"><div class="mobart"></div><div class="homewrap">
+<header class="head"><h1 class="name">仲夏夜之梦</h1><div class="sub"><span>诗灵</span><span class="sep">◆</span><span>编织者 / 剧作家</span><span class="sep">◆</span><span>吟游诗人 / 幻术师</span></div><div class="tier"><span>LV. 16</span><span>✦</span><span>第四层级</span></div></header>
+<div class="attrs"><div class="attr"><b>力</b><strong>5</strong></div><div class="attr"><b>敏</b><strong>14</strong></div><div class="attr"><b>体</b><strong>6</strong></div><div class="attr"><b>智</b><strong>14</strong></div><div class="attr"><b>精</b><strong>16</strong></div></div>
+<div class="res"><div class="r"><span>HP</span><strong>6055</strong></div><div class="r"><span>SP</span><strong>14250</strong></div><div class="r"><span>MP</span><strong>22500</strong></div></div>
+<div class="quote">“我是编织者，是仲夏夜的噩梦与美梦——你可以称呼我为，仲夏夜之梦。”</div>
+</div></section>
+
+<section class="page" data-page="profile">
+  <div class="mhead"><strong>档案</strong><small>PROFILE</small></div>
+  <div class="scroll">
+    <h2 class="ptitle">档案</h2>
+
+    <div class="profile-stack">
+      <article class="profile-card">
+        <h3>性格</h3>
+        <p>混乱善良，极度追求戏剧性与浪漫，讨厌平庸与无趣。言行举止带有强烈的舞台剧风格，喜欢用咏叹调说话。</p>
+      </article>
+
+      <article class="profile-card">
+        <h3>喜爱</h3>
+        <p>莎士比亚的十四行诗、错综复杂的恋爱关系、在月光下跳舞、怪味糖果，以及观察人类在极端情绪下的反应。</p>
+      </article>
+
+      <article class="profile-card">
+        <h3>外貌特质</h3>
+        <p>及腰长发呈珍珠银白至淡肉粉色渐变，细软蓬松。左眼三色堇紫，右眼魔药翠绿，整体气质轻盈而戏剧化。</p>
+      </article>
+
+      <article class="profile-card">
+        <h3>衣物装饰</h3>
+        <p>身着白色亚麻与丝绸混纺的多里斯式希顿长裙，腰间束着金色细绳，脚踝系着干枯的荆棘藤蔓。</p>
+      </article>
+
+      <article class="profile-card backstory">
+        <h3>背景故事</h3>
+        <p>百年前，她随一位异界勇者带来的《莎士比亚全集》而诞生于阿斯塔利亚。继承书中关于错位爱情与魔法森林的核心后，她把现实视作尚未完成的舞台。偶然、误会与荒诞都只是剧本的一部分；她游历大陆，把平淡的日常改造成戏剧。</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="page" data-page="skills"><div class="mhead"><strong>技能</strong><small>3 / 9</small></div><div class="scroll"><h2 class="ptitle">技能</h2>
+<article class="skill myth"><div class="skilltop"><div class="stitle"><span class="diamond">◆</span><div class="sname"><span class="mode">[主动]</span>晶钻进行曲·快板</div></div><div class="cost"><b>攻击</b>16000 MP 与 8000 SP</div></div><div class="tags"><span class="tag">精神</span><span class="tag">范围5</span><span class="tag">伤害</span><span class="tag">增益</span><span class="tag">控制</span><span class="tag">连击</span></div><div class="effects"><p class="eff"><span class="key">晶钻爆奏</span>对范围内敌方造成70%能量伤害 + 30%精神伤害</p><p class="eff"><span class="key">喝彩进行曲</span>范围内友方获得先攻+6、伤害增幅+25%、暴击倍率+0.1、状态抵抗+6，持续3回合</p><p class="eff"><span class="key">微弱法则[煌海梦幻大剧场]</span>精神+d20 DC28检定失败则眩晕并魅惑</p></div><p class="desc">她抬足叩响金铃，晶钻沿节拍炸开。</p></article>
+<article class="skill leg"><div class="skilltop"><div class="stitle"><span class="diamond">◆</span><div class="sname"><span class="mode">[主动]</span>碎星剑舞</div></div><div class="cost"><b>动作</b>10000 MP 与 12000 SP</div></div><div class="tags"><span class="tag">敏捷</span><span class="tag">范围5</span><span class="tag">伤害</span><span class="tag">控制</span></div><div class="effects"><p class="eff"><span class="key">星屑斩击</span>对范围内敌方造成100%物理伤害</p><p class="eff"><span class="key">共演舞步</span>自身闪避+8、先攻+6；友方敏捷+5，持续5回合</p></div><p class="desc">她以剑锋划出明亮的节拍。</p></article>
+<article class="skill epic"><div class="skilltop"><div class="stitle"><span class="diamond">◆</span><div class="sname"><span class="mode">[主动]</span>帕克的瞬步</div></div><div class="cost"><b>动作</b>800 SP</div></div><div class="tags"><span class="tag">敏捷</span><span class="tag">自身</span><span class="tag">增益</span></div><div class="effects"><p class="eff"><span class="key">月影步</span>闪避修正+8，移动距离增加</p><p class="eff"><span class="key">残影</span>50%几率免疫物理伤害，持续2回合</p></div></article>
+</div></section>
+
+<section class="page" data-page="holdings">
+  <div class="mhead"><strong>持有</strong><small>6</small></div>
+  <div class="scroll">
+    <h2 class="ptitle">持有</h2>
+
+    <section class="holding-section">
+      <h3 class="holding-title">装备</h3>
+
+      <article class="item epic"><div class="ihead"><h3 class="item-name"><span class="item-diamond">◆</span><span class="item-title">恶作剧手杖</span></h3><span class="item-kind">武器</span></div>
+        <div class="tags"><span class="tag">攻击 280</span><span class="tag">幻术</span></div>
+        <div class="item-effects">
+          <p class="item-effect-line"><span class="item-effect-key">幻术增幅</span>精神技能威力+15%</p>
+          <p class="item-effect-line"><span class="item-effect-key">恶作剧变形</span>击中时有20%几率附加[随机变形]，持续1回合</p>
+        </div>
+        <p class="desc">顶端镶嵌着会转动的眼球。</p>
+      </article>
+
+      <article class="item epic"><div class="ihead"><h3 class="item-name"><span class="item-diamond">◆</span><span class="item-title">希顿灵纱</span></h3><span class="item-kind">防具</span></div>
+        <div class="tags"><span class="tag">防御 220</span></div>
+        <div class="item-effects">
+          <p class="item-effect-line"><span class="item-effect-key">月纱防护</span>能量伤害减免+8%</p>
+          <p class="item-effect-line"><span class="item-effect-key">轻盈</span>闪避修正+4</p>
+          <p class="item-effect-line"><span class="item-effect-key">微弱护盾</span>受到攻击时自动触发护盾，吸收500点伤害</p>
+        </div>
+      </article>
+
+      <article class="item rare"><div class="ihead"><h3 class="item-name"><span class="item-diamond">◆</span><span class="item-title">干枯荆棘环</span></h3><span class="item-kind">饰品</span></div>
+        <div class="item-effects">
+          <p class="item-effect-line"><span class="item-effect-key">荆棘守护</span>精神抗性+10%</p>
+          <p class="item-effect-line"><span class="item-effect-key">反刺</span>受到近战攻击时反弹50点物理伤害</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="holding-section">
+      <h3 class="holding-title">道具</h3>
+
+      <article class="item fine"><div class="ihead"><h3 class="item-name"><span class="item-diamond">◆</span><span class="item-title">怪味糖果</span></h3><span class="item-kind">消耗品</span></div>
+        <div class="item-effects">
+          <p class="item-effect-line"><span class="item-effect-key">随机口味</span>随机获得一个微弱增益或减益，持续10分钟</p>
+        </div>
+      </article>
+
+      <article class="item common"><div class="ihead"><h3 class="item-name"><span class="item-diamond">◆</span><span class="item-title">隐形墨水</span></h3><span class="item-kind">消耗品</span></div>
+        <div class="item-effects">
+          <p class="item-effect-line"><span class="item-effect-key">消隐</span>书写的文字在1小时后自动消失</p>
+        </div>
+      </article>
+
+      <article class="item special"><div class="ihead"><h3 class="item-name"><span class="item-diamond">◆</span><span class="item-title">不凋三色堇</span></h3><span class="item-kind">特殊物品</span></div>
+        <div class="item-effects">
+          <p class="item-effect-line"><span class="item-effect-key">精神锚定</span>作为精神锚点存在</p>
+          <p class="item-effect-line"><span class="item-effect-key">不凋</span>永不凋谢，并持续散发淡淡香气</p>
+        </div>
+      </article>
+    </section>
+  </div>
+</section>
+
+<section class="page" data-page="divinity"><div class="mhead"><strong>登神</strong><small>2</small></div><div class="scroll"><h2 class="ptitle">登神长阶</h2>
+<section class="sec"><h3>Ⅰ · 戏剧编织</h3><p>感知并引导周围生物的情绪走向，使其符合特定剧本逻辑。</p></section>
+<section class="sec"><h3>Ⅱ · 月光漫步</h3><p>月光下存在感降低，并能无视重力在任意平面行走。</p></section></div></section>
+
+
+<section class="page" data-page="characterPanel">
+  <div class="mhead"><strong>角色面板</strong><small>PANEL</small></div>
+  <div class="scroll">
+    <h2 class="ptitle">角色面板</h2>
+
+    <div class="panel-stack">
+      <section class="panel-card radar-panel">
+        <h3 class="panel-title">五维</h3>
+        <div class="radar-wrap">
+          <svg class="radar-svg" viewBox="0 0 280 255" data-max="20" data-values='[["力",5],["敏",14],["体",6],["智",14],["精",16]]'></svg>
+        </div>
+      </section>
+
+      <section class="panel-card resource-panel">
+        <h3 class="panel-title">资源</h3>
+        <div class="panel-resources">
+          <div class="panel-resource"><small>HP</small><strong>6055</strong></div>
+          <div class="panel-resource"><small>SP</small><strong>14250</strong></div>
+          <div class="panel-resource"><small>MP</small><strong>22500</strong></div>
+        </div>
+      </section>
+
+      <section class="panel-card conditional-status">
+        <h3 class="panel-title">状态</h3>
+        <div class="panel-status-list">
+          <article class="panel-status-item">
+            <strong>月光祝福</strong>
+            <small>增益 · 持续</small>
+            <p>夜间精神技能威力提高，并缓慢恢复 MP。</p>
+          </article>
+
+          <article class="panel-status-item">
+            <strong>舞台掌控</strong>
+            <small>增益 · 场域</small>
+            <p>自身幻术领域内，控制技能获得额外命中修正。</p>
+          </article>
+
+          <article class="panel-status-item">
+            <strong>过度兴奋</strong>
+            <small>特殊 · 3 回合</small>
+            <p>先攻提高，但精神反制抗性略微降低。</p>
+          </article>
+        </div>
+      </section>
+    </div>
+  </div>
+</section>
+
+</section>
+
+<nav class="dtabs">
+<button class="tab active" data-tab="overview"><span class="ico">⌂</span><span class="lab">首页</span></button><button class="tab" data-tab="profile"><span class="ico">▤</span><span class="lab">档案</span></button><button class="tab" data-tab="skills"><span class="ico">⚔</span><span class="lab">技能</span></button><button class="tab" data-tab="holdings"><span class="ico">▣</span><span class="lab">持有</span></button><button class="tab" data-tab="divinity"><span class="ico">✦</span><span class="lab">登神</span></button><button class="tab" data-tab="characterPanel"><span class="ico">◈</span><span class="lab">面板</span></button>
+</nav>
+
+<nav class="mtabs">
+<button class="mtab active" data-tab="overview"><span class="ico">⌂</span><span class="lab">首页</span></button><button class="mtab" data-tab="profile"><span class="ico">▤</span><span class="lab">档案</span></button><button class="mtab" data-tab="skills"><span class="ico">⚔</span><span class="lab">技能</span></button><button class="mtab" data-tab="holdings"><span class="ico">▣</span><span class="lab">持有</span></button><button class="mtab" data-tab="divinity"><span class="ico">✦</span><span class="lab">登神</span></button><button class="mtab" data-tab="characterPanel"><span class="ico">◈</span><span class="lab">面板</span></button>
+</nav>
+</main></div>
+
+
+<script>
+const v=document.getElementById("v"),d=document.getElementById("d"),m=document.getElementById("m");
+
+function mode(x){
+  v.classList.toggle("desktop",x==="desktop");
+  v.classList.toggle("mobile",x==="mobile");
+  d.classList.toggle("active",x==="desktop");
+  m.classList.toggle("active",x==="mobile");
+}
+function tab(x){
+  document.querySelectorAll(".page").forEach(e=>e.classList.toggle("active",e.dataset.page===x));
+  document.querySelectorAll("[data-tab]").forEach(e=>e.classList.toggle("active",e.dataset.tab===x));
+  const s=document.querySelector(".page.active .scroll");
+  if(s)s.scrollTop=0;
+}
+function renderRadar(svg){
+  const data = JSON.parse(svg.dataset.values);
+  const max = Number(svg.dataset.max || 20);
+  const w = 280, h = 255;
+  const cx = 140, cy = 118, r = 82;
+  const ns = "http://www.w3.org/2000/svg";
+
+  function polar(i, ratio, extra=0){
+    const angle = (-90 + i * (360 / data.length)) * Math.PI / 180;
+    const rr = r * ratio + extra;
+    return [cx + Math.cos(angle) * rr, cy + Math.sin(angle) * rr];
+  }
+
+  function make(tag, attrs){
+    const el = document.createElementNS(ns, tag);
+    Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));
+    return el;
+  }
+
+  svg.innerHTML = "";
+
+  // rings
+  [0.25,0.5,0.75,1].forEach(level=>{
+    const pts = data.map((_,i)=>polar(i, level).join(",")).join(" ");
+    svg.appendChild(make("polygon", {
+      points: pts,
+      fill: "none",
+      stroke: "rgba(255,255,255,.08)",
+      "stroke-width": "1"
+    }));
+  });
+
+  // spokes
+  data.forEach((_,i)=>{
+    const [x,y] = polar(i,1);
+    svg.appendChild(make("line", {
+      x1: cx, y1: cy, x2: x, y2: y,
+      stroke: "rgba(255,255,255,.08)",
+      "stroke-width": "1"
+    }));
+  });
+
+  // value polygon
+  const valuePts = data.map((d,i)=>polar(i, Math.max(0, Math.min(1, d[1]/max))).join(",")).join(" ");
+  svg.appendChild(make("polygon", {
+    points: valuePts,
+    fill: "rgba(121,107,135,.22)",
+    stroke: "rgba(121,107,135,.85)",
+    "stroke-width": "2"
+  }));
+
+  // dots
+  data.forEach((d,i)=>{
+    const [x,y] = polar(i, Math.max(0, Math.min(1, d[1]/max)));
+    svg.appendChild(make("circle", {
+      cx: x, cy: y, r: "3.2",
+      fill: "rgba(215,206,224,.95)"
+    }));
+  });
+
+  // labels
+  data.forEach((d,i)=>{
+    const [lx,ly] = polar(i,1,24);
+    const [vx,vy] = polar(i,1,42);
+    const label = make("text", {
+      x: lx, y: ly,
+      "text-anchor": "middle",
+      fill: "#b8c1c9",
+      "font-size": "11",
+      "font-weight": "700"
+    });
+    label.textContent = d[0];
+    svg.appendChild(label);
+
+    const val = make("text", {
+      x: vx, y: vy,
+      "text-anchor": "middle",
+      fill: "#eceef1",
+      "font-size": "16",
+      "font-family": '"Noto Serif SC", serif',
+      "font-weight": "700"
+    });
+    val.textContent = d[1];
+    svg.appendChild(val);
+  });
+}
+
+function initConditionalStatus(){
+  document.querySelectorAll(".conditional-status").forEach(card=>{
+    const items = card.querySelectorAll(".panel-status-item");
+    if(!items.length){
+      card.style.display = "none";
+    }
+  });
+}
+
+d.onclick=()=>mode("desktop");
+m.onclick=()=>mode("mobile");
+document.querySelectorAll("[data-tab]").forEach(e=>e.onclick=()=>tab(e.dataset.tab));
+document.querySelectorAll(".radar-svg").forEach(renderRadar);
+initConditionalStatus();
+</script>
+
+</body></html>

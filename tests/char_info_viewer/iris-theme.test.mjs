@@ -6,7 +6,7 @@ const repoRoot = new URL('../../', import.meta.url);
 const readSource = path => readFile(new URL(path, repoRoot), 'utf8');
 
 const [profilesSource, sheetSource] = await Promise.all([
-  readSource('src/char_info_viewer/dxCharacterRoster.ts'),
+  readSource('src/char_info_viewer/dx/roster.ts'),
   readSource('src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue'),
 ]);
 

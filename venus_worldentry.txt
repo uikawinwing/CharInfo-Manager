@@ -1,10 +1,6 @@
+@@private
 <%_
-const venusAppearKey = '$dx_venus_appear';
-const venusAppearRaw = getMessageVar(venusAppearKey, { defaults: null });
-if (venusAppearRaw === null || venusAppearRaw === undefined) {
-  setMessageVar(venusAppearKey, 0, { dryRun: true });
-}
-const venusAppear = Number(venusAppearRaw) === 1 ? 1 : 0;
+const venusAppear = Number(getMessageVar('$dx_venus_appear', { defaults: 0 })) === 1 ? 1 : 0;
 _%>
 ---
 [dx_venus]

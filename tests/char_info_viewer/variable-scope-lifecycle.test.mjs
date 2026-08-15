@@ -6,13 +6,10 @@ const repoRoot = new URL('../../', import.meta.url);
 const appSource = await readFile(new URL('src/char_info_viewer/App.vue', repoRoot), 'utf8');
 const themeSource = await readFile(new URL('src/char_info_viewer/services/themeService.ts', repoRoot), 'utf8');
 const importServiceSource = await readFile(new URL('src/char_info_viewer/services/importService.ts', repoRoot), 'utf8');
-const ejsProfileSource = await readFile(new URL('src/char_info_creator_manager/ejsProfile.ts', repoRoot), 'utf8');
+const ejsProfileSource = await readFile(new URL('src/char_info_shared/characterVisualProfile.ts', repoRoot), 'utf8');
 const creatorManagerSource = await readFile(new URL('src/char_info_creator_manager/App.vue', repoRoot), 'utf8');
+const creatorManagerControllerSource = await readFile(new URL('src/char_info_creator_manager/controller.ts', repoRoot), 'utf8');
 const viewerRuntimeSource = await readFile(new URL('src/char_info_viewer_runtime/runtime.ts', repoRoot), 'utf8');
-const viewerRuntimeRootSource = await readFile(
-  new URL('src/char_info_viewer_runtime/RuntimeRoot.vue', repoRoot),
-  'utf8',
-);
 const previewBuilderSource = await readFile(new URL('docs/previews/char_info_ejs_builder.html', repoRoot), 'utf8');
 
 test('DX 角色自动导入绑定聊天、楼层与 swipe，事件只负责时序且卸载时清理', () => {
@@ -35,7 +32,7 @@ test('DX 角色自动导入绑定聊天、楼层与 swipe，事件只负责时�
 test('手动 MVU 导入写回卡片所属消息楼层而不是 latest', () => {
   assert.match(
     appSource,
-    /importToMvuVariables\(importData,\s*\{\s*type:\s*'message',\s*message_id:\s*props\.messageId\s*\}\)/,
+    /importToMvuVariables\([\s\S]{0,200}?message_id:\s*props\.messageId/,
   );
   assert.doesNotMatch(importServiceSource, /message_id:\s*'latest'/);
   assert.match(importServiceSource, /message_id:\s*number/);
@@ -54,41 +51,24 @@ test('视觉资料只读取 CharInfo 聊天路径，状态栏仅保留头像写�
 
 test('角色库的 MVU 更新事件只触发刷新，资料始终重新读取 latest 消息快照', () => {
   assert.match(
-    creatorManagerSource,
-    /Mvu\.events\.VARIABLE_UPDATE_ENDED,\s*\(\)\s*=>\s*\{\s*void loadEncounteredCharacterData\(\)/,
-  );
-  assert.match(
     viewerRuntimeSource,
     /Mvu\.events\.VARIABLE_UPDATE_ENDED,\s*\(variables, variablesBeforeUpdate\)\s*=>\s*\{[\s\S]*?void refreshLibrary\(collectChangedAffinityNames\(variables, variablesBeforeUpdate\)\)/,
   );
-  assert.match(creatorManagerSource, /Mvu\.getMvuData\(\{\s*type:\s*'message',\s*message_id:\s*'latest'\s*\}\)/);
   assert.match(viewerRuntimeSource, /Mvu\.getMvuData\(\{\s*type:\s*'message',\s*message_id:\s*'latest'\s*\}\)/);
-  assert.doesNotMatch(
-    creatorManagerSource,
-    /Mvu\.events\.VARIABLE_UPDATE_ENDED,\s*variables\s*=>[\s\S]*?applyEncounteredCharacterData\(variables\)/,
-  );
   assert.doesNotMatch(
     viewerRuntimeSource,
     /Mvu\.events\.VARIABLE_UPDATE_ENDED,\s*variables\s*=>[\s\S]*?collectCurrentCharacterSnapshots\(variables\)/,
   );
   assert.match(viewerRuntimeSource, /applyLibrarySnapshot\(Mvu\.getMvuData\([\s\S]*?unreadNamesForRefresh\)/);
-  assert.match(creatorManagerSource, /const loadRevision = \+\+encounteredLoadRevision/);
-  assert.match(
-    creatorManagerSource,
-    /loadRevision !== encounteredLoadRevision \|\| SillyTavern\.getCurrentChatId\(\) !== chatId/,
-  );
   assert.match(viewerRuntimeSource, /if \(library\.loading\) \{\s*libraryRefreshPending = true/);
   assert.match(viewerRuntimeSource, /const startRevision = \+\+lifecycleRevision/);
   assert.match(viewerRuntimeSource, /!started \|\| lifecycleRevision !== startRevision/);
   assert.match(viewerRuntimeSource, /started = false;\s*lifecycleRevision \+= 1/);
-  assert.match(creatorManagerSource, /tavern_events\.CHAT_CHANGED,\s*\(\)\s*=>\s*\{\s*emit\('close'\)/);
-  assert.match(
-    viewerRuntimeRootSource,
-    /\(\) => props\.state\.library,[\s\S]*?searchText\.value = ''[\s\S]*?activeFilter\.value = 'all'/,
-  );
+  assert.match(viewerRuntimeSource, /tavern_events\.CHAT_CHANGED[\s\S]*?closeCreatorEditor\(\)/);
+  assert.match(creatorManagerControllerSource, /overlay\?\.destroy\(\);[\s\S]*?overlay = null/);
 });
 
-test('角色库首屏完成条目读取和一次 Vue 绘制后才读取当前聊天角色，所有世界书切换路径共用单次读取', () => {
+test('Creator 首屏优先打开 Viewer 指定的世界书与条目，所有世界书切换路径共用单次读取', () => {
   const selectWorldbookSource = creatorManagerSource.match(
     /function selectWorldbook\(worldbookName: string\) \{([\s\S]*?)\n\}/u,
   )?.[1];
@@ -101,13 +81,16 @@ test('角色库首屏完成条目读取和一次 Vue 绘制后才读取当前聊
 
   assert.match(creatorManagerSource, /let selectedWorldbookEntriesLoad: Promise<void> = Promise\.resolve\(\);/u);
   assert.doesNotMatch(selectWorldbookSource ?? '', /loadEntries\(/u);
-  assert.match(loadWorldbooksSource ?? '', /selectWorldbook\(worldbooks\.value\[0\]\);[\s\S]*?await nextTick\(\);[\s\S]*?await selectedWorldbookEntriesLoad;/u);
   assert.match(
     loadWorldbooksSource ?? '',
-    /loadingWorldbooks\.value = false;[\s\S]*?await nextTick\(\);[\s\S]*?requestAnimationFrame\(\(\) => \{[\s\S]*?requestAnimationFrame\(resolve\);[\s\S]*?void loadEncounteredCharacterData\(\);/u,
+    /const requestedWorldbook = props\.initialWorldbookName\.trim\(\);[\s\S]*?const nextWorldbook = worldbooks\.value\.includes\(requestedWorldbook\)[\s\S]*?selectWorldbook\(nextWorldbook\);[\s\S]*?await nextTick\(\);[\s\S]*?await selectedWorldbookEntriesLoad;/u,
+  );
+  assert.match(
+    loadWorldbooksSource ?? '',
+    /props\.initialEntryUid !== undefined[\s\S]*?entries\.value\.find\(entry => entry\.uid === props\.initialEntryUid\)[\s\S]*?selectEntry\(requestedEntry\);/u,
   );
   assert.match(selectedWorldbookWatcherSource ?? '', /selectedWorldbookEntriesLoad = loadEntries\(worldbookName\);/u);
-  assert.match(creatorManagerSource, /<select[^>]*v-model="selectedWorldbookName"/u);
+  assert.match(creatorManagerSource, /v-model="worldbookSearch"[\s\S]*?@click="selectWorldbook\(worldbook\)"/u);
 });
 
 test('快速切换世界书时只采纳最新条目请求，过期成功或失败不得覆盖结果或结束加载', () => {

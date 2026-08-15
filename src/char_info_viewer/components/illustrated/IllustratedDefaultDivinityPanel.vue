@@ -1,8 +1,8 @@
 <template>
   <section class="illustrated-default-divinity" :class="{ 'is-compact': compact }">
-    <header class="default-divinity-hero">
-      <span class="default-divinity-kicker">Divinity Path</span>
-      <h3>{{ vm.divinityGodTitle || '登神长阶' }}</h3>
+    <header v-if="!compact || vm.divinityGodTitle || vm.divinityKingdom" class="default-divinity-hero">
+      <span v-if="!compact" class="default-divinity-kicker">Divinity Path</span>
+      <h3 v-if="vm.divinityGodTitle || !compact">{{ vm.divinityGodTitle || '登神长阶' }}</h3>
       <p v-if="vm.divinityKingdom">{{ vm.divinityKingdom.name }}</p>
     </header>
 

@@ -56,7 +56,7 @@ test('illustrated character attributes wrap to three flags over two', () => {
 test('illustrated and DX overview themes share one geometry scale', () => {
   assert.match(
     sheetSource,
-    /\.illustrated-wrapper\s*\{[^}]*--illustrated-flag-width:\s*128px;[^}]*--illustrated-flag-height:\s*128px;[^}]*--illustrated-resource-height:\s*72px;/,
+    /\.illustrated-wrapper\s*\{[^}]*--illustrated-flag-width:\s*128px;[^}]*--illustrated-flag-height:\s*156px;[^}]*--illustrated-resource-height:\s*72px;/,
   );
   assert.match(
     overviewSource,
@@ -104,11 +104,11 @@ test('overview density progresses from normal through compact to dense using mea
   assert.match(sheetSource, /overviewResizeObserver\?\.disconnect\(\);/);
   assert.match(
     overviewSource,
-    /\.illustrated-overview\.overview-density-compact \.illustrated-attribute[\s\S]*?min-height:\s*108px;/,
+    /\.illustrated-overview\.overview-density-compact \.illustrated-attribute[\s\S]*?min-height:\s*136px;/,
   );
   assert.match(
     overviewSource,
-    /\.illustrated-overview\.overview-density-dense \.illustrated-attribute[\s\S]*?min-height:\s*88px;/,
+    /\.illustrated-overview\.overview-density-dense \.illustrated-attribute[\s\S]*?min-height:\s*116px;/,
   );
 });
 
@@ -135,7 +135,7 @@ test('long overview copy uses whole-block limits instead of shrinking a single w
   );
   assert.doesNotMatch(headerSource, /offsetHeight > lineHeight/);
   assert.match(headerSource, /\.illustrated-subtitle\s*\{[^}]*max-height:\s*3em;[^}]*overflow:\s*hidden;/);
-  assert.match(overviewSource, /\.illustrated-entrance-quote-text\s*\{[^}]*-webkit-line-clamp:\s*3;/);
+  assert.match(overviewSource, /\.illustrated-entrance-quote-text\s*\{[^}]*-webkit-line-clamp:\s*5;/);
 });
 
 test('clamped entrance quotes open an accessible full-text dialog on desktop and mobile', () => {

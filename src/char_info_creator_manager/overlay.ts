@@ -13,11 +13,12 @@ export type CreatorManagerOverlay = {
   destroy(): void;
 };
 
-export type CreatorManagerView = 'editor' | 'library';
-
 export type CreatorManagerOverlayOptions = {
-  onOpenCurrentChatLibrary?: () => void;
   forceMobileLayout?: boolean;
+  debugEnabled?: boolean;
+  worldbookName?: string;
+  entryUid?: number;
+  onForceRefresh?: () => void | Promise<void>;
 };
 
 type CreatorManagerController = {
@@ -25,7 +26,6 @@ type CreatorManagerController = {
 };
 
 export function createCreatorManagerOverlay(
-  initialView: CreatorManagerView,
   options: CreatorManagerOverlayOptions = {},
 ): CreatorManagerOverlay {
   let mountedApp: VueApp<Element> | null = null;
@@ -69,13 +69,8 @@ export function createCreatorManagerOverlay(
     };
   };
 
-  const close = () => {
+  const teardown = () => {
     managerViewportCleanup?.();
-    $managerOverlay?.hide();
-  };
-
-  const destroy = () => {
-    close();
     mountedApp?.unmount();
     mountedApp = null;
     managerController = null;
@@ -86,6 +81,9 @@ export function createCreatorManagerOverlay(
     $managerOverlay = null;
     $managerIframe = null;
   };
+
+  const close = teardown;
+  const destroy = teardown;
 
   const open = () => {
     if ($managerOverlay) {
@@ -101,7 +99,7 @@ export function createCreatorManagerOverlay(
     const $overlay = host$('<div>')
       .attr({
         'data-char-info-creator-manager': '',
-        'data-char-info-manager-view': initialView,
+        'data-char-info-manager-view': 'editor',
         role: 'presentation',
       })
       .css({
@@ -113,8 +111,8 @@ export function createCreatorManagerOverlay(
       }) as JQuery<HTMLDivElement>;
     const $iframe = createScriptIdIframe()
       .attr({
-        title: initialView === 'library' ? '世界书角色库' : '角色视觉编辑器',
-        'aria-label': initialView === 'library' ? '世界书角色库' : '角色视觉编辑器',
+        title: '角色视觉编辑器',
+        'aria-label': '角色视觉编辑器',
         srcdoc: MANAGER_IFRAME_SRCDOC,
       })
       .css({
@@ -136,9 +134,12 @@ export function createCreatorManagerOverlay(
         iframeDocument.body.appendChild(mountPoint);
 
         mountedApp = createApp(App, {
-          initialView,
+          initialView: 'editor',
+          initialWorldbookName: options.worldbookName,
+          initialEntryUid: options.entryUid,
+          debugEnabled: options.debugEnabled ?? false,
+          onForceRefresh: options.onForceRefresh,
           onClose: close,
-          onOpenCurrentChatLibrary: options.onOpenCurrentChatLibrary,
         });
         managerController = mountedApp.mount(mountPoint) as CreatorManagerController;
         managerRootElement = mountPoint.querySelector<HTMLElement>('.manager-root');
