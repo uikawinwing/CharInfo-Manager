@@ -828,6 +828,7 @@ const viewerPreviewOpen = ref(false);
 const viewerPreviewSource = ref<CreatorViewerPreviewSource>('sample');
 const viewerPreviewPastedText = ref('');
 const viewerPreviewScale = ref(1);
+const viewerPreviewMobileLayout = ref(false);
 const viewerPreviewCanvasWidth = ref(1200);
 const viewerPreviewCanvasHeight = ref(800);
 const viewerPreviewStageRef = ref<HTMLElement | null>(null);
@@ -921,13 +922,21 @@ const viewerPreviewYaml = computed(() =>
 );
 const viewerPreviewVisualOverride = computed(() => buildCreatorViewerVisualOverride(viewerPreviewProfile.value));
 const viewerPreviewKey = computed(() => `${selectedEntryUid.value ?? 'none'}:${profile.characterName.trim()}`);
-const viewerPreviewFrameStyle = computed(() => ({
-  width: `${Math.max(1, viewerPreviewCanvasWidth.value * viewerPreviewScale.value)}px`,
-  height: `${Math.max(1, viewerPreviewCanvasHeight.value * viewerPreviewScale.value)}px`,
-}));
-const viewerPreviewCanvasStyle = computed(() => ({
-  transform: `scale(${viewerPreviewScale.value})`,
-}));
+const viewerPreviewFrameStyle = computed(() =>
+  viewerPreviewMobileLayout.value
+    ? { width: '100%', height: 'auto' }
+    : {
+        width: `${Math.max(1, viewerPreviewCanvasWidth.value * viewerPreviewScale.value)}px`,
+        height: `${Math.max(1, viewerPreviewCanvasHeight.value * viewerPreviewScale.value)}px`,
+      },
+);
+const viewerPreviewCanvasStyle = computed(() =>
+  viewerPreviewMobileLayout.value
+    ? { width: '100%', transform: 'none' }
+    : {
+        transform: `scale(${viewerPreviewScale.value})`,
+      },
+);
 const configuredGalleryCount = computed(
   () => profile.gallery.filter(image => image.sources.some(source => isHttpsUrl(source))).length,
 );
@@ -1424,14 +1433,24 @@ function updateViewerPreviewScale() {
   const stageStyle = window.getComputedStyle(stage);
   const horizontalPadding = parseFloat(stageStyle.paddingLeft) + parseFloat(stageStyle.paddingRight);
   const verticalPadding = parseFloat(stageStyle.paddingTop) + parseFloat(stageStyle.paddingBottom);
+  const availableWidth = Math.max(1, stage.clientWidth - horizontalPadding);
+  const availableHeight = Math.max(1, stage.clientHeight - verticalPadding);
+  const mobileLayout = isNarrowViewport();
+
+  viewerPreviewMobileLayout.value = mobileLayout;
+  if (mobileLayout) {
+    viewerPreviewScale.value = 1;
+    viewerPreviewCanvasWidth.value = availableWidth;
+    viewerPreviewCanvasHeight.value = Math.max(1, canvas.scrollHeight, canvas.offsetHeight);
+    return;
+  }
+
   const naturalWidth = Math.max(1, canvas.scrollWidth, canvas.offsetWidth);
   const naturalHeight = Math.max(1, canvas.scrollHeight, canvas.offsetHeight);
 
   viewerPreviewCanvasWidth.value = naturalWidth;
   viewerPreviewCanvasHeight.value = naturalHeight;
 
-  const availableWidth = Math.max(1, stage.clientWidth - horizontalPadding);
-  const availableHeight = Math.max(1, stage.clientHeight - verticalPadding);
   const nextScale = Math.min(1, availableWidth / naturalWidth, availableHeight / naturalHeight);
   viewerPreviewScale.value = Number.isFinite(nextScale) ? Math.max(0.1, nextScale) : 1;
 }
@@ -3035,6 +3054,61 @@ pre {
   .dialog-header {
     padding: 17px;
   }
+
+  .creator-viewer-preview {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-width: none;
+    max-height: none;
+    box-sizing: border-box;
+    transform: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .creator-viewer-preview-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    padding: calc(env(safe-area-inset-top) + 12px) 14px 12px;
+  }
+
+  .creator-viewer-preview-toolbar {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(126px, auto) 40px;
+    gap: 8px;
+  }
+
+  .creator-viewer-preview-source-state {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .creator-viewer-preview-source-toggle {
+    min-width: 0;
+    max-width: 164px;
+    white-space: normal;
+  }
+
+  .creator-viewer-preview-stage {
+    padding: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    align-items: flex-start;
+    justify-content: flex-start;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .creator-viewer-preview-frame,
+  .creator-viewer-preview-canvas {
+    max-width: 100%;
+  }
+
   .phase-badge {
     display: none;
   }
@@ -3246,12 +3320,23 @@ pre {
 
 @mixin mobile-manager-layout($root: '.manager-root') {
   #{$root} {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+    max-height: 100%;
     padding: 0;
+    overflow: hidden;
   }
   .manager-dialog {
     width: 100%;
     height: 100%;
-    max-height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-width: none;
+    max-height: none;
+    box-sizing: border-box;
     border-width: 0;
     border-radius: 0;
   }
@@ -3309,7 +3394,7 @@ pre {
   }
 }
 
-@media (max-width: 620px) {
+@media (max-width: 720px) {
   @include mobile-manager-layout;
 }
 

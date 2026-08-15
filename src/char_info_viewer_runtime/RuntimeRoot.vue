@@ -1006,12 +1006,14 @@ onBeforeUnmount(() => {
 .char-info-library-host,
 .char-info-settings-host {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100vw;
   height: 100vh;
   width: 100dvw;
   height: 100dvh;
+  max-width: 100dvw;
+  max-height: 100dvh;
+  overflow: hidden;
 }
 
 .char-info-library-host {
@@ -1932,11 +1934,27 @@ onBeforeUnmount(() => {
 
 @media (max-width: 720px) {
   .char-info-settings-backdrop {
-    padding: 8px;
+    padding: 0;
+    overflow: hidden;
+    place-items: stretch;
   }
 
   .char-info-settings-dialog {
-    max-height: calc(100dvh - 16px);
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .char-info-settings-dialog header {
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  }
+
+  .char-info-settings-dialog footer {
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
   }
 
   .char-info-settings-fields {
@@ -1961,6 +1979,11 @@ onBeforeUnmount(() => {
     inset: 0 !important;
     width: 100%;
     height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-width: none;
+    max-height: none;
+    box-sizing: border-box;
     border: 0;
     border-radius: 0;
     box-shadow: none;
@@ -1982,7 +2005,11 @@ onBeforeUnmount(() => {
     inset: 0 !important;
     width: 100%;
     height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-width: none;
     max-height: none;
+    box-sizing: border-box;
     border: 0;
     border-radius: 0;
     box-shadow: none;
@@ -2201,11 +2228,17 @@ onBeforeUnmount(() => {
     min-height: 0;
   }
 
+  .char-info-library-viewer .illustrated-shell.is-special-npc {
+    width: 100%;
+    aspect-ratio: auto;
+  }
+
   .char-info-library-viewer .illustrated-portrait-image,
   .char-info-library-viewer .illustrated-portrait-video,
   .char-info-library-viewer .portrait-image {
-    object-fit: contain;
-    background: rgba(0, 0, 0, 0.22);
+    object-fit: cover;
+    object-position: top center;
+    background: transparent;
   }
 }
 
@@ -2213,6 +2246,11 @@ onBeforeUnmount(() => {
   inset: 0 !important;
   width: 100%;
   height: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  box-sizing: border-box;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -2223,7 +2261,11 @@ onBeforeUnmount(() => {
   inset: 0 !important;
   width: 100%;
   height: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
   max-height: none;
+  box-sizing: border-box;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -2442,10 +2484,16 @@ onBeforeUnmount(() => {
   min-height: 0;
 }
 
+.char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-shell.is-special-npc {
+  width: 100%;
+  aspect-ratio: auto;
+}
+
 .char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-portrait-image,
 .char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-portrait-video,
 .char-info-library-overlay.force-mobile-layout .char-info-library-viewer .portrait-image {
-  object-fit: contain;
-  background: rgba(0, 0, 0, 0.22);
+  object-fit: cover;
+  object-position: top center;
+  background: transparent;
 }
 </style>

@@ -269,6 +269,13 @@
               <span>更多</span>
             </button>
             <div v-if="mobileMoreOpen" class="mobile-library-more-menu" role="menu">
+              <button
+                type="button"
+                role="menuitem"
+                @click="mobileMoreOpen = false; emit('editLibrary', selectedWorldbookName)"
+              >
+                视觉编辑
+              </button>
               <button type="button" role="menuitem" @click="loadWorldbooks">重新读取角色库</button>
             </div>
           </div>
@@ -646,7 +653,7 @@ onMounted(() => void loadWorldbooks());
   --border: #30394a; --border-strong: #445169; --text: #f4f7fb; --text-secondary: #b8c1d0;
   --text-muted: #7f8ba0; --primary: #77d6c7; --primary-strong: #4fb8a8; --primary-soft: rgb(119 214 199 / 12%);
   --success: #78d59c;
-  position: fixed; z-index: 2147482900; inset: 0; display: grid; width: 100%; height: 100%; padding: 24px;
+  position: absolute; z-index: 1; inset: 0; display: grid; width: 100%; height: 100%; padding: 24px;
   overflow: auto; place-items: center; color: var(--text); background: rgb(3 5 8 / 78%); backdrop-filter: blur(9px);
   pointer-events: auto;
   font-family: Inter, "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
@@ -681,7 +688,7 @@ select { color: var(--text); background: #0d121a; border: 1px solid var(--border
 .manager-view-switch svg { width: 16px; height: 16px; fill: currentcolor; }
 .close-button, .icon-button { display: grid; width: 42px; height: 42px; padding: 0; place-items: center; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 10px; }
 .close-button { font-size: 25px; line-height: 1; }
-.library-page { min-height: 0; padding: 12px 22px 28px; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: rgb(74 90 112 / 88%) rgb(10 15 23 / 76%); scrollbar-width: thin; }
+.library-page { width: 100%; min-width: 0; min-height: 0; padding: 12px 22px 28px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: rgb(74 90 112 / 88%) rgb(10 15 23 / 76%); scrollbar-width: thin; }
 .mobile-library-context, .mobile-library-filter-panel, .mobile-library-dock { display: none; }
 .character-library-toolbar { position: sticky; z-index: 2; top: 0; display: flex; margin: -12px 0 18px; padding: 12px 0 18px; flex-direction: column; gap: 18px; background: var(--bg); }
 .library-search-field { display: flex; min-height: 48px; padding: 0 13px; align-items: center; gap: 10px; background: linear-gradient(90deg, rgb(23 33 49 / 96%), rgb(20 28 42 / 92%)); border: 1px solid var(--border-strong); border-radius: 10px; }
@@ -773,20 +780,20 @@ select { color: var(--text); background: #0d121a; border: 1px solid var(--border
   .phase-badge { display: none; }
 }
 
-@media (max-width: 620px) {
+@media (max-width: 720px) {
   .manager-root, .manager-root.force-mobile-layout { padding: 0; overflow: hidden; }
-  .manager-dialog, .force-mobile-layout .manager-dialog { width: 100%; height: 100dvh; max-height: none; border: 0; border-radius: 0; box-shadow: none; }
-  .library-header, .force-mobile-layout .library-header { min-height: 0; padding: calc(env(safe-area-inset-top) + 14px) 16px 13px; }
+  .manager-dialog, .force-mobile-layout .manager-dialog { width: 100%; min-width: 0; max-width: none; height: 100dvh; min-height: 0; max-height: none; box-sizing: border-box; border: 0; border-radius: 0; box-shadow: none; }
+  .library-header, .force-mobile-layout .library-header { display: block; width: 100%; min-width: 0; min-height: 0; padding: calc(env(safe-area-inset-top) + 14px) 16px 13px; }
   .library-header .library-title-icon, .library-header > .character-source-switch, .library-header > .library-header-worldbook, .library-header > .header-actions { display: none; }
   .library-header .header-title { width: 100%; }
   .library-header h1 { font-size: 21px; }
   .library-page { padding: 12px 16px calc(104px + env(safe-area-inset-bottom)); }
-  .mobile-library-context { display: grid; margin-bottom: 12px; gap: 10px; }
-  .mobile-library-context .character-source-switch { width: 100%; }
-  .mobile-library-context .character-source-switch button { min-height: 46px; font-size: 13px; }
-  .mobile-library-worldbook { display: grid; gap: 5px; }
+  .mobile-library-context { display: grid; width: 100%; min-width: 0; margin-bottom: 12px; gap: 10px; }
+  .mobile-library-context .character-source-switch { width: 100%; min-width: 0; max-width: 100%; }
+  .mobile-library-context .character-source-switch button { min-width: 0; min-height: 46px; font-size: 13px; }
+  .mobile-library-worldbook { display: grid; width: 100%; min-width: 0; gap: 5px; }
   .mobile-library-worldbook > span { color: var(--text-muted); font-size: 11px; font-weight: 800; }
-  .mobile-library-worldbook select { min-height: 46px; padding: 8px; font-weight: 700; }
+  .mobile-library-worldbook select { width: 100%; min-width: 0; max-width: 100%; min-height: 46px; padding: 8px; font-weight: 700; }
   .character-library-control-row { display: none; }
   .mobile-library-filter-panel { display: grid; margin-top: 10px; padding: 12px; gap: 10px; background: var(--surface-raised); border: 1px solid var(--border); border-radius: 12px; }
   .mobile-library-filter-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
@@ -805,7 +812,7 @@ select { color: var(--text); background: #0d121a; border: 1px solid var(--border
   .mobile-library-more-menu { position: absolute; right: 0; bottom: calc(100% + 10px); display: grid; min-width: 156px; padding: 6px; background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: 12px; }
   .mobile-library-more-menu button { min-height: 44px; color: var(--text-secondary); background: transparent; border: 0; }
   .character-detail-layer { padding: 0; }
-  .character-detail-dialog { width: 100%; height: 100%; max-height: 100%; border: 0; border-radius: 0; }
+  .character-detail-dialog { width: 100%; height: 100%; min-width: 0; min-height: 0; max-width: none; max-height: none; box-sizing: border-box; border: 0; border-radius: 0; }
   .character-detail-header { padding: 14px; }
   .character-detail-body { display: block; overflow-y: auto; }
   .character-detail-gallery, .character-detail-content { padding: 15px; overflow: visible; }
@@ -815,8 +822,8 @@ select { color: var(--text); background: #0d121a; border: 1px solid var(--border
 }
 
 .manager-root.force-mobile-layout { padding: 0; overflow: hidden; }
-.force-mobile-layout .manager-dialog { width: 100%; height: 100dvh; max-height: none; border: 0; border-radius: 0; box-shadow: none; }
-.force-mobile-layout .library-header { min-height: 0; padding: calc(env(safe-area-inset-top) + 14px) 16px 13px; }
+.force-mobile-layout .manager-dialog { width: 100%; min-width: 0; max-width: none; height: 100dvh; min-height: 0; max-height: none; box-sizing: border-box; border: 0; border-radius: 0; box-shadow: none; }
+.force-mobile-layout .library-header { display: block; width: 100%; min-width: 0; min-height: 0; padding: calc(env(safe-area-inset-top) + 14px) 16px 13px; }
 .force-mobile-layout .library-header .library-title-icon,
 .force-mobile-layout .library-header > .character-source-switch,
 .force-mobile-layout .library-header > .library-header-worldbook,
@@ -850,7 +857,7 @@ select { color: var(--text); background: #0d121a; border: 1px solid var(--border
 .force-mobile-layout .mobile-library-more-menu { position: absolute; right: 0; bottom: calc(100% + 10px); display: grid; min-width: 156px; padding: 6px; background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: 12px; }
 .force-mobile-layout .mobile-library-more-menu button { min-height: 44px; color: var(--text-secondary); background: transparent; border: 0; }
 .force-mobile-layout .character-detail-layer { padding: 0; }
-.force-mobile-layout .character-detail-dialog { width: 100%; height: 100%; max-height: 100%; border: 0; border-radius: 0; }
+.force-mobile-layout .character-detail-dialog { width: 100%; height: 100%; min-width: 0; min-height: 0; max-width: none; max-height: none; box-sizing: border-box; border: 0; border-radius: 0; }
 .force-mobile-layout .character-detail-header { padding: 14px; }
 .force-mobile-layout .character-detail-body { display: block; overflow-y: auto; }
 .force-mobile-layout .character-detail-gallery,

@@ -73,6 +73,9 @@ test('Creator 挂载真实 Viewer 作为只读草稿预览，并隔离聊天变�
   assert.match(viewerSource, /watch\([\s\S]*props\.visualConfigOverride[\s\S]*previewBaseData/);
   assert.match(viewerSource, /watch\([\s\S]*props\.yamlText[\s\S]*props\.previewMode[\s\S]*initFromYaml/);
   assert.match(creatorSource, /updateViewerPreviewScale/);
+  assert.match(creatorSource, /viewerPreviewMobileLayout/);
+  assert.match(creatorSource, /if \(mobileLayout\) \{[\s\S]*viewerPreviewScale\.value = 1;[\s\S]*viewerPreviewCanvasWidth\.value = availableWidth;[\s\S]*return;/);
+  assert.match(creatorSource, /viewerPreviewMobileLayout\.value[\s\S]*\? \{ width: '100%', transform: 'none' \}/);
   assert.match(creatorSource, /示例资料/);
   assert.match(creatorSource, /粘贴自己的 CharInfo/);
   assert.match(creatorSource, /粘贴完整 &lt;char_info&gt; 或纯 YAML 后，将在这里显示真实角色卡预览/);
@@ -81,4 +84,6 @@ test('Creator 挂载真实 Viewer 作为只读草稿预览，并隔离聊天变�
   assert.match(creatorSource, /\.creator-viewer-preview\s*\{[\s\S]*position:\s*fixed;[\s\S]*width:\s*min\(1400px,[\s\S]*height:\s*calc\(100dvh - 24px\)/);
   assert.match(creatorSource, /\.creator-viewer-preview-canvas\s*\{[\s\S]*width:\s*1200px;[\s\S]*transform-origin:\s*top left;/);
   assert.match(creatorSource, /\.creator-viewer-preview-stage\s*\{[\s\S]*overflow:\s*hidden;[\s\S]*align-items:\s*center;[\s\S]*justify-content:\s*center;/);
+  assert.match(creatorSource, /@media \(max-width: 900px\)[\s\S]*\.creator-viewer-preview\s*\{[\s\S]*inset:\s*0;[\s\S]*width:\s*100%;[\s\S]*height:\s*100%;[\s\S]*max-width:\s*none;[\s\S]*max-height:\s*none;[\s\S]*transform:\s*none;/);
+  assert.match(creatorSource, /@media \(max-width: 900px\)[\s\S]*\.creator-viewer-preview-stage\s*\{[\s\S]*overflow-x:\s*hidden;[\s\S]*overflow-y:\s*auto;[\s\S]*align-items:\s*flex-start;[\s\S]*justify-content:\s*flex-start;/);
 });

@@ -115,9 +115,13 @@ test('Creator 桌面编辑器保持固定窗口高度，步骤内容只在内部
 test('当前聊天资料库和设置宿主明确使用动态视口尺寸，避免 ST 移动端 html 高度为零', () => {
   assert.match(
     runtimeRootSource,
-    /\.char-info-library-host,[\s\S]*?\.char-info-settings-host \{[\s\S]*?width: 100dvw;[\s\S]*?height: 100dvh;/u,
+    /\.char-info-library-host,[\s\S]*?\.char-info-settings-host \{[\s\S]*?inset: 0;[\s\S]*?width: 100dvw;[\s\S]*?height: 100dvh;[\s\S]*?max-width: 100dvw;[\s\S]*?max-height: 100dvh;/u,
   );
   assert.match(runtimeRootSource, /\.char-info-settings-backdrop \{[\s\S]*?overflow: auto;/u);
+  assert.match(
+    runtimeRootSource,
+    /@media \(max-width: 720px\) \{[\s\S]*?\.char-info-settings-backdrop \{[\s\S]*?padding: 0;[\s\S]*?place-items: stretch;[\s\S]*?\.char-info-settings-dialog \{[\s\S]*?width: 100%;[\s\S]*?height: 100%;[\s\S]*?max-width: none;[\s\S]*?max-height: none;/u,
+  );
 });
 
 test('当前聊天资料库由悬浮入口打开角色列表，并完整显示角色立绘', () => {
@@ -169,6 +173,10 @@ test('当前聊天资料库由悬浮入口打开角色列表，并完整显示�
     /@media \(max-width: 720px\) \{[\s\S]*?\.char-info-library-viewer \.illustrated-shell \{[\s\S]*?height: 100% !important;/u,
   );
   assert.match(
+    runtimeRootSource,
+    /\.char-info-library-viewer \.illustrated-portrait-image,[\s\S]*?\.char-info-library-viewer \.portrait-image \{[\s\S]*?object-fit: cover;[\s\S]*?object-position: top center;[\s\S]*?background: transparent;/u,
+  );
+  assert.doesNotMatch(
     runtimeRootSource,
     /\.char-info-library-viewer \.illustrated-portrait-image,[\s\S]*?\.char-info-library-viewer \.portrait-image \{[\s\S]*?object-fit: contain;/u,
   );

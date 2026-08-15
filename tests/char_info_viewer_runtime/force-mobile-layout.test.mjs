@@ -95,7 +95,9 @@ test('玩家世界书库与独立 Creator 编辑器都接收强制移动布局�
   );
   assert.match(managerOverlaySource, /managerRootElement\?\.classList\.toggle\('force-mobile-layout', value\)/u);
   assert.match(managerAppSource, /@mixin mobile-manager-layout\(\$root: '\.manager-root'\)/u);
+  assert.match(managerAppSource, /@media \(max-width: 720px\) \{\s*@include mobile-manager-layout;/u);
   assert.match(managerAppSource, /\.manager-root\.force-mobile-layout\s*\{\s*@include mobile-manager-layout\('&'\);/u);
+  assert.match(managerAppSource, /@mixin mobile-manager-layout[\s\S]*?\.manager-dialog \{[\s\S]*?width: 100%;[\s\S]*?height: 100%;[\s\S]*?max-width: none;[\s\S]*?max-height: none;/u);
   assert.doesNotMatch(managerAppSource, /768\s*[×x]\s*1388/u);
 });
 
@@ -129,11 +131,11 @@ test('手机角色详情顶部只展示信息，操作移至底部安全区', ()
 test('手机角色详情把资料分页固定在三键栏上方，并在首页首屏显示姓名块', () => {
   assert.match(
     runtimeRootSource,
-    /@media \(max-width: 720px\) \{[\s\S]*?\.char-info-library-viewer\s*\{[\s\S]*?overflow:\s*hidden;[\s\S]*?\.char-info-library-viewer > \.viewer-root\s*\{[\s\S]*?height:\s*100%;[\s\S]*?\.char-info-library-viewer \.illustrated-wrapper[\s\S]*?height:\s*100%;[\s\S]*?\.char-info-library-viewer \.illustrated-shell\s*\{[\s\S]*?height:\s*100% !important;/u,
+    /@media \(max-width: 720px\) \{[\s\S]*?\.char-info-library-viewer\s*\{[\s\S]*?overflow:\s*hidden;[\s\S]*?\.char-info-library-viewer > \.viewer-root\s*\{[\s\S]*?height:\s*100%;[\s\S]*?\.char-info-library-viewer \.illustrated-wrapper[\s\S]*?height:\s*100%;[\s\S]*?\.char-info-library-viewer \.illustrated-shell\s*\{[\s\S]*?height:\s*100% !important;[\s\S]*?\.char-info-library-viewer \.illustrated-shell\.is-special-npc\s*\{[\s\S]*?width:\s*100%;[\s\S]*?aspect-ratio:\s*auto;/u,
   );
   assert.match(
     runtimeRootSource,
-    /\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer\s*\{[\s\S]*?overflow:\s*hidden;[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer > \.viewer-root\s*\{[\s\S]*?height:\s*100%;[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer \.illustrated-wrapper[\s\S]*?height:\s*100%;[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer \.illustrated-shell\s*\{[\s\S]*?height:\s*100% !important;/u,
+    /\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer\s*\{[\s\S]*?overflow:\s*hidden;[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer > \.viewer-root\s*\{[\s\S]*?height:\s*100%;[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer \.illustrated-wrapper[\s\S]*?height:\s*100%;[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer \.illustrated-shell\s*\{[\s\S]*?height:\s*100% !important;[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer \.illustrated-shell\.is-special-npc\s*\{[\s\S]*?width:\s*100%;[\s\S]*?aspect-ratio:\s*auto;/u,
   );
   assert.match(
     illustratedSheetSource,
