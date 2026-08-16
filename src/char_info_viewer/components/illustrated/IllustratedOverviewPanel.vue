@@ -93,6 +93,18 @@ const emit = defineEmits<{
   max-width: calc((var(--flag-width) * 3) + (var(--flag-gap) * 2));
 }
 
+.illustrated-overview.is-special-npc-overview {
+  height: auto;
+  min-height: 100%;
+}
+
+.illustrated-overview.is-special-npc-overview .illustrated-attributes {
+  --flag-width: min(
+    var(--illustrated-flag-width),
+    calc((100% - var(--flag-gap) - var(--flag-gap)) / 3)
+  );
+}
+
 .illustrated-attribute {
   position: relative;
   display: flex;

@@ -1,11 +1,17 @@
 import type { CharacterData, ThemeResolved } from '../types';
 import { isLoadedDxCharacterData } from '@/char_info_viewer/dxRuntime';
+import {
+  normalizeProfileMetadata,
+  type CharacterProfileMetadata,
+} from '../../char_info_shared/characterVisualProfile.ts';
 import { resolveGalleryExtension } from './galleryPackService.ts';
 
 const SPECIAL_NPC_VISUAL_BRAND = Symbol('char_info_special_npc_visual');
 const DEPRECATED_VISUAL_SYNTAX_BRAND = Symbol('char_info_deprecated_visual_syntax');
+const VISUAL_PROFILE_METADATA = Symbol('char_info_visual_profile_metadata');
 type SpecialNpcVisualData = CharacterData & { [SPECIAL_NPC_VISUAL_BRAND]?: true };
 type DeprecatedVisualSyntaxData = CharacterData & { [DEPRECATED_VISUAL_SYNTAX_BRAND]?: true };
+type CharacterVisualMetadataData = CharacterData & { [VISUAL_PROFILE_METADATA]?: CharacterProfileMetadata };
 
 function brandSpecialNpcVisualData(data: CharacterData): CharacterData {
   Object.defineProperty(data, SPECIAL_NPC_VISUAL_BRAND, {
@@ -33,6 +39,23 @@ export function hasDeprecatedVisualSyntax(data: CharacterData): boolean {
   return (data as DeprecatedVisualSyntaxData)[DEPRECATED_VISUAL_SYNTAX_BRAND] === true;
 }
 
+function attachCharacterVisualMetadata(
+  data: CharacterData,
+  metadata: CharacterProfileMetadata | undefined,
+): CharacterData {
+  if (!metadata) return data;
+  Object.defineProperty(data, VISUAL_PROFILE_METADATA, {
+    value: metadata,
+    enumerable: false,
+    configurable: true,
+  });
+  return data;
+}
+
+export function resolveCharacterVisualMetadata(data: CharacterData): CharacterProfileMetadata | null {
+  return (data as CharacterVisualMetadataData)[VISUAL_PROFILE_METADATA] ?? null;
+}
+
 export function cloneCharacterDataWithVisualOverrides(
   data: CharacterData,
   overrides: Pick<CharacterData, '登场台词'>,
@@ -43,6 +66,8 @@ export function cloneCharacterDataWithVisualOverrides(
   };
   if (isSpecialNpcVisualData(data)) brandSpecialNpcVisualData(clone);
   if (hasDeprecatedVisualSyntax(data)) brandDeprecatedVisualSyntaxData(clone);
+  const metadata = resolveCharacterVisualMetadata(data);
+  if (metadata) attachCharacterVisualMetadata(clone, metadata);
   return clone;
 }
 
@@ -325,6 +350,8 @@ function applyVisualConfig(data: CharacterData, visualConfig: unknown, clearImag
 
   const config = asRecord(visualConfig);
   if (!config) return fallback;
+  const metadata = normalizeProfileMetadata(config.metadata);
+  const withMetadata = (resolved: CharacterData) => attachCharacterVisualMetadata(resolved, metadata);
 
   const url = normalizeVisualConfigUrl(config.url);
   const gallery = normalizeVisualConfigGallery(config.gallery);
@@ -332,10 +359,10 @@ function applyVisualConfig(data: CharacterData, visualConfig: unknown, clearImag
     if (candidate && !groups.some(group => group[0] === candidate[0])) groups.push(candidate);
     return groups;
   }, []);
-  if (imageSourceGroups.length === 0) return fallback;
+  if (imageSourceGroups.length === 0) return withMetadata(fallback);
 
   const isVersionedProfile = Number(config.schema_version) >= 1;
-  return applyImageSourceGroups(resolvedAppearance, imageSourceGroups, !url && !isVersionedProfile);
+  return withMetadata(applyImageSourceGroups(resolvedAppearance, imageSourceGroups, !url && !isVersionedProfile));
 }
 
 export function resolveCharacterVisualPreview(

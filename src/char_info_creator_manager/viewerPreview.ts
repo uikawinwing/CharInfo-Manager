@@ -31,9 +31,9 @@ export function resolveCreatorViewerPreviewYaml(
   return buildCreatorViewerPreviewYaml(profile);
 }
 
-export function buildCreatorViewerPreviewYaml(profile: CharacterVisualProfile): string {
+export function buildCreatorViewerPreviewData(profile: CharacterVisualProfile): CharacterData {
   const characterName = profile.characterName.trim() || '预览角色';
-  const data: CharacterData = {
+  return {
     姓名: characterName,
     等级: 1,
     种族: '其他',
@@ -137,8 +137,10 @@ export function buildCreatorViewerPreviewYaml(profile: CharacterVisualProfile): 
       ],
     },
   };
+}
 
-  return dump(data, { noRefs: true, lineWidth: -1, sortKeys: false });
+export function buildCreatorViewerPreviewYaml(profile: CharacterVisualProfile): string {
+  return dump(buildCreatorViewerPreviewData(profile), { noRefs: true, lineWidth: -1, sortKeys: false });
 }
 
 export function buildCreatorViewerVisualOverride(profile: CharacterVisualProfile): CreatorViewerVisualOverride {
@@ -154,6 +156,7 @@ export function buildCreatorViewerVisualOverride(profile: CharacterVisualProfile
         title: image.title,
         sources: [...image.sources],
       })),
+      ...(normalized.metadata ? { metadata: normalized.metadata } : {}),
     },
   };
 }

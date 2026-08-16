@@ -19,10 +19,10 @@
     </span>
 
     <div v-if="metaItems.length > 0" class="illustrated-subtitle">
-      <template v-for="(item, index) in metaItems" :key="`${index}-${item}`">
+      <span v-for="(item, index) in metaItems" :key="`${index}-${item}`" class="illustrated-meta-item">
         <span v-if="index > 0" class="illustrated-meta-sep">◆</span>
-        <span>{{ item }}</span>
-      </template>
+        <span class="illustrated-meta-text">{{ item }}</span>
+      </span>
     </div>
 
     <div class="illustrated-level-tier">
@@ -314,8 +314,21 @@ watch(() => props.vm.nameText, updateNameLayout, { flush: 'post' });
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
+.illustrated-meta-item {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.illustrated-meta-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .illustrated-meta-sep {
   display: inline-block;
+  flex: 0 0 auto;
   color: rgba(var(--illustrated-race-accent-rgb), 0.7);
   font-size: 10px;
   transform: scale(0.8) rotate(45deg);

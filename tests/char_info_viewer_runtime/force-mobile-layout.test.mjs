@@ -23,6 +23,11 @@ const illustratedSheetSource = readFileSync(
   new URL('../../src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue', import.meta.url),
   'utf8',
 );
+const illustratedTabNavSource = readFileSync(
+  new URL('../../src/char_info_viewer/components/illustrated/IllustratedTabNav.vue', import.meta.url),
+  'utf8',
+);
+const viewerAppSource = readFileSync(new URL('../../src/char_info_viewer/App.vue', import.meta.url), 'utf8');
 
 test('强制移动布局默认关闭，非法值安全归一化为关闭', () => {
   assert.equal(defaultRuntimeSettings().forceMobileLayout, false);
@@ -50,6 +55,11 @@ test('设置开关和角色库强制移动布局沿用 720px 布局契约', () =
   assert.match(
     runtimeRootSource,
     /class="char-info-library-overlay"[\s\S]*?'force-mobile-layout': state\.settings\.forceMobileLayout/u,
+  );
+  assert.equal(
+    (runtimeRootSource.match(/:force-mobile-layout="state\.settings\.forceMobileLayout"/gu) ?? []).length,
+    3,
+    '世界书角色库与两个 ViewerApp 都必须收到强制移动布局状态',
   );
   assert.match(
     runtimeRootSource,
@@ -101,6 +111,36 @@ test('玩家世界书库与独立 Creator 编辑器都接收强制移动布局�
   assert.doesNotMatch(managerAppSource, /768\s*[×x]\s*1388/u);
 });
 
+test('强制移动布局会进入 Viewer 与 Special NPC 内部，而不是只改变外层窗口', () => {
+  assert.match(viewerAppSource, /forceMobileLayout\?: boolean/u);
+  assert.match(viewerAppSource, /'force-mobile-layout': props\.forceMobileLayout/u);
+  assert.match(viewerAppSource, /:force-mobile-layout="props\.forceMobileLayout"[\s\S]*?:special-npc="shouldShowSpecialNpcLayout"/u);
+  assert.match(
+    illustratedSheetSource,
+    /'is-special-npc': specialNpc, 'force-mobile-layout': forceMobileLayout/u,
+  );
+  assert.match(
+    illustratedSheetSource,
+    /\.illustrated-wrapper\.force-mobile-layout\s*\{[^}]*max-width:\s*min\(100%, 640px\);/u,
+  );
+  assert.match(
+    illustratedSheetSource,
+    /\.illustrated-wrapper\.force-mobile-layout \.illustrated-shell\s*\{[^}]*flex-direction:\s*column;/u,
+  );
+  assert.match(
+    illustratedSheetSource,
+    /\.illustrated-wrapper\.force-mobile-layout \.illustrated-shell\.is-special-npc\s*\{[^}]*height:\s*auto;[^}]*min-height:\s*0;[^}]*aspect-ratio:\s*2 \/ 3;/u,
+  );
+  assert.match(
+    illustratedSheetSource,
+    /\.illustrated-wrapper\.force-mobile-layout \.illustrated-shell\.is-special-npc\.is-overview-tab \.illustrated-data-pane\s*\{[^}]*display:\s*none;/u,
+  );
+  assert.match(
+    illustratedTabNavSource,
+    /\.illustrated-tabs\.force-mobile-layout\.is-side-rail\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\) 44px;/u,
+  );
+});
+
 test('手机角色详情顶部只展示信息，操作移至底部安全区', () => {
   assert.match(
     runtimeRootSource,
@@ -135,7 +175,11 @@ test('手机角色详情把资料分页固定在三键栏上方，并在首页�
   );
   assert.match(
     runtimeRootSource,
-    /\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer\s*\{[\s\S]*?overflow:\s*hidden;[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer > \.viewer-root\s*\{[\s\S]*?height:\s*100%;[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer \.illustrated-wrapper[\s\S]*?height:\s*100%;[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer \.illustrated-shell\s*\{[\s\S]*?height:\s*100% !important;[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer \.illustrated-shell\.is-special-npc\s*\{[\s\S]*?width:\s*100%;[\s\S]*?aspect-ratio:\s*auto;/u,
+    /@media \(min-width: 721px\) \{[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer\s*\{[\s\S]*?overflow-y:\s*auto;[\s\S]*?\.illustrated-wrapper\.force-mobile-layout\s*\{[\s\S]*?max-width:\s*640px;[\s\S]*?\.illustrated-shell\.is-special-npc\s*\{[\s\S]*?aspect-ratio:\s*2 \/ 3;/u,
+  );
+  assert.doesNotMatch(
+    runtimeRootSource,
+    /\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer \.illustrated-wrapper\s*\{[^}]*max-width:\s*none;/u,
   );
   assert.match(
     illustratedSheetSource,

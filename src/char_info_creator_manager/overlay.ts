@@ -19,6 +19,7 @@ export type CreatorManagerOverlayOptions = {
   worldbookName?: string;
   entryUid?: number;
   onForceRefresh?: () => void | Promise<void>;
+  onReturnToWorldbookLibrary?: () => void;
 };
 
 type CreatorManagerController = {
@@ -139,6 +140,7 @@ export function createCreatorManagerOverlay(
           initialEntryUid: options.entryUid,
           debugEnabled: options.debugEnabled ?? false,
           onForceRefresh: options.onForceRefresh,
+          onReturnToWorldbookLibrary: options.onReturnToWorldbookLibrary,
           onClose: close,
         });
         managerController = mountedApp.mount(mountPoint) as CreatorManagerController;

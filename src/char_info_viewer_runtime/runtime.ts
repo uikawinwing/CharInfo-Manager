@@ -87,6 +87,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   let mutationObserver: MutationObserver | null = null;
   let dirtyFlushTimer: ReturnType<typeof setTimeout> | null = null;
   let rescanTimer: ReturnType<typeof setTimeout> | null = null;
+  let visualRefreshTimer: ReturnType<typeof setTimeout> | null = null;
   let libraryRefreshPending = false;
   const pendingAffinityNames = new Set<string>();
   let lifecycleRevision = 0;
@@ -292,6 +293,10 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         forceMobileLayout: state.settings.forceMobileLayout,
         debugEnabled: state.settings.debugEnabled,
         onForceRefresh: forceRefreshCharInfo,
+        onReturnToWorldbookLibrary: () => {
+          closeCreatorEditor();
+          openWorldbookLibrary();
+        },
       });
       closeWorldbookLibrary();
     } catch (error) {
@@ -443,8 +448,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     });
   };
 
-  const forceRefreshCharInfo = async () => {
-    await refreshLibrary();
+  const refreshMountedCharInfoCards = () => {
     if (!started) return;
 
     const messageIds = Array.from(activeFloorIds);
@@ -459,6 +463,19 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         console.error(`[CharInfo Runtime] 第 ${messageId} 楼强制刷新失败：`, error);
       }
     });
+  };
+
+  const scheduleVisualCardRefresh = () => {
+    if (visualRefreshTimer || !started) return;
+    visualRefreshTimer = setTimeout(() => {
+      visualRefreshTimer = null;
+      refreshMountedCharInfoCards();
+    }, 0);
+  };
+
+  const forceRefreshCharInfo = async () => {
+    await refreshLibrary();
+    refreshMountedCharInfoCards();
   };
 
   const flushDirtyMessages = () => {
@@ -638,11 +655,14 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         if (!started || lifecycleRevision !== startRevision) return;
         listen(Mvu.events.VARIABLE_INITIALIZED, () => {
           void refreshLibrary();
+          scheduleVisualCardRefresh();
         });
         listen(Mvu.events.VARIABLE_UPDATE_ENDED, (variables, variablesBeforeUpdate) => {
           void refreshLibrary(collectChangedAffinityNames(variables, variablesBeforeUpdate));
+          scheduleVisualCardRefresh();
         });
         void refreshLibrary();
+        scheduleVisualCardRefresh();
       });
     },
 
@@ -654,9 +674,11 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
       if (dirtyFlushTimer) clearTimeout(dirtyFlushTimer);
       if (rescanTimer) clearTimeout(rescanTimer);
+      if (visualRefreshTimer) clearTimeout(visualRefreshTimer);
       state.saveStateByCard = {};
       dirtyFlushTimer = null;
       rescanTimer = null;
+      visualRefreshTimer = null;
       mutationObserver?.disconnect();
       mutationObserver = null;
       eventStops.splice(0).forEach(stop => stop());

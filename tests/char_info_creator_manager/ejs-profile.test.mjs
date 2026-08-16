@@ -8,6 +8,7 @@ import {
   inspectManagedBlock,
   MANAGED_BLOCK_END,
   MANAGED_BLOCK_START,
+  normalizeProfile,
   upsertManagedEjsBlock,
   validateProfile,
 } from '../../src/char_info_shared/characterVisualProfile.ts';
@@ -26,6 +27,85 @@ const profile = {
     { title: '雪林巡行', sources: ['https://files.catbox.moe/alternate.avif'] },
   ],
 };
+
+test('metadata v2 会规范化可选字段、移除空故事栏目并保持作者顺序', () => {
+  const normalized = normalizeProfile({
+    ...profile,
+    metadata: {
+      author: '  测试作者  ',
+      version: ' v0.0.3 ',
+      author_note: '  这是作者写给读者的角色介绍。  ',
+      sex: ' 女 ',
+      race: ' 人类 ',
+      story_sections: [
+        { title: ' 第一章 ', content: ' 第一段正文 ' },
+        { title: ' ', content: '会被移除' },
+        { title: '第二章', content: '第二段正文' },
+      ],
+    },
+  });
+
+  assert.deepEqual(normalized.metadata, {
+    author: '测试作者',
+    version: 'v0.0.3',
+    author_note: '这是作者写给读者的角色介绍。',
+    sex: '女',
+    race: '人类',
+    story_sections: [
+      { title: '第一章', content: '第一段正文' },
+      { title: '第二章', content: '第二段正文' },
+    ],
+  });
+});
+
+test('空 metadata 不写入，metadata 文本中的 EJS 分隔符会被拒绝', () => {
+  const normalized = normalizeProfile({
+    ...profile,
+    metadata: {
+      author: ' ',
+      sex: '',
+      race: '   ',
+      story_sections: [{ title: '', content: '' }],
+    },
+  });
+  assert.equal(normalized.metadata, undefined);
+
+  assert.match(
+    validateProfile({
+      ...profile,
+      metadata: {
+        author: '危险 <% 作者',
+        story_sections: [{ title: '章节', content: '危险 %> 内容' }],
+      },
+    }).join('\n'),
+    /EJS 模板分隔符/,
+  );
+});
+
+test('metadata 会经过 managed EJS round-trip 并写入 runtime profile v2', () => {
+  const metadataProfile = {
+    ...profile,
+    metadata: {
+      author: '北境工坊',
+      version: 'v0.0.3',
+      author_note: '这是发布给读者看的角色说明。',
+      sex: '女',
+      race: '霜裔',
+      story_sections: [
+        { title: '雪夜', content: '她在雪夜第一次拔剑。' },
+        { title: '归途', content: '黎明之后，她选择回到北境。' },
+      ],
+    },
+  };
+  const block = buildManagedEjsBlock(metadataProfile);
+  const inspection = inspectManagedBlock(block);
+
+  assert.equal(inspection.state, 'valid');
+  assert.deepEqual(inspection.profile, metadataProfile);
+  assert.match(block, /schema_version: 2/);
+  assert.match(block, /metadata: profile\.metadata/);
+  assert.equal(block.indexOf('雪夜') < block.indexOf('归途'), true);
+});
 
 test('只提取经过验证的 CharInfo managed EJS，不执行条目其余内容', () => {
   const block = buildManagedEjsBlock(profile);
@@ -47,7 +127,7 @@ test('v2 生成区块只保留一份可读 profile 配置', () => {
   assert.match(block, /"title": "霜原剑影"/);
   assert.match(block, /const npcName = profile\.characterName;/);
   assert.ok(block.includes('setLocalVar(`char_info.profiles[${JSON.stringify(npcName)}]`, {'));
-  assert.match(block, /schema_version: 1/);
+  assert.match(block, /schema_version: 2/);
   assert.match(
     block,
     /gallery: profile\.gallery\.map\(image => \(\{ title: image\.title, sources: image\.sources \}\)\)/,

@@ -6,6 +6,7 @@
       'viewer-root-embedded': props.embedded,
       'illustrated-viewer-root': shouldShowIllustratedLayout,
       'special-npc-viewer-root': shouldShowSpecialNpcLayout,
+      'force-mobile-layout': props.forceMobileLayout,
       'viewer-effects-disabled': !props.effectsEnabled,
     }"
   >
@@ -88,6 +89,7 @@
         :show-import-menu="showImportMenu"
         :read-only="props.readOnly"
         :debug-enabled="props.debugEnabled"
+        :force-mobile-layout="props.forceMobileLayout"
         :special-npc="shouldShowSpecialNpcLayout"
         @toggle-attribute-formula="toggleAttributeFormula"
         @toggle-import-menu="toggleImportMenu"
@@ -536,10 +538,12 @@ const props = withDefaults(
     embedded?: boolean;
     readOnly?: boolean;
     effectsEnabled?: boolean;
+    forceMobileLayout?: boolean;
     debugEnabled?: boolean;
     imageSourcePriority?: string[];
     entranceQuoteOverride?: string;
     previewMode?: boolean;
+    previewData?: CharacterData;
     visualConfigOverride?: { characterName: string; config: unknown };
     saveFeedback?: (feedback: ViewerSaveFeedback) => void;
     saveState?: ViewerSaveState;
@@ -548,10 +552,12 @@ const props = withDefaults(
     embedded: false,
     readOnly: false,
     effectsEnabled: true,
+    forceMobileLayout: false,
     debugEnabled: false,
     imageSourcePriority: () => [],
     entranceQuoteOverride: undefined,
     previewMode: false,
+    previewData: undefined,
     visualConfigOverride: undefined,
     saveFeedback: undefined,
     saveState: undefined,
@@ -746,26 +752,16 @@ watch(
 );
 
 watch(
-  () => props.visualConfigOverride,
-  async () => {
-    if (!props.previewMode || !previewBaseData) return;
-    await applyParsedCharacterData(previewBaseData, parseMode.value, parseWarnings.value);
-    await nextTick();
-    setupParticleEngine();
-  },
-  { deep: true },
-);
-
-watch(
-  () => props.yamlText,
+  [() => props.yamlText, () => props.previewData, () => props.visualConfigOverride],
   () => {
     if (!props.previewMode) return;
     if (previewYamlRefreshTimer) clearTimeout(previewYamlRefreshTimer);
     previewYamlRefreshTimer = setTimeout(() => {
       previewYamlRefreshTimer = null;
       void initFromYaml();
-    }, 80);
+    }, 50);
   },
+  { deep: true },
 );
 
 async function initFromYaml() {
@@ -780,6 +776,13 @@ async function initFromYaml() {
   theme.value = null;
   loadingDxCharacter.value = false;
   previewBaseData = null;
+
+  if (props.previewMode && props.previewData) {
+    previewBaseData = stripUntrustedDxReference(props.previewData);
+    await applyParsedCharacterData(previewBaseData, 'strict', []);
+    nextTick(() => setupParticleEngine());
+    return;
+  }
 
   if (!yamlText) {
     parseError.value = { message: '未检测到 YAML 数据。' };

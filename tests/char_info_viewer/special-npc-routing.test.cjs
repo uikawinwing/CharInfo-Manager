@@ -27,6 +27,37 @@ test('同名 char_info.profiles 的有效立绘授予 Special NPC 路由', () =>
   assert.equal(hasDeprecatedVisualSyntax(data), false);
 });
 
+test('自定义故事不会参与 YAML 解析或阻止媒体 profile 授予 Special NPC', () => {
+  const data = resolveCharacterVisualConfig(
+    { 姓名: '故事角色', 等级: 13 },
+    {
+      char_info: {
+        profiles: {
+          故事角色: {
+            schema_version: 2,
+            gallery: [{ title: '备用立绘', sources: ['https://example.com/story.mp4'] }],
+            metadata: {
+              story_sections: [
+                { title: 'op', content: '123' },
+                { title: 'ed', content: '456' },
+              ],
+            },
+          },
+        },
+      },
+    },
+  );
+  const vm = buildCharacterViewModel(data);
+
+  assert.equal(vm.layoutKind, 'special_npc');
+  assert.equal(vm.nameText, '故事角色');
+  assert.equal(vm.imageUrl, 'https://example.com/story.mp4');
+  assert.deepEqual(vm.storySections, [
+    { title: 'op', content: '123' },
+    { title: 'ed', content: '456' },
+  ]);
+});
+
 test('Creator 草稿预览只把视觉资料授予同名角色', () => {
   const visualConfig = {
     schema_version: 1,

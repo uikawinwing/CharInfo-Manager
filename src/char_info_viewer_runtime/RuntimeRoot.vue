@@ -11,6 +11,7 @@
           :yaml-text="card.yamlText"
           :message-id="message.messageId"
           :effects-enabled="state.settings.effectsEnabled"
+          :force-mobile-layout="state.settings.forceMobileLayout"
           :debug-enabled="state.settings.debugEnabled"
           :image-source-priority="activeImageSourcePriority"
           :save-state="state.saveStateByCard[card.key]"
@@ -285,6 +286,7 @@
           :yaml-text="selectedCharacterYaml"
           :message-id="state.library.messageId"
           :effects-enabled="state.settings.effectsEnabled"
+          :force-mobile-layout="state.settings.forceMobileLayout"
           :debug-enabled="state.settings.debugEnabled"
           :image-source-priority="activeImageSourcePriority"
           :entrance-quote-override="selectedCharacter.innerThought"
@@ -2462,31 +2464,38 @@ onBeforeUnmount(() => {
   display: grid;
 }
 
-.char-info-library-overlay.force-mobile-layout .char-info-library-viewer {
-  flex: 1 1 auto;
-  min-height: 0;
-  padding: 6px;
-  overflow: hidden;
-}
+@media (min-width: 721px) {
+  .char-info-library-overlay.force-mobile-layout .char-info-library-viewer {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 12px 6px 20px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 
-.char-info-library-overlay.force-mobile-layout .char-info-library-viewer > .viewer-root {
-  height: 100%;
-  min-height: 0;
-}
+  .char-info-library-overlay.force-mobile-layout .char-info-library-viewer > .viewer-root {
+    width: 100%;
+    height: auto;
+    min-height: 100%;
+  }
 
-.char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-wrapper {
-  height: 100%;
-  max-width: none;
-}
+  .char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-wrapper.force-mobile-layout {
+    width: min(100%, 640px);
+    height: auto;
+    max-width: 640px;
+    margin: 0 auto;
+  }
 
-.char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-shell {
-  height: 100% !important;
-  min-height: 0;
-}
+  .char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-shell {
+    height: auto !important;
+    min-height: 0;
+  }
 
-.char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-shell.is-special-npc {
-  width: 100%;
-  aspect-ratio: auto;
+  .char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-shell.is-special-npc {
+    width: 100%;
+    aspect-ratio: 2 / 3;
+  }
 }
 
 .char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-portrait-image,

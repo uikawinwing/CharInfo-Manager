@@ -5,11 +5,12 @@ import {
   type CharacterPresentationProfile,
   isLoadedDxCharacterData,
 } from '@/char_info_viewer/dxRuntime';
+import type { CharacterProfileMetadata, CharacterStorySection } from '../../char_info_shared/characterVisualProfile';
 import type { CharacterData } from '../types';
 import { getSmartArray, hasArrayContent, hasText, normalizeDisplayText } from './common';
 import { prioritizeImageSourceGroups } from './imageSourcePriority';
 import { normalizePortraitMediaUrlForBrowser } from './imageUrl';
-import { isSpecialNpcVisualData } from './themeService';
+import { isSpecialNpcVisualData, resolveCharacterVisualMetadata } from './themeService';
 
 export type TabKey =
   'profile' | 'skills' | 'equipment' | 'inventory' | 'divinity' | 'characterStory' | 'backstory' | 'statusEffects';
@@ -58,6 +59,13 @@ export type CharacterViewModel = {
   appearanceText: string;
   attireText: string;
   backstoryText: string;
+  profileMetadata: CharacterProfileMetadata | null;
+  storySections: CharacterStorySection[];
+  storyAuthorText: string;
+  profileVersionText: string;
+  authorNoteText: string;
+  metadataSexText: string;
+  metadataRaceText: string;
   entranceQuoteText: string;
   imageUrl: string;
   imageUrls: string[];
@@ -430,6 +438,13 @@ export function buildCharacterViewModel(
 ): CharacterViewModel {
   const nameText = normalizeDisplayText(pickField(data, '姓名') || '未知角色');
   const backstoryText = normalizeDisplayText(pickField(data, '背景故事') || '');
+  const profileMetadata = resolveCharacterVisualMetadata(data);
+  const storySections = profileMetadata?.story_sections?.map(section => ({ ...section })) ?? [];
+  const storyAuthorText = normalizeDisplayText(profileMetadata?.author || '');
+  const profileVersionText = normalizeDisplayText(profileMetadata?.version || '');
+  const authorNoteText = normalizeDisplayText(profileMetadata?.author_note || '');
+  const metadataSexText = normalizeDisplayText(profileMetadata?.sex || '');
+  const metadataRaceText = normalizeDisplayText(profileMetadata?.race || '');
   const resourceObj = (pickField(data, '资源', '资源') || {}) as Record<string, unknown>;
   const resourceBoxes: ResourceBox[] = [
     { key: 'HP', label: 'HP', value: textFromUnknown(resourceObj.HP) },
@@ -510,6 +525,13 @@ export function buildCharacterViewModel(
     appearanceText: normalizeDisplayText(pickField(data, '外貌特质', '外貌特质') || ''),
     attireText: normalizeDisplayText(pickField(data, '衣物装饰', '衣物装饰') || ''),
     backstoryText,
+    profileMetadata,
+    storySections,
+    storyAuthorText,
+    profileVersionText,
+    authorNoteText,
+    metadataSexText,
+    metadataRaceText,
     entranceQuoteText: normalizeDisplayText(pickField(data, '登场台词') || ''),
     imageUrl,
     imageUrls,

@@ -9,6 +9,20 @@ export interface GalleryImage {
   sources: string[];
 }
 
+export interface CharacterStorySection {
+  title: string;
+  content: string;
+}
+
+export interface CharacterProfileMetadata {
+  author?: string;
+  version?: string;
+  author_note?: string;
+  sex?: string;
+  race?: string;
+  story_sections?: CharacterStorySection[];
+}
+
 export interface CharacterVisualProfile {
   characterName: string;
   avatarUrl: string;
@@ -17,6 +31,7 @@ export interface CharacterVisualProfile {
   entranceQuote: string;
   gallery: GalleryImage[];
   galleryExtension?: GalleryExtensionReference;
+  metadata?: CharacterProfileMetadata;
 }
 
 type StoredGalleryImage = {
@@ -25,8 +40,9 @@ type StoredGalleryImage = {
   url?: unknown;
 };
 
-type StoredCharacterVisualProfile = Omit<CharacterVisualProfile, 'gallery'> & {
+type StoredCharacterVisualProfile = Omit<CharacterVisualProfile, 'gallery' | 'metadata'> & {
   gallery: StoredGalleryImage[];
+  metadata?: unknown;
 };
 
 export type ManagedBlockInspection =
@@ -37,7 +53,7 @@ export type ManagedBlockInspection =
 
 export const DEFAULT_RACE_COLOR = '#A9DBC3';
 export const DEFAULT_TIER_COLOR = '#B7D9E8';
-export const CHAR_INFO_PROFILE_SCHEMA_VERSION = 1;
+export const CHAR_INFO_PROFILE_SCHEMA_VERSION = 2;
 export const MANAGED_BLOCK_START = '<%# char-info-ejs-builder:start:v2 %>';
 export const MANAGED_BLOCK_END = '<%# char-info-ejs-builder:end:v2 %>';
 
@@ -63,6 +79,58 @@ function validateEjsSafeText(errors: string[], label: string, value: string): vo
   if (hasEjsDelimiter(value)) {
     errors.push(`${label}不能包含 <% 或 %> EJS 模板分隔符。`);
   }
+}
+
+function normalizeOptionalText(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.trim();
+  return normalized || undefined;
+}
+
+export function normalizeProfileMetadata(value: unknown): CharacterProfileMetadata | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const raw = value as Record<string, unknown>;
+  const author = normalizeOptionalText(raw.author);
+  const version = normalizeOptionalText(raw.version);
+  const authorNote = normalizeOptionalText(raw.author_note);
+  const sex = normalizeOptionalText(raw.sex);
+  const race = normalizeOptionalText(raw.race);
+  const storySections = Array.isArray(raw.story_sections)
+    ? raw.story_sections.reduce<CharacterStorySection[]>((sections, section) => {
+        if (!section || typeof section !== 'object' || Array.isArray(section)) return sections;
+        const record = section as Record<string, unknown>;
+        const title = normalizeOptionalText(record.title);
+        const content = normalizeOptionalText(record.content);
+        if (!title || !content) return sections;
+        sections.push({ title, content });
+        return sections;
+      }, [])
+    : [];
+
+  if (!author && !version && !authorNote && !sex && !race && storySections.length === 0) return undefined;
+  return {
+    ...(author ? { author } : {}),
+    ...(version ? { version } : {}),
+    ...(authorNote ? { author_note: authorNote } : {}),
+    ...(sex ? { sex } : {}),
+    ...(race ? { race } : {}),
+    ...(storySections.length > 0 ? { story_sections: storySections } : {}),
+  };
+}
+
+export function validateProfileMetadata(metadata?: CharacterProfileMetadata): string[] {
+  if (!metadata) return [];
+  const errors: string[] = [];
+  if (metadata.author) validateEjsSafeText(errors, '作者', metadata.author);
+  if (metadata.version) validateEjsSafeText(errors, '版本标记', metadata.version);
+  if (metadata.author_note) validateEjsSafeText(errors, '作者说明', metadata.author_note);
+  if (metadata.sex) validateEjsSafeText(errors, '性别', metadata.sex);
+  if (metadata.race) validateEjsSafeText(errors, '种族', metadata.race);
+  metadata.story_sections?.forEach((section, index) => {
+    validateEjsSafeText(errors, `第 ${index + 1} 个故事栏目的标题`, section.title);
+    validateEjsSafeText(errors, `第 ${index + 1} 个故事栏目的内容`, section.content);
+  });
+  return errors;
 }
 
 export function createEmptyProfile(characterName = ''): CharacterVisualProfile {
@@ -132,6 +200,7 @@ export function validateProfile(profile: CharacterVisualProfile): string[] {
   if (profile.galleryExtension) {
     errors.push(...validateGalleryExtensionReference(profile.galleryExtension));
   }
+  errors.push(...validateProfileMetadata(profile.metadata));
   return errors;
 }
 
@@ -149,6 +218,7 @@ export function normalizeProfile(
   profile: CharacterVisualProfile | StoredCharacterVisualProfile,
 ): CharacterVisualProfile {
   const galleryExtension = normalizeGalleryExtensionReference(profile.galleryExtension);
+  const metadata = normalizeProfileMetadata(profile.metadata);
   return {
     characterName: profile.characterName.trim(),
     avatarUrl: profile.avatarUrl.trim(),
@@ -162,6 +232,7 @@ export function normalizeProfile(
       sources: readGallerySources(image),
     })),
     ...(galleryExtension ? { galleryExtension } : {}),
+    ...(metadata ? { metadata } : {}),
   };
 }
 
@@ -354,6 +425,9 @@ export function buildManagedEjsBlock(input: CharacterVisualProfile): string {
   lines.push('    gallery: profile.gallery.map(image => ({ title: image.title, sources: image.sources })),');
   if (profile.galleryExtension) {
     lines.push('    gallery_extension: profile.galleryExtension,');
+  }
+  if (profile.metadata) {
+    lines.push('    metadata: profile.metadata,');
   }
   lines.push('  });', '');
 

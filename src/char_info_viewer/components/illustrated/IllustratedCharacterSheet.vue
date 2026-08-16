@@ -1,5 +1,9 @@
 <template>
-  <div class="illustrated-wrapper" :class="[themeClass, { 'is-special-npc': specialNpc }]" :style="themeStyle">
+  <div
+    class="illustrated-wrapper"
+    :class="[themeClass, { 'is-special-npc': specialNpc, 'force-mobile-layout': forceMobileLayout }]"
+    :style="themeStyle"
+  >
     <main
       ref="shellElement"
       class="illustrated-shell"
@@ -127,7 +131,7 @@
 
           <IllustratedOverviewPanel
             v-if="activeSpecialTab === 'overview'"
-            :class="overviewDensityClass"
+            :class="[overviewDensityClass, { 'is-special-npc-overview': specialNpc }]"
             :attributes="attributes"
             :resource-boxes="[]"
             :entrance-quote-text="vm.entranceQuoteText"
@@ -135,14 +139,52 @@
             @open-entrance-quote="openEntranceQuoteDialog"
           />
 
-          <IllustratedProfilePanel
-            v-else-if="activeSpecialTab === 'profile'"
-            :vm="vm"
-            :attributes="attributes"
-            :resource-boxes="vm.resourceBoxes"
-            :show-stats="!specialNpc"
-            @toggle-attribute-formula="$emit('toggleAttributeFormula', $event)"
-          />
+          <template v-else-if="activeSpecialTab === 'profile'">
+            <nav
+              v-if="specialNpc && hasCustomStorySections"
+              class="illustrated-profile-subnav"
+              aria-label="档案内容"
+            >
+              <button
+                type="button"
+                :class="{ active: activeProfileSubview === 'info' }"
+                :aria-pressed="activeProfileSubview === 'info'"
+                @click="activeProfileSubview = 'info'"
+              >
+                资料
+              </button>
+              <button
+                type="button"
+                :class="{ active: activeProfileSubview === 'story' }"
+                :aria-pressed="activeProfileSubview === 'story'"
+                @click="activeProfileSubview = 'story'"
+              >
+                故事
+              </button>
+            </nav>
+
+            <IllustratedProfilePanel
+              v-if="activeProfileSubview === 'info' || !hasCustomStorySections"
+              :vm="vm"
+              :attributes="attributes"
+              :resource-boxes="vm.resourceBoxes"
+              :show-stats="!specialNpc"
+              :backstory-text="profileFallbackBackstoryText"
+              @toggle-attribute-formula="$emit('toggleAttributeFormula', $event)"
+            />
+
+            <article v-else class="illustrated-profile-story-view">
+              <p v-if="vm.storyAuthorText" class="illustrated-profile-story-author">故事作者 · {{ vm.storyAuthorText }}</p>
+              <section
+                v-for="(section, index) in vm.storySections"
+                :key="`${index}:${section.title}`"
+                class="illustrated-profile-story-section"
+              >
+                <h3>{{ section.title }}</h3>
+                <p>{{ section.content }}</p>
+              </section>
+            </article>
+          </template>
 
           <template v-else-if="activeSpecialTab === 'skills'">
             <section
@@ -301,6 +343,7 @@
           :importing="importing"
           :import-button-text="importButtonText"
           :show-import-action="!readOnly"
+          :force-mobile-layout="forceMobileLayout"
           @set-tab="setActiveSpecialTab"
           @toggle-import-menu="$emit('toggleImportMenu')"
         />
@@ -314,6 +357,7 @@
         :importing="importing"
         :import-button-text="importButtonText"
         :show-import-action="!readOnly"
+        :force-mobile-layout="forceMobileLayout"
         @set-tab="setActiveSpecialTab"
         @toggle-import-menu="$emit('toggleImportMenu')"
       />
@@ -382,6 +426,7 @@ const props = defineProps<{
   showImportMenu: boolean;
   readOnly: boolean;
   debugEnabled: boolean;
+  forceMobileLayout: boolean;
   specialNpc: boolean;
 }>();
 
@@ -434,10 +479,12 @@ watch(
   () => props.vm.nameText,
   () => {
     collapsedGroupKeys.value = [];
+    activeProfileSubview.value = 'info';
   },
 );
 
 const activeSpecialTab = ref<IllustratedTabKey>('overview');
+const activeProfileSubview = ref<'info' | 'story'>('info');
 const shellElement = ref<HTMLElement | null>(null);
 const panelsElement = ref<HTMLElement | null>(null);
 const portraitImageElement = ref<HTMLImageElement | null>(null);
@@ -525,6 +572,13 @@ const tabs = computed<IllustratedTab[]>(() => {
 
   return mergedTabs;
 });
+const hasCustomStorySections = computed(() => props.specialNpc && props.vm.storySections.length > 0);
+const profileFallbackBackstoryText = computed(() =>
+  props.specialNpc && !hasCustomStorySections.value ? props.vm.backstoryText : '',
+);
+watch(hasCustomStorySections, hasCustomStory => {
+  if (!hasCustomStory) activeProfileSubview.value = 'info';
+});
 const isOverviewTab = computed(() => activeSpecialTab.value === 'overview');
 const isDivinityTab = computed(() => activeSpecialTab.value === 'divinity');
 const hideRedundantDetailTitle = computed(() => props.specialNpc && !isOverviewTab.value);
@@ -598,6 +652,7 @@ function captureDetailWallpaper(): void {
 function setActiveSpecialTab(tab: IllustratedTabKey): void {
   if (tab === activeSpecialTab.value) return;
   if (activeSpecialTab.value === 'overview' && tab !== 'overview') captureDetailWallpaper();
+  if (tab === 'profile') activeProfileSubview.value = 'info';
   activeSpecialTab.value = tab;
 }
 
@@ -1621,11 +1676,13 @@ watchEffect(() => {
 .illustrated-data-pane {
   position: relative;
   z-index: 2;
+  box-sizing: border-box;
   display: flex;
   flex: 1;
   flex-direction: column;
   min-width: 0;
-  max-height: 800px;
+  min-height: 0;
+  max-height: 100%;
   padding: 56px 50px 34px;
   overflow: hidden;
 }
@@ -2111,9 +2168,35 @@ watchEffect(() => {
   padding-bottom: 0;
 }
 
+.illustrated-shell.is-special-npc.is-overview-tab .illustrated-panels {
+  overflow-y: auto;
+}
+
 @media (min-width: 901px) {
   .illustrated-shell.is-special-npc.is-overview-tab .illustrated-data-pane {
     padding-top: 72px;
+  }
+
+  .illustrated-shell.is-special-npc.is-overview-tab :deep(.illustrated-desktop-header) {
+    width: calc(100% + 40px);
+    margin-inline: -20px;
+  }
+
+  .illustrated-shell.is-special-npc.is-overview-tab :deep(.illustrated-desktop-header .illustrated-subtitle) {
+    max-height: 1.5em;
+    flex-wrap: nowrap;
+    gap: 5px;
+    font-size: clamp(11px, 2.8cqw, 13px);
+    white-space: nowrap;
+  }
+
+  .illustrated-shell.is-special-npc.is-overview-tab :deep(.illustrated-desktop-header .illustrated-meta-item) {
+    flex: 0 0 auto;
+    gap: 5px;
+  }
+
+  .illustrated-shell.is-special-npc.is-overview-tab :deep(.illustrated-desktop-header .illustrated-meta-text) {
+    overflow-wrap: normal;
   }
 
   .illustrated-shell.is-special-npc.is-overview-tab :deep(.illustrated-attribute-total) {
@@ -2314,6 +2397,86 @@ watchEffect(() => {
   white-space: nowrap;
 }
 
+.illustrated-profile-subnav {
+  display: grid;
+  width: min(100%, 420px);
+  margin: 0 auto 18px;
+  padding: 4px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.22);
+  border-radius: 999px;
+  background: rgba(4, 8, 13, 0.38);
+}
+
+.illustrated-profile-subnav button {
+  min-height: 40px;
+  padding: 8px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.66);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.illustrated-profile-subnav button.active {
+  background: rgba(var(--illustrated-race-accent-rgb), 0.14);
+  color: var(--illustrated-race-accent);
+  box-shadow: inset 0 0 0 1px rgba(var(--illustrated-race-accent-rgb), 0.22);
+}
+
+.illustrated-profile-subnav button:focus-visible {
+  outline: 2px solid var(--illustrated-tier-accent);
+  outline-offset: 2px;
+}
+
+.illustrated-profile-story-view {
+  display: grid;
+  width: min(100%, 760px);
+  margin: 0 auto;
+  gap: 18px;
+}
+
+.illustrated-profile-story-author {
+  margin: -2px 4px 0;
+  color: rgba(226, 232, 240, 0.52);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-align: right;
+}
+
+.illustrated-profile-story-section {
+  padding: 24px 28px;
+  border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.16);
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 46%),
+    rgba(5, 9, 14, 0.34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.illustrated-profile-story-section h3 {
+  margin: 0 0 13px;
+  color: var(--illustrated-race-accent);
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.illustrated-profile-story-section p {
+  margin: 0;
+  color: #d7dce3;
+  font-size: 14px;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
 .illustrated-story-combined-block {
   display: grid;
   gap: 18px;
@@ -2459,6 +2622,10 @@ watchEffect(() => {
   .illustrated-theme-anastasia .illustrated-shell.is-overview-tab .illustrated-panels {
     overflow-y: hidden;
     padding-bottom: 0;
+  }
+
+  .illustrated-wrapper.is-special-npc .illustrated-shell.is-overview-tab .illustrated-panels {
+    overflow-y: auto;
   }
 }
 
@@ -2759,6 +2926,43 @@ watchEffect(() => {
 
   .illustrated-panels::-webkit-scrollbar {
     display: none;
+  }
+
+  .illustrated-profile-subnav {
+    width: 100%;
+    margin-bottom: 12px;
+  }
+
+  .illustrated-profile-subnav button {
+    min-height: 42px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .illustrated-profile-story-view {
+    width: 100%;
+    gap: 12px;
+  }
+
+  .illustrated-profile-story-author {
+    margin-right: 2px;
+    font-size: 10px;
+  }
+
+  .illustrated-profile-story-section {
+    padding: 15px 14px;
+    border-radius: 4px;
+    background: rgba(7, 10, 15, 0.46);
+  }
+
+  .illustrated-profile-story-section h3 {
+    margin-bottom: 9px;
+    font-size: 14px;
+  }
+
+  .illustrated-profile-story-section p {
+    font-size: 12px;
+    line-height: 1.78;
   }
 
   .illustrated-panels > :deep(.illustrated-overview) {
@@ -3111,5 +3315,245 @@ watchEffect(() => {
     bottom: 64px;
     min-width: 170px;
   }
+}
+
+.illustrated-wrapper.force-mobile-layout {
+  max-width: min(100%, 640px);
+}
+
+.illustrated-wrapper.force-mobile-layout.is-special-npc {
+  max-width: min(100%, 640px);
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-shell {
+  flex-direction: column;
+  min-height: 0;
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-shell.is-special-npc {
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 2 / 3;
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-portrait-pane {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-shell.is-detail-tab .illustrated-portrait-pane {
+  display: none;
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-mobile-detail-wallpaper {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  filter: saturate(0.82) brightness(0.72);
+  transition: opacity 0.18s ease;
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-mobile-detail-wallpaper.is-visible {
+  opacity: 0.34;
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-portrait-pane::after {
+  background: linear-gradient(to bottom, transparent 65%, var(--illustrated-bg) 100%);
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-data-pane {
+  flex: 1;
+  max-height: none;
+  min-height: 0;
+  padding: 18px 24px 20px;
+  overflow: hidden;
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-shell.is-overview-tab .illustrated-data-pane {
+  flex: 0 0 auto;
+  padding: 0 18px 8px;
+  overflow: visible;
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-shell.is-special-npc.is-overview-tab .illustrated-data-pane {
+  display: none;
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-shell.is-detail-tab .illustrated-data-pane {
+  padding: 18px 24px 14px;
+  background: color-mix(in srgb, var(--illustrated-bg) 58%, transparent);
+  backdrop-filter: blur(1.5px);
+  -webkit-backdrop-filter: blur(1.5px);
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-shell.is-special-npc.is-skills-tab .illustrated-data-pane {
+  background: color-mix(in srgb, var(--illustrated-bg) 66%, transparent);
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-desktop-header {
+  display: none;
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-mobile-overview-overlay {
+  position: absolute;
+  right: 18px;
+  bottom: 22px;
+  left: 18px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-shell.is-special-npc.is-overview-tab .illustrated-portrait-pane::after {
+  background: linear-gradient(
+    180deg,
+    transparent 42%,
+    rgba(8, 10, 14, 0.14) 56%,
+    rgba(8, 10, 14, 0.76) 80%,
+    var(--illustrated-bg) 100%
+  );
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-shell.is-special-npc.is-overview-tab .illustrated-mobile-overview-overlay {
+  right: 17px;
+  bottom: 12px;
+  left: 17px;
+  gap: 6px;
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-mobile-entrance-quote {
+  position: relative;
+  appearance: none;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  margin: 0 8px;
+  padding: 7px 12px;
+  border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.48);
+  border-radius: 6px;
+  background: rgba(8, 12, 18, 0.58);
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.2);
+  color: rgba(255, 255, 255, 0.96);
+  cursor: pointer;
+  font-family: 'LXGW WenKai Mono', 'Noto Serif SC', 'Songti SC', serif;
+  font-size: clamp(12px, 3.4cqw, 14px);
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  text-align: center;
+  touch-action: manipulation;
+}
+
+.illustrated-wrapper.force-mobile-layout
+  .illustrated-shell.is-special-npc.is-overview-tab
+  .illustrated-mobile-entrance-quote {
+  min-height: 0;
+  margin: 0 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 11px;
+  line-height: 1.5;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-mobile-quote-mark {
+  flex: 0 0 auto;
+  color: rgba(var(--illustrated-race-accent-rgb), 0.92);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-mobile-quote-text {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-mobile-header-overlay {
+  display: block;
+  padding: 10px 12px;
+  border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.62);
+  border-radius: 8px;
+  background: rgba(12, 14, 20, 0.66);
+  box-shadow:
+    0 10px 32px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.illustrated-wrapper.force-mobile-layout
+  .illustrated-shell.is-special-npc.is-overview-tab
+  .illustrated-mobile-header-overlay {
+  padding: 0 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.illustrated-wrapper.force-mobile-layout
+  .illustrated-shell.is-special-npc.is-overview-tab
+  .illustrated-mobile-header-overlay
+  :deep(.illustrated-name:not(.illustrated-name-measure)) {
+  order: 1;
+  margin: 0 !important;
+  font-size: clamp(24px, 8cqw, 28px);
+  line-height: 1.12;
+  text-shadow: 0 3px 16px rgba(0, 0, 0, 0.94);
+}
+
+.illustrated-wrapper.force-mobile-layout
+  .illustrated-shell.is-special-npc.is-overview-tab
+  .illustrated-mobile-header-overlay
+  :deep(.illustrated-subtitle),
+.illustrated-wrapper.force-mobile-layout
+  .illustrated-shell.is-special-npc.is-overview-tab
+  .illustrated-mobile-header-overlay
+  :deep(.illustrated-level-tier),
+.illustrated-wrapper.force-mobile-layout
+  .illustrated-shell.is-special-npc.is-overview-tab
+  .illustrated-mobile-header-overlay
+  :deep(.illustrated-name-rail) {
+  display: none;
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-shell.is-overview-tab .illustrated-panels {
+  display: none;
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-panels {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 18px;
+  scrollbar-width: none;
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-panels::-webkit-scrollbar {
+  display: none;
+}
+
+.illustrated-wrapper.force-mobile-layout .illustrated-panels > :deep(.illustrated-overview) {
+  display: none;
 }
 </style>
