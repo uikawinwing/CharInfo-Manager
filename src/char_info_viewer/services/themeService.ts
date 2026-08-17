@@ -1,11 +1,21 @@
 import type { CharacterData, ThemeResolved } from '../types';
 import { isLoadedDxCharacterData } from '@/char_info_viewer/dxRuntime';
+import {
+  normalizeProfileMetadata,
+  type CharacterProfileMetadata,
+} from '../../char_info_shared/characterVisualProfile.ts';
 import { resolveGalleryExtension } from './galleryPackService.ts';
+import { prioritizeImageSourceGroups } from './imageSourcePriority';
 
 const SPECIAL_NPC_VISUAL_BRAND = Symbol('char_info_special_npc_visual');
 const DEPRECATED_VISUAL_SYNTAX_BRAND = Symbol('char_info_deprecated_visual_syntax');
+const LEGACY_VISUAL_PROFILE_BRAND = Symbol('char_info_legacy_visual_profile');
+const VISUAL_PROFILE_METADATA = Symbol('char_info_visual_profile_metadata');
+export type LegacyVisualProfileSource = 'char_info_visuals' | 'char_info.visual' | 'char_info.visuals';
 type SpecialNpcVisualData = CharacterData & { [SPECIAL_NPC_VISUAL_BRAND]?: true };
 type DeprecatedVisualSyntaxData = CharacterData & { [DEPRECATED_VISUAL_SYNTAX_BRAND]?: true };
+type LegacyVisualProfileData = CharacterData & { [LEGACY_VISUAL_PROFILE_BRAND]?: LegacyVisualProfileSource };
+type CharacterVisualMetadataData = CharacterData & { [VISUAL_PROFILE_METADATA]?: CharacterProfileMetadata };
 
 function brandSpecialNpcVisualData(data: CharacterData): CharacterData {
   Object.defineProperty(data, SPECIAL_NPC_VISUAL_BRAND, {
@@ -33,6 +43,36 @@ export function hasDeprecatedVisualSyntax(data: CharacterData): boolean {
   return (data as DeprecatedVisualSyntaxData)[DEPRECATED_VISUAL_SYNTAX_BRAND] === true;
 }
 
+function brandLegacyVisualProfileData(data: CharacterData, source: LegacyVisualProfileSource): CharacterData {
+  Object.defineProperty(data, LEGACY_VISUAL_PROFILE_BRAND, {
+    value: source,
+    enumerable: false,
+    configurable: false,
+  });
+  return data;
+}
+
+export function getLegacyVisualProfileSource(data: CharacterData): LegacyVisualProfileSource | null {
+  return (data as LegacyVisualProfileData)[LEGACY_VISUAL_PROFILE_BRAND] ?? null;
+}
+
+function attachCharacterVisualMetadata(
+  data: CharacterData,
+  metadata: CharacterProfileMetadata | undefined,
+): CharacterData {
+  if (!metadata) return data;
+  Object.defineProperty(data, VISUAL_PROFILE_METADATA, {
+    value: metadata,
+    enumerable: false,
+    configurable: true,
+  });
+  return data;
+}
+
+export function resolveCharacterVisualMetadata(data: CharacterData): CharacterProfileMetadata | null {
+  return (data as CharacterVisualMetadataData)[VISUAL_PROFILE_METADATA] ?? null;
+}
+
 export function cloneCharacterDataWithVisualOverrides(
   data: CharacterData,
   overrides: Pick<CharacterData, '登场台词'>,
@@ -43,6 +83,10 @@ export function cloneCharacterDataWithVisualOverrides(
   };
   if (isSpecialNpcVisualData(data)) brandSpecialNpcVisualData(clone);
   if (hasDeprecatedVisualSyntax(data)) brandDeprecatedVisualSyntaxData(clone);
+  const legacySource = getLegacyVisualProfileSource(data);
+  if (legacySource) brandLegacyVisualProfileData(clone, legacySource);
+  const metadata = resolveCharacterVisualMetadata(data);
+  if (metadata) attachCharacterVisualMetadata(clone, metadata);
   return clone;
 }
 
@@ -249,14 +293,28 @@ function stripUntrustedImageData(data: CharacterData): CharacterData {
   return resolved;
 }
 
-function resolveNamedVisualConfig(data: CharacterData, chatVariables: Record<string, unknown>): unknown {
+type NamedVisualConfigResolution = {
+  config: unknown;
+  legacySource: LegacyVisualProfileSource | null;
+};
+
+function resolveNamedVisualConfig(
+  data: CharacterData,
+  chatVariables: Record<string, unknown>,
+): NamedVisualConfigResolution | undefined {
   const name = resolveCharacterName(data);
   if (!name) return undefined;
 
   const charInfo = asRecord(chatVariables.char_info);
   const profiles = asRecord(charInfo?.profiles);
   const profile = profiles && Object.hasOwn(profiles, name) ? profiles[name] : undefined;
-  const legacyProfile = asRecord(chatVariables.char_info_visuals)?.[name];
+  const legacyCandidates: Array<{ source: LegacyVisualProfileSource; value: unknown }> = [
+    { source: 'char_info_visuals', value: asRecord(chatVariables.char_info_visuals)?.[name] },
+    { source: 'char_info.visual', value: asRecord(charInfo?.visual)?.[name] },
+    { source: 'char_info.visuals', value: asRecord(charInfo?.visuals)?.[name] },
+  ];
+  const legacyCandidate = legacyCandidates.find(candidate => candidate.value !== undefined && candidate.value !== null);
+  const legacyProfile = legacyCandidate?.value;
   const profileRecord = asRecord(profile);
   const legacyRecord = asRecord(legacyProfile);
 
@@ -269,11 +327,41 @@ function resolveNamedVisualConfig(data: CharacterData, chatVariables: Record<str
       mergedProfile.custom_tiercolor = legacyRecord.custom_tiercolor;
     }
     if (mergedProfile.登场台词 === undefined) mergedProfile.登场台词 = legacyRecord.登场台词;
-    return mergedProfile;
+    return { config: mergedProfile, legacySource: null };
   }
-  if (profileRecord) return profileRecord;
-  if (legacyRecord) return legacyRecord;
-  return profile ?? legacyProfile;
+  if (profileRecord) return { config: profileRecord, legacySource: null };
+  if (legacyRecord && legacyCandidate) return { config: legacyRecord, legacySource: legacyCandidate.source };
+  if (legacyCandidate) return { config: legacyProfile, legacySource: legacyCandidate.source };
+  return profile === undefined ? undefined : { config: profile, legacySource: null };
+}
+
+export function resolveCharacterVisualPreloadUrls(
+  characterName: string,
+  chatVariables: Record<string, unknown>,
+  limit = 1,
+  sourcePriorities: readonly string[] = [],
+): string[] {
+  const name = characterName.trim();
+  if (!name || limit <= 0) return [];
+
+  const visualResolution = resolveNamedVisualConfig({ 姓名: name }, chatVariables);
+  const visualConfig = visualResolution?.config;
+  if (typeof visualConfig === 'string') {
+    const url = normalizeVisualConfigUrl(visualConfig);
+    return url ? [url] : [];
+  }
+
+  const config = asRecord(visualConfig);
+  if (!config) return [];
+  const primaryUrl = normalizeVisualConfigUrl(config.url);
+  const galleryGroups = normalizeVisualConfigGallery(config.gallery);
+  const sourceGroups = [primaryUrl ? [primaryUrl] : null, ...galleryGroups].filter(
+    (group): group is string[] => Boolean(group?.length),
+  );
+  return prioritizeImageSourceGroups(sourceGroups, sourcePriorities)
+    .map(sources => sources[0])
+    .filter((url, index, urls) => urls.indexOf(url) === index)
+    .slice(0, limit);
 }
 
 function applyVisualAppearance(data: CharacterData, visualConfig: unknown): CharacterData {
@@ -325,6 +413,8 @@ function applyVisualConfig(data: CharacterData, visualConfig: unknown, clearImag
 
   const config = asRecord(visualConfig);
   if (!config) return fallback;
+  const metadata = normalizeProfileMetadata(config.metadata);
+  const withMetadata = (resolved: CharacterData) => attachCharacterVisualMetadata(resolved, metadata);
 
   const url = normalizeVisualConfigUrl(config.url);
   const gallery = normalizeVisualConfigGallery(config.gallery);
@@ -332,10 +422,23 @@ function applyVisualConfig(data: CharacterData, visualConfig: unknown, clearImag
     if (candidate && !groups.some(group => group[0] === candidate[0])) groups.push(candidate);
     return groups;
   }, []);
-  if (imageSourceGroups.length === 0) return fallback;
+  if (imageSourceGroups.length === 0) return withMetadata(fallback);
 
   const isVersionedProfile = Number(config.schema_version) >= 1;
-  return applyImageSourceGroups(resolvedAppearance, imageSourceGroups, !url && !isVersionedProfile);
+  return withMetadata(applyImageSourceGroups(resolvedAppearance, imageSourceGroups, !url && !isVersionedProfile));
+}
+
+function finalizeNamedVisualResolution(
+  baseData: CharacterData,
+  visualConfig: unknown,
+  legacySource: LegacyVisualProfileSource | null,
+  hasLegacySyntax: boolean,
+): CharacterData {
+  let resolved = applyVisualConfig(baseData, visualConfig, false);
+  if (visualConfigHasImage(visualConfig)) resolved = brandSpecialNpcVisualData(resolved);
+  if (legacySource) resolved = brandLegacyVisualProfileData(resolved, legacySource);
+  if (hasLegacySyntax) resolved = brandDeprecatedVisualSyntaxData(resolved);
+  return resolved;
 }
 
 export function resolveCharacterVisualPreview(
@@ -359,19 +462,15 @@ export function resolveCharacterVisualConfig(
 
   const hasLegacySyntax = hasUntrustedImageSyntax(data);
   const baseData = stripUntrustedImageData(data);
-  const namedVisualConfig = resolveNamedVisualConfig(data, chatVariables);
+  const namedVisualResolution = resolveNamedVisualConfig(data, chatVariables);
+  if (!namedVisualResolution) return hasLegacySyntax ? brandDeprecatedVisualSyntaxData(baseData) : baseData;
 
-  if (hasLegacySyntax) {
-    const resolved = namedVisualConfig === undefined ? baseData : applyVisualAppearance(baseData, namedVisualConfig);
-    return brandDeprecatedVisualSyntaxData(resolved);
-  }
-
-  if (namedVisualConfig !== undefined) {
-    const resolved = applyVisualConfig(baseData, namedVisualConfig, false);
-    return visualConfigHasImage(namedVisualConfig) ? brandSpecialNpcVisualData(resolved) : resolved;
-  }
-
-  return baseData;
+  return finalizeNamedVisualResolution(
+    baseData,
+    namedVisualResolution.config,
+    namedVisualResolution.legacySource,
+    hasLegacySyntax,
+  );
 }
 
 export async function resolveCharacterVisualConfigWithExtensions(
@@ -382,21 +481,16 @@ export async function resolveCharacterVisualConfigWithExtensions(
 
   const hasLegacySyntax = hasUntrustedImageSyntax(data);
   const baseData = stripUntrustedImageData(data);
-  const namedVisualConfig = resolveNamedVisualConfig(data, chatVariables);
-  const extendedVisualConfig =
-    namedVisualConfig === undefined ? undefined : await resolveGalleryExtension(namedVisualConfig);
+  const namedVisualResolution = resolveNamedVisualConfig(data, chatVariables);
+  if (!namedVisualResolution) return hasLegacySyntax ? brandDeprecatedVisualSyntaxData(baseData) : baseData;
 
-  if (hasLegacySyntax) {
-    const resolved = extendedVisualConfig === undefined ? baseData : applyVisualAppearance(baseData, extendedVisualConfig);
-    return brandDeprecatedVisualSyntaxData(resolved);
-  }
-
-  if (extendedVisualConfig !== undefined) {
-    const resolved = applyVisualConfig(baseData, extendedVisualConfig, false);
-    return visualConfigHasImage(extendedVisualConfig) ? brandSpecialNpcVisualData(resolved) : resolved;
-  }
-
-  return baseData;
+  const extendedVisualConfig = await resolveGalleryExtension(namedVisualResolution.config);
+  return finalizeNamedVisualResolution(
+    baseData,
+    extendedVisualConfig,
+    namedVisualResolution.legacySource,
+    hasLegacySyntax,
+  );
 }
 
 export function harmonizeAccent(

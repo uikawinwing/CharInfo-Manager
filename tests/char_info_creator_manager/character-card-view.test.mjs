@@ -29,6 +29,6 @@ test('角色封面保留懒加载、备用地址回退与无图占位', () => {
 });
 
 test('角色卡片正文按钮可以打开详情', () => {
-  assert.match(librarySource, /class="character-library-card-copy"[\s\S]*?@click="openDetails\(character\)"/u);
+  assert.match(librarySource, /class="character-library-card-copy"[\s\S]*?@click\.stop="openDetails\(character\)"/u);
   assert.match(librarySource, /class="character-detail-layer"/u);
 });

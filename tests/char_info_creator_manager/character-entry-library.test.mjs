@@ -363,10 +363,10 @@ test('尚未进入变量的角色只从受控 YAML 路径提取静态种族', ()
   assert.equal(inferCharacterRace('种族: { 名称: 人类 }'), '');
 });
 
-test('角色库种族依次使用聊天变量、世界书正文和标题元数据', () => {
+test('角色库种族优先使用 metadata，其次聊天变量、世界书正文和标题元数据', () => {
   assert.match(
     librarySource,
-    /race:\s+match\?\.race\s+\|\|\s+inferCharacterRace\(body, character\.profile\.characterName\)\s+\|\|\s+character\.title\.raceText\s+\|\|\s+''/u,
+    /race:\s+metadata\?\.race\s+\|\|\s+match\?\.race\s+\|\|\s+inferCharacterRace\(body, character\.profile\.characterName\)\s+\|\|\s+character\.title\.raceText\s+\|\|\s+''/u,
   );
 });
 

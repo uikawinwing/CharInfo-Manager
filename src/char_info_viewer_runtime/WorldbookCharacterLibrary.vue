@@ -83,7 +83,7 @@
                 v-model="searchText"
                 type="search"
                 autocomplete="off"
-                placeholder="搜索角色、条目名或种族"
+                placeholder="搜索角色、种族、作者或版本"
                 aria-label="搜索角色封面库"
               />
             </label>
@@ -107,6 +107,14 @@
                   <option v-for="race in availableRaces" :key="race" :value="race">{{ race }}</option>
                 </select>
               </label>
+              <label class="character-order-select">
+                <span>排序</span>
+                <select v-model="sortOrder">
+                  <option v-for="option in sortOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
             </div>
 
             <div class="character-library-control-row">
@@ -123,13 +131,23 @@
                 </button>
               </div>
 
-              <label class="character-race-filter">
-                <span>种族</span>
-                <select v-model="raceFilter">
-                  <option value="all">全部种族</option>
-                  <option v-for="race in availableRaces" :key="race" :value="race">{{ race }}</option>
-                </select>
-              </label>
+              <div class="character-library-meta-controls">
+                <label class="character-race-filter">
+                  <span>种族</span>
+                  <select v-model="raceFilter">
+                    <option value="all">全部种族</option>
+                    <option v-for="race in availableRaces" :key="race" :value="race">{{ race }}</option>
+                  </select>
+                </label>
+                <label class="character-order-select">
+                  <span>排序</span>
+                  <select v-model="sortOrder">
+                    <option v-for="option in sortOptions" :key="option.value" :value="option.value">
+                      {{ option.label }}
+                    </option>
+                  </select>
+                </label>
+              </div>
 
               <div class="character-library-view-options">
                 <div class="character-library-layout-switch" role="group" aria-label="选择角色库显示方式">
@@ -178,12 +196,13 @@
                 encountered: character.encountered,
                 unconfigured: !character.hasVisualProfile,
               }"
+              @click="openDetails(character)"
             >
               <button
                 class="character-cover-button"
                 type="button"
                 :aria-label="`查看 ${characterName(character)}${coverUrl(character) ? '' : '（未配置图片）'}`"
-                @click="openDetails(character)"
+                @click.stop="openDetails(character)"
               >
                 <img
                   v-if="coverUrl(character)"
@@ -206,18 +225,19 @@
                 role="button"
                 tabindex="0"
                 :aria-label="`查看 ${characterName(character)}`"
-                @click="openDetails(character)"
+                @click.stop="openDetails(character)"
                 @keydown.enter.prevent="openDetails(character)"
                 @keydown.space.prevent="openDetails(character)"
               >
                 <strong>{{ characterName(character) }}</strong>
-                <small>{{ character.title.descriptionText || '资料待补全' }}</small>
+                <small>{{ character.description || '资料待补全' }}</small>
                 <span class="character-library-card-meta">
                   <i>{{ character.race || '种族未知' }}</i>
                   <i v-if="layout === 'cards'" class="entry-status">{{ character.entry.enabled ? '已启用' : '已禁用' }}</i>
                   <i v-if="character.encountered" class="encountered">已遇到</i>
                   <i v-if="!character.hasVisualProfile" class="visual-missing">未配置图片</i>
                 </span>
+                <span v-if="character.author" class="character-library-card-author">{{ character.author }}</span>
               </div>
 
               <button
@@ -227,7 +247,7 @@
                 :aria-checked="character.entry.enabled"
                 :aria-label="`${character.entry.enabled ? '禁用' : '启用'} ${characterName(character)}`"
                 :disabled="togglingUids.has(character.entry.uid)"
-                @click="toggleCharacter(character)"
+                @click.stop="toggleCharacter(character)"
               >
                 <span></span>
               </button>
@@ -299,6 +319,14 @@
             </span>
             <h2 id="character-detail-title">{{ characterName(detailCharacter) }}</h2>
             <p>世界书：{{ selectedWorldbookName }} · 条目：{{ detailCharacter.entry.name }}</p>
+            <p
+              v-if="detailCharacter.race || detailCharacter.author || detailCharacter.version"
+              class="character-detail-profile-meta"
+            >
+              <span v-if="detailCharacter.race">{{ detailCharacter.race }}</span>
+              <span v-if="detailCharacter.author">作者 · {{ detailCharacter.author }}</span>
+              <span v-if="detailCharacter.version">版本 · {{ detailCharacter.version }}</span>
+            </p>
           </div>
           <button class="close-button" type="button" aria-label="关闭角色详情" @click="closeDetails">×</button>
         </header>
@@ -384,8 +412,12 @@ import { normalizePortraitMediaUrlForBrowser } from '../char_info_viewer/service
 type LibraryCharacter = WorldbookCharacterEntry<WorldbookEntry, CharacterVisualProfile> & {
   encountered: boolean;
   race: string;
+  author: string;
+  version: string;
+  description: string;
 };
 type Filter = 'all' | 'encountered' | 'enabled' | 'disabled';
+type SortOrder = 'original' | 'name' | 'race' | 'author' | 'encountered' | 'enabled';
 type Media = NonNullable<ReturnType<typeof normalizePortraitMediaUrlForBrowser>>;
 
 withDefaults(defineProps<{ forceMobileLayout?: boolean }>(), {
@@ -410,6 +442,7 @@ const searchText = ref('');
 const searchInput = ref<HTMLInputElement | null>(null);
 const filter = ref<Filter>('all');
 const raceFilter = ref('all');
+const sortOrder = ref<SortOrder>('original');
 const layout = ref<'list' | 'cards'>('list');
 const cardColumns = ref<'auto' | number>('auto');
 const cardColumnOptions = [2, 3, 4, 5, 6];
@@ -439,26 +472,36 @@ const worldbookCharacters = computed<LibraryCharacter[]>(() => {
       character.entry.content,
       inspection.state === 'valid' ? { start: inspection.start, end: inspection.end } : null,
     );
+    const metadata = character.profile.metadata;
     return {
       ...character,
       encountered: !!match,
-      race: match?.race || inferCharacterRace(body, character.profile.characterName) || character.title.raceText || '',
+      race: metadata?.race || match?.race || inferCharacterRace(body, character.profile.characterName) || character.title.raceText || '',
+      author: metadata?.author || character.title.authorText || '',
+      version: metadata?.version || '',
+      description: metadata?.author_note || character.title.descriptionText || '',
     };
   });
 });
 
 const filteredCharacters = computed(() => {
   const query = searchText.value.toLocaleLowerCase();
-  return worldbookCharacters.value.filter(character => {
+  const characters = worldbookCharacters.value.filter(character => {
     if (filter.value === 'encountered' && !character.encountered) return false;
     if (filter.value === 'enabled' && !character.entry.enabled) return false;
     if (filter.value === 'disabled' && character.entry.enabled) return false;
     if (raceFilter.value !== 'all' && character.race !== raceFilter.value) return false;
     if (!query) return true;
-    return [characterName(character), character.entry.name, character.race].some(value =>
-      value.toLocaleLowerCase().includes(query),
-    );
+    return [
+      characterName(character),
+      character.entry.name,
+      character.race,
+      character.author,
+      character.version,
+      character.description,
+    ].some(value => value.toLocaleLowerCase().includes(query));
   });
+  return sortCharacters(characters, sortOrder.value);
 });
 const availableRaces = computed(() =>
   Array.from(new Set(worldbookCharacters.value.map(character => character.race).filter(Boolean))).sort((left, right) =>
@@ -498,9 +541,39 @@ const filterOptions: Array<{ value: Filter; label: string }> = [
   { value: 'enabled', label: '已启用' },
   { value: 'disabled', label: '已禁用' },
 ];
+const sortOptions: Array<{ value: SortOrder; label: string }> = [
+  { value: 'original', label: '世界书顺序' },
+  { value: 'name', label: '按姓名' },
+  { value: 'race', label: '按种族' },
+  { value: 'author', label: '按作者' },
+  { value: 'encountered', label: '已遇到优先' },
+  { value: 'enabled', label: '已启用优先' },
+];
 
 function characterName(character: LibraryCharacter): string {
   return character.profile.characterName || character.title.displayName || character.entry.name;
+}
+
+function compareText(left: string, right: string): number {
+  if (!left && !right) return 0;
+  if (!left) return 1;
+  if (!right) return -1;
+  return left.localeCompare(right, 'zh-CN');
+}
+
+function compareCharacterName(left: LibraryCharacter, right: LibraryCharacter): number {
+  return characterName(left).localeCompare(characterName(right), 'zh-CN');
+}
+
+function sortCharacters(characters: LibraryCharacter[], order: SortOrder): LibraryCharacter[] {
+  if (order === 'original') return characters;
+  return [...characters].sort((left, right) => {
+    if (order === 'name') return compareCharacterName(left, right);
+    if (order === 'race') return compareText(left.race, right.race) || compareCharacterName(left, right);
+    if (order === 'author') return compareText(left.author, right.author) || compareCharacterName(left, right);
+    if (order === 'encountered') return Number(right.encountered) - Number(left.encountered) || compareCharacterName(left, right);
+    return Number(right.entry.enabled) - Number(left.entry.enabled) || compareCharacterName(left, right);
+  });
 }
 
 function imageSources(character: LibraryCharacter): string[] {
@@ -638,6 +711,7 @@ watch(selectedWorldbookName, worldbookName => {
   searchText.value = '';
   filter.value = 'all';
   raceFilter.value = 'all';
+  sortOrder.value = 'original';
   mobileFilterOpen.value = false;
   mobileMoreOpen.value = false;
   void loadEntries(worldbookName);
@@ -695,13 +769,14 @@ select { color: var(--text); background: #0d121a; border: 1px solid var(--border
 .library-search-field:focus-within { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-soft); }
 .library-search-field svg { width: 21px; height: 21px; flex: 0 0 auto; fill: none; stroke: var(--text-muted); stroke-linecap: round; stroke-width: 1.8; }
 .library-search-field input { width: 100%; min-width: 0; min-height: 44px; padding: 0; color: var(--text); background: transparent; border: 0; outline: 0; font-size: 14px; }
-.character-library-control-row { display: grid; align-items: center; grid-template-columns: minmax(360px, 1fr) minmax(220px, 290px) auto minmax(132px, auto); gap: 18px; }
+.character-library-control-row { display: grid; align-items: center; grid-template-columns: minmax(360px, 1fr) minmax(360px, 430px) auto minmax(132px, auto); gap: 18px; }
 .character-library-filter-buttons { display: flex; min-width: 0; padding: 6px 10px; align-items: center; gap: 8px; background: rgb(18 28 43 / 70%); border: 1px solid rgb(40 57 81 / 58%); border-radius: 8px; }
 .character-library-control-label { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
 .character-library-filter-buttons button { min-height: 32px; padding: 6px 15px; color: var(--text-secondary); background: transparent; border: 1px solid transparent; border-radius: 7px; font-size: 12px; }
 .character-library-filter-buttons button[aria-pressed='true'] { color: #071310; background: var(--primary); border-color: var(--primary); font-weight: 800; }
-.character-race-filter { display: flex; min-width: 0; align-items: center; gap: 7px; color: var(--text-muted); font-size: 12px; }
-.character-race-filter select { width: 100%; min-height: 40px; padding: 7px 12px; font-size: 12px; }
+.character-library-meta-controls { display: grid; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.character-race-filter, .character-order-select { display: flex; min-width: 0; align-items: center; gap: 7px; color: var(--text-muted); font-size: 12px; }
+.character-race-filter select, .character-order-select select { width: 100%; min-width: 0; min-height: 40px; padding: 7px 10px; font-size: 12px; }
 .character-library-view-options { display: flex; align-items: center; gap: 8px; }
 .character-library-layout-switch { display: flex; padding: 4px; gap: 2px; background: rgb(18 28 43 / 72%); border: 1px solid rgb(40 57 81 / 58%); border-radius: 8px; }
 .character-library-layout-switch button { display: inline-flex; min-height: 34px; padding: 7px 13px; align-items: center; justify-content: center; gap: 6px; color: var(--text-secondary); background: transparent; border: 1px solid transparent; border-radius: 6px; font-size: 12px; }
@@ -726,6 +801,7 @@ select { color: var(--text); background: #0d121a; border: 1px solid var(--border
 .character-library-card-meta { display: flex; min-width: 0; flex-wrap: wrap; gap: 4px; }
 .character-library-card-meta i { padding: 2px 5px; overflow: hidden; color: var(--text-muted); background: rgb(11 19 31 / 52%); border-radius: 5px; font-size: 9px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
 .character-library-card-meta i.encountered { color: var(--success); background: rgb(120 213 156 / 10%); }
+.character-library-card-author { display: inline-flex; max-width: 100%; padding: 3px 7px; align-self: flex-start; overflow: hidden; color: var(--primary); background: rgb(119 214 199 / 10%); border: 1px solid rgb(119 214 199 / 24%); border-radius: 999px; font-size: 11px; font-weight: 700; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
 .character-entry-toggle { position: relative; width: 38px; height: 22px; padding: 2px; background: #313846; border: 1px solid var(--border-strong); border-radius: 999px; }
 .character-entry-toggle span { display: block; width: 16px; height: 16px; background: var(--text-secondary); border-radius: 50%; transition: transform 160ms ease; }
 .character-entry-toggle[aria-checked='true'] { background: var(--primary-strong); border-color: var(--primary); }
@@ -742,12 +818,14 @@ select { color: var(--text); background: #0d121a; border: 1px solid var(--border
 .image-card-view .character-cover-button { width: 100%; height: auto; aspect-ratio: 4 / 5; border-radius: 0; }
 .image-card-view .character-library-card-copy { padding: 10px 11px 12px; }
 .image-card-view .character-entry-toggle { position: absolute; z-index: 1; top: 9px; right: 9px; background: rgb(15 23 42 / 88%); }
-.character-detail-layer { position: fixed; z-index: 3; inset: 0; display: grid; padding: 24px; overflow: auto; place-items: center; background: rgb(3 5 8 / 86%); backdrop-filter: blur(12px); }
+.character-detail-layer { position: absolute; z-index: 3; inset: 0; display: grid; padding: 24px; overflow: auto; place-items: center; background: rgb(3 5 8 / 86%); backdrop-filter: blur(12px); }
 .character-detail-dialog { display: flex; width: min(1240px, 100%); max-height: min(900px, calc(100vh - 48px)); min-height: 0; overflow: hidden; flex-direction: column; background: radial-gradient(circle at 0 0, rgb(119 214 199 / 9%), transparent 30rem), var(--bg); border: 1px solid var(--border-strong); border-radius: 18px; box-shadow: 0 30px 90px rgb(0 0 0 / 62%); }
 .character-detail-header { display: flex; padding: 20px 24px; align-items: flex-start; justify-content: space-between; gap: 20px; background: rgb(19 23 32 / 96%); border-bottom: 1px solid var(--border); }
 .character-detail-header h2, .character-detail-header p { margin: 0; }
 .character-detail-header h2 { margin-top: 7px; font-size: clamp(24px, 3.5vw, 36px); }
 .character-detail-header p { margin-top: 6px; color: var(--text-muted); font-size: 11px; }
+.character-detail-profile-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.character-detail-profile-meta span { white-space: nowrap; }
 .character-detail-status { display: inline-flex; padding: 4px 8px; color: var(--success); background: rgb(120 213 156 / 10%); border: 1px solid rgb(120 213 156 / 25%); border-radius: 999px; font-size: 10px; font-weight: 800; }
 .character-detail-status.disabled { color: var(--text-muted); }
 .character-detail-body { display: grid; min-height: 0; overflow: hidden; grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr); }
@@ -774,7 +852,7 @@ select { color: var(--text); background: #0d121a; border: 1px solid var(--border
   .manager-dialog { height: calc(100% - 2px); }
   .library-header { grid-template-columns: minmax(170px, 1fr) minmax(230px, 330px) auto; gap: 14px; }
   .manager-view-switch button { min-width: auto; }
-  .character-library-control-row { grid-template-columns: minmax(300px, 1fr) minmax(190px, 240px) auto; gap: 12px; }
+  .character-library-control-row { grid-template-columns: minmax(300px, 1fr) minmax(310px, 360px) auto; gap: 12px; }
   .character-library-summary { grid-column: 1 / -1; }
   .character-library-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .phase-badge { display: none; }
@@ -803,7 +881,7 @@ select { color: var(--text); background: #0d121a; border: 1px solid var(--border
   .character-library-grid.image-card-view, .character-library-grid.image-card-view[class*='card-columns-'] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .character-library-card { min-height: 82px; padding: 8px; grid-template-columns: 58px minmax(0, 1fr) auto; gap: 8px; }
   .character-cover-button { width: 58px; height: 64px; border-radius: 8px; }
-  .mobile-library-dock { position: fixed; z-index: 5; right: 0; bottom: 0; left: 0; display: grid; min-height: calc(76px + env(safe-area-inset-bottom)); padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); grid-template-columns: repeat(5, 1fr); align-items: end; gap: 6px; background: rgb(14 18 25 / 96%); border-top: 1px solid var(--border); }
+  .mobile-library-dock { position: absolute; z-index: 5; right: 0; bottom: 0; left: 0; display: grid; min-height: calc(76px + env(safe-area-inset-bottom)); padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); grid-template-columns: repeat(5, 1fr); align-items: end; gap: 6px; background: rgb(14 18 25 / 96%); border-top: 1px solid var(--border); }
   .mobile-library-dock > button, .mobile-library-more > button { display: grid; min-height: 50px; padding: 5px 2px; place-items: center; gap: 3px; color: var(--text-secondary); background: transparent; border: 0; border-radius: 11px; font-size: 11px; font-weight: 800; }
   .mobile-library-dock svg { width: 23px; height: 23px; fill: none; stroke: currentcolor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
   .mobile-library-dock-home { color: var(--primary) !important; }
@@ -847,7 +925,7 @@ select { color: var(--text); background: #0d121a; border: 1px solid var(--border
 .force-mobile-layout .character-library-grid.image-card-view[class*='card-columns-'] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .force-mobile-layout .character-library-card { min-height: 82px; padding: 8px; grid-template-columns: 58px minmax(0, 1fr) auto; gap: 8px; }
 .force-mobile-layout .character-cover-button { width: 58px; height: 64px; border-radius: 8px; }
-.force-mobile-layout .mobile-library-dock { position: fixed; z-index: 5; right: 0; bottom: 0; left: 0; display: grid; min-height: calc(76px + env(safe-area-inset-bottom)); padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); grid-template-columns: repeat(5, 1fr); align-items: end; gap: 6px; background: rgb(14 18 25 / 96%); border-top: 1px solid var(--border); }
+.force-mobile-layout .mobile-library-dock { position: absolute; z-index: 5; right: 0; bottom: 0; left: 0; display: grid; min-height: calc(76px + env(safe-area-inset-bottom)); padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); grid-template-columns: repeat(5, 1fr); align-items: end; gap: 6px; background: rgb(14 18 25 / 96%); border-top: 1px solid var(--border); }
 .force-mobile-layout .mobile-library-dock > button,
 .force-mobile-layout .mobile-library-more > button { display: grid; min-height: 50px; padding: 5px 2px; place-items: center; gap: 3px; color: var(--text-secondary); background: transparent; border: 0; border-radius: 11px; font-size: 11px; font-weight: 800; }
 .force-mobile-layout .mobile-library-dock svg { width: 23px; height: 23px; fill: none; stroke: currentcolor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }

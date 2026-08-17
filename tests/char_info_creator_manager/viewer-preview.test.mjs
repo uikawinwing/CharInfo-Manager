@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { load } from 'js-yaml';
 
 import { createEmptyProfile } from '../../src/char_info_shared/characterVisualProfile.ts';
-import { buildCreatorViewerPreviewYaml, buildCreatorViewerVisualOverride, normalizeCreatorViewerPastedText, resolveCreatorViewerPreviewYaml } from '../../src/char_info_creator_manager/viewerPreview.ts';
+import { buildCreatorViewerPreviewData, buildCreatorViewerPreviewYaml, buildCreatorViewerVisualOverride, normalizeCreatorViewerPastedText, resolveCreatorViewerPreviewYaml } from '../../src/char_info_creator_manager/viewerPreview.ts';
 
 const profile = {
   ...createEmptyProfile('千爻'),
@@ -12,11 +12,23 @@ const profile = {
   tierColor: '#CC22DD',
   entranceQuote: '这是尚未保存的草稿台词。',
   gallery: [{ title: '主立绘', sources: ['https://example.com/url0.png', 'https://example.com/url1.png'] }],
+  metadata: {
+    author: '测试作者',
+    sex: '女',
+    race: '东方龙裔',
+    story_sections: [
+      { title: '第一章', content: '第一段尚未保存的展示故事。' },
+      { title: '第二章', content: '第二段尚未保存的展示故事。' },
+    ],
+  },
 };
 
 test('Creator Viewer 默认示例资料覆盖 Special NPC 每个分页所需的展示内容', () => {
+  const direct = buildCreatorViewerPreviewData(profile);
   const parsed = load(buildCreatorViewerPreviewYaml(profile));
 
+  assert.deepEqual(parsed, direct);
+  assert.equal(direct.姓名, '千爻');
   assert.equal(parsed.姓名, '千爻');
   assert.equal(parsed.种族, '其他');
   assert.equal(parsed.等级, 1);
@@ -49,6 +61,12 @@ test('Creator Viewer 预览直接使用未保存 draft 的颜色、台词和完�
     title: '主立绘',
     sources: ['https://example.com/url0.png', 'https://example.com/url1.png'],
   }]);
+  assert.deepEqual(override.config.metadata, profile.metadata);
+});
+
+test('Creator Viewer 零 metadata 草稿保持干净，不制造空 metadata', () => {
+  const emptyOverride = buildCreatorViewerVisualOverride(createEmptyProfile('空资料角色'));
+  assert.equal(Object.hasOwn(emptyOverride.config, 'metadata'), false);
 });
 
 test('Creator Viewer 预览可直接使用完整 char_info 或纯 YAML 临时资料', () => {
@@ -64,14 +82,16 @@ test('Creator 挂载真实 Viewer 作为只读草稿预览，并隔离聊天变�
 
   assert.match(creatorSource, /import ViewerApp from '\.\.\/char_info_viewer\/App\.vue'/);
   assert.match(creatorSource, /<ViewerApp[\s\S]*embedded[\s\S]*read-only[\s\S]*preview-mode/);
+  assert.match(creatorSource, /:preview-data="viewerPreviewSource === 'sample' \? viewerPreviewSampleData : undefined"/);
   assert.match(creatorSource, /:visual-config-override="viewerPreviewVisualOverride"/);
   assert.match(creatorSource, /v-model="viewerPreviewPastedText"/);
   assert.match(creatorSource, /完整 &lt;char_info&gt; 或纯 YAML/);
   assert.match(creatorSource, /resolveCreatorViewerPreviewYaml/);
   assert.match(viewerSource, /props\.previewMode[\s\S]*resolveCharacterVisualPreview/);
   assert.match(viewerSource, /if \(props\.previewMode \|\| props\.readOnly\) return;/);
-  assert.match(viewerSource, /watch\([\s\S]*props\.visualConfigOverride[\s\S]*previewBaseData/);
-  assert.match(viewerSource, /watch\([\s\S]*props\.yamlText[\s\S]*props\.previewMode[\s\S]*initFromYaml/);
+  assert.match(viewerSource, /previewData\?: CharacterData/);
+  assert.match(viewerSource, /\[\(\) => props\.yamlText, \(\) => props\.previewData, \(\) => props\.visualConfigOverride\]/);
+  assert.match(viewerSource, /if \(props\.previewMode && props\.previewData\)[\s\S]*previewBaseData = stripUntrustedDxReference\(props\.previewData\)[\s\S]*applyParsedCharacterData/);
   assert.match(creatorSource, /updateViewerPreviewScale/);
   assert.match(creatorSource, /viewerPreviewMobileLayout/);
   assert.match(creatorSource, /if \(mobileLayout\) \{[\s\S]*viewerPreviewScale\.value = 1;[\s\S]*viewerPreviewCanvasWidth\.value = availableWidth;[\s\S]*return;/);

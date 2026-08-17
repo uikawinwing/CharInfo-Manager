@@ -10,6 +10,14 @@
         </div>
 
         <div class="header-actions">
+          <button
+            v-if="props.onReturnToWorldbookLibrary"
+            class="secondary-button return-library-button"
+            type="button"
+            @click="props.onReturnToWorldbookLibrary"
+          >
+            ← 返回角色库
+          </button>
           <button class="secondary-button viewer-preview-trigger" type="button" :disabled="!canPreviewViewer" @click="openViewerPreview">
             预览
           </button>
@@ -191,6 +199,15 @@
                 </div>
               </div>
 
+              <div v-if="legacyVisualInspection.state === 'importable'" class="migration-banner">
+                <strong>检测到可迁移的旧版 CharInfo 视觉配置</strong>
+                <p>已自动预填到新版编辑器；当前世界书尚未修改。</p>
+                <p>保存时会精确移除已识别的 {{ legacyVisualInspection.sourceRoot }} 写入，并升级为 char_info.profiles v2。</p>
+                <ul v-if="legacyVisualInspection.warnings.length > 0">
+                  <li v-for="warning in legacyVisualInspection.warnings" :key="warning">{{ warning }}</li>
+                </ul>
+              </div>
+
               <p v-if="loadError" class="message error">{{ loadError }}</p>
             </section>
 
@@ -217,7 +234,7 @@
               <span class="step-number">2</span>
               <span class="mobile-section-copy">
                 <strong>角色资料</strong>
-                <small>{{ profile.characterName || '填写姓名、头像与登场台词' }}</small>
+                <small>{{ profile.characterName || '填写姓名、性别与种族' }}</small>
               </span>
             </div>
 
@@ -225,48 +242,59 @@
               <span class="step-number">2</span>
               <div>
                 <h2>角色资料</h2>
-                <p>填写角色姓名；头像和登场台词可按需补充。</p>
               </div>
             </div>
 
             <div id="manager-step-2-content" class="mobile-step-content">
-              <div class="field-grid">
-                <label class="field">
-                  <span class="field-label">
-                    角色姓名 <b>*</b>
-                    <small :class="{ warning: profile.characterName.length > 12 }">
-                      {{ profile.characterName.length }} 字
+              <section class="metadata-editor-panel basic-profile-panel">
+                <div class="metadata-editor-heading">
+                  <div>
+                    <h3>基本资料</h3>
+                  </div>
+                </div>
+
+                <div class="metadata-field-grid">
+                  <label class="field">
+                    <span class="field-label">
+                      角色姓名 <b>*</b>
+                      <small :class="{ warning: profile.characterName.length > 12 }">
+                        {{ profile.characterName.length }} 字
+                      </small>
+                    </span>
+                    <input
+                      v-model="profile.characterName"
+                      type="text"
+                      maxlength="80"
+                      autocomplete="off"
+                      aria-describedby="character-name-guidance"
+                      placeholder="例如：傲雪"
+                    />
+                    <small
+                      id="character-name-guidance"
+                      class="field-guidance"
+                      :class="{ warning: profile.characterName.length > 12 }"
+                    >
+                      建议中文姓名不超过 12 字；英文姓名可适当放宽。
                     </small>
-                  </span>
-                  <input
-                    v-model="profile.characterName"
-                    type="text"
-                    maxlength="80"
-                    autocomplete="off"
-                    aria-describedby="character-name-guidance"
-                    placeholder="例如：傲雪"
-                  />
-                  <small
-                    id="character-name-guidance"
-                    class="field-guidance"
-                    :class="{ warning: profile.characterName.length > 12 }"
-                  >
-                    建议中文姓名不超过 12 字；英文姓名可适当放宽。
-                  </small>
-                </label>
+                  </label>
+                  <label class="field">
+                    <span class="field-label">性别 <small>选填</small></span>
+                    <input v-model="profile.metadata.sex" type="text" autocomplete="off" placeholder="例如：女" />
+                  </label>
+                  <label class="field">
+                    <span class="field-label">种族 <small>选填</small></span>
+                    <input v-model="profile.metadata.race" type="text" autocomplete="off" placeholder="例如：东方龙裔" />
+                  </label>
+                </div>
+              </section>
 
+              <section class="metadata-editor-panel presentation-editor-panel">
+                <div class="metadata-editor-heading">
+                  <div>
+                    <h3>角色展示文案</h3>
+                  </div>
+                </div>
                 <label class="field">
-                  <span class="field-label">状态栏头像 URL <small>选填</small></span>
-                  <input
-                    v-model="profile.avatarUrl"
-                    type="url"
-                    inputmode="url"
-                    autocomplete="off"
-                    placeholder="https://…/avatar.webp"
-                  />
-                </label>
-
-                <label class="field field-full">
                   <span class="field-label">
                     登场台词
                     <small :class="{ warning: profile.entranceQuote.length > 48 }">
@@ -287,7 +315,80 @@
                     建议 12–32 字；超过 48 字时，首页最多显示三行，完整内容仍会保存。
                   </small>
                 </label>
-              </div>
+              </section>
+
+              <section class="story-editor-panel">
+                <div class="story-editor-heading">
+                  <div>
+                    <h3>角色故事</h3>
+                  </div>
+                  <button type="button" class="secondary-button story-add-button" @click="addStorySection">＋ 添加故事段落</button>
+                </div>
+
+                <p v-if="profile.metadata.storySections.length === 0" class="story-editor-empty">
+                  尚未添加故事段落。
+                </p>
+
+                <div v-else class="story-section-list">
+                  <article
+                    v-for="(section, index) in profile.metadata.storySections"
+                    :key="section.id"
+                    class="story-section-card"
+                  >
+                    <header class="story-section-card-header">
+                      <strong>故事段落 {{ index + 1 }}</strong>
+                      <div class="story-section-actions">
+                        <button type="button" title="上移" :disabled="index === 0" @click="moveStorySection(index, -1)">↑</button>
+                        <button
+                          type="button"
+                          title="下移"
+                          :disabled="index === profile.metadata.storySections.length - 1"
+                          @click="moveStorySection(index, 1)"
+                        >
+                          ↓
+                        </button>
+                        <button type="button" class="danger" title="删除" @click="removeStorySection(index)">×</button>
+                      </div>
+                    </header>
+                    <label class="field">
+                      <span class="field-label">段落标题</span>
+                      <input v-model="section.title" type="text" autocomplete="off" placeholder="例如：初遇 · 雪夜" />
+                    </label>
+                    <label class="field">
+                      <span class="field-label">故事内容</span>
+                      <textarea v-model="section.content" rows="6" placeholder="填写故事内容。"></textarea>
+                    </label>
+                    <small class="field-guidance">标题和内容需同时填写。</small>
+                  </article>
+                </div>
+              </section>
+
+              <section class="metadata-editor-panel author-editor-panel">
+                <div class="metadata-editor-heading">
+                  <div>
+                    <h3>作者署名</h3>
+                  </div>
+                </div>
+
+                <div class="metadata-field-grid author-metadata-grid">
+                  <label class="field">
+                    <span class="field-label">作者 <small>选填</small></span>
+                    <input v-model="profile.metadata.author" type="text" autocomplete="off" placeholder="例如：作者名 / 社团名" />
+                  </label>
+                  <label class="field">
+                    <span class="field-label">版本 / 更新标记 <small>选填</small></span>
+                    <input v-model="profile.metadata.version" type="text" autocomplete="off" placeholder="例如：v0.0.3 / 0816" />
+                  </label>
+                  <label class="field field-full">
+                    <span class="field-label">作者说明 <small>选填</small></span>
+                    <textarea
+                      v-model="profile.metadata.authorNote"
+                      rows="3"
+                      placeholder="简单介绍这个角色、创作重点、版本备注或推荐阅读方式。"
+                    ></textarea>
+                  </label>
+                </div>
+              </section>
 
               <div class="wizard-step-actions">
                 <button type="button" class="secondary-button" @click="goToStep(1)">上一步</button>
@@ -352,7 +453,7 @@
 
               <div class="wizard-step-actions">
                 <button type="button" class="secondary-button" @click="goToStep(2)">上一步</button>
-                <button type="button" class="primary-button" @click="goToStep(4)">下一步：角色相册</button>
+                <button type="button" class="primary-button" @click="goToStep(4)">下一步：相册与头像</button>
               </div>
             </div>
           </section>
@@ -365,7 +466,7 @@
             <div class="mobile-section-toggle">
               <span class="step-number">4</span>
               <span class="mobile-section-copy">
-                <strong>角色相册</strong>
+                <strong>相册与头像</strong>
                 <small>{{ configuredGalleryCount }} 张已填写图片</small>
               </span>
             </div>
@@ -373,12 +474,71 @@
             <div class="section-heading">
               <span class="step-number">4</span>
               <div>
-                <h2>角色相册</h2>
-                <p>第一张图片会作为主立绘；同一张图片可按顺序添加备用图片地址。</p>
+                <h2>相册与头像</h2>
+                <p>第一张图片会作为主立绘；状态栏头像可直接从相册选择，或单独使用一张头像图片。</p>
               </div>
             </div>
 
             <div id="manager-step-4-content" class="mobile-step-content">
+              <section class="avatar-source-panel">
+                <div class="metadata-editor-heading">
+                  <div>
+                    <h3>状态栏头像</h3>
+                    <p>通常直接复用一张相册图片；只有需要单独头像时才填写专用 URL。</p>
+                  </div>
+                </div>
+
+                <div class="avatar-source-options" role="radiogroup" aria-label="状态栏头像来源">
+                  <label class="avatar-source-option" :class="{ active: avatarSourceMode === 'gallery' }">
+                    <input
+                      :checked="avatarSourceMode === 'gallery'"
+                      type="radio"
+                      name="avatar-source-mode"
+                      value="gallery"
+                      @change="setAvatarSourceMode('gallery')"
+                    />
+                    <span>
+                      <strong>从相册选择</strong>
+                      <small>推荐；所选图片的首选地址会作为状态栏头像。</small>
+                    </span>
+                  </label>
+                  <label class="avatar-source-option" :class="{ active: avatarSourceMode === 'custom' }">
+                    <input
+                      :checked="avatarSourceMode === 'custom'"
+                      type="radio"
+                      name="avatar-source-mode"
+                      value="custom"
+                      @change="setAvatarSourceMode('custom')"
+                    />
+                    <span>
+                      <strong>使用独立头像</strong>
+                      <small>适合专门裁切的头像图标。</small>
+                    </span>
+                  </label>
+                </div>
+
+                <label v-if="avatarSourceMode === 'gallery'" class="field avatar-gallery-picker">
+                  <span class="field-label">选择相册图片</span>
+                  <select v-model.number="avatarGalleryImageId" @change="syncAvatarUrlFromGallery">
+                    <option v-for="(image, index) in profile.gallery" :key="image.id" :value="image.id">
+                      第 {{ index + 1 }} 张 · {{ image.title || `图片 ${index + 1}` }}
+                    </option>
+                  </select>
+                  <small class="field-guidance">如果这张图片的首选地址之后修改，头像会同步更新。</small>
+                </label>
+
+                <label v-else class="field avatar-custom-url">
+                  <span class="field-label">独立头像 URL <small>选填</small></span>
+                  <input
+                    v-model="profile.avatarUrl"
+                    type="url"
+                    inputmode="url"
+                    autocomplete="off"
+                    placeholder="https://…/avatar.webp"
+                  />
+                </label>
+              </section>
+
               <section class="gallery-storage-panel">
                 <label class="gallery-storage-toggle">
                   <input v-model="useExtendedGallery" type="checkbox" @change="onExtendedGalleryChange" />
@@ -503,7 +663,7 @@
                             inputmode="url"
                             autocomplete="off"
                             placeholder="https://…/portrait.webp"
-                            @input="image.previewSourceIndex = 0"
+                            @input="onGallerySourceInput(image)"
                           />
                           <span class="source-order-actions">
                             <button
@@ -651,7 +811,13 @@
                   {{ applyingSavedProfile ? '正在应用…' : '应用已保存版本到当前聊天' }}
                 </button>
                 <button class="primary-button" type="submit" :disabled="!canSave">
-                  {{ saving ? '正在写入…' : '保存并写入所选条目' }}
+                  {{
+                    saving
+                      ? '正在写入…'
+                      : legacyVisualInspection.state === 'importable'
+                        ? '升级并保存新版配置'
+                        : '保存并写入所选条目'
+                  }}
                 </button>
               </div>
             </div>
@@ -695,6 +861,7 @@
                 v-else
                 :key="viewerPreviewKey"
                 :yaml-text="viewerPreviewYaml"
+                :preview-data="viewerPreviewSource === 'sample' ? viewerPreviewSampleData : undefined"
                 :message-id="-1"
                 :debug-enabled="props.debugEnabled"
                 :visual-config-override="viewerPreviewVisualOverride"
@@ -729,6 +896,10 @@ import {
   validateGalleryExtensionReference,
   type GalleryExtensionReference,
 } from '../char_info_shared/galleryPack';
+import {
+  parseWorldbookCharacterDisplayName,
+  parseWorldbookCharacterEntryTitle,
+} from '../char_info_shared/characterEntryLibrary';
 import { copyTextWithDocumentSelection, copyTextWithFallback } from './clipboard';
 import {
   buildManagedEjsBlock,
@@ -740,11 +911,16 @@ import {
   inspectManagedBlock,
   isHttpsUrl,
   normalizeProfile,
-  upsertManagedEjsBlock,
   validateProfile,
+  type CharacterProfileMetadata,
+  type CharacterStorySection,
   type CharacterVisualProfile,
   type GalleryImage,
 } from '../char_info_shared/characterVisualProfile';
+import {
+  inspectLegacyVisualProfile,
+  upsertManagedEjsBlockWithLegacyMigration,
+} from '../char_info_shared/legacyVisualProfile';
 import {
   deleteGalleryPackProfile,
   readGalleryPackProfile,
@@ -755,6 +931,7 @@ import { buildWorldbookList } from '../char_info_shared/worldbookList';
 import ViewerApp from '../char_info_viewer/App.vue';
 import { evaluateManagedEjs } from './ejsRuntime';
 import {
+  buildCreatorViewerPreviewData,
   buildCreatorViewerVisualOverride,
   resolveCreatorViewerPreviewYaml,
   type CreatorViewerPreviewSource,
@@ -767,8 +944,24 @@ interface EditableGalleryImage {
   previewSourceIndex: number;
 }
 
-interface EditableProfile extends Omit<CharacterVisualProfile, 'gallery'> {
+interface EditableStorySection {
+  id: number;
+  title: string;
+  content: string;
+}
+
+interface EditableProfileMetadata {
+  author: string;
+  version: string;
+  authorNote: string;
+  sex: string;
+  race: string;
+  storySections: EditableStorySection[];
+}
+
+interface EditableProfile extends Omit<CharacterVisualProfile, 'gallery' | 'metadata'> {
   gallery: EditableGalleryImage[];
+  metadata: EditableProfileMetadata;
 }
 
 type StepId = 1 | 2 | 3 | 4 | 5;
@@ -779,15 +972,22 @@ const props = withDefaults(
     initialEntryUid?: number;
     debugEnabled?: boolean;
     onForceRefresh?: () => void | Promise<void>;
+    onReturnToWorldbookLibrary?: () => void;
   }>(),
-  { initialWorldbookName: '', initialEntryUid: undefined, debugEnabled: false, onForceRefresh: undefined },
+  {
+    initialWorldbookName: '',
+    initialEntryUid: undefined,
+    debugEnabled: false,
+    onForceRefresh: undefined,
+    onReturnToWorldbookLibrary: undefined,
+  },
 );
 const emit = defineEmits<{ close: [] }>();
 const steps: { id: StepId; shortLabel: string; title: string }[] = [
   { id: 1, shortLabel: '目标', title: '选择写入目标' },
   { id: 2, shortLabel: '资料', title: '填写角色资料' },
   { id: 3, shortLabel: '配色', title: '设置主题颜色' },
-  { id: 4, shortLabel: '相册', title: '整理角色相册' },
+  { id: 4, shortLabel: '相册', title: '整理相册与头像' },
   { id: 5, shortLabel: '生成', title: '生成并写入' },
 ];
 const currentCharacterName = ref('');
@@ -822,6 +1022,7 @@ const saveMessage = ref('选择世界书条目后即可写入。');
 const applyMessage = ref('');
 const galleryPackDownloadMessage = ref('');
 let nextImageId = 1;
+let nextStorySectionId = 1;
 const loadError = ref('');
 
 const viewerPreviewOpen = ref(false);
@@ -836,6 +1037,8 @@ const viewerPreviewCanvasRef = ref<HTMLElement | null>(null);
 let viewerPreviewResizeObserver: ResizeObserver | null = null;
 
 const profile = reactive<EditableProfile>(toEditableProfile(createEmptyProfile()));
+const avatarSourceMode = ref<'gallery' | 'custom'>('gallery');
+const avatarGalleryImageId = ref<number | null>(profile.gallery[0]?.id ?? null);
 
 function defaultGalleryReference(): GalleryExtensionReference {
   return {
@@ -871,6 +1074,18 @@ function applyGalleryReference(reference?: GalleryExtensionReference) {
 function toEditableProfile(value: CharacterVisualProfile): EditableProfile {
   return {
     ...value,
+    metadata: {
+      author: value.metadata?.author ?? '',
+      version: value.metadata?.version ?? '',
+      authorNote: value.metadata?.author_note ?? '',
+      sex: value.metadata?.sex ?? '',
+      race: value.metadata?.race ?? '',
+      storySections: (value.metadata?.story_sections ?? []).map(section => ({
+        id: nextStorySectionId++,
+        title: section.title,
+        content: section.content,
+      })),
+    },
     gallery: value.gallery.map(image => ({
       ...image,
       sources: [...image.sources],
@@ -880,7 +1095,28 @@ function toEditableProfile(value: CharacterVisualProfile): EditableProfile {
   };
 }
 
+function toSerializableMetadata(): CharacterProfileMetadata | undefined {
+  const storySections: CharacterStorySection[] = profile.metadata.storySections.map(({ title, content }) => ({ title, content }));
+  return normalizeProfile({
+    characterName: profile.characterName,
+    avatarUrl: profile.avatarUrl,
+    raceColor: profile.raceColor,
+    tierColor: profile.tierColor,
+    entranceQuote: profile.entranceQuote,
+    gallery: profile.gallery.map(({ title, sources }) => ({ title, sources: [...sources] })),
+    metadata: {
+      author: profile.metadata.author,
+      version: profile.metadata.version,
+      author_note: profile.metadata.authorNote,
+      sex: profile.metadata.sex,
+      race: profile.metadata.race,
+      story_sections: storySections,
+    },
+  }).metadata;
+}
+
 function toFullSerializableProfile(): CharacterVisualProfile {
+  const metadata = toSerializableMetadata();
   return {
     characterName: profile.characterName,
     avatarUrl: profile.avatarUrl,
@@ -888,6 +1124,7 @@ function toFullSerializableProfile(): CharacterVisualProfile {
     tierColor: profile.tierColor,
     entranceQuote: profile.entranceQuote,
     gallery: profile.gallery.map(({ title, sources }) => ({ title, sources: [...sources] })),
+    ...(metadata ? { metadata } : {}),
   };
 }
 
@@ -902,6 +1139,49 @@ function toSerializableProfile(): CharacterVisualProfile {
   };
 }
 
+function selectedAvatarGalleryImage(): EditableGalleryImage | null {
+  if (avatarGalleryImageId.value === null) return null;
+  return profile.gallery.find(image => image.id === avatarGalleryImageId.value) ?? null;
+}
+
+function galleryAvatarUrl(image: EditableGalleryImage | null): string {
+  return image?.sources.find(source => isHttpsUrl(source))?.trim() ?? '';
+}
+
+function syncAvatarUrlFromGallery() {
+  if (avatarSourceMode.value !== 'gallery') return;
+  profile.avatarUrl = galleryAvatarUrl(selectedAvatarGalleryImage());
+}
+
+function syncAvatarEditorFromProfile() {
+  const avatarUrl = profile.avatarUrl.trim();
+  const matchedImage = avatarUrl ? profile.gallery.find(image => galleryAvatarUrl(image) === avatarUrl) : undefined;
+
+  if (matchedImage) {
+    avatarSourceMode.value = 'gallery';
+    avatarGalleryImageId.value = matchedImage.id;
+    return;
+  }
+
+  const hasConfiguredGalleryImage = profile.gallery.some(image => !!galleryAvatarUrl(image));
+  if (!avatarUrl && !hasConfiguredGalleryImage) {
+    avatarSourceMode.value = 'gallery';
+    avatarGalleryImageId.value = profile.gallery[0]?.id ?? null;
+    return;
+  }
+
+  avatarSourceMode.value = 'custom';
+  avatarGalleryImageId.value = null;
+}
+
+function setAvatarSourceMode(mode: 'gallery' | 'custom') {
+  avatarSourceMode.value = mode;
+  if (mode === 'gallery') {
+    avatarGalleryImageId.value ??= profile.gallery[0]?.id ?? null;
+    syncAvatarUrlFromGallery();
+  }
+}
+
 function replaceProfile(value: CharacterVisualProfile) {
   const editable = toEditableProfile(value);
   profile.characterName = editable.characterName;
@@ -911,17 +1191,27 @@ function replaceProfile(value: CharacterVisualProfile) {
   customizeColors.value = !!(editable.raceColor || editable.tierColor);
   profile.entranceQuote = editable.entranceQuote;
   profile.gallery.splice(0, profile.gallery.length, ...editable.gallery);
+  profile.metadata.author = editable.metadata.author;
+  profile.metadata.version = editable.metadata.version;
+  profile.metadata.authorNote = editable.metadata.authorNote;
+  profile.metadata.sex = editable.metadata.sex;
+  profile.metadata.race = editable.metadata.race;
+  profile.metadata.storySections.splice(0, profile.metadata.storySections.length, ...editable.metadata.storySections);
+  syncAvatarEditorFromProfile();
   applyGalleryReference(value.galleryExtension);
 }
 
 const selectedEntry = computed(() => entries.value.find(entry => entry.uid === selectedEntryUid.value) ?? null);
 const canPreviewViewer = computed(() => !!selectedEntry.value && profile.characterName.trim().length > 0);
 const viewerPreviewProfile = computed(() => toFullSerializableProfile());
+const viewerPreviewSampleData = computed(() => buildCreatorViewerPreviewData(viewerPreviewProfile.value));
 const viewerPreviewYaml = computed(() =>
   resolveCreatorViewerPreviewYaml(viewerPreviewProfile.value, viewerPreviewSource.value, viewerPreviewPastedText.value),
 );
 const viewerPreviewVisualOverride = computed(() => buildCreatorViewerVisualOverride(viewerPreviewProfile.value));
-const viewerPreviewKey = computed(() => `${selectedEntryUid.value ?? 'none'}:${profile.characterName.trim()}`);
+const viewerPreviewKey = computed(
+  () => `${selectedEntryUid.value ?? 'none'}:${profile.characterName.trim()}:${viewerPreviewSource.value}`,
+);
 const viewerPreviewFrameStyle = computed(() =>
   viewerPreviewMobileLayout.value
     ? { width: '100%', height: 'auto' }
@@ -1101,11 +1391,26 @@ const entryInspection = computed(() =>
   selectedEntry.value ? inspectManagedBlock(selectedEntry.value.content) : { state: 'absent' as const },
 );
 
+const selectedEntryCharacterName = computed(() => {
+  const entry = selectedEntry.value;
+  if (!entry) return '';
+  const title = parseWorldbookCharacterEntryTitle(entry.name, { content: entry.content });
+  return title.entryKind === 'character' ? (title.displayName?.trim() ?? '') : '';
+});
+
+const legacyVisualInspection = computed(() => {
+  const entry = selectedEntry.value;
+  if (!entry || entryInspection.value.state !== 'absent') return { state: 'absent' as const };
+  return inspectLegacyVisualProfile(entry.content, selectedEntryCharacterName.value || undefined);
+});
+
 const hasLegacyVisualEjs = computed(() => !!selectedEntry.value && hasUnmanagedVisualEjs(selectedEntry.value.content));
 
 const entryStateClass = computed(() => {
   if (entryInspection.value.state === 'valid') return 'managed';
   if (entryInspection.value.state === 'malformed' || entryInspection.value.state === 'multiple') return 'blocked';
+  if (legacyVisualInspection.value.state === 'importable') return 'legacy-importable';
+  if (legacyVisualInspection.value.state === 'unsupported') return 'blocked';
   if (hasLegacyVisualEjs.value) return 'blocked';
   return 'new';
 });
@@ -1114,6 +1419,8 @@ const entryStateTitle = computed(() => {
   if (entryInspection.value.state === 'valid') return '已有视觉配置';
   if (entryInspection.value.state === 'malformed' || entryInspection.value.state === 'multiple')
     return '视觉配置需要修复';
+  if (legacyVisualInspection.value.state === 'importable') return '可升级旧版视觉配置';
+  if (legacyVisualInspection.value.state === 'unsupported') return '旧版视觉配置无法自动读取';
   if (hasLegacyVisualEjs.value) return '检测到旧版视觉配置';
   return '可以添加视觉配置';
 });
@@ -1123,7 +1430,9 @@ const entryStateDescription = computed(() => {
   if (entryInspection.value.state === 'malformed' || entryInspection.value.state === 'multiple') {
     return entryInspection.value.reason;
   }
-  if (hasLegacyVisualEjs.value) return '暂时无法自动保存；请先备份并移除旧版视觉配置。';
+  if (legacyVisualInspection.value.state === 'importable') return '已安全读取并预填；当前世界书尚未修改。';
+  if (legacyVisualInspection.value.state === 'unsupported') return legacyVisualInspection.value.reason;
+  if (hasLegacyVisualEjs.value) return '旧版视觉代码无法安全自动读取，原内容不会被修改。';
   return '保存后不会改动角色原有设定。';
 });
 
@@ -1162,7 +1471,7 @@ const writeBlocked = computed(
   () =>
     entryInspection.value.state === 'malformed' ||
     entryInspection.value.state === 'multiple' ||
-    hasLegacyVisualEjs.value,
+    (hasLegacyVisualEjs.value && legacyVisualInspection.value.state !== 'importable'),
 );
 
 const canSave = computed(
@@ -1412,13 +1721,22 @@ async function loadSelectedEntryProfile() {
     return;
   }
 
+  const legacyInspection = inspection.state === 'absent' ? legacyVisualInspection.value : { state: 'absent' as const };
+  if (legacyInspection.state === 'importable') {
+    replaceProfile(legacyInspection.profile);
+    saveMessage.value = `已从旧版 ${legacyInspection.sourceRoot} 安全预填；当前世界书尚未修改。`;
+    return;
+  }
+
   replaceProfile(createEmptyProfile(parseWorldbookCharacterDisplayName(entry.name)));
   saveMessage.value =
     inspection.state === 'malformed' || inspection.state === 'multiple'
       ? inspection.reason
-      : hasUnmanagedVisualEjs(entry.content)
-        ? '检测到旧版视觉配置，暂时无法自动保存。'
-        : '该角色尚未配置视觉资料；已从条目名称预填姓名。';
+      : legacyInspection.state === 'unsupported'
+        ? legacyInspection.reason
+        : hasUnmanagedVisualEjs(entry.content)
+          ? '检测到旧版视觉代码，但无法安全自动读取；原内容不会被修改。'
+          : '该角色尚未配置视觉资料；已从条目名称预填姓名。';
 }
 
 function isNarrowViewport(): boolean {
@@ -1522,6 +1840,25 @@ function goToStep(step: StepId) {
   });
 }
 
+function addStorySection() {
+  profile.metadata.storySections.push({
+    id: nextStorySectionId++,
+    title: '',
+    content: '',
+  });
+}
+
+function removeStorySection(index: number) {
+  profile.metadata.storySections.splice(index, 1);
+}
+
+function moveStorySection(index: number, offset: -1 | 1) {
+  const targetIndex = index + offset;
+  if (targetIndex < 0 || targetIndex >= profile.metadata.storySections.length) return;
+  const [section] = profile.metadata.storySections.splice(index, 1);
+  profile.metadata.storySections.splice(targetIndex, 0, section);
+}
+
 function addImage() {
   const number = profile.gallery.length + 1;
   profile.gallery.push({
@@ -1536,10 +1873,16 @@ function addImageSource(image: EditableGalleryImage) {
   image.sources.push('');
 }
 
+function onGallerySourceInput(image: EditableGalleryImage) {
+  image.previewSourceIndex = 0;
+  if (avatarSourceMode.value === 'gallery' && avatarGalleryImageId.value === image.id) syncAvatarUrlFromGallery();
+}
+
 function removeImageSource(image: EditableGalleryImage, sourceIndex: number) {
   if (image.sources.length <= 1) return;
   image.sources.splice(sourceIndex, 1);
   image.previewSourceIndex = 0;
+  if (avatarSourceMode.value === 'gallery' && avatarGalleryImageId.value === image.id) syncAvatarUrlFromGallery();
 }
 
 function moveImageSource(image: EditableGalleryImage, sourceIndex: number, offset: -1 | 1) {
@@ -1548,11 +1891,16 @@ function moveImageSource(image: EditableGalleryImage, sourceIndex: number, offse
   const [source] = image.sources.splice(sourceIndex, 1);
   image.sources.splice(targetIndex, 0, source);
   image.previewSourceIndex = 0;
+  if (avatarSourceMode.value === 'gallery' && avatarGalleryImageId.value === image.id) syncAvatarUrlFromGallery();
 }
 
 function removeImage(index: number) {
   if (profile.gallery.length <= 1) return;
-  profile.gallery.splice(index, 1);
+  const [removed] = profile.gallery.splice(index, 1);
+  if (avatarSourceMode.value === 'gallery' && avatarGalleryImageId.value === removed.id) {
+    avatarGalleryImageId.value = profile.gallery[0]?.id ?? null;
+    syncAvatarUrlFromGallery();
+  }
 }
 
 function moveImage(index: number, offset: -1 | 1) {
@@ -1608,10 +1956,15 @@ async function saveToEntry() {
   const entry = selectedEntry.value;
   if (!canSave.value || !entry) return;
 
+  const legacyMigrationSource =
+    legacyVisualInspection.value.state === 'importable' ? legacyVisualInspection.value.sourceRoot : null;
+  const migrationNotice = legacyMigrationSource
+    ? `\n\n旧版 ${legacyMigrationSource} 写入将被精确移除，并升级为 char_info.profiles v2。`
+    : '';
   const confirmed = window.confirm(
     useExtendedGallery.value
-      ? `确定保存角色视觉资料和扩展图库？\n\n角色世界书：${worldbookName}\n角色条目：${entry.name || `#${entry.uid}`}\n图库世界书：${galleryPackWorldbookName.value}`
-      : `确定将角色视觉资料写入以下条目？\n\n世界书：${worldbookName}\n条目：${entry.name || `#${entry.uid}`}`,
+      ? `确定保存角色视觉资料和扩展图库？\n\n角色世界书：${worldbookName}\n角色条目：${entry.name || `#${entry.uid}`}\n图库世界书：${galleryPackWorldbookName.value}${migrationNotice}`
+      : `确定将角色视觉资料写入以下条目？\n\n世界书：${worldbookName}\n条目：${entry.name || `#${entry.uid}`}${migrationNotice}`,
   );
   if (!confirmed) return;
 
@@ -1625,7 +1978,7 @@ async function saveToEntry() {
     const latestEntries = await getWorldbook(worldbookName);
     const latestEntry = latestEntries.find(item => item.uid === entry.uid);
     if (!latestEntry) throw new Error(`找不到世界书条目 #${entry.uid}。`);
-    upsertManagedEjsBlock(latestEntry.content, normalizedProfile);
+    upsertManagedEjsBlockWithLegacyMigration(latestEntry.content, normalizedProfile);
 
     const previousGallery = galleryReference ? await readGalleryPackProfile(galleryReference) : null;
     let galleryWriteAttempted = false;
@@ -1646,7 +1999,7 @@ async function saveToEntry() {
           if (!target) throw new Error(`找不到世界书条目 #${entry.uid}。`);
           return entries.map(item =>
             item.uid === entry.uid
-              ? { ...item, content: upsertManagedEjsBlock(item.content, normalizedProfile) }
+              ? { ...item, content: upsertManagedEjsBlockWithLegacyMigration(item.content, normalizedProfile) }
               : item,
           );
         },
@@ -1678,9 +2031,14 @@ async function saveToEntry() {
     }
 
     saveState.value = 'success';
+    const migrationSummary = legacyMigrationSource
+      ? `旧版 ${legacyMigrationSource} 已升级为 char_info.profiles v2；`
+      : '';
     saveMessage.value = galleryReference
-      ? `保存成功：角色条目保留 ${embeddedGalleryCount.value} 张基础图片，${extendedGalleryImages.value.length} 张图片已写入独立图库世界书。`
-      : '保存成功：角色视觉资料已写入，原条目其余内容保持不变。';
+      ? `保存成功：${migrationSummary}角色条目保留 ${embeddedGalleryCount.value} 张基础图片，${extendedGalleryImages.value.length} 张图片已写入独立图库世界书。`
+      : legacyMigrationSource
+        ? `升级成功：${migrationSummary}原条目其余内容保持不变。`
+        : '保存成功：角色视觉资料已写入，原条目其余内容保持不变。';
     console.info('[CharInfo Creator Manager] Managed EJS saved', {
       worldbook: worldbookName,
       entryUid: entry.uid,
@@ -1894,8 +2252,13 @@ button {
   gap: 10px;
 }
 
-.viewer-preview-trigger {
+.viewer-preview-trigger,
+.return-library-button {
   min-height: 40px;
+}
+
+.return-library-button {
+  white-space: nowrap;
 }
 
 .creator-viewer-preview {
@@ -2334,6 +2697,166 @@ h2 {
   line-height: 1.45;
 }
 
+.metadata-editor-panel,
+.story-editor-panel {
+  margin-top: 22px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-raised) 74%, transparent);
+}
+
+.metadata-editor-heading,
+.story-editor-heading,
+.story-section-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.metadata-editor-heading h3,
+.story-editor-heading h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.metadata-editor-heading p,
+.story-editor-heading p,
+.story-editor-empty {
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.metadata-field-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.author-metadata-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.avatar-source-panel {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-raised) 74%, transparent);
+}
+
+.avatar-source-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.avatar-source-option {
+  display: flex;
+  min-height: 64px;
+  padding: 12px 13px;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.avatar-source-option.active {
+  border-color: var(--primary-strong);
+  background: var(--primary-soft);
+}
+
+.avatar-source-option input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  padding: 0;
+  accent-color: var(--primary-strong);
+}
+
+.avatar-source-option span {
+  display: grid;
+  gap: 3px;
+}
+
+.avatar-source-option strong {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.avatar-source-option small {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.avatar-gallery-picker,
+.avatar-custom-url {
+  max-width: 620px;
+}
+
+.story-section-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.story-section-card {
+  display: grid;
+  gap: 13px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-raised);
+}
+
+.story-section-card-header strong {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.story-section-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.story-section-actions button {
+  width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.story-section-actions button:hover:not(:disabled) {
+  border-color: var(--primary-strong);
+  color: var(--text);
+}
+
+.story-section-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.story-section-actions button.danger {
+  color: var(--danger);
+}
+
+.story-section-card textarea {
+  min-height: 132px;
+}
+
 input,
 select,
 textarea {
@@ -2488,6 +3011,36 @@ select:disabled {
 
 .status-dot.blocked {
   background: var(--danger);
+}
+
+.status-dot.legacy-importable {
+  background: var(--primary);
+  box-shadow: 0 0 10px rgb(119 214 199 / 45%);
+}
+
+.migration-banner {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgb(119 214 199 / 24%);
+  border-radius: 10px;
+  background: rgb(119 214 199 / 7%);
+}
+
+.migration-banner strong {
+  color: var(--primary);
+  font-size: 12px;
+}
+
+.migration-banner p,
+.migration-banner ul {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.migration-banner ul {
+  padding-left: 18px;
 }
 
 .safety-note {
@@ -3353,10 +3906,39 @@ pre {
     font-size: 19px;
   }
   .field-grid,
+  .metadata-field-grid,
   .color-grid,
   .gallery-storage-fields,
   .gallery-fields {
     grid-template-columns: 1fr;
+  }
+
+  .metadata-editor-panel,
+  .story-editor-panel,
+  .avatar-source-panel {
+    padding: 14px;
+  }
+
+  .avatar-source-options {
+    grid-template-columns: 1fr;
+  }
+
+  .story-editor-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .story-add-button {
+    width: 100%;
+  }
+
+  .story-section-card {
+    padding: 14px;
+  }
+
+  .story-section-actions button {
+    width: 40px;
+    min-height: 40px;
   }
 
   .gallery-card {

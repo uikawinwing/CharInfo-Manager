@@ -1,5 +1,9 @@
 <template>
-  <nav class="illustrated-tabs" :class="{ 'is-side-rail': sideRail }" aria-label="角色资料分页">
+  <nav
+    class="illustrated-tabs"
+    :class="{ 'is-side-rail': sideRail, 'force-mobile-layout': forceMobileLayout }"
+    aria-label="角色资料分页"
+  >
     <div class="illustrated-tab-navigation-group">
       <button
         v-if="homeTab"
@@ -55,6 +59,7 @@ const props = defineProps<{
   importing: boolean;
   importButtonText: string;
   showImportAction: boolean;
+  forceMobileLayout?: boolean;
   sideRail?: boolean;
 }>();
 
@@ -509,5 +514,96 @@ function tabIcon(key: IllustratedTabKey): string {
     border-right: 0;
     background: transparent;
   }
+}
+
+.illustrated-tabs.force-mobile-layout.is-side-rail {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) 44px;
+  align-self: stretch;
+  width: 100%;
+  max-width: none;
+  min-height: 58px;
+  margin: 0;
+  overflow: visible;
+  border-top: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.2);
+  border-left: 0;
+  padding: 0;
+  background: color-mix(in srgb, var(--illustrated-bg) 94%, transparent);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.illustrated-tabs.force-mobile-layout.is-side-rail .illustrated-tab-navigation-group,
+.illustrated-tabs.force-mobile-layout.is-side-rail .illustrated-tab-scroll {
+  display: contents;
+}
+
+.illustrated-tabs.force-mobile-layout.is-side-rail .illustrated-tab-button,
+.illustrated-tabs.force-mobile-layout.is-side-rail .illustrated-tab-scroll .illustrated-tab-button,
+.illustrated-tabs.force-mobile-layout.is-side-rail .illustrated-home-button {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  min-height: 58px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 2px;
+  font-size: 10px;
+}
+
+.illustrated-tabs.force-mobile-layout.is-side-rail .illustrated-tab-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.illustrated-tabs.force-mobile-layout.is-side-rail .illustrated-tab-button.active::after {
+  top: 0;
+  right: auto;
+  bottom: auto;
+  left: 50%;
+  width: 28px;
+  height: 2px;
+  transform: translateX(-50%);
+}
+
+.illustrated-tabs.force-mobile-layout.is-side-rail .illustrated-nav-action {
+  position: static;
+  z-index: 2;
+  display: flex;
+  width: auto;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+  border-left: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.16);
+}
+
+.illustrated-tabs.force-mobile-layout.is-side-rail .illustrated-nav-save-button {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 58px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: rgba(var(--illustrated-race-accent-rgb), 0.06);
+  box-shadow: none;
+  color: var(--illustrated-race-accent);
+}
+
+.illustrated-tabs.force-mobile-layout.is-side-rail .illustrated-nav-save-button > span:last-child {
+  display: none;
+}
+
+.illustrated-tabs.force-mobile-layout.is-side-rail .illustrated-save-icon {
+  display: block;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.illustrated-tabs.force-mobile-layout.is-side-rail .illustrated-nav-save-button::after {
+  display: none;
 }
 </style>

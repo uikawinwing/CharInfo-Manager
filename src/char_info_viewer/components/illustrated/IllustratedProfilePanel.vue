@@ -8,6 +8,14 @@
       @toggle-attribute-formula="$emit('toggleAttributeFormula', $event)"
     />
 
+    <article v-if="showCreatorMetadata" class="illustrated-creator-metadata">
+      <div class="illustrated-creator-meta-line">
+        <span v-if="vm.storyAuthorText"><small>作者</small>{{ vm.storyAuthorText }}</span>
+        <span v-if="vm.profileVersionText"><small>版本</small>{{ vm.profileVersionText }}</span>
+      </div>
+      <p v-if="vm.authorNoteText">{{ vm.authorNoteText }}</p>
+    </article>
+
     <article v-for="block in blocks" :key="block.title" class="illustrated-text-block">
       <h3>{{ block.title }}</h3>
       <p>{{ block.text }}</p>
@@ -28,9 +36,11 @@ const props = withDefaults(
     attributes: AttributeView[];
     resourceBoxes: ResourceBox[];
     showStats?: boolean;
+    backstoryText?: string;
   }>(),
   {
     showStats: true,
+    backstoryText: '',
   },
 );
 
@@ -38,12 +48,17 @@ defineEmits<{
   toggleAttributeFormula: [key: string];
 }>();
 
+const showCreatorMetadata = computed(
+  () => !props.showStats && !!(props.vm.storyAuthorText || props.vm.profileVersionText || props.vm.authorNoteText),
+);
+
 const blocks = computed(() =>
   [
     { title: '性格', text: props.vm.personalityText },
     { title: '外貌特质', text: props.vm.appearanceText },
     { title: '喜爱', text: props.vm.likesText },
     { title: '衣物装饰', text: props.vm.attireText },
+    { title: '背景故事', text: props.backstoryText },
   ].filter(block => block.text),
 );
 </script>
@@ -57,6 +72,44 @@ const blocks = computed(() =>
 
 .illustrated-mobile-profile-stats {
   display: none;
+}
+
+.illustrated-creator-metadata {
+  display: grid;
+  gap: 12px;
+  padding: 18px 22px;
+  border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.16);
+  border-radius: 6px;
+  background: rgba(5, 9, 14, 0.3);
+}
+
+.illustrated-creator-meta-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+}
+
+.illustrated-creator-meta-line span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  color: #e2e8f0;
+  font-size: 13px;
+}
+
+.illustrated-creator-meta-line small {
+  color: var(--illustrated-race-accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.illustrated-creator-metadata p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 13px;
+  line-height: 1.75;
+  white-space: pre-line;
 }
 
 .illustrated-text-block {
@@ -154,6 +207,20 @@ const blocks = computed(() =>
 
   .illustrated-info-grid.is-compact-profile {
     gap: 0;
+  }
+
+  .illustrated-info-grid.is-compact-profile .illustrated-creator-metadata {
+    gap: 8px;
+    padding: 11px 0 12px;
+    border: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .illustrated-info-grid.is-compact-profile .illustrated-creator-meta-line span,
+  .illustrated-info-grid.is-compact-profile .illustrated-creator-metadata p {
+    font-size: 11px;
   }
 
   .illustrated-info-grid.is-compact-profile .illustrated-text-block {

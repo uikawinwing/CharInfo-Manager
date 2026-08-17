@@ -6,6 +6,7 @@
       'viewer-root-embedded': props.embedded,
       'illustrated-viewer-root': shouldShowIllustratedLayout,
       'special-npc-viewer-root': shouldShowSpecialNpcLayout,
+      'force-mobile-layout': props.forceMobileLayout,
       'viewer-effects-disabled': !props.effectsEnabled,
     }"
   >
@@ -88,6 +89,7 @@
         :show-import-menu="showImportMenu"
         :read-only="props.readOnly"
         :debug-enabled="props.debugEnabled"
+        :force-mobile-layout="props.forceMobileLayout"
         :special-npc="shouldShowSpecialNpcLayout"
         @toggle-attribute-formula="toggleAttributeFormula"
         @toggle-import-menu="toggleImportMenu"
@@ -512,6 +514,7 @@ import { createParticleEngine, type ParticleEngine } from './services/particleEn
 import {
   applyTheme,
   cloneCharacterDataWithVisualOverrides,
+  getLegacyVisualProfileSource,
   hasDeprecatedVisualSyntax,
   resolveCharacterVisualConfigWithExtensions,
   resolveCharacterVisualPreview,
@@ -536,10 +539,12 @@ const props = withDefaults(
     embedded?: boolean;
     readOnly?: boolean;
     effectsEnabled?: boolean;
+    forceMobileLayout?: boolean;
     debugEnabled?: boolean;
     imageSourcePriority?: string[];
     entranceQuoteOverride?: string;
     previewMode?: boolean;
+    previewData?: CharacterData;
     visualConfigOverride?: { characterName: string; config: unknown };
     saveFeedback?: (feedback: ViewerSaveFeedback) => void;
     saveState?: ViewerSaveState;
@@ -548,10 +553,12 @@ const props = withDefaults(
     embedded: false,
     readOnly: false,
     effectsEnabled: true,
+    forceMobileLayout: false,
     debugEnabled: false,
     imageSourcePriority: () => [],
     entranceQuoteOverride: undefined,
     previewMode: false,
+    previewData: undefined,
     visualConfigOverride: undefined,
     saveFeedback: undefined,
     saveState: undefined,
@@ -746,26 +753,16 @@ watch(
 );
 
 watch(
-  () => props.visualConfigOverride,
-  async () => {
-    if (!props.previewMode || !previewBaseData) return;
-    await applyParsedCharacterData(previewBaseData, parseMode.value, parseWarnings.value);
-    await nextTick();
-    setupParticleEngine();
-  },
-  { deep: true },
-);
-
-watch(
-  () => props.yamlText,
+  [() => props.yamlText, () => props.previewData, () => props.visualConfigOverride],
   () => {
     if (!props.previewMode) return;
     if (previewYamlRefreshTimer) clearTimeout(previewYamlRefreshTimer);
     previewYamlRefreshTimer = setTimeout(() => {
       previewYamlRefreshTimer = null;
       void initFromYaml();
-    }, 80);
+    }, 50);
   },
+  { deep: true },
 );
 
 async function initFromYaml() {
@@ -780,6 +777,13 @@ async function initFromYaml() {
   theme.value = null;
   loadingDxCharacter.value = false;
   previewBaseData = null;
+
+  if (props.previewMode && props.previewData) {
+    previewBaseData = stripUntrustedDxReference(props.previewData);
+    await applyParsedCharacterData(previewBaseData, 'strict', []);
+    nextTick(() => setupParticleEngine());
+    return;
+  }
 
   if (!yamlText) {
     parseError.value = { message: '未检测到 YAML 数据。' };
@@ -943,9 +947,15 @@ async function applyParsedCharacterData(
         props.visualConfigOverride?.config,
       )
     : await resolveCharacterVisualConfigWithExtensions(data, getVariables({ type: 'chat' }));
-  deprecatedVisualSyntaxWarning.value = hasDeprecatedVisualSyntax(resolvedData)
-    ? '检测到旧版角色图片语法。当前版本已不再支持此写法，因此本角色将以普通无图版显示。若你是该角色的作者，请在角色视觉编辑器中重新保存，以升级至 v2。'
-    : '';
+  const legacyVisualProfileSource = getLegacyVisualProfileSource(resolvedData);
+  const hasLegacyInlineImageSyntax = hasDeprecatedVisualSyntax(resolvedData);
+  deprecatedVisualSyntaxWarning.value = legacyVisualProfileSource
+    ? `检测到旧版 CharInfo 视觉变量结构（${legacyVisualProfileSource}）。当前仍会兼容显示，但该兼容路径仅用于迁移，后续版本不再保证维护。请尽快在角色视觉编辑器中重新保存，升级至 char_info.profiles v2。${
+        hasLegacyInlineImageSyntax ? ' 同时检测到正文旧图片字段；该字段已忽略，当前视觉仍由同名 profile 提供。' : ''
+      }`
+    : hasLegacyInlineImageSyntax
+      ? '检测到正文旧版角色图片字段。该字段已忽略，也不再单独授予 Special NPC；若存在同名 CharInfo visual profile，Viewer 会继续使用该 profile。请尽快在角色视觉编辑器中重新保存并清理旧字段。'
+      : '';
   const displayData =
     props.entranceQuoteOverride === undefined
       ? resolvedData

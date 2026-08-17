@@ -157,3 +157,14 @@ test('Creator 应用已保存资料时复用同一 Force Refresh callback', asyn
   assert.match(appSource, /await props\.onForceRefresh\?\.\(\)/);
   assert.match(appSource, /应用已保存版本到当前聊天/);
 });
+
+test('从世界书角色库进入 Creator 时提供直接返回角色库的回调', async () => {
+  const runtimeSource = await readFile(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
+  const overlaySource = await readFile(new URL('../../src/char_info_creator_manager/overlay.ts', import.meta.url), 'utf8');
+  const appSource = await readFile(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
+
+  assert.match(runtimeSource, /onReturnToWorldbookLibrary: \(\) => \{[\s\S]*?closeCreatorEditor\(\);[\s\S]*?openWorldbookLibrary\(\);/u);
+  assert.match(overlaySource, /onReturnToWorldbookLibrary: options\.onReturnToWorldbookLibrary/u);
+  assert.match(appSource, /v-if="props\.onReturnToWorldbookLibrary"/u);
+  assert.match(appSource, /← 返回角色库/u);
+});

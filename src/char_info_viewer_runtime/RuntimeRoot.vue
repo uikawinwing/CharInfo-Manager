@@ -11,6 +11,7 @@
           :yaml-text="card.yamlText"
           :message-id="message.messageId"
           :effects-enabled="state.settings.effectsEnabled"
+          :force-mobile-layout="state.settings.forceMobileLayout"
           :debug-enabled="state.settings.debugEnabled"
           :image-source-priority="activeImageSourcePriority"
           :save-state="state.saveStateByCard[card.key]"
@@ -280,11 +281,12 @@
 
       <main class="char-info-library-viewer">
         <ViewerApp
-          v-if="selectedCharacter && selectedCharacterYaml"
+          v-if="!state.library.viewerLoading && selectedCharacter && selectedCharacterYaml"
           :key="`${state.library.messageId}:${state.library.revision}:${selectedCharacter.name}`"
           :yaml-text="selectedCharacterYaml"
           :message-id="state.library.messageId"
           :effects-enabled="state.settings.effectsEnabled"
+          :force-mobile-layout="state.settings.forceMobileLayout"
           :debug-enabled="state.settings.debugEnabled"
           :image-source-priority="activeImageSourcePriority"
           :entrance-quote-override="selectedCharacter.innerThought"
@@ -293,7 +295,15 @@
         />
         <div v-else class="char-info-library-placeholder">
           <span aria-hidden="true">◇</span>
-          <p>{{ state.library.loading ? '正在读取角色资料…' : '暂时无法找到该角色的资料。' }}</p>
+          <p>
+            {{
+              state.library.viewerLoading
+                ? '正在准备最新角色资料…'
+                : state.library.loading
+                  ? '正在读取角色资料…'
+                  : '暂时无法找到该角色的资料。'
+            }}
+          </p>
         </div>
       </main>
 
@@ -2462,31 +2472,38 @@ onBeforeUnmount(() => {
   display: grid;
 }
 
-.char-info-library-overlay.force-mobile-layout .char-info-library-viewer {
-  flex: 1 1 auto;
-  min-height: 0;
-  padding: 6px;
-  overflow: hidden;
-}
+@media (min-width: 721px) {
+  .char-info-library-overlay.force-mobile-layout .char-info-library-viewer {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 12px 6px 20px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 
-.char-info-library-overlay.force-mobile-layout .char-info-library-viewer > .viewer-root {
-  height: 100%;
-  min-height: 0;
-}
+  .char-info-library-overlay.force-mobile-layout .char-info-library-viewer > .viewer-root {
+    width: 100%;
+    height: auto;
+    min-height: 100%;
+  }
 
-.char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-wrapper {
-  height: 100%;
-  max-width: none;
-}
+  .char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-wrapper.force-mobile-layout {
+    width: min(100%, 640px);
+    height: auto;
+    max-width: 640px;
+    margin: 0 auto;
+  }
 
-.char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-shell {
-  height: 100% !important;
-  min-height: 0;
-}
+  .char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-shell {
+    height: auto !important;
+    min-height: 0;
+  }
 
-.char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-shell.is-special-npc {
-  width: 100%;
-  aspect-ratio: auto;
+  .char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-shell.is-special-npc {
+    width: 100%;
+    aspect-ratio: 2 / 3;
+  }
 }
 
 .char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-portrait-image,

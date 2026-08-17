@@ -46,10 +46,18 @@ test('entrance quote keeps one lead ornament, subtle quotation marks, and a quie
   assert.doesNotMatch(overviewSource, /content:\s*'[「」]'/);
 });
 
-test('illustrated character attributes wrap to three flags over two', () => {
+test('Special NPC attributes always keep a three-over-two flag composition', () => {
+  assert.match(
+    sheetSource,
+    /IllustratedOverviewPanel[\s\S]*?'is-special-npc-overview': specialNpc/,
+  );
   assert.match(
     overviewSource,
     /\.illustrated-attributes\s*\{[^}]*max-width:\s*calc\(\(var\(--flag-width\) \* 3\) \+ \(var\(--flag-gap\) \* 2\)\);/,
+  );
+  assert.match(
+    overviewSource,
+    /\.illustrated-overview\.is-special-npc-overview \.illustrated-attributes\s*\{[^}]*--flag-width:\s*min\([\s\S]*?calc\(\(100% - var\(--flag-gap\) - var\(--flag-gap\)\) \/ 3\)/,
   );
 });
 
@@ -87,10 +95,22 @@ test('illustrated and DX desktop headers share one readable title scale', () => 
   assert.doesNotMatch(irisTitleRule, /font-size:/);
 });
 
-test('overview is screenshot-oriented while detail tabs keep their internal scrolling', () => {
+test('overview stays screenshot-oriented, with a Special NPC scroll fallback only when content overflows', () => {
   assert.match(
     sheetSource,
     /\.illustrated-panels\s*\{[^}]*overflow-y:\s*auto;[\s\S]*?\.illustrated-shell\.is-overview-tab \.illustrated-panels\s*\{[^}]*overflow-y:\s*hidden;[^}]*padding-bottom:\s*0;/,
+  );
+  assert.match(
+    sheetSource,
+    /\.illustrated-shell\.is-special-npc\.is-overview-tab \.illustrated-panels\s*\{[^}]*overflow-y:\s*auto;/,
+  );
+  assert.match(
+    sheetSource,
+    /\.illustrated-data-pane\s*\{[^}]*box-sizing:\s*border-box;[^}]*min-height:\s*0;[^}]*max-height:\s*100%;/,
+  );
+  assert.match(
+    overviewSource,
+    /\.illustrated-overview\.is-special-npc-overview\s*\{[^}]*height:\s*auto;[^}]*min-height:\s*100%;/,
   );
   assert.match(sheetSource, /isOverviewTab \? overviewDensityClass : null/);
 });
@@ -116,7 +136,10 @@ test('overview density classes stay on their target components instead of leakin
   assert.doesNotMatch(headerSource, /:global\(\.overview-density-/);
   assert.doesNotMatch(overviewSource, /:global\(\.overview-density-/);
   assert.match(sheetSource, /IllustratedHeader[\s\S]*?:class="\['illustrated-desktop-header', overviewDensityClass\]"/);
-  assert.match(sheetSource, /IllustratedOverviewPanel[\s\S]*?:class="overviewDensityClass"/);
+  assert.match(
+    sheetSource,
+    /IllustratedOverviewPanel[\s\S]*?:class="\[overviewDensityClass, \{ 'is-special-npc-overview': specialNpc \}\]"/,
+  );
 });
 
 test('long overview copy uses whole-block limits instead of shrinking a single wrapped line', () => {
@@ -135,6 +158,16 @@ test('long overview copy uses whole-block limits instead of shrinking a single w
   );
   assert.doesNotMatch(headerSource, /offsetHeight > lineHeight/);
   assert.match(headerSource, /\.illustrated-subtitle\s*\{[^}]*max-height:\s*3em;[^}]*overflow:\s*hidden;/);
+  assert.match(headerSource, /class="illustrated-meta-item"[\s\S]*?class="illustrated-meta-sep"[\s\S]*?class="illustrated-meta-text"/);
+  assert.match(headerSource, /\.illustrated-meta-item\s*\{[^}]*display:\s*inline-flex;[^}]*gap:\s*8px;/);
+  assert.match(
+    sheetSource,
+    /\.illustrated-shell\.is-special-npc\.is-overview-tab :deep\(\.illustrated-desktop-header \.illustrated-subtitle\)\s*\{[^}]*flex-wrap:\s*nowrap;[^}]*font-size:\s*clamp\(11px,\s*2\.8cqw,\s*13px\);[^}]*white-space:\s*nowrap;/,
+  );
+  assert.match(
+    sheetSource,
+    /\.illustrated-shell\.is-special-npc\.is-overview-tab :deep\(\.illustrated-desktop-header\)\s*\{[^}]*width:\s*calc\(100% \+ 40px\);[^}]*margin-inline:\s*-20px;/,
+  );
   assert.match(overviewSource, /\.illustrated-entrance-quote-text\s*\{[^}]*-webkit-line-clamp:\s*5;/);
 });
 
