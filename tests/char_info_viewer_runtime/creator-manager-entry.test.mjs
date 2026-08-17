@@ -46,7 +46,7 @@ test('Viewer 与 Creator 共用一个脚本，但 Viewer 只依赖窄 Creator co
 
 test('当前聊天与世界书角色库由 Viewer 独立切换，不依赖 Creator 状态', () => {
   const openCharacter =
-    runtimeSource.match(/const openLibraryCharacter = \(name: string\) => \{([\s\S]*?)\n\s{2}\};/u)?.[1] ?? '';
+    runtimeSource.match(/const openLibraryCharacter = async \(name: string\) => \{([\s\S]*?)\n\s{2}\};/u)?.[1] ?? '';
   const openWorldbook = runtimeSource.match(/const openWorldbookLibrary = \(\) => \{([\s\S]*?)\n\s{2}\};/u)?.[1] ?? '';
 
   assert.match(openCharacter, /library\.listOpen = true;/u);
@@ -138,6 +138,11 @@ test('当前聊天资料库由悬浮入口打开角色列表，并完整显示�
   );
   assert.match(runtimeRootSource, /state\.library\.unreadCharacterNames\.length/u);
   assert.match(runtimeRootSource, /class="char-info-library-list-dialog"/u);
+  assert.match(
+    runtimeRootSource,
+    /v-if="!state\.library\.viewerLoading && selectedCharacter && selectedCharacterYaml"/u,
+  );
+  assert.match(runtimeRootSource, /state\.library\.viewerLoading\s*\?\s*'正在准备最新角色资料…'/u);
   assert.match(
     runtimeRootSource,
     /\.char-info-library-list-backdrop \{[\s\S]*?position: absolute;[\s\S]*?inset: 0;[\s\S]*?pointer-events: none;/u,

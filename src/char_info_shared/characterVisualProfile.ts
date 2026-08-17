@@ -383,6 +383,7 @@ export function hasUnmanagedVisualEjs(content: string): boolean {
   return (
     content.includes('char_info.profiles') ||
     content.includes('char_info_visuals') ||
+    content.includes('char_info.visual') ||
     content.includes('status.externalGalleries.partners')
   );
 }

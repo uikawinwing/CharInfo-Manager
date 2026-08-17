@@ -5,6 +5,8 @@ import { createScriptIdDiv, teleportStyle } from '@util/script';
 import { closeCreatorManager, openCreatorManager } from '../char_info_creator_manager/controller';
 import { projectCharInfoMessage } from '../char_info_viewer/runtime/charInfoMessage';
 import { selectRecentMessageIds } from '../char_info_viewer/runtime/recentMessages';
+import { preloadPortraitImages } from '../char_info_viewer/services/imagePreload';
+import { resolveCharacterVisualPreloadUrls } from '../char_info_viewer/services/themeService';
 import RuntimeRoot from './RuntimeRoot.vue';
 import { collectChangedAffinityNames, collectCurrentCharacterSnapshots } from './currentCharacterLibrary';
 import { mountCharInfoCardHosts, type MountedNativeCardHost } from './nativeMessageMount';
@@ -89,6 +91,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   let rescanTimer: ReturnType<typeof setTimeout> | null = null;
   let visualRefreshTimer: ReturnType<typeof setTimeout> | null = null;
   let libraryRefreshPending = false;
+  let libraryRefreshPromise: Promise<void> | null = null;
   const pendingAffinityNames = new Set<string>();
   let lifecycleRevision = 0;
   let started = false;
@@ -113,6 +116,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     if (!state.library) return;
     state.library.listOpen = false;
     state.library.viewerOpen = false;
+    state.library.viewerLoading = false;
     state.library.worldbookOpen = false;
   };
 
@@ -124,6 +128,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   const closeLibraryViewer = () => {
     if (!state.library) return;
     state.library.viewerOpen = false;
+    state.library.viewerLoading = false;
   };
 
   const closeCreatorEditor = () => {
@@ -140,6 +145,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     library.characters = [];
     library.listOpen = false;
     library.viewerOpen = false;
+    library.viewerLoading = false;
     library.worldbookOpen = false;
     library.unreadCharacterNames = [];
     library.loading = false;
@@ -150,8 +156,15 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     const library = state.library;
     if (!library) return;
 
-    const characters = collectCurrentCharacterSnapshots(mvuData, getVariables({ type: 'chat' }));
+    const chatVariables = getVariables({ type: 'chat' });
+    const characters = collectCurrentCharacterSnapshots(mvuData, chatVariables);
     const characterNames = new Set(characters.map(character => character.name));
+    const sourcePriorities = state.settings.imageSourcePriorityEnabled ? state.settings.imageSourcePriority : [];
+    const preloadUrls = characters.slice(0, 8).flatMap(character => [
+      character.avatarUrl,
+      ...resolveCharacterVisualPreloadUrls(character.name, chatVariables, 1, sourcePriorities),
+    ]);
+    void preloadPortraitImages(preloadUrls);
     const nextUnread = new Set(library.unreadCharacterNames.filter(name => characterNames.has(name)));
     changedAffinityNames.forEach(name => {
       if (characterNames.has(name)) nextUnread.add(name);
@@ -164,39 +177,38 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     library.error = '';
   };
 
-  const refreshLibrary = async (changedAffinityNames: readonly string[] = []) => {
-    const library = state.library;
-    if (!library) return;
-    changedAffinityNames.forEach(name => pendingAffinityNames.add(name));
-    if (library.loading) {
-      libraryRefreshPending = true;
-      return;
-    }
-
-    libraryRefreshPending = false;
-    const unreadNamesForRefresh = Array.from(pendingAffinityNames);
-    pendingAffinityNames.clear();
+  const runLibraryRefresh = async (library: NonNullable<RuntimeViewState['library']>) => {
     library.loading = true;
     library.error = '';
     try {
-      await waitGlobalInitialized('Mvu');
-      if (!started || state.library !== library) return;
+      while (libraryRefreshPending || pendingAffinityNames.size > 0) {
+        libraryRefreshPending = false;
+        const unreadNamesForRefresh = Array.from(pendingAffinityNames);
+        pendingAffinityNames.clear();
 
-      applyLibrarySnapshot(Mvu.getMvuData({ type: 'message', message_id: 'latest' }), unreadNamesForRefresh);
+        await waitGlobalInitialized('Mvu');
+        if (!started || state.library !== library) return;
+
+        applyLibrarySnapshot(Mvu.getMvuData({ type: 'message', message_id: 'latest' }), unreadNamesForRefresh);
+      }
     } catch (error) {
       if (state.library !== library) return;
       console.error('[CharInfo Runtime] 当前角色资料读取失败：', error);
       library.characters = [];
       library.error = `读取失败：${error instanceof Error ? error.message : String(error)}`;
     } finally {
-      if (state.library === library) {
-        library.loading = false;
-        if (libraryRefreshPending || pendingAffinityNames.size > 0) {
-          libraryRefreshPending = false;
-          void refreshLibrary();
-        }
-      }
+      if (state.library === library) library.loading = false;
+      libraryRefreshPromise = null;
     }
+  };
+
+  const refreshLibrary = (changedAffinityNames: readonly string[] = []): Promise<void> => {
+    const library = state.library;
+    if (!library) return Promise.resolve();
+    changedAffinityNames.forEach(name => pendingAffinityNames.add(name));
+    libraryRefreshPending = true;
+    libraryRefreshPromise ??= runLibraryRefresh(library);
+    return libraryRefreshPromise;
   };
 
   const openLibraryList = () => {
@@ -209,12 +221,27 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     void refreshLibrary();
   };
 
-  const openLibraryCharacter = (name: string) => {
+  const openLibraryCharacter = async (name: string) => {
     const library = state.library;
     if (!library?.characters.some(character => character.name === name)) return;
     library.unreadCharacterNames = library.unreadCharacterNames.filter(characterName => characterName !== name);
     library.listOpen = true;
     library.viewerOpen = true;
+    library.viewerLoading = true;
+    try {
+      await refreshLibrary();
+      if (!started || state.library !== library || !library.viewerOpen) return;
+      if (!library.characters.some(character => character.name === name)) {
+        library.viewerOpen = false;
+        return;
+      }
+
+      const chatVariables = getVariables({ type: 'chat' });
+      const sourcePriorities = state.settings.imageSourcePriorityEnabled ? state.settings.imageSourcePriority : [];
+      void preloadPortraitImages(resolveCharacterVisualPreloadUrls(name, chatVariables, 3, sourcePriorities));
+    } finally {
+      if (state.library === library) library.viewerLoading = false;
+    }
   };
 
   const updateLibraryButtonPosition = (position: CharInfoFloatingButtonPosition) => {
@@ -239,6 +266,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       characters: [],
       listOpen: false,
       viewerOpen: false,
+      viewerLoading: false,
       worldbookOpen: false,
       unreadCharacterNames: [],
       floatingButtonPosition: readRuntimeFloatingButtonPosition(getVariables({ type: 'script' })),
@@ -582,6 +610,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     });
     listen(tavern_events.GENERATION_ENDED, messageId => {
       enqueueMessage(messageId);
+      void refreshLibrary();
     });
     listen(tavern_events.MESSAGE_EDITED, messageId => {
       enqueueMessage(messageId);

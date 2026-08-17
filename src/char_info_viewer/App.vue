@@ -514,6 +514,7 @@ import { createParticleEngine, type ParticleEngine } from './services/particleEn
 import {
   applyTheme,
   cloneCharacterDataWithVisualOverrides,
+  getLegacyVisualProfileSource,
   hasDeprecatedVisualSyntax,
   resolveCharacterVisualConfigWithExtensions,
   resolveCharacterVisualPreview,
@@ -946,9 +947,15 @@ async function applyParsedCharacterData(
         props.visualConfigOverride?.config,
       )
     : await resolveCharacterVisualConfigWithExtensions(data, getVariables({ type: 'chat' }));
-  deprecatedVisualSyntaxWarning.value = hasDeprecatedVisualSyntax(resolvedData)
-    ? '检测到旧版角色图片语法。当前版本已不再支持此写法，因此本角色将以普通无图版显示。若你是该角色的作者，请在角色视觉编辑器中重新保存，以升级至 v2。'
-    : '';
+  const legacyVisualProfileSource = getLegacyVisualProfileSource(resolvedData);
+  const hasLegacyInlineImageSyntax = hasDeprecatedVisualSyntax(resolvedData);
+  deprecatedVisualSyntaxWarning.value = legacyVisualProfileSource
+    ? `检测到旧版 CharInfo 视觉变量结构（${legacyVisualProfileSource}）。当前仍会兼容显示，但该兼容路径仅用于迁移，后续版本不再保证维护。请尽快在角色视觉编辑器中重新保存，升级至 char_info.profiles v2。${
+        hasLegacyInlineImageSyntax ? ' 同时检测到正文旧图片字段；该字段已忽略，当前视觉仍由同名 profile 提供。' : ''
+      }`
+    : hasLegacyInlineImageSyntax
+      ? '检测到正文旧版角色图片字段。该字段已忽略，也不再单独授予 Special NPC；若存在同名 CharInfo visual profile，Viewer 会继续使用该 profile。请尽快在角色视觉编辑器中重新保存并清理旧字段。'
+      : '';
   const displayData =
     props.entranceQuoteOverride === undefined
       ? resolvedData

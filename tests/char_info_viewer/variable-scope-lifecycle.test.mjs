@@ -60,10 +60,26 @@ test('MVU 更新会刷新角色库与聊天视觉卡，资料始终重新读取�
     /Mvu\.events\.VARIABLE_UPDATE_ENDED,\s*variables\s*=>[\s\S]*?collectCurrentCharacterSnapshots\(variables\)/,
   );
   assert.match(viewerRuntimeSource, /applyLibrarySnapshot\(Mvu\.getMvuData\([\s\S]*?unreadNamesForRefresh\)/);
-  assert.match(viewerRuntimeSource, /if \(library\.loading\) \{\s*libraryRefreshPending = true/);
+  assert.match(viewerRuntimeSource, /let libraryRefreshPromise: Promise<void> \| null = null;/);
+  assert.match(
+    viewerRuntimeSource,
+    /while \(libraryRefreshPending \|\| pendingAffinityNames\.size > 0\)[\s\S]*?libraryRefreshPending = false;[\s\S]*?await waitGlobalInitialized\('Mvu'\)[\s\S]*?applyLibrarySnapshot\(/,
+  );
+  assert.match(
+    viewerRuntimeSource,
+    /libraryRefreshPending = true;\s*libraryRefreshPromise \?\?= runLibraryRefresh\(library\);\s*return libraryRefreshPromise;/,
+  );
+  assert.match(
+    viewerRuntimeSource,
+    /const openLibraryCharacter = async \(name: string\) => \{[\s\S]*?library\.viewerLoading = true;[\s\S]*?await refreshLibrary\(\);[\s\S]*?library\.characters\.some\(character => character\.name === name\)[\s\S]*?library\.viewerLoading = false;/,
+  );
   assert.match(
     viewerRuntimeSource,
     /Mvu\.events\.VARIABLE_INITIALIZED,\s*\(\)\s*=>\s*\{[\s\S]*?void refreshLibrary\(\);[\s\S]*?scheduleVisualCardRefresh\(\)/,
+  );
+  assert.match(
+    viewerRuntimeSource,
+    /tavern_events\.GENERATION_ENDED,\s*messageId\s*=>\s*\{[\s\S]*?enqueueMessage\(messageId\);[\s\S]*?void refreshLibrary\(\);/,
   );
   assert.match(viewerRuntimeSource, /const scheduleVisualCardRefresh = \(\) => \{[\s\S]*?refreshMountedCharInfoCards\(\)/);
   assert.match(viewerRuntimeSource, /const refreshMountedCharInfoCards = \(\) => \{[\s\S]*?removeMessage\(messageId\)[\s\S]*?renderMessage\(messageId\)/);

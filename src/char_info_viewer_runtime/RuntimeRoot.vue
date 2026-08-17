@@ -281,7 +281,7 @@
 
       <main class="char-info-library-viewer">
         <ViewerApp
-          v-if="selectedCharacter && selectedCharacterYaml"
+          v-if="!state.library.viewerLoading && selectedCharacter && selectedCharacterYaml"
           :key="`${state.library.messageId}:${state.library.revision}:${selectedCharacter.name}`"
           :yaml-text="selectedCharacterYaml"
           :message-id="state.library.messageId"
@@ -295,7 +295,15 @@
         />
         <div v-else class="char-info-library-placeholder">
           <span aria-hidden="true">◇</span>
-          <p>{{ state.library.loading ? '正在读取角色资料…' : '暂时无法找到该角色的资料。' }}</p>
+          <p>
+            {{
+              state.library.viewerLoading
+                ? '正在准备最新角色资料…'
+                : state.library.loading
+                  ? '正在读取角色资料…'
+                  : '暂时无法找到该角色的资料。'
+            }}
+          </p>
         </div>
       </main>
 

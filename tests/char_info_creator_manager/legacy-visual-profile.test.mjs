@@ -3,7 +3,15 @@ import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 
 import { buildCreatorViewerVisualOverride } from '../../src/char_info_creator_manager/viewerPreview.ts';
-import { inspectLegacyVisualProfile } from '../../src/char_info_shared/legacyVisualProfile.ts';
+import {
+  inspectManagedBlock,
+  MANAGED_BLOCK_END,
+  MANAGED_BLOCK_START,
+} from '../../src/char_info_shared/characterVisualProfile.ts';
+import {
+  inspectLegacyVisualProfile,
+  upsertManagedEjsBlockWithLegacyMigration,
+} from '../../src/char_info_shared/legacyVisualProfile.ts';
 
 function assertImportable(inspection) {
   assert.equal(inspection.state, 'importable');
@@ -29,6 +37,7 @@ _%>
 条目后文`;
 
   const inspection = assertImportable(inspectLegacyVisualProfile(source, '傲雪'));
+  assert.equal(inspection.sourceRoot, 'char_info_visuals');
   assert.equal(inspection.characterName, '傲雪');
   assert.equal(inspection.profile.avatarUrl, '');
   assert.equal(inspection.profile.raceColor, '#A9DBC3');
@@ -50,6 +59,15 @@ test('等价的单双引号 bracket path 可以静态识别', () => {
   });`;
   const inspection = assertImportable(inspectLegacyVisualProfile(source, '傲雪'));
   assert.equal(inspection.profile.gallery[0].sources[0], 'https://files.catbox.moe/snow.webp');
+});
+
+test('历史 char_info.visual / char_info.visuals 直接路径也可安全识别', () => {
+  for (const root of ['char_info.visual', 'char_info.visuals']) {
+    const source = `setLocalVar('${root}["傲雪"]', { url: 'https://files.catbox.moe/snow.webp' });`;
+    const inspection = assertImportable(inspectLegacyVisualProfile(source, '傲雪'));
+    assert.equal(inspection.sourceRoot, root);
+    assert.equal(inspection.profile.gallery[0].sources[0], 'https://files.catbox.moe/snow.webp');
+  }
 });
 
 test('gallery-only 会把第一张有效图片设为主立绘并提示旧随机首图行为变化', () => {
@@ -133,13 +151,64 @@ test('可迁移 draft 可以直接进入现有 Creator Viewer Preview 视觉 ove
   assert.deepEqual(override.config.gallery, [{ title: '主立绘', sources: ['https://files.catbox.moe/main.webp'] }]);
 });
 
-test('Creator 将 importable legacy 预填进 draft，但 checkpoint 2 仍阻止直接保存', async () => {
+test('migration Save 精确移除可识别旧写入，并保留同一 EJS 中的无关代码', () => {
+  const source = `@@activate
+<%_
+const keepMe = true;
+setLocalVar('char_info_visuals["傲雪"]', { url: 'https://files.catbox.moe/main.webp' });
+setLocalVar('unrelated.path', 42);
+_%>
+角色正文`;
+  const inspection = assertImportable(inspectLegacyVisualProfile(source, '傲雪'));
+  const migrated = upsertManagedEjsBlockWithLegacyMigration(source, inspection.profile);
+
+  assert.equal(inspectManagedBlock(migrated).state, 'valid');
+  assert.doesNotMatch(migrated, /char_info_visuals\s*\[/);
+  assert.match(migrated, /char_info\.profiles/);
+  assert.match(migrated, /const keepMe = true/);
+  assert.match(migrated, /setLocalVar\('unrelated\.path', 42\)/);
+  assert.match(migrated, /角色正文$/);
+});
+
+test('旧 v2 managed block 即使内部写入 char_info.visual，保存也整块升级到当前 profile 路径', () => {
+  const storedProfile = {
+    characterName: '傲雪',
+    avatarUrl: '',
+    raceColor: '#A9DBC3',
+    tierColor: '#B7D9E8',
+    entranceQuote: '旧 v2 台词',
+    gallery: [{ title: '主立绘', sources: ['https://files.catbox.moe/main.webp'] }],
+  };
+  const source = [
+    MANAGED_BLOCK_START,
+    '<%_',
+    '{',
+    `  const profile = ${JSON.stringify(storedProfile, null, 2).replace(/\n/g, '\n  ')};`,
+    `  setLocalVar('char_info.visual["傲雪"]', { url: 'https://files.catbox.moe/main.webp' });`,
+    '}',
+    '_%>',
+    MANAGED_BLOCK_END,
+    '角色正文',
+  ].join('\n');
+
+  const before = inspectManagedBlock(source);
+  assert.equal(before.state, 'valid');
+  const migrated = upsertManagedEjsBlockWithLegacyMigration(source, before.profile);
+  assert.equal(inspectManagedBlock(migrated).state, 'valid');
+  assert.match(migrated, /char_info\.profiles/);
+  assert.doesNotMatch(migrated, /char_info\.visual\s*\[/);
+  assert.match(migrated, /角色正文$/);
+});
+
+test('Creator 对 importable legacy 解除写入阻塞，并启用升级保存文案', async () => {
   const creatorSource = await readFile(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
 
   assert.match(creatorSource, /inspectLegacyVisualProfile/);
   assert.match(creatorSource, /legacyVisualInspection\.value\.state === 'importable'/);
   assert.match(creatorSource, /replaceProfile\(legacyInspection\.profile\)/);
-  assert.match(creatorSource, /已从旧版 char_info_visuals 安全预填；当前世界书尚未修改/);
+  assert.match(creatorSource, /已从旧版 \$\{legacyInspection\.sourceRoot\} 安全预填；当前世界书尚未修改/);
   assert.match(creatorSource, /class="migration-banner"/);
-  assert.match(creatorSource, /hasLegacyVisualEjs\.value,[\s\S]*\);[\s\S]*const canSave/);
+  assert.match(creatorSource, /legacyVisualInspection\.value\.state !== 'importable'/);
+  assert.match(creatorSource, /upsertManagedEjsBlockWithLegacyMigration/);
+  assert.match(creatorSource, /升级并保存新版配置/);
 });

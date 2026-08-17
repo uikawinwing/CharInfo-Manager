@@ -404,6 +404,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 
 import { itemType, type CharacterViewModel, type ItemObject } from '../../services/characterViewModel';
+import { preloadPortraitImages } from '../../services/imagePreload';
 import { normalizePortraitMediaUrlForBrowser } from '../../services/imageUrl';
 import { createMediaSourceTimeout, nextMediaSourceIndex } from '../../services/mediaSourceFallback';
 import type { AttributeView, IllustratedTab, IllustratedTabKey } from './types';
@@ -516,6 +517,27 @@ const activePortraitSources = computed(
     [props.vm.imageUrls[activePortraitIndex.value] ?? props.vm.imageUrl].filter(Boolean),
 );
 const activePortraitUrl = computed(() => activePortraitSources.value[activePortraitSourceIndex.value] ?? '');
+const portraitWarmUrls = computed(() => {
+  const count = Math.max(props.vm.imageSourceGroups.length, props.vm.imageUrls.length);
+  if (count === 0) return [];
+
+  const indices = [activePortraitIndex.value];
+  if (count > 1) {
+    indices.push((activePortraitIndex.value - 1 + count) % count, (activePortraitIndex.value + 1) % count);
+  }
+
+  return indices
+    .map(index => props.vm.imageSourceGroups[index]?.[0] ?? props.vm.imageUrls[index] ?? '')
+    .filter((url, index, urls) => Boolean(url) && urls.indexOf(url) === index);
+});
+
+watch(
+  portraitWarmUrls,
+  urls => {
+    void preloadPortraitImages(urls);
+  },
+  { immediate: true },
+);
 
 function debugPortraitFallback(event: string, details: Record<string, unknown> = {}): void {
   if (!props.debugEnabled) return;

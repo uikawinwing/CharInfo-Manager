@@ -202,7 +202,7 @@
               <div v-if="legacyVisualInspection.state === 'importable'" class="migration-banner">
                 <strong>检测到可迁移的旧版 CharInfo 视觉配置</strong>
                 <p>已自动预填到新版编辑器；当前世界书尚未修改。</p>
-                <p>升级保存将在后续迁移步骤启用，本阶段不会改写旧代码。</p>
+                <p>保存时会精确移除已识别的 {{ legacyVisualInspection.sourceRoot }} 写入，并升级为 char_info.profiles v2。</p>
                 <ul v-if="legacyVisualInspection.warnings.length > 0">
                   <li v-for="warning in legacyVisualInspection.warnings" :key="warning">{{ warning }}</li>
                 </ul>
@@ -811,7 +811,13 @@
                   {{ applyingSavedProfile ? '正在应用…' : '应用已保存版本到当前聊天' }}
                 </button>
                 <button class="primary-button" type="submit" :disabled="!canSave">
-                  {{ saving ? '正在写入…' : '保存并写入所选条目' }}
+                  {{
+                    saving
+                      ? '正在写入…'
+                      : legacyVisualInspection.state === 'importable'
+                        ? '升级并保存新版配置'
+                        : '保存并写入所选条目'
+                  }}
                 </button>
               </div>
             </div>
@@ -905,14 +911,16 @@ import {
   inspectManagedBlock,
   isHttpsUrl,
   normalizeProfile,
-  upsertManagedEjsBlock,
   validateProfile,
   type CharacterProfileMetadata,
   type CharacterStorySection,
   type CharacterVisualProfile,
   type GalleryImage,
 } from '../char_info_shared/characterVisualProfile';
-import { inspectLegacyVisualProfile } from '../char_info_shared/legacyVisualProfile';
+import {
+  inspectLegacyVisualProfile,
+  upsertManagedEjsBlockWithLegacyMigration,
+} from '../char_info_shared/legacyVisualProfile';
 import {
   deleteGalleryPackProfile,
   readGalleryPackProfile,
@@ -1463,7 +1471,7 @@ const writeBlocked = computed(
   () =>
     entryInspection.value.state === 'malformed' ||
     entryInspection.value.state === 'multiple' ||
-    hasLegacyVisualEjs.value,
+    (hasLegacyVisualEjs.value && legacyVisualInspection.value.state !== 'importable'),
 );
 
 const canSave = computed(
@@ -1716,7 +1724,7 @@ async function loadSelectedEntryProfile() {
   const legacyInspection = inspection.state === 'absent' ? legacyVisualInspection.value : { state: 'absent' as const };
   if (legacyInspection.state === 'importable') {
     replaceProfile(legacyInspection.profile);
-    saveMessage.value = '已从旧版 char_info_visuals 安全预填；当前世界书尚未修改。';
+    saveMessage.value = `已从旧版 ${legacyInspection.sourceRoot} 安全预填；当前世界书尚未修改。`;
     return;
   }
 
@@ -1948,10 +1956,15 @@ async function saveToEntry() {
   const entry = selectedEntry.value;
   if (!canSave.value || !entry) return;
 
+  const legacyMigrationSource =
+    legacyVisualInspection.value.state === 'importable' ? legacyVisualInspection.value.sourceRoot : null;
+  const migrationNotice = legacyMigrationSource
+    ? `\n\n旧版 ${legacyMigrationSource} 写入将被精确移除，并升级为 char_info.profiles v2。`
+    : '';
   const confirmed = window.confirm(
     useExtendedGallery.value
-      ? `确定保存角色视觉资料和扩展图库？\n\n角色世界书：${worldbookName}\n角色条目：${entry.name || `#${entry.uid}`}\n图库世界书：${galleryPackWorldbookName.value}`
-      : `确定将角色视觉资料写入以下条目？\n\n世界书：${worldbookName}\n条目：${entry.name || `#${entry.uid}`}`,
+      ? `确定保存角色视觉资料和扩展图库？\n\n角色世界书：${worldbookName}\n角色条目：${entry.name || `#${entry.uid}`}\n图库世界书：${galleryPackWorldbookName.value}${migrationNotice}`
+      : `确定将角色视觉资料写入以下条目？\n\n世界书：${worldbookName}\n条目：${entry.name || `#${entry.uid}`}${migrationNotice}`,
   );
   if (!confirmed) return;
 
@@ -1965,7 +1978,7 @@ async function saveToEntry() {
     const latestEntries = await getWorldbook(worldbookName);
     const latestEntry = latestEntries.find(item => item.uid === entry.uid);
     if (!latestEntry) throw new Error(`找不到世界书条目 #${entry.uid}。`);
-    upsertManagedEjsBlock(latestEntry.content, normalizedProfile);
+    upsertManagedEjsBlockWithLegacyMigration(latestEntry.content, normalizedProfile);
 
     const previousGallery = galleryReference ? await readGalleryPackProfile(galleryReference) : null;
     let galleryWriteAttempted = false;
@@ -1986,7 +1999,7 @@ async function saveToEntry() {
           if (!target) throw new Error(`找不到世界书条目 #${entry.uid}。`);
           return entries.map(item =>
             item.uid === entry.uid
-              ? { ...item, content: upsertManagedEjsBlock(item.content, normalizedProfile) }
+              ? { ...item, content: upsertManagedEjsBlockWithLegacyMigration(item.content, normalizedProfile) }
               : item,
           );
         },
@@ -2018,9 +2031,14 @@ async function saveToEntry() {
     }
 
     saveState.value = 'success';
+    const migrationSummary = legacyMigrationSource
+      ? `旧版 ${legacyMigrationSource} 已升级为 char_info.profiles v2；`
+      : '';
     saveMessage.value = galleryReference
-      ? `保存成功：角色条目保留 ${embeddedGalleryCount.value} 张基础图片，${extendedGalleryImages.value.length} 张图片已写入独立图库世界书。`
-      : '保存成功：角色视觉资料已写入，原条目其余内容保持不变。';
+      ? `保存成功：${migrationSummary}角色条目保留 ${embeddedGalleryCount.value} 张基础图片，${extendedGalleryImages.value.length} 张图片已写入独立图库世界书。`
+      : legacyMigrationSource
+        ? `升级成功：${migrationSummary}原条目其余内容保持不变。`
+        : '保存成功：角色视觉资料已写入，原条目其余内容保持不变。';
     console.info('[CharInfo Creator Manager] Managed EJS saved', {
       worldbook: worldbookName,
       entryUid: entry.uid,

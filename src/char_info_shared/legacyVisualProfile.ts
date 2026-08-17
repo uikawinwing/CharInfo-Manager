@@ -2,9 +2,11 @@ import JSON5 from 'json5';
 
 import {
   createEmptyProfile,
+  inspectManagedBlock,
   isHttpsUrl,
   normalizeHex,
   normalizeProfile,
+  upsertManagedEjsBlock,
   validateProfile,
   type CharacterVisualProfile,
 } from './characterVisualProfile.ts';
@@ -13,10 +15,13 @@ import {
 // eslint-disable-next-line import-x/no-named-as-default-member
 const { parse: parseJson5 } = JSON5;
 
+export type LegacyVisualRoot = 'char_info_visuals' | 'char_info.visual' | 'char_info.visuals';
+
 export type LegacyVisualInspection =
   | { state: 'absent' }
   | {
       state: 'importable';
+      sourceRoot: LegacyVisualRoot;
       characterName: string;
       profile: CharacterVisualProfile;
       start: number;
@@ -26,6 +31,7 @@ export type LegacyVisualInspection =
   | { state: 'unsupported'; reason: string };
 
 type ParsedLegacyAssignment = {
+  sourceRoot: LegacyVisualRoot;
   characterName: string;
   value: Record<string, unknown>;
   start: number;
@@ -37,9 +43,13 @@ type ParsedCall =
   | { kind: 'unsupported'; reason: string }
   | { kind: 'assignment'; assignment: ParsedLegacyAssignment };
 
-const LEGACY_ROOT = 'char_info_visuals';
+const LEGACY_ROOTS: LegacyVisualRoot[] = ['char_info_visuals', 'char_info.visual', 'char_info.visuals'];
 const LEGACY_COLOR_PATTERN = /^#[0-9A-F]{6}$/;
 const KNOWN_LEGACY_KEYS = new Set(['url', 'gallery', 'custom_racecolor', 'custom_tiercolor', '登场台词']);
+
+function mentionsLegacyRoot(value: string): boolean {
+  return LEGACY_ROOTS.some(root => value.includes(root));
+}
 
 function skipTrivia(source: string, start: number): number {
   let cursor = start;
@@ -204,21 +214,41 @@ function readBalancedObject(source: string, start: number): { objectSource: stri
   return null;
 }
 
-function parseLegacyPath(path: string): string | null {
-  const match = path.match(/^char_info_visuals\s*\[\s*((?:"(?:\\.|[^"\\])*")|(?:'(?:\\.|[^'\\])*'))\s*\]\s*$/s);
-  if (!match) return null;
-  try {
-    const characterName = parseJson5(match[1]);
-    return typeof characterName === 'string' && characterName.trim() ? characterName : null;
-  } catch {
-    return null;
+function parseLegacyPath(path: string): { sourceRoot: LegacyVisualRoot; characterName: string } | null {
+  const patterns: Array<{ sourceRoot: LegacyVisualRoot; pattern: RegExp }> = [
+    {
+      sourceRoot: 'char_info_visuals',
+      pattern: /^char_info_visuals\s*\[\s*((?:"(?:\\.|[^"\\])*")|(?:'(?:\\.|[^'\\])*'))\s*\]\s*$/s,
+    },
+    {
+      sourceRoot: 'char_info.visual',
+      pattern: /^char_info\s*\.\s*visual\s*\[\s*((?:"(?:\\.|[^"\\])*")|(?:'(?:\\.|[^'\\])*'))\s*\]\s*$/s,
+    },
+    {
+      sourceRoot: 'char_info.visuals',
+      pattern: /^char_info\s*\.\s*visuals\s*\[\s*((?:"(?:\\.|[^"\\])*")|(?:'(?:\\.|[^'\\])*'))\s*\]\s*$/s,
+    },
+  ];
+
+  for (const candidate of patterns) {
+    const match = path.match(candidate.pattern);
+    if (!match) continue;
+    try {
+      const characterName = parseJson5(match[1]);
+      if (typeof characterName === 'string' && characterName.trim()) {
+        return { sourceRoot: candidate.sourceRoot, characterName };
+      }
+    } catch {
+      return null;
+    }
   }
+  return null;
 }
 
 function parseLegacySetLocalVarCall(source: string, start: number, openParen: number): ParsedCall {
   const callEnd = findCallEnd(source, openParen);
   if (callEnd === null) {
-    return source.slice(start).includes(LEGACY_ROOT)
+    return mentionsLegacyRoot(source.slice(start))
       ? { kind: 'unsupported', reason: '检测到未闭合的旧版 setLocalVar 调用，无法安全自动读取。' }
       : { kind: 'ignore' };
   }
@@ -226,7 +256,7 @@ function parseLegacySetLocalVarCall(source: string, start: number, openParen: nu
   let cursor = skipTrivia(source, openParen + 1);
   const pathLiteral = readQuotedLiteral(source, cursor);
   if (!pathLiteral) {
-    return source.slice(openParen + 1, callEnd - 1).includes(LEGACY_ROOT)
+    return mentionsLegacyRoot(source.slice(openParen + 1, callEnd - 1))
       ? { kind: 'unsupported', reason: '旧版视觉路径使用了动态表达式，无法安全自动读取。' }
       : { kind: 'ignore' };
   }
@@ -237,11 +267,14 @@ function parseLegacySetLocalVarCall(source: string, start: number, openParen: nu
   } catch {
     return { kind: 'ignore' };
   }
-  if (typeof pathValue !== 'string' || !pathValue.includes(LEGACY_ROOT)) return { kind: 'ignore' };
+  if (typeof pathValue !== 'string' || !mentionsLegacyRoot(pathValue)) return { kind: 'ignore' };
 
-  const characterName = parseLegacyPath(pathValue);
-  if (!characterName) {
-    return { kind: 'unsupported', reason: '旧版视觉路径不是可静态识别的 char_info_visuals[姓名] 形式。' };
+  const parsedPath = parseLegacyPath(pathValue);
+  if (!parsedPath) {
+    return {
+      kind: 'unsupported',
+      reason: '旧版视觉路径不是可静态识别的 char_info_visuals / char_info.visual[姓名] 形式。',
+    };
   }
 
   cursor = skipTrivia(source, pathLiteral.end);
@@ -283,7 +316,8 @@ function parseLegacySetLocalVarCall(source: string, start: number, openParen: nu
   return {
     kind: 'assignment',
     assignment: {
-      characterName,
+      sourceRoot: parsedPath.sourceRoot,
+      characterName: parsedPath.characterName,
       value: parsed as Record<string, unknown>,
       start,
       end,
@@ -373,6 +407,7 @@ function mapLegacyProfile(assignment: ParsedLegacyAssignment): LegacyVisualInspe
 
   return {
     state: 'importable',
+    sourceRoot: assignment.sourceRoot,
     characterName: assignment.characterName,
     profile,
     start: assignment.start,
@@ -395,13 +430,16 @@ export function inspectLegacyVisualProfile(content: string, expectedCharacterNam
 
   if (assignments.length === 0) {
     if (unsupportedReasons.length > 0) return { state: 'unsupported', reason: unsupportedReasons[0] };
-    return content.includes(LEGACY_ROOT)
-      ? { state: 'unsupported', reason: '检测到旧版 char_info_visuals 内容，但不是可安全静态导入的直接 setLocalVar 结构。' }
+    return mentionsLegacyRoot(content)
+      ? {
+          state: 'unsupported',
+          reason: '检测到旧版 CharInfo 视觉变量内容，但不是可安全静态导入的直接 setLocalVar 结构。',
+        }
       : { state: 'absent' };
   }
 
   if (assignments.length > 1 || unsupportedReasons.length > 0) {
-    return { state: 'unsupported', reason: '检测到多个或混合的旧版 char_info_visuals 写入，无法判断唯一安全迁移目标。' };
+    return { state: 'unsupported', reason: '检测到多个或混合的旧版 CharInfo 视觉变量写入，无法判断唯一安全迁移目标。' };
   }
 
   const assignment = assignments[0];
@@ -414,4 +452,21 @@ export function inspectLegacyVisualProfile(content: string, expectedCharacterNam
   }
 
   return mapLegacyProfile(assignment);
+}
+
+export function upsertManagedEjsBlockWithLegacyMigration(
+  content: string,
+  profile: CharacterVisualProfile,
+): string {
+  const managedInspection = inspectManagedBlock(content);
+  if (managedInspection.state !== 'absent') {
+    return upsertManagedEjsBlock(content, profile);
+  }
+
+  const legacyInspection = inspectLegacyVisualProfile(content, profile.characterName);
+  if (legacyInspection.state === 'unsupported') throw new Error(legacyInspection.reason);
+  if (legacyInspection.state === 'absent') return upsertManagedEjsBlock(content, profile);
+
+  const withoutLegacyStatement = `${content.slice(0, legacyInspection.start)}${content.slice(legacyInspection.end)}`;
+  return upsertManagedEjsBlock(withoutLegacyStatement, profile);
 }
