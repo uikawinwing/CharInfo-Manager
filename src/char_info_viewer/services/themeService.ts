@@ -307,7 +307,10 @@ function resolveNamedVisualConfig(
 
   const charInfo = asRecord(chatVariables.char_info);
   const profiles = asRecord(charInfo?.profiles);
-  const profile = profiles && Object.hasOwn(profiles, name) ? profiles[name] : undefined;
+  if (profiles && Object.hasOwn(profiles, name)) {
+    return { config: profiles[name], legacySource: null };
+  }
+
   const legacyCandidates: Array<{ source: LegacyVisualProfileSource; value: unknown }> = [
     { source: 'char_info_visuals', value: asRecord(chatVariables.char_info_visuals)?.[name] },
     { source: 'char_info.visual', value: asRecord(charInfo?.visual)?.[name] },
@@ -315,24 +318,11 @@ function resolveNamedVisualConfig(
   ];
   const legacyCandidate = legacyCandidates.find(candidate => candidate.value !== undefined && candidate.value !== null);
   const legacyProfile = legacyCandidate?.value;
-  const profileRecord = asRecord(profile);
   const legacyRecord = asRecord(legacyProfile);
 
-  if (profileRecord && legacyRecord) {
-    const mergedProfile = { ...profileRecord };
-    if (mergedProfile.custom_racecolor === undefined) {
-      mergedProfile.custom_racecolor = legacyRecord.custom_racecolor;
-    }
-    if (mergedProfile.custom_tiercolor === undefined) {
-      mergedProfile.custom_tiercolor = legacyRecord.custom_tiercolor;
-    }
-    if (mergedProfile.登场台词 === undefined) mergedProfile.登场台词 = legacyRecord.登场台词;
-    return { config: mergedProfile, legacySource: null };
-  }
-  if (profileRecord) return { config: profileRecord, legacySource: null };
   if (legacyRecord && legacyCandidate) return { config: legacyRecord, legacySource: legacyCandidate.source };
   if (legacyCandidate) return { config: legacyProfile, legacySource: legacyCandidate.source };
-  return profile === undefined ? undefined : { config: profile, legacySource: null };
+  return undefined;
 }
 
 export function resolveCharacterVisualPreloadUrls(

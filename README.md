@@ -69,7 +69,7 @@ const gallery = [
 ];
 
 setLocalVar(`char_info.profiles[${JSON.stringify(characterName)}]`, {
-  schema_version: 1,
+  schema_version: 2,
   custom_racecolor: '#78C8F0',
   custom_tiercolor: '#A855F7',
   '登场台词': '用一句话留下角色的第一印象。',
@@ -98,9 +98,11 @@ LLM 只需在 `<char_info>` 内准确输出姓名，不需要输出图片字段�
 
 `登场台词` 与两种颜色均可省略。颜色只接受 `#RRGGBB`，缺失或无效时自动使用种族与生命层级的默认颜色。
 
-旧版
-`char_info_visuals[姓名].url/gallery`、`角色图片: '[[变量名]]`、直接填写图片 URL，以及“占位符对应 URL字符串”的方式仍然兼容。升级后会把
-`status.externalGalleries` 中尚未拥有新版图库的角色图片复制到 `char_info.profiles`；旧数据不会删除，已有新版图库也不会被覆盖。之后请使用角色视觉配置管理器维护图片。
+同名角色同时存在新版与旧版视觉资料时，`char_info.profiles[姓名]` 完全优先；Viewer 不再从旧版资料补齐缺失的颜色、登场台词或图片。只要新版 key 已存在，即使其值无效，也不会回退到同名 legacy 资料。
+
+旧版 `char_info_visuals[姓名]`、`char_info.visual[姓名]` 与 `char_info.visuals[姓名]` 目前仅作为临时兼容路径：只有同名 `char_info.profiles[姓名]` 不存在时才会读取，并会显示迁移／停止维护提示。请尽快用角色视觉配置管理器升级为新版 managed profile。
+
+`<char_info>` 内的 `角色图片`／`立绘`／`图片` 等直接图片字段、`[[变量名]]` 占位符、占位符对应 URL 字符串，以及 `status.externalGalleries` 都不会作为 Viewer 视觉资料来源。Viewer Runtime 也不会自动把 `status.externalGalleries` 迁移或写回 `char_info.profiles`。
 
 变量职责固定如下：
 

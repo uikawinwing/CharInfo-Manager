@@ -72,7 +72,7 @@ test('没有角色图片字段时按姓名读取 CharInfo 自有资料，并读�
   assert.equal(data.登场台词, '霜雪会记住每一道剑痕。');
 });
 
-test('新版资料只有图库时继承旧版同名角色的颜色与登场台词', () => {
+test('新版资料存在时不再继承旧版同名角色的颜色与登场台词', () => {
   const data = resolveCharacterVisualConfig(
     { 姓名: '傲雪', 种族: '龙裔', 生命层级: '第四层级' },
     {
@@ -96,9 +96,33 @@ test('新版资料只有图库时继承旧版同名角色的颜色与登场台�
   );
 
   assert.equal(data.角色图片, 'https://example.com/new.png');
-  assert.equal(data.custom_racecolor, '#A9DBC3');
-  assert.equal(data.custom_tiercolor, '#B7D9E8');
-  assert.equal(data.登场台词, '霜雪会记住每一道剑痕。');
+  assert.equal(data.custom_racecolor, undefined);
+  assert.equal(data.custom_tiercolor, undefined);
+  assert.equal(data.登场台词, undefined);
+});
+
+test('新版资料 key 存在时即使值无效也不会回退到旧版同名资料', () => {
+  const data = resolveCharacterVisualConfig(
+    { 姓名: '傲雪', 种族: '龙裔' },
+    {
+      char_info: {
+        profiles: {
+          傲雪: null,
+        },
+      },
+      char_info_visuals: {
+        傲雪: {
+          url: 'https://example.com/legacy.png',
+          custom_racecolor: '#A9DBC3',
+          登场台词: '不应被读取',
+        },
+      },
+    },
+  );
+
+  assert.equal(data.角色图片, undefined);
+  assert.equal(data.custom_racecolor, undefined);
+  assert.equal(data.登场台词, undefined);
 });
 
 test('CharInfo 自有资料的第一张相册图片固定作为主立绘', () => {
