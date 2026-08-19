@@ -1,9 +1,10 @@
 # CharInfo Manager Workflow & Logic — Proposed Target
 
 **Status:** **PROPOSED — not implemented**  
-**Baseline:** `docs/architecture/current/workflow_logic.md`
+**Baseline:** `docs/architecture/current/workflow_logic.md`  
+**Presentation review:** 2026-08-19
 
-> The target is to make the current trust/read/write rules explicit and easier to test, not to change their meaning during refactoring.
+> The target is to make the current trust/read/write rules explicit and easier to test while consolidating the evolved Special-NPC v2 presentation into a shared Illustrated V2 backbone. Trust semantics and rendering implementation must remain separate concerns.
 
 ## 1. Target Viewer preparation flow
 
@@ -18,11 +19,18 @@ type ViewerPreparationResult = {
   data: CharacterData;
   visual: ResolvedCharacterVisual | null;
   route: 'trusted_dx' | 'special_npc' | 'normal';
+  surface: 'illustrated_v2' | 'normal';
   warnings: ViewerWarning[];
+  illustrated?: IllustratedPresentation;
 };
 ```
 
-**Intentionally unchanged:** There are still exactly three routes, in priority order Trusted DX → Special NPC → Normal Character.
+Route and surface intentionally answer different questions:
+
+- `route` = why this character is trusted/eligible for a presentation path;
+- `surface` = which rendering backbone is used.
+
+**Intentionally unchanged:** There are still exactly three trust routes, in priority order Trusted DX → Special NPC → Normal Character.
 
 **Migration-sensitive:** The preparation result is produced by trusted code. It must not accept a route/trust flag from normal parsed YAML.
 
@@ -35,13 +43,17 @@ type ViewerPreparationResult = {
 3. If it is a placeholder, call the existing controlled DX loader.
 4. The loader validates roster membership, registry uniqueness, registry identity, appear variable, and character name.
 5. Keep the loader's opaque/private trust identity.
-6. Build a presentation model with `route = trusted_dx` only after loader trust is established.
-7. Resolve controlled DX presentation assets/profile from the trusted identity.
-8. Render Trusted DX.
+6. Build a preparation result with `route = trusted_dx` only after loader trust is established.
+7. Resolve controlled DX presentation profile from the trusted roster.
+8. Resolve `surface = illustrated_v2`.
+9. Resolve the DX theme and any controlled character extension from the trusted presentation identity.
+10. Render through the Illustrated V2 backbone.
 
 **Intentionally unchanged:** DX status is never inferred from character name, metadata, `__dx_character_ref` copied into a normal object, or manually built profile fields.
 
 **Migration-sensitive:** Do not simplify this to `if (__dx_character_ref) route = trusted_dx`. The controlled-loader capability is the trust boundary.
+
+A DX-only extension such as a Venus-specific widget/behavior must not become activatable by an ordinary visual profile simply because the UI backbone is shared.
 
 ## 3. Proposed non-DX parse flow
 
@@ -53,6 +65,7 @@ type ViewerPreparationResult = {
 4. Resolve named visual information separately.
 5. Produce warnings separately.
 6. Select Special NPC or Normal Character based on the resolved visual result.
+7. Resolve renderer surface from that trusted route.
 
 **Intentionally unchanged:** Strict/loose parser behavior can remain as it is unless a separate parser task changes it.
 
@@ -82,23 +95,29 @@ For exact `name`:
 
 **Migration-sensitive:** Tests must pin this precedence before moving resolver code, because a seemingly friendly fallback would recreate two sources of truth.
 
-## 5. Proposed route selection
+## 5. Proposed route and surface selection
 
-**Proposed:** Centralize route selection in one auditable function.
+**Proposed:** Centralize trust-route selection in one auditable function, then select the renderer independently.
 
 Conceptually:
 
 ```ts
-if (trustedDx) return 'trusted_dx';
-if (visual?.hasUsableImage) return 'special_npc';
-return 'normal';
+function resolveRoute(input: TrustedPreparationInput): ViewerRoute {
+  if (input.trustedDx) return 'trusted_dx';
+  if (input.visual?.hasUsableImage) return 'special_npc';
+  return 'normal';
+}
+
+function resolveSurface(route: ViewerRoute): ViewerSurface {
+  return route === 'normal' ? 'normal' : 'illustrated_v2';
+}
 ```
 
-The actual function should also validate that Special NPC visual data came from the allowed named-profile resolver, not arbitrary parsed data.
+The actual route function should also validate that Special NPC visual data came from the allowed named-profile resolver, not arbitrary parsed data.
 
 **Intentionally unchanged:** Special NPC requires usable profile-driven image presentation. Normal Character remains the fallback.
 
-**Migration-sensitive:** Do not add an “illustrated normal”, “legacy NPC”, or other fourth route to encode compatibility state. Compatibility belongs in `warnings/source`, not route taxonomy.
+**Migration-sensitive:** Do not add an “illustrated normal”, “legacy NPC”, or other fourth trust route to encode compatibility state. Compatibility belongs in warnings/source, while renderer identity belongs in `surface`.
 
 ## 6. Proposed presentation/ViewModel flow
 
@@ -108,7 +127,9 @@ It should receive:
 
 - plain character data;
 - resolved visual information;
-- final route/presentation profile;
+- final trust route;
+- render surface;
+- resolved theme/presentation profile;
 - image source priority;
 - optional display-only overrides such as current-chat inner thought.
 
@@ -118,7 +139,115 @@ It then builds normalized display text, tabs, skills/items/resources, story sect
 
 **Migration-sensitive:** Display-only story/metadata must not be written back into the LLM/context-oriented character data merely because Viewer consumes both.
 
-## 7. Proposed warning flow
+## 7. Proposed Illustrated V2 rendering flow
+
+**Proposed:** Trusted DX and Special NPC both enter one neutral Illustrated V2 composition flow after trust resolution.
+
+```text
+trusted_dx ─────┐
+                ├─> Illustrated V2 core → theme → optional extension → render
+special_npc ────┘
+```
+
+### 7.1 Core stage
+
+The Illustrated V2 core owns shared rendering behavior:
+
+1. choose portrait/video source and source fallback;
+2. build the shared shell;
+3. render common header/overview/profile/story/card/tab primitives;
+4. apply desktop/mobile layout mechanics;
+5. manage common scrolling and overview/detail behavior;
+6. expose controlled extension slots/hooks where needed;
+7. keep read-only/import plumbing common.
+
+### 7.2 Standard Special NPC stage
+
+For `route = special_npc`:
+
+1. use the same Illustrated V2 core;
+2. apply standard managed-profile colors/images/metadata;
+3. apply safe generic theme tokens where supported;
+4. do not gain controlled DX-only extensions.
+
+### 7.3 Trusted DX stage
+
+For `route = trusted_dx`:
+
+1. use the same Illustrated V2 core;
+2. resolve controlled DX roster presentation;
+3. apply character theme/skin;
+4. mount optional trusted character extensions;
+5. preserve unique animation/widget CSS where the design genuinely requires it.
+
+Examples:
+
+- Iris may be mostly core + theme/flags/background changes;
+- Anastasia may be core + its theme deltas;
+- Venus may be core + Venus theme + Venus-specific animation/decorative/divinity extensions.
+
+**Migration-sensitive:** Sharing the renderer must not allow ordinary Special NPC data to spoof DX-specific extension identity.
+
+## 8. Proposed Mobile V2 flow
+
+**Proposed:** Make the evolved Special-NPC v2 mobile layout the shared Illustrated V2 mobile backbone and migrate existing DX mobile v1 presentation onto it.
+
+### 8.1 Resolve mobile mode once
+
+Conceptually:
+
+```text
+real mobile/breakpoint ──────┐
+                             ├─> illustratedMobile = true
+forceMobileLayout = true ────┘
+```
+
+After that decision, both paths use the same canonical mobile layout rules.
+
+`forceMobileLayout` is a way to **select mobile mode**, not a reason to maintain a second mobile stylesheet.
+
+### 8.2 Apply mobile core before theme deltas
+
+Target order:
+
+1. resolve mobile mode;
+2. apply Illustrated V2 mobile shell/layout;
+3. apply route-neutral mobile mechanics such as overview/detail behavior, wallpaper handling, scrolling, and tab positioning;
+4. apply standard Special NPC or DX theme deltas;
+5. apply genuine character-specific mobile exceptions only when needed.
+
+### 8.3 Existing DX migration
+
+For Venus, Iris, and Anastasia:
+
+1. capture/reference current DX mobile appearance before removal;
+2. run the character on the V2 mobile backbone;
+3. identify which old v1 rules represent intentional character design;
+4. convert repeated structural differences into shared V2 rules or theme tokens;
+5. retain unique character CSS/animations;
+6. delete obsolete v1 rules only after visual acceptance.
+
+### 8.4 Forced-mobile cleanup
+
+The current pattern where real responsive mobile rules are followed by a largely repeated `.force-mobile-layout ...` rule set should be removed through shared mode resolution/grouped ownership.
+
+The exact CSS technique is an implementation detail; the invariant is **one canonical mobile layout definition**.
+
+**Migration-sensitive:** Do not “clean up” by making Venus/Iris/Anastasia visually identical. The migration removes duplicated mechanics, not intentional art direction.
+
+## 9. Proposed DX theme/extension decision flow
+
+When adding a future DX character, choose the smallest mechanism that expresses the real difference:
+
+1. **Only values differ** → add/update theme tokens.
+2. **CSS skin/decor differs** → add a scoped theme CSS delta.
+3. **Small decorative DOM differs** → add a small theme/decoration component.
+4. **Real character-specific behavior/panel/animation differs** → add a controlled DX extension.
+5. **Do not** copy the whole Illustrated sheet/mobile stylesheet as the default starting point.
+
+A future character is allowed to be artistically unique. Reuse should target infrastructure and repeated structure.
+
+## 10. Proposed warning flow
 
 **Proposed:** Warnings become structured preparation output rather than hidden brands.
 
@@ -135,7 +264,7 @@ Examples:
 
 **Migration-sensitive:** A warning is informational state, not permission to mutate or auto-repair data.
 
-## 8. Proposed runtime message flow
+## 11. Proposed runtime message flow
 
 **Proposed:** Keep the existing external-message ownership model while routing work through smaller runtime services.
 
@@ -152,16 +281,13 @@ Message host lifecycle should own mounted records and source/render signatures. 
 
 **Migration-sensitive:** `nativeMessageMount.ts` must continue preserving TavernHelper frontend render nodes and must not become snapshot-based whole-message ownership.
 
-## 9. Proposed selective refresh flow
+## 12. Proposed selective refresh flow
 
 **Proposed:** Separate three kinds of invalidation.
 
 ### Message-content invalidation
 
-Triggered by:
-
-- message received/rendered/edited/updated/swiped;
-- host DOM mount loss for that floor.
+Triggered by message received/rendered/edited/updated/swiped or host DOM mount loss for that floor.
 
 Action: re-project/re-render that message floor.
 
@@ -186,7 +312,7 @@ Action: invalidate all affected active Viewers because the setting genuinely app
 
 **Migration-sensitive:** Initial selective-refresh implementation should be conservative. Never skip a refresh merely to optimize remount count.
 
-## 10. Proposed current-chat library flow
+## 13. Proposed current-chat library flow
 
 **Proposed:** Give current-chat library state its own service/store-like owner, independent from message host mounting.
 
@@ -204,7 +330,7 @@ Flow:
 
 **Migration-sensitive:** Library refresh and message visual refresh may share event inputs, but they should not become one mutable data store that writes derived fields back into MVU/chat variables.
 
-## 11. Proposed worldbook library flow
+## 14. Proposed worldbook library flow
 
 **Proposed:** Preserve current user behavior while moving metadata/fallback projection to a shared resolver.
 
@@ -223,7 +349,7 @@ Flow:
 
 **Migration-sensitive:** Fallback-derived race/author/etc. must not be auto-saved as metadata.
 
-## 12. Proposed Creator open/load flow
+## 15. Proposed Creator open/load flow
 
 **Proposed:** Keep the existing explicit edit action and five-step UX while decomposing internals.
 
@@ -245,7 +371,7 @@ Flow:
 
 **Migration-sensitive:** Source classification must happen against the selected/latest target identity; changing entry selection during async loads must not apply stale results.
 
-## 13. Proposed Creator save flow
+## 16. Proposed Creator save flow
 
 **Proposed:** Put write semantics behind a dedicated save service with explicit inputs and verification.
 
@@ -272,7 +398,7 @@ Flow:
 
 **Migration-sensitive:** Do not expand “recognized legacy statement” deletion into substring cleanup, whole-entry replacement, or automatic cleanup of dynamic legacy code.
 
-## 14. Proposed explicit apply-to-current-chat flow
+## 17. Proposed explicit apply-to-current-chat flow
 
 **Proposed:** Retain this as a separate command from save.
 
@@ -287,7 +413,7 @@ Flow:
 
 **Migration-sensitive:** Do not execute arbitrary unmanaged entry EJS as part of this convenience path.
 
-## 15. Proposed legacy retirement flow
+## 18. Proposed legacy retirement flow
 
 **Proposed:** Treat retirement as a staged product/release decision, not an internal refactor side effect.
 
@@ -317,7 +443,7 @@ Flow:
 
 **Migration-sensitive:** Retirement must never rewrite historical/current user content merely to make the codebase cleaner.
 
-## 16. Proposed preload flow
+## 19. Proposed preload flow
 
 **Proposed:** Move preload triggering behind a small preload service that accepts resolved candidates rather than duplicating visual lookup logic.
 
@@ -330,22 +456,43 @@ Flow:
 
 **Migration-sensitive:** Preload optimizations must not reorder or rewrite stored image source arrays.
 
-## 17. Proposed Creator lazy-load decision flow
+## 20. Bundle and deployment decision flow
 
-**Proposed only after deployment verification:**
+**Proposed:** Reduce duplicated code/style inside the existing single runtime before relying on runtime chunks.
 
-1. Build a local dynamic-import prototype.
-2. Confirm emitted chunk structure.
-3. Install/test it through the real TavernHelper/SillyTavern delivery path.
-4. Confirm chunk URL loading, reload/update behavior, and CSP/module behavior.
-5. If all pass, dynamically import Creator when an explicit edit action occurs.
-6. If any fail, retain static Creator code inclusion.
+### 20.1 Illustrated cleanup measurement loop
 
-**Intentionally unchanged:** UI creation remains on-demand even if code inclusion remains static.
+For each presentation cleanup step:
 
-**Migration-sensitive:** Do not commit a chunk-dependent production architecture based only on webpack local build success.
+1. record current production `dist/char_info_viewer_runtime/index.js` size;
+2. change one bounded area, such as mobile-core duplication or theme-structure duplication;
+3. run tests/lint/build;
+4. inspect Venus/Iris/Anastasia/Special-NPC visual parity where relevant;
+5. record new production bundle size;
+6. keep the change only if behavior is correct; bundle savings are a benefit, not permission for visual regression.
 
-## 18. Refactor validation flow
+Do not claim a specific byte saving from source-line reduction without measuring the emitted production artifact.
+
+### 20.2 Creator lazy-load decision
+
+Only after deployment verification:
+
+1. build a local dynamic-import prototype;
+2. confirm emitted chunk structure;
+3. install/test it through the real TavernHelper/SillyTavern delivery path;
+4. confirm chunk URL loading, reload/update behavior, and CSP/module behavior;
+5. if all pass, dynamically import Creator when an explicit edit action occurs;
+6. if any fail, retain static Creator code inclusion.
+
+### 20.3 DX chunking
+
+Do not split each DX into a separately installed script as the default architecture.
+
+Optional character-specific runtime chunks may be considered later only if deployment is proven reliable and bundle analysis shows meaningful benefit. Illustrated V2 + theme/extensions does not require chunking.
+
+**Migration-sensitive:** Deployment reliability outranks bundle-size purity.
+
+## 21. Refactor validation flow
 
 **Proposed:** Every migration step should compare against the frozen Current baseline and validate behavior in this order when applicable:
 
@@ -353,12 +500,14 @@ Flow:
 2. full tests;
 3. lint;
 4. production build;
-5. SillyTavern/browser runtime inspection for UI/runtime changes.
+5. SillyTavern/browser runtime inspection for UI/runtime changes;
+6. production bundle-size comparison for presentation/style cleanup.
 
-High-value parity assertions include:
+High-value trust/data parity assertions include:
 
 - controlled DX cannot be spoofed;
-- exactly three Viewer routes;
+- exactly three trust routes remain;
+- Trusted DX and Special NPC may share `illustrated_v2` without sharing trust identity;
 - same-name v2 blocks legacy fallback/merge;
 - legacy-only still displays during compatibility stage;
 - raw body image fields cannot grant Special NPC;
@@ -368,6 +517,34 @@ High-value parity assertions include:
 - native message mounts preserve TavernHelper frontend DOM;
 - selective refresh updates all truly affected cards and leaves unrelated cards stable.
 
+High-value Illustrated V2 visual assertions include at least:
+
+- standard Special NPC desktop;
+- standard Special NPC real mobile;
+- standard Special NPC forced-mobile;
+- Venus desktop/mobile with its exclusive animation/decoration intact;
+- Iris desktop/mobile with intended theme/flag/background differences intact;
+- Anastasia desktop/mobile with intended theme differences intact;
+- overview/detail/tab/scroll behavior remains usable after the mobile-core migration;
+- real mobile and forced-mobile use equivalent layout mechanics.
+
 **Intentionally unchanged:** Code inspection alone is not runtime verification.
 
 **Migration-sensitive:** If a browser/tool bridge fails, report tool failure separately from application failure.
+
+## 22. Recommended migration sequence
+
+1. Freeze visual references and bundle-size baseline.
+2. Promote Special-NPC v2 layout/mobile mechanics into a neutral Illustrated V2 core without changing trust logic.
+3. Move Venus, Iris, and Anastasia onto that backbone one by one.
+4. Preserve character-specific art direction as theme CSS/tokens/extensions.
+5. Remove obsolete DX-v1 layout/mobile rules only after each character passes visual review.
+6. Collapse real-responsive and forced-mobile duplication into one canonical mobile path.
+7. Consolidate repeated theme structure/tokens and measure emitted bundle change.
+8. Introduce explicit Viewer preparation/presentation model and separate trust route from render surface in code.
+9. Extract runtime scheduler/message-host boundaries, then selective refresh.
+10. Extract Creator state/I/O boundaries.
+11. Consider dynamic loading only after real deployment validation.
+12. Retire legacy compatibility only through a separately approved release plan.
+
+This sequence intentionally avoids a big-bang rewrite and keeps the visually proven Special-NPC v2 work as the forward backbone rather than continuing to invest in the older DX mobile v1 structure.
