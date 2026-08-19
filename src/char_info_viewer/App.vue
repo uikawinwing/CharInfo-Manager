@@ -421,9 +421,23 @@
                       <h3 class="card-title">{{ itemName(item) }}</h3>
                     </div>
                     <div class="card-body">
-                      <p v-if="itemDescription(item)">{{ itemDescription(item) }}</p>
-                      <p v-if="lawPassive(item)"><span class="card-label">被动:</span>{{ lawPassive(item) }}</p>
-                      <p v-if="lawActive(item)"><span class="card-label">主动:</span>{{ lawActive(item) }}</p>
+                      <div
+                        v-for="entry in lawPassiveEntries(item)"
+                        :key="`passive-${entry.name}-${entry.content}`"
+                        class="law-effect"
+                      >
+                        <strong class="law-effect-title">{{ entry.fallback ? '【被动】' : `【被动】${entry.name}` }}</strong>
+                        <p>{{ entry.content }}</p>
+                      </div>
+                      <div
+                        v-for="entry in lawActiveEntries(item)"
+                        :key="`active-${entry.name}-${entry.content}`"
+                        class="law-effect"
+                      >
+                        <strong class="law-effect-title">{{ entry.fallback ? '【主动】' : `【主动】${entry.name}` }}</strong>
+                        <p>{{ entry.content }}</p>
+                      </div>
+                      <p v-if="itemDescription(item)" class="law-description">{{ itemDescription(item) }}</p>
                     </div>
                   </article>
                 </template>
@@ -498,8 +512,8 @@ import {
   itemQuality,
   itemTags,
   itemType,
-  lawActive,
-  lawPassive,
+  lawActiveEntries,
+  lawPassiveEntries,
   pickField,
   qualityClass,
   statusEffectDescription,
@@ -2173,6 +2187,27 @@ onBeforeUnmount(() => {
   color: var(--race-color);
   font-weight: 700;
   margin-right: 4px;
+}
+
+.law-effect {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0;
+}
+
+.law-effect-title {
+  color: var(--race-color);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.law-effect p,
+.law-description {
+  margin: 0;
+}
+
+.law-description {
+  margin-top: 12px;
 }
 
 .effect-list {

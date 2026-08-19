@@ -349,29 +349,29 @@ export function itemCost(item: ItemObject): string {
   return textFromUnknown(item?.消耗);
 }
 
-function lawEffectText(item: ItemObject, kind: '被动' | '主动'): string {
-  const lines: string[] = [];
-  const legacy = textFromUnknown(item?.[`${kind}效果`]);
-  if (legacy) lines.push(legacy);
+function lawEffectEntries(item: ItemObject, kind: '被动' | '主动'): EffectEntry[] {
+  const entries: EffectEntry[] = [];
+  const legacy = item?.[`${kind}效果`];
+  if (legacy !== undefined && legacy !== null) entries.push(...normalizeEffectEntries(legacy));
 
   const prefix = `${kind}·`;
   Object.entries(item || {}).forEach(([key, value]) => {
     if (!key.startsWith(prefix)) return;
-    const content = textFromUnknown(value);
+    const content = textFromUnknown(value).trim();
     if (!content) return;
     const effectName = normalizeDisplayText(key.slice(prefix.length));
-    lines.push(effectName ? `${effectName}: ${content}` : content);
+    entries.push({ name: effectName || '描述', content, fallback: !effectName });
   });
 
-  return lines.join('\n');
+  return entries;
 }
 
-export function lawPassive(item: ItemObject): string {
-  return lawEffectText(item, '被动');
+export function lawPassiveEntries(item: ItemObject): EffectEntry[] {
+  return lawEffectEntries(item, '被动');
 }
 
-export function lawActive(item: ItemObject): string {
-  return lawEffectText(item, '主动');
+export function lawActiveEntries(item: ItemObject): EffectEntry[] {
+  return lawEffectEntries(item, '主动');
 }
 
 export function statusEffectType(item: ItemObject): string {

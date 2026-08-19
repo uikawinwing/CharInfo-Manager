@@ -2,8 +2,8 @@ import {
   itemDescription,
   itemEffectOrDescription,
   itemName,
-  lawActive,
-  lawPassive,
+  lawActiveEntries,
+  lawPassiveEntries,
   type CharacterViewModel,
   type ItemObject,
 } from '../../services/characterViewModel';
@@ -46,10 +46,20 @@ function objectSections(items: ItemObject[], kind: string, typeLabel: string): D
 }
 
 function lawSection(item: ItemObject): DivinityStageSection | null {
+  const passive = lawPassiveEntries(item).map(entry => ({
+    label: entry.fallback ? '【被动】' : `【被动】${entry.name}`,
+    body: entry.content,
+  }));
+  const active = lawActiveEntries(item).map(entry => ({
+    label: entry.fallback ? '【主动】' : `【主动】${entry.name}`,
+    body: entry.content,
+  }));
+  const description = itemDescription(item);
+
   return createSection('法则', 'Divine Law', itemName(item), '', [
-    { label: '被动效果', body: lawPassive(item) },
-    { label: '主动效果', body: lawActive(item) },
-    { label: '描述', body: itemDescription(item) },
+    ...passive,
+    ...active,
+    ...(description ? [{ label: '', body: description }] : []),
   ]);
 }
 

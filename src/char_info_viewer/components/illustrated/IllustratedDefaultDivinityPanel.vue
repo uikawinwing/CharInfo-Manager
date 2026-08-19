@@ -18,8 +18,8 @@
         </div>
         <strong>{{ section.title }}</strong>
         <div v-if="section.details?.length" class="default-divinity-card-details">
-          <p v-for="detail in section.details" :key="detail.label">
-            <span class="default-divinity-card-detail-label">{{ detail.label }}</span>
+          <p v-for="detail in section.details" :key="`${detail.label}-${detail.body}`">
+            <span v-if="detail.label" class="default-divinity-card-detail-label">{{ detail.label }}</span>
             <span>{{ detail.body }}</span>
           </p>
         </div>

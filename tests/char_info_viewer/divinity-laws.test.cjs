@@ -40,8 +40,8 @@ test('keeps the complete law collection when legacy top-level data accompanies t
         'Divine Law',
         '旧律',
         [
-          ['被动效果', '旧律被动'],
-          ['主动效果', '旧律主动'],
+          ['【被动】', '旧律被动'],
+          ['【主动】', '旧律主动'],
         ],
       ],
       [
@@ -49,8 +49,8 @@ test('keeps the complete law collection when legacy top-level data accompanies t
         'Divine Law',
         '新律',
         [
-          ['被动效果', '第七层新律被动'],
-          ['主动效果', '旧版新律主动'],
+          ['【被动】', '第七层新律被动'],
+          ['【主动】', '旧版新律主动'],
         ],
       ],
     ],
@@ -76,9 +76,9 @@ test('renders each of several laws as one complete section', () => {
   assert.deepEqual(
     lawSections.map(section => [section.title, section.details?.map(detail => detail.label)]),
     [
-      ['血', ['被动效果', '主动效果', '描述']],
-      ['渴求', ['被动效果', '主动效果', '描述']],
-      ['凝滞', ['被动效果', '主动效果', '描述']],
+      ['血', ['【被动】', '【主动】', '']],
+      ['渴求', ['【被动】', '【主动】', '']],
+      ['凝滞', ['【被动】', '【主动】', '']],
     ],
   );
 });
@@ -104,9 +104,9 @@ test('renders prompt-style named law effects', () => {
   const section = buildDivinitySections(vm).find(entry => entry.kind === '法则');
   assert.ok(section);
   assert.deepEqual(section.details, [
-    { label: '被动效果', body: '绝对支配: 被动内容' },
-    { label: '主动效果', body: '剥夺与惩戒: 主动内容' },
-    { label: '描述', body: '描述内容' },
+    { label: '【被动】绝对支配', body: '被动内容' },
+    { label: '【主动】剥夺与惩戒', body: '主动内容' },
+    { label: '', body: '描述内容' },
   ]);
 });
 

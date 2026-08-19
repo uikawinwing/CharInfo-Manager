@@ -58,8 +58,8 @@
           </div>
         </div>
         <div v-if="section.details?.length" class="stage-skill-details">
-          <p v-for="detail in section.details" :key="detail.label">
-            <span class="stage-skill-detail-label">{{ detail.label }}</span>
+          <p v-for="detail in section.details" :key="`${detail.label}-${detail.body}`">
+            <span v-if="detail.label" class="stage-skill-detail-label">{{ detail.label }}</span>
             <span>{{ detail.body }}</span>
           </p>
         </div>
