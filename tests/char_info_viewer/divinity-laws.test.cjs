@@ -4,6 +4,7 @@ const test = require('node:test');
 
 const { buildCharacterViewModel } = require('../../src/char_info_viewer/services/characterViewModel.ts');
 const { buildDivinitySections } = require('../../src/char_info_viewer/components/illustrated/divinitySections.ts');
+const { parseCharacterYaml } = require('../../src/char_info_viewer/services/yamlParser.ts');
 
 test('keeps the complete law collection when legacy top-level data accompanies the current divinity field', () => {
   const vm = buildCharacterViewModel({
@@ -80,6 +81,33 @@ test('renders each of several laws as one complete section', () => {
       ['凝滞', ['被动效果', '主动效果', '描述']],
     ],
   );
+});
+
+test('renders prompt-style named law effects', () => {
+  const parsed = parseCharacterYaml([
+    '<char_info>',
+    '姓名: 测试角色',
+    '登神长阶:',
+    '  法则:',
+    '    - 名称: 统御',
+    '      被动·绝对支配: |',
+    '        被动内容',
+    '      主动·剥夺与惩戒: |',
+    '        主动内容',
+    '      描述: |',
+    '        描述内容',
+    '</char_info>',
+  ].join('\n'));
+
+  assert.equal(parsed.success, true);
+  const vm = buildCharacterViewModel(parsed.data);
+  const section = buildDivinitySections(vm).find(entry => entry.kind === '法则');
+  assert.ok(section);
+  assert.deepEqual(section.details, [
+    { label: '被动效果', body: '绝对支配: 被动内容' },
+    { label: '主动效果', body: '剥夺与惩戒: 主动内容' },
+    { label: '描述', body: '描述内容' },
+  ]);
 });
 
 test('keeps the illustrated divinity tab vertically scrollable when its content exceeds the panel', () => {

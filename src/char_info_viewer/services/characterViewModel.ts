@@ -130,6 +130,30 @@ export function textFromUnknown(value: unknown): string {
   return String(value);
 }
 
+function finiteNumber(value: unknown): number | null {
+  if (value === '' || value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatMvuResource(value: unknown): string {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return '';
+  const resource = value as Record<string, unknown>;
+  const current = finiteNumber(resource.当前);
+  if (current !== null) return String(current);
+
+  const limit = resource.上限;
+  const limitRecord = limit && typeof limit === 'object' && !Array.isArray(limit) ? (limit as Record<string, unknown>) : null;
+  const base = finiteNumber(limitRecord?._基础);
+  const extra = finiteNumber(limitRecord?.额外) ?? 0;
+  return base === null ? '' : String(base + extra);
+}
+
+function resourceDisplayValue(legacyValue: unknown, mvuValue: unknown): string {
+  const legacyText = textFromUnknown(legacyValue);
+  return hasText(legacyText) ? legacyText : formatMvuResource(mvuValue);
+}
+
 function asObjectArray(input: unknown): ItemObject[] {
   if (!Array.isArray(input)) return [];
   return input.filter(item => item && typeof item === 'object') as ItemObject[];
@@ -325,12 +349,29 @@ export function itemCost(item: ItemObject): string {
   return textFromUnknown(item?.消耗);
 }
 
+function lawEffectText(item: ItemObject, kind: '被动' | '主动'): string {
+  const lines: string[] = [];
+  const legacy = textFromUnknown(item?.[`${kind}效果`]);
+  if (legacy) lines.push(legacy);
+
+  const prefix = `${kind}·`;
+  Object.entries(item || {}).forEach(([key, value]) => {
+    if (!key.startsWith(prefix)) return;
+    const content = textFromUnknown(value);
+    if (!content) return;
+    const effectName = normalizeDisplayText(key.slice(prefix.length));
+    lines.push(effectName ? `${effectName}: ${content}` : content);
+  });
+
+  return lines.join('\n');
+}
+
 export function lawPassive(item: ItemObject): string {
-  return textFromUnknown(item?.被动效果);
+  return lawEffectText(item, '被动');
 }
 
 export function lawActive(item: ItemObject): string {
-  return textFromUnknown(item?.主动效果);
+  return lawEffectText(item, '主动');
 }
 
 export function statusEffectType(item: ItemObject): string {
@@ -447,9 +488,9 @@ export function buildCharacterViewModel(
   const metadataRaceText = normalizeDisplayText(profileMetadata?.race || '');
   const resourceObj = (pickField(data, '资源', '资源') || {}) as Record<string, unknown>;
   const resourceBoxes: ResourceBox[] = [
-    { key: 'HP', label: 'HP', value: textFromUnknown(resourceObj.HP) },
-    { key: 'SP', label: 'SP', value: textFromUnknown(resourceObj.SP) },
-    { key: 'MP', label: 'MP', value: textFromUnknown(resourceObj.MP) },
+    { key: 'HP', label: 'HP', value: resourceDisplayValue(resourceObj.HP, data.生命值) },
+    { key: 'SP', label: 'SP', value: resourceDisplayValue(resourceObj.SP, data.体力值) },
+    { key: 'MP', label: 'MP', value: resourceDisplayValue(resourceObj.MP, data.法力值) },
   ].filter(resource => hasText(resource.value));
 
   const inventorySections: InventorySection[] = [

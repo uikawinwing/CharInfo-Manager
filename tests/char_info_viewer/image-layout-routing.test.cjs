@@ -83,6 +83,21 @@ test('Creator 示例资料进入真实 Preview 路由后保留姓名、等级、
   assert.equal(vm.layoutKind, 'special_npc');
 });
 
+test('Current Character Viewer reads v1.9.5 MVU resource objects', () => {
+  const vm = buildCharacterViewModel({
+    姓名: '资源测试角色',
+    生命值: { 当前: 480, 上限: { _基础: 900, 额外: 100 } },
+    法力值: { 当前: 700, 上限: { _基础: 800, 额外: 50 } },
+    体力值: { 当前: 650, 上限: { _基础: 700, 额外: 0 } },
+  });
+
+  assert.deepEqual(vm.resourceBoxes.map(item => [item.label, item.value]), [
+    ['HP', '480'],
+    ['SP', '650'],
+    ['MP', '700'],
+  ]);
+});
+
 test('非 DX 角色的正文显式图片不再授予 Special NPC 布局', () => {
   const vm = buildCharacterViewModel({
     姓名: '傲雪',

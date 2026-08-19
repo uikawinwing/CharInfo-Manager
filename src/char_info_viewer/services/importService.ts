@@ -221,72 +221,124 @@ function statusEffectsToMap(input: unknown): Record<string, Record<string, any>>
   return map;
 }
 
-export function mergeCharacterIntoMvuData(data: CharacterData, currentVars: Mvu.MvuData): string {
-  const normalizedData = normalizeCharacterDataKeys(data);
-  const charName = normalizedData.姓名 || '未命名角色';
-  const backpack = mergeNamedMaps(
-    arrayToMap(normalizedData.背包, 'backpack'),
-    arrayToMap(normalizedData.道具, 'backpack'),
-    arrayToMap(normalizedData.物品, 'backpack'),
-    arrayToMap(normalizedData.特殊物品, 'backpack'),
-  );
+function isRecord(value: unknown): value is Record<string, any> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
 
-  const mvuData = {
+function hasOwn(value: unknown, key: string): boolean {
+  return isRecord(value) && Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function createNewCharacterDefaults(): Record<string, any> {
+  return {
     在场: true,
-    生命层级: normalizedData.生命层级 || '第一层级/普通层级',
-    等级: parseInt(String(normalizedData.等级 ?? '1'), 10) || 1,
-    种族: normalizedData.种族 || '未知',
-    身份: ensureArray(normalizedData.身份),
-    职业: ensureArray(normalizedData.职业),
-    性格: ensureString(normalizedData.性格).trim(),
-    喜爱: ensureString(normalizedData.喜爱).trim(),
-    外貌: ensureString(normalizedData.外貌特质).trim(),
-    着装: ensureString(normalizedData.衣物装饰).trim(),
-    属性: {
-      力量: parseAttributeValue(normalizedData.属性?.力量),
-      敏捷: parseAttributeValue(normalizedData.属性?.敏捷),
-      体质: parseAttributeValue(normalizedData.属性?.体质),
-      智力: parseAttributeValue(normalizedData.属性?.智力),
-      精神: parseAttributeValue(normalizedData.属性?.精神),
-    },
-    状态效果: statusEffectsToMap(normalizedData.状态效果),
-    背包: backpack,
-    技能: arrayToMap(normalizedData.技能, 'skill'),
-    装备: arrayToMap(normalizedData.装备, 'equip'),
+    生命层级: '第一层级/普通层级',
+    等级: 1,
+    种族: '未知',
+    身份: [],
+    职业: [],
+    性格: '',
+    喜爱: '',
+    外貌: '',
+    着装: '',
+    属性: { 力量: 0, 敏捷: 0, 体质: 0, 智力: 0, 精神: 0 },
+    状态效果: {},
+    背包: {},
+    技能: {},
+    装备: {},
     登神长阶: {
-      是否开启: !!(
-        normalizedData.登神长阶 ||
-        (normalizedData.生命层级 && String(normalizedData.生命层级).includes('神'))
-      ),
-      神位: normalizedData.登神长阶?.神位 || normalizedData.神位 || '',
-      神国: {
-        名称: normalizedData.登神长阶?.神国?.名称 || normalizedData.神国?.名称 || '',
-        描述: normalizedData.登神长阶?.神国?.描述 || normalizedData.神国?.描述 || '',
-      },
-      要素: arrayToMap(normalizedData.登神长阶?.要素 || normalizedData.要素, 'divinity'),
-      权能: arrayToMap(normalizedData.登神长阶?.权能 || normalizedData.权能, 'divinity'),
-      法则: mergeNamedMaps(
-        arrayToMap(normalizedData.法则, 'divinity'),
-        arrayToMap(normalizedData.登神长阶?.法则, 'divinity'),
-      ),
+      是否开启: false,
+      神位: '',
+      神国: { 名称: '', 描述: '' },
+      要素: {},
+      权能: {},
+      法则: {},
     },
     命定契约: false,
     好感度: 0,
     心里话: '',
-    背景故事: normalizedData.背景故事 || '',
+    背景故事: '',
   };
+}
 
-  const keepIfPresent = (val: unknown) => (val === undefined || val === null ? undefined : val);
-  const currentCharacter = currentVars?.stat_data?.关系列表?.[charName];
-
-  const preservedFavor = keepIfPresent(currentCharacter?.好感度);
-  const preservedHeart = keepIfPresent(currentCharacter?.心里话);
-
-  if (preservedFavor !== undefined) (mvuData as any).好感度 = preservedFavor;
-  if (preservedHeart !== undefined) (mvuData as any).心里话 = preservedHeart;
+export function mergeCharacterIntoMvuData(data: CharacterData, currentVars: Mvu.MvuData): string {
+  const normalizedData = normalizeCharacterDataKeys(data);
+  const charName = normalizedData.姓名 || '未命名角色';
 
   currentVars.stat_data ??= {};
   currentVars.stat_data.关系列表 ??= {};
+  const currentCharacter = currentVars.stat_data.关系列表[charName];
+  const mvuData: Record<string, any> = isRecord(currentCharacter)
+    ? { ...currentCharacter }
+    : createNewCharacterDefaults();
+
+  if (hasOwn(normalizedData, '生命层级')) {
+    mvuData.生命层级 = normalizedData.生命层级 || '第一层级/普通层级';
+  }
+  if (hasOwn(normalizedData, '等级')) mvuData.等级 = parseInt(String(normalizedData.等级 ?? '1'), 10) || 1;
+  if (hasOwn(normalizedData, '种族')) mvuData.种族 = normalizedData.种族 || '未知';
+  if (hasOwn(normalizedData, '身份')) mvuData.身份 = ensureArray(normalizedData.身份);
+  if (hasOwn(normalizedData, '职业')) mvuData.职业 = ensureArray(normalizedData.职业);
+  if (hasOwn(normalizedData, '性格')) mvuData.性格 = ensureString(normalizedData.性格).trim();
+  if (hasOwn(normalizedData, '喜爱')) mvuData.喜爱 = ensureString(normalizedData.喜爱).trim();
+  if (hasOwn(normalizedData, '外貌特质')) mvuData.外貌 = ensureString(normalizedData.外貌特质).trim();
+  if (hasOwn(normalizedData, '衣物装饰')) mvuData.着装 = ensureString(normalizedData.衣物装饰).trim();
+  if (hasOwn(normalizedData, '背景故事')) mvuData.背景故事 = normalizedData.背景故事 || '';
+
+  if (isRecord(normalizedData.属性)) {
+    const attributes = isRecord(mvuData.属性) ? { ...mvuData.属性 } : {};
+    (['力量', '敏捷', '体质', '智力', '精神'] as const).forEach(key => {
+      if (hasOwn(normalizedData.属性, key)) attributes[key] = parseAttributeValue(normalizedData.属性?.[key]);
+    });
+    mvuData.属性 = attributes;
+  }
+
+  if (hasOwn(normalizedData, '状态效果')) mvuData.状态效果 = statusEffectsToMap(normalizedData.状态效果);
+
+  if (['背包', '道具', '物品', '特殊物品'].some(key => hasOwn(normalizedData, key))) {
+    mvuData.背包 = mergeNamedMaps(
+      arrayToMap(normalizedData.背包, 'backpack'),
+      arrayToMap(normalizedData.道具, 'backpack'),
+      arrayToMap(normalizedData.物品, 'backpack'),
+      arrayToMap(normalizedData.特殊物品, 'backpack'),
+    );
+  }
+  if (hasOwn(normalizedData, '技能')) mvuData.技能 = arrayToMap(normalizedData.技能, 'skill');
+  if (hasOwn(normalizedData, '装备')) mvuData.装备 = arrayToMap(normalizedData.装备, 'equip');
+
+  const divinityInput = isRecord(normalizedData.登神长阶) ? normalizedData.登神长阶 : {};
+  const hasDivinityInput =
+    hasOwn(normalizedData, '登神长阶') ||
+    ['神位', '神国', '要素', '权能', '法则'].some(key => hasOwn(normalizedData, key));
+  if (hasDivinityInput) {
+    const divinity = isRecord(mvuData.登神长阶) ? { ...mvuData.登神长阶 } : {};
+    divinity.是否开启 = true;
+
+    if (hasOwn(divinityInput, '神位') || hasOwn(normalizedData, '神位')) {
+      divinity.神位 = divinityInput.神位 || normalizedData.神位 || '';
+    }
+    if (hasOwn(divinityInput, '神国') || hasOwn(normalizedData, '神国')) {
+      const sourceKingdom = divinityInput.神国 || normalizedData.神国 || {};
+      const kingdom = isRecord(divinity.神国) ? { ...divinity.神国 } : {};
+      if (hasOwn(sourceKingdom, '名称')) kingdom.名称 = sourceKingdom.名称 || '';
+      if (hasOwn(sourceKingdom, '描述')) kingdom.描述 = sourceKingdom.描述 || '';
+      divinity.神国 = kingdom;
+    }
+    if (hasOwn(divinityInput, '要素') || hasOwn(normalizedData, '要素')) {
+      divinity.要素 = arrayToMap(divinityInput.要素 || normalizedData.要素, 'divinity');
+    }
+    if (hasOwn(divinityInput, '权能') || hasOwn(normalizedData, '权能')) {
+      divinity.权能 = arrayToMap(divinityInput.权能 || normalizedData.权能, 'divinity');
+    }
+    if (hasOwn(divinityInput, '法则') || hasOwn(normalizedData, '法则')) {
+      divinity.法则 = mergeNamedMaps(
+        arrayToMap(normalizedData.法则, 'divinity'),
+        arrayToMap(divinityInput.法则, 'divinity'),
+      );
+    }
+    mvuData.登神长阶 = divinity;
+  }
+
   currentVars.stat_data.关系列表[charName] = mvuData;
 
   return charName;
