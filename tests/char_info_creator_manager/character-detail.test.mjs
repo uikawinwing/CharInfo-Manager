@@ -18,7 +18,7 @@ test('点击玩家角色库中的角色先打开 Viewer 详情', () => {
 
 test('Viewer 详情展示图库并支持图片、视频和备用源回退', () => {
   assert.match(librarySource, /\.\.\.character\.profile\.gallery/u);
-  assert.match(librarySource, /findGalleryPackEntry/u);
+  assert.match(librarySource, /resolveGalleryExtensionPayload/u);
   assert.match(librarySource, /item\.media\?\.kind === 'video'/u);
   assert.match(librarySource, /@error="advanceDetailMedia\(item\.sourceIndex\)"/u);
   assert.match(librarySource, /detailGalleryIndexes\[key\] = \(detailGalleryIndexes\[key\] \?\? 0\) \+ 1/u);

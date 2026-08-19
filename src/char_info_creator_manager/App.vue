@@ -547,7 +547,9 @@
                     <small>
                       {{
                         useExtendedGallery
-                          ? `前 ${DEFAULT_EMBEDDED_GALLERY_LIMIT} 张随角色条目保存，其余图片进入独立图库世界书`
+                          ? galleryExtensionSource === 'remote'
+                            ? `基础图片随角色条目保存，扩展图片从远端 HTTPS Gallery Pack 只读加载`
+                            : `前 ${DEFAULT_EMBEDDED_GALLERY_LIMIT} 张随角色条目保存，其余图片进入独立图库世界书`
                           : '默认：全部图片随角色资料保存'
                       }}
                     </small>
@@ -556,34 +558,42 @@
 
                 <div v-if="useExtendedGallery" class="gallery-storage-fields">
                   <label class="field field-full">
-                    <span class="field-label">扩展图库世界书</span>
+                    <span class="field-label">扩展图库来源</span>
+                    <select v-model="galleryExtensionSource" @change="onGalleryExtensionSourceChange">
+                      <option value="worldbook">SillyTavern 世界书（可写）</option>
+                      <option value="remote">远端 HTTPS Gallery Pack（只读）</option>
+                    </select>
+                  </label>
+                  <template v-if="galleryExtensionSource === 'worldbook'">
+                    <label class="field field-full">
+                      <span class="field-label">扩展图库世界书</span>
+                      <input
+                        v-model="galleryPackWorldbookName"
+                        type="text"
+                        maxlength="128"
+                        autocomplete="off"
+                        placeholder="例如：命定之诗-CharInfo图库"
+                      />
+                    </label>
+                    <label class="field">
+                      <span class="field-label">图库包 ID</span>
+                      <input v-model="galleryPackId" type="text" maxlength="64" spellcheck="false" placeholder="creator-project" />
+                    </label>
+                    <label class="field">
+                      <span class="field-label">图库角色 ID</span>
+                      <input v-model="galleryProfileId" type="text" maxlength="64" spellcheck="false" placeholder="character-id" />
+                    </label>
+                  </template>
+                  <label v-else class="field field-full">
+                    <span class="field-label">远端 Gallery Pack URL</span>
                     <input
-                      v-model="galleryPackWorldbookName"
-                      type="text"
-                      maxlength="128"
+                      v-model="remoteGalleryUrl"
+                      type="url"
+                      inputmode="url"
                       autocomplete="off"
-                      placeholder="例如：命定之诗-CharInfo图库"
+                      placeholder="https://…/gallery-pack.json"
                     />
-                  </label>
-                  <label class="field">
-                    <span class="field-label">图库包 ID</span>
-                    <input
-                      v-model="galleryPackId"
-                      type="text"
-                      maxlength="64"
-                      spellcheck="false"
-                      placeholder="creator-project"
-                    />
-                  </label>
-                  <label class="field">
-                    <span class="field-label">图库角色 ID</span>
-                    <input
-                      v-model="galleryProfileId"
-                      type="text"
-                      maxlength="64"
-                      spellcheck="false"
-                      placeholder="character-id"
-                    />
+                    <small class="field-guidance">只读引用；上传、删除和排序请在图片托管端完成。CharInfo 不发送登录凭据。</small>
                   </label>
                 </div>
                 <ul
@@ -648,7 +658,7 @@
                   <div class="gallery-fields">
                     <label class="field">
                       <span class="field-label">图片标题</span>
-                      <input v-model="image.title" type="text" autocomplete="off" />
+                      <input v-model="image.title" type="text" autocomplete="off" :disabled="isRemoteGalleryImage(image)" />
                     </label>
                     <div class="source-list">
                       <label v-for="(_source, sourceIndex) in image.sources" :key="sourceIndex" class="field">
@@ -663,9 +673,10 @@
                             inputmode="url"
                             autocomplete="off"
                             placeholder="https://…/portrait.webp"
+                            :disabled="isRemoteGalleryImage(image)"
                             @input="onGallerySourceInput(image)"
                           />
-                          <span class="source-order-actions">
+                          <span v-if="!isRemoteGalleryImage(image)" class="source-order-actions">
                             <button
                               type="button"
                               class="source-order-button"
@@ -699,13 +710,13 @@
                           </span>
                         </span>
                       </label>
-                      <button type="button" class="add-source-button" @click="addImageSource(image)">
+                      <button v-if="!isRemoteGalleryImage(image)" type="button" class="add-source-button" @click="addImageSource(image)">
                         ＋ 添加备用图片地址
                       </button>
                     </div>
                   </div>
 
-                  <div class="gallery-actions">
+                  <div v-if="galleryExtensionSource !== 'remote' || !useExtendedGallery" class="gallery-actions">
                     <button type="button" title="上移" :disabled="index === 0" @click="moveImage(index, -1)">↑</button>
                     <button
                       type="button"
@@ -728,7 +739,14 @@
                 </article>
               </div>
 
-              <button class="add-image-button" type="button" @click="addImage">＋ 添加一张图片</button>
+              <button
+                class="add-image-button"
+                type="button"
+                :disabled="useExtendedGallery && galleryExtensionSource === 'remote'"
+                @click="addImage"
+              >
+                ＋ 添加一张图片
+              </button>
 
               <div class="wizard-step-actions">
                 <button type="button" class="secondary-button" @click="goToStep(3)">上一步</button>
@@ -764,7 +782,10 @@
               <pre>{{ generatedCode || '尚未生成可写入内容。' }}</pre>
             </details>
 
-            <section v-if="useExtendedGallery" class="gallery-pack-download-panel">
+            <section
+              v-if="useExtendedGallery && galleryExtensionSource === 'worldbook'"
+              class="gallery-pack-download-panel"
+            >
               <div>
                 <h3>独立扩展图库世界书包</h3>
                 <p>只包含第 {{ DEFAULT_EMBEDDED_GALLERY_LIMIT + 1 }} 张起的扩展图片，可单独发布、订阅或更新。</p>
@@ -893,9 +914,13 @@ import {
 import {
   createStableGalleryId,
   DEFAULT_EMBEDDED_GALLERY_LIMIT,
+  isRemoteGalleryExtensionReference,
+  isWorldbookGalleryExtensionReference,
   validateGalleryExtensionReference,
   type GalleryExtensionReference,
+  type WorldbookGalleryExtensionReference,
 } from '../char_info_shared/galleryPack';
+import { resolveGalleryExtensionPayload } from '../char_info_viewer/services/galleryPackService';
 import {
   parseWorldbookCharacterDisplayName,
   parseWorldbookCharacterEntryTitle,
@@ -923,7 +948,6 @@ import {
 } from '../char_info_shared/legacyVisualProfile';
 import {
   deleteGalleryPackProfile,
-  readGalleryPackProfile,
   saveGalleryPackProfile,
   serializeGalleryPackWorkshopSource,
 } from './galleryPackStorage';
@@ -1010,9 +1034,12 @@ const activeStep = ref<StepId>(1);
 const furthestStep = ref<StepId>(1);
 const customizeColors = ref(false);
 const useExtendedGallery = ref(false);
+const galleryExtensionSource = ref<'worldbook' | 'remote'>('worldbook');
 const galleryPackWorldbookName = ref('');
 const galleryPackId = ref('');
 const galleryProfileId = ref('');
+const remoteGalleryUrl = ref('');
+const remoteGalleryImageIds = reactive(new Set<number>());
 const loadingGalleryExtension = ref(false);
 const galleryExtensionMessage = ref('');
 const saving = ref(false);
@@ -1040,7 +1067,7 @@ const profile = reactive<EditableProfile>(toEditableProfile(createEmptyProfile()
 const avatarSourceMode = ref<'gallery' | 'custom'>('gallery');
 const avatarGalleryImageId = ref<number | null>(profile.gallery[0]?.id ?? null);
 
-function defaultGalleryReference(): GalleryExtensionReference {
+function defaultGalleryReference(): WorldbookGalleryExtensionReference {
   return {
     worldbookName: `${selectedWorldbookName.value || 'CharInfo'}-CharInfo图库`,
     packId: createStableGalleryId(selectedWorldbookName.value, 'char-info-gallery'),
@@ -1050,6 +1077,7 @@ function defaultGalleryReference(): GalleryExtensionReference {
 
 function currentGalleryReference(): GalleryExtensionReference | null {
   if (!useExtendedGallery.value) return null;
+  if (galleryExtensionSource.value === 'remote') return { url: remoteGalleryUrl.value.trim() };
   return {
     worldbookName: galleryPackWorldbookName.value.trim(),
     packId: galleryPackId.value.trim().toLocaleLowerCase(),
@@ -1059,14 +1087,22 @@ function currentGalleryReference(): GalleryExtensionReference | null {
 
 function applyGalleryReference(reference?: GalleryExtensionReference) {
   useExtendedGallery.value = !!reference;
-  if (reference) {
+  remoteGalleryImageIds.clear();
+  if (reference && isRemoteGalleryExtensionReference(reference)) {
+    galleryExtensionSource.value = 'remote';
+    remoteGalleryUrl.value = reference.url;
+  } else if (reference) {
+    galleryExtensionSource.value = 'worldbook';
     galleryPackWorldbookName.value = reference.worldbookName;
     galleryPackId.value = reference.packId;
     galleryProfileId.value = reference.profileId;
+    remoteGalleryUrl.value = '';
   } else {
+    galleryExtensionSource.value = 'worldbook';
     galleryPackWorldbookName.value = '';
     galleryPackId.value = '';
     galleryProfileId.value = '';
+    remoteGalleryUrl.value = '';
   }
   galleryExtensionMessage.value = '';
 }
@@ -1132,9 +1168,13 @@ function toSerializableProfile(): CharacterVisualProfile {
   const fullProfile = toFullSerializableProfile();
   const reference = currentGalleryReference();
   if (!reference) return fullProfile;
+  const localGallery = fullProfile.gallery.filter((_image, index) => {
+    const editableImage = profile.gallery[index];
+    return !editableImage || !remoteGalleryImageIds.has(editableImage.id);
+  });
   return {
     ...fullProfile,
-    gallery: fullProfile.gallery.slice(0, DEFAULT_EMBEDDED_GALLERY_LIMIT),
+    gallery: localGallery.slice(0, DEFAULT_EMBEDDED_GALLERY_LIMIT),
     galleryExtension: reference,
   };
 }
@@ -1441,7 +1481,7 @@ const validationErrors = computed(() => {
   const reference = currentGalleryReference();
   if (useExtendedGallery.value) {
     if (reference) errors.push(...validateGalleryExtensionReference(reference));
-    if (extendedGalleryImages.value.length === 0) {
+    if (reference && isWorldbookGalleryExtensionReference(reference) && extendedGalleryImages.value.length === 0) {
       errors.push(`扩展图库模式至少需要 ${DEFAULT_EMBEDDED_GALLERY_LIMIT + 1} 张图片。`);
     }
   }
@@ -1459,7 +1499,14 @@ const generatedCode = computed(() => {
 
 const generatedGalleryPackJson = computed(() => {
   const reference = currentGalleryReference();
-  if (!reference || validationErrors.value.length > 0 || extendedGalleryImages.value.length === 0) return '';
+  if (
+    !reference ||
+    !isWorldbookGalleryExtensionReference(reference) ||
+    validationErrors.value.length > 0 ||
+    extendedGalleryImages.value.length === 0
+  ) {
+    return '';
+  }
   try {
     return serializeGalleryPackWorkshopSource(reference, profile.characterName, extendedGalleryImages.value);
   } catch {
@@ -1592,6 +1639,12 @@ function onCustomizeColorsChange() {
 function onExtendedGalleryChange() {
   galleryExtensionMessage.value = '';
   if (!useExtendedGallery.value) return;
+  onGalleryExtensionSourceChange();
+}
+
+function onGalleryExtensionSourceChange() {
+  galleryExtensionMessage.value = '';
+  if (galleryExtensionSource.value !== 'worldbook') return;
   const defaults = defaultGalleryReference();
   galleryPackWorldbookName.value ||= defaults.worldbookName;
   galleryPackId.value ||= defaults.packId;
@@ -1600,6 +1653,10 @@ function onExtendedGalleryChange() {
 
 function isExtendedGalleryImage(index: number): boolean {
   return useExtendedGallery.value && index >= DEFAULT_EMBEDDED_GALLERY_LIMIT;
+}
+
+function isRemoteGalleryImage(image: EditableGalleryImage): boolean {
+  return remoteGalleryImageIds.has(image.id);
 }
 
 async function loadWorldbooks() {
@@ -1700,13 +1757,19 @@ async function loadSelectedEntryProfile() {
       loadingGalleryExtension.value = true;
       galleryExtensionMessage.value = '正在读取扩展图库…';
       try {
-        const payload = await readGalleryPackProfile(reference);
+        const payload = await resolveGalleryExtensionPayload(reference);
         if (selectedWorldbookName.value !== expectedWorldbook || selectedEntryUid.value !== expectedUid) return;
         if (!payload) {
           galleryExtensionMessage.value = '扩展图库尚未安装或对应条目不存在；基础图片仍可正常使用。';
         } else {
-          profile.gallery.push(...toEditableProfile({ ...createEmptyProfile(), gallery: payload.gallery }).gallery);
-          galleryExtensionMessage.value = `已读取 ${payload.gallery.length} 张扩展图库图片。`;
+          const loadedImages = toEditableProfile({ ...createEmptyProfile(), gallery: payload.gallery }).gallery;
+          profile.gallery.push(...loadedImages);
+          if (isRemoteGalleryExtensionReference(reference)) {
+            loadedImages.forEach(image => remoteGalleryImageIds.add(image.id));
+            galleryExtensionMessage.value = `已读取 ${payload.gallery.length} 张远端只读图库图片；管理请回图片托管端完成。`;
+          } else {
+            galleryExtensionMessage.value = `已读取 ${payload.gallery.length} 张扩展图库图片。`;
+          }
         }
       } catch (error) {
         if (selectedWorldbookName.value === expectedWorldbook && selectedEntryUid.value === expectedUid) {
@@ -1963,7 +2026,9 @@ async function saveToEntry() {
     : '';
   const confirmed = window.confirm(
     useExtendedGallery.value
-      ? `确定保存角色视觉资料和扩展图库？\n\n角色世界书：${worldbookName}\n角色条目：${entry.name || `#${entry.uid}`}\n图库世界书：${galleryPackWorldbookName.value}${migrationNotice}`
+      ? galleryExtensionSource.value === 'remote'
+        ? `确定保存角色视觉资料和远端图库只读引用？\n\n角色世界书：${worldbookName}\n角色条目：${entry.name || `#${entry.uid}`}\n远端图库：${remoteGalleryUrl.value}${migrationNotice}`
+        : `确定保存角色视觉资料和扩展图库？\n\n角色世界书：${worldbookName}\n角色条目：${entry.name || `#${entry.uid}`}\n图库世界书：${galleryPackWorldbookName.value}${migrationNotice}`
       : `确定将角色视觉资料写入以下条目？\n\n世界书：${worldbookName}\n条目：${entry.name || `#${entry.uid}`}${migrationNotice}`,
   );
   if (!confirmed) return;
@@ -1975,20 +2040,30 @@ async function saveToEntry() {
   try {
     const normalizedProfile = normalizeProfile(toSerializableProfile());
     const galleryReference = currentGalleryReference();
+    const worldbookGalleryReference =
+      galleryReference && isWorldbookGalleryExtensionReference(galleryReference) ? galleryReference : null;
     const latestEntries = await getWorldbook(worldbookName);
     const latestEntry = latestEntries.find(item => item.uid === entry.uid);
     if (!latestEntry) throw new Error(`找不到世界书条目 #${entry.uid}。`);
     upsertManagedEjsBlockWithLegacyMigration(latestEntry.content, normalizedProfile);
 
-    const previousGallery = galleryReference ? await readGalleryPackProfile(galleryReference) : null;
+    const previousGallery = worldbookGalleryReference
+      ? await resolveGalleryExtensionPayload(worldbookGalleryReference)
+      : null;
     let galleryWriteAttempted = false;
     let updatedWorldbook: WorldbookEntry[];
     try {
-      if (galleryReference) {
+      if (worldbookGalleryReference) {
         saveMessage.value = '正在保存独立扩展图库…';
         galleryWriteAttempted = true;
-        await saveGalleryPackProfile(galleryReference, normalizedProfile.characterName, extendedGalleryImages.value);
-        galleryExtensionMessage.value = `扩展图库已保存到“${galleryReference.worldbookName}”。`;
+        await saveGalleryPackProfile(
+          worldbookGalleryReference,
+          normalizedProfile.characterName,
+          extendedGalleryImages.value,
+        );
+        galleryExtensionMessage.value = `扩展图库已保存到“${worldbookGalleryReference.worldbookName}”。`;
+      } else if (galleryReference && isRemoteGalleryExtensionReference(galleryReference)) {
+        galleryExtensionMessage.value = '已保存远端图库只读引用；远端图库本体未被修改。';
       }
 
       saveMessage.value = '正在读取角色条目并安全写入…';
@@ -2006,12 +2081,16 @@ async function saveToEntry() {
         { render: 'immediate' },
       );
     } catch (error) {
-      if (galleryReference && galleryWriteAttempted) {
+      if (worldbookGalleryReference && galleryWriteAttempted) {
         try {
           if (previousGallery) {
-            await saveGalleryPackProfile(galleryReference, previousGallery.characterName, previousGallery.gallery);
+            await saveGalleryPackProfile(
+              worldbookGalleryReference,
+              previousGallery.characterName,
+              previousGallery.gallery,
+            );
           } else {
-            await deleteGalleryPackProfile(galleryReference);
+            await deleteGalleryPackProfile(worldbookGalleryReference);
           }
         } catch (rollbackError) {
           throw new Error(
@@ -2034,11 +2113,13 @@ async function saveToEntry() {
     const migrationSummary = legacyMigrationSource
       ? `旧版 ${legacyMigrationSource} 已升级为 char_info.profiles v2；`
       : '';
-    saveMessage.value = galleryReference
+    saveMessage.value = worldbookGalleryReference
       ? `保存成功：${migrationSummary}角色条目保留 ${embeddedGalleryCount.value} 张基础图片，${extendedGalleryImages.value.length} 张图片已写入独立图库世界书。`
-      : legacyMigrationSource
-        ? `升级成功：${migrationSummary}原条目其余内容保持不变。`
-        : '保存成功：角色视觉资料已写入，原条目其余内容保持不变。';
+      : galleryReference && isRemoteGalleryExtensionReference(galleryReference)
+        ? `保存成功：${migrationSummary}角色条目已保存远端图库只读引用，远端图库本体未被修改。`
+        : legacyMigrationSource
+          ? `升级成功：${migrationSummary}原条目其余内容保持不变。`
+          : '保存成功：角色视觉资料已写入，原条目其余内容保持不变。';
     console.info('[CharInfo Creator Manager] Managed EJS saved', {
       worldbook: worldbookName,
       entryUid: entry.uid,

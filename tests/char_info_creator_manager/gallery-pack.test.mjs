@@ -5,8 +5,10 @@ import {
   createStableGalleryId,
   createGalleryPackPayload,
   findGalleryPackEntry,
+  normalizeGalleryExtensionReference,
   parseGalleryPackPayload,
   serializeGalleryPackPayload,
+  validateGalleryExtensionReference,
 } from '../../src/char_info_shared/galleryPack.ts';
 import {
   buildManagedEjsBlock,
@@ -17,7 +19,11 @@ import {
   deleteGalleryPackProfile,
   saveGalleryPackProfile,
 } from '../../src/char_info_creator_manager/galleryPackStorage.ts';
-import { mergeGalleryExtension } from '../../src/char_info_viewer/services/galleryPackService.ts';
+import {
+  clearGalleryPackCache,
+  mergeGalleryExtension,
+  resolveGalleryExtensionPayload,
+} from '../../src/char_info_viewer/services/galleryPackService.ts';
 
 const reference = {
   worldbookName: '命定之诗-CharInfo图库',
@@ -31,6 +37,57 @@ function image(index) {
     sources: [`https://images.example/${index}.webp`, `https://backup.example/${index}.webp`],
   };
 }
+
+test('扩展图库引用兼容旧 Worldbook 格式并接受 HTTPS 远端格式', () => {
+  assert.deepEqual(normalizeGalleryExtensionReference(reference), reference);
+  assert.deepEqual(normalizeGalleryExtensionReference({ url: ' https://gallery.example/lilia.json ' }), {
+    url: 'https://gallery.example/lilia.json',
+  });
+  assert.equal(normalizeGalleryExtensionReference({ url: 'http://gallery.example/lilia.json' }), null);
+  assert.equal(normalizeGalleryExtensionReference({ ...reference, url: 'https://gallery.example/lilia.json' }), null);
+  assert.ok(validateGalleryExtensionReference({ url: 'http://gallery.example/lilia.json' }).length > 0);
+});
+
+test('远端 resolver 不发送凭据并继续使用 Gallery Pack payload 格式', async t => {
+  const remoteReference = { url: 'https://gallery.example/lilia.json' };
+  const expected = createGalleryPackPayload({ packId: 'poem-of-destiny', profileId: 'lilia' }, '莉利亚', [image(4)]);
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    clearGalleryPackCache();
+  });
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, remoteReference.url);
+    assert.equal(options?.credentials, 'omit');
+    return {
+      ok: true,
+      status: 200,
+      url: remoteReference.url,
+      text: async () => serializeGalleryPackPayload(expected),
+    };
+  };
+
+  assert.deepEqual(await resolveGalleryExtensionPayload(remoteReference), expected);
+});
+
+test('远端 resolver 拒绝重定向到非 HTTPS 地址', async t => {
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    clearGalleryPackCache();
+  });
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    url: 'http://gallery.example/lilia.json',
+    text: async () => '{}',
+  });
+
+  await assert.rejects(
+    resolveGalleryExtensionPayload({ url: 'https://gallery.example/lilia.json' }),
+    /重定向后的 URL 必须使用 HTTPS/u,
+  );
+});
 
 test('中文世界书与角色名会生成可验证且稳定的 ASCII 图库 ID', () => {
   assert.match(createStableGalleryId('QA角色世界书', 'char-info-gallery'), /^[a-z0-9][a-z0-9._-]{0,63}$/u);

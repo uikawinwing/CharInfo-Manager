@@ -405,8 +405,8 @@ import {
   type CharacterVisualProfile,
   type GalleryImage,
 } from '../char_info_shared/characterVisualProfile';
-import { findGalleryPackEntry } from '../char_info_shared/galleryPack';
 import { buildWorldbookList } from '../char_info_shared/worldbookList';
+import { resolveGalleryExtensionPayload } from '../char_info_viewer/services/galleryPackService';
 import { normalizePortraitMediaUrlForBrowser } from '../char_info_viewer/services/imageUrl';
 
 type LibraryCharacter = WorldbookCharacterEntry<WorldbookEntry, CharacterVisualProfile> & {
@@ -696,11 +696,14 @@ function openDetails(character: LibraryCharacter) {
   delete detailExtensionGallery[character.entry.uid];
   const reference = character.profile.galleryExtension;
   if (!reference) return;
-  void getWorldbook(reference.worldbookName).then(galleryEntries => {
-    if (detailUid.value !== character.entry.uid) return;
-    const payload = findGalleryPackEntry(galleryEntries, reference)?.payload;
-    if (payload) detailExtensionGallery[character.entry.uid] = payload.gallery;
-  });
+  void resolveGalleryExtensionPayload(reference)
+    .then(payload => {
+      if (detailUid.value !== character.entry.uid) return;
+      if (payload) detailExtensionGallery[character.entry.uid] = payload.gallery;
+    })
+    .catch(caught => {
+      console.warn('[CharInfo Character Library] 扩展图库读取失败：', reference, caught);
+    });
 }
 
 function closeDetails() {

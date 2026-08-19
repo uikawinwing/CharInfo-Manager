@@ -1,11 +1,16 @@
 import {
   findGalleryPackEntry,
+  isRemoteGalleryExtensionReference,
   normalizeGalleryExtensionReference,
+  parseGalleryPackPayload,
+  type GalleryExtensionReference,
   type GalleryPackEntryLike,
   type GalleryPackImage,
+  type GalleryPackPayload,
 } from '../../char_info_shared/galleryPack.ts';
 
 const pendingWorldbookReads = new Map<string, Promise<GalleryPackEntryLike[]>>();
+const pendingRemoteReads = new Map<string, Promise<GalleryPackPayload>>();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -30,6 +35,33 @@ async function readGalleryWorldbook(worldbookName: string): Promise<GalleryPackE
   }
 }
 
+async function readRemoteGalleryPack(url: string): Promise<GalleryPackPayload> {
+  const pending = pendingRemoteReads.get(url);
+  if (pending) return pending;
+
+  const promise = fetch(url, { credentials: 'omit' }).then(async response => {
+    if (!response.ok) throw new Error(`远端扩展图库请求失败（HTTP ${response.status}）。`);
+    if (response.url && new URL(response.url).protocol !== 'https:') {
+      throw new Error('远端扩展图库重定向后的 URL 必须使用 HTTPS。');
+    }
+    return parseGalleryPackPayload(await response.text());
+  });
+  pendingRemoteReads.set(url, promise);
+  try {
+    return await promise;
+  } finally {
+    if (pendingRemoteReads.get(url) === promise) pendingRemoteReads.delete(url);
+  }
+}
+
+export async function resolveGalleryExtensionPayload(
+  reference: GalleryExtensionReference,
+): Promise<GalleryPackPayload | null> {
+  if (isRemoteGalleryExtensionReference(reference)) return readRemoteGalleryPack(reference.url);
+  const entries = await readGalleryWorldbook(reference.worldbookName);
+  return findGalleryPackEntry(entries, reference)?.payload ?? null;
+}
+
 export function mergeGalleryExtension(
   visualConfig: unknown,
   extensionGallery: readonly GalleryPackImage[],
@@ -47,24 +79,19 @@ export async function resolveGalleryExtension(visualConfig: unknown): Promise<un
   if (!reference) return visualConfig;
 
   try {
-    const entries = await readGalleryWorldbook(reference.worldbookName);
-    const match = findGalleryPackEntry(entries, reference);
-    if (!match) {
-      console.warn(
-        `[CharInfo Viewer] 未找到扩展图库 ${reference.packId}/${reference.profileId}（世界书：${reference.worldbookName}）。`,
-      );
+    const payload = await resolveGalleryExtensionPayload(reference);
+    if (!payload) {
+      console.warn('[CharInfo Viewer] 未找到扩展图库。', reference);
       return visualConfig;
     }
-    return mergeGalleryExtension(visualConfig, match.payload.gallery);
+    return mergeGalleryExtension(visualConfig, payload.gallery);
   } catch (error) {
-    console.warn(
-      `[CharInfo Viewer] 扩展图库读取失败 ${reference.packId}/${reference.profileId}（世界书：${reference.worldbookName}）：`,
-      error,
-    );
+    console.warn('[CharInfo Viewer] 扩展图库读取失败：', reference, error);
     return visualConfig;
   }
 }
 
 export function clearGalleryPackCache(): void {
   pendingWorldbookReads.clear();
+  pendingRemoteReads.clear();
 }

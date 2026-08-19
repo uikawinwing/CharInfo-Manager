@@ -3,9 +3,9 @@ import {
   findGalleryPackEntry,
   galleryPackEntryName,
   serializeGalleryPackPayload,
-  type GalleryExtensionReference,
   type GalleryPackImage,
   type GalleryPackPayload,
+  type WorldbookGalleryExtensionReference,
 } from '../char_info_shared/galleryPack.ts';
 
 export type GalleryPackWorkshopEntry = {
@@ -37,7 +37,7 @@ export type GalleryPackWorkshopEntry = {
   content: string;
 };
 
-function createWorldbookEntryInput(reference: GalleryExtensionReference, payload: GalleryPackPayload) {
+function createWorldbookEntryInput(reference: WorldbookGalleryExtensionReference, payload: GalleryPackPayload) {
   return {
     name: galleryPackEntryName(reference),
     enabled: false,
@@ -76,13 +76,15 @@ function createWorldbookEntryInput(reference: GalleryExtensionReference, payload
   };
 }
 
-export async function readGalleryPackProfile(reference: GalleryExtensionReference): Promise<GalleryPackPayload | null> {
+export async function readGalleryPackProfile(
+  reference: WorldbookGalleryExtensionReference,
+): Promise<GalleryPackPayload | null> {
   const entries = await getWorldbook(reference.worldbookName);
   return findGalleryPackEntry(entries, reference)?.payload ?? null;
 }
 
 export async function saveGalleryPackProfile(
-  reference: GalleryExtensionReference,
+  reference: WorldbookGalleryExtensionReference,
   characterName: string,
   gallery: GalleryPackImage[],
 ): Promise<GalleryPackPayload> {
@@ -120,7 +122,7 @@ export async function saveGalleryPackProfile(
   return verified.payload;
 }
 
-export async function deleteGalleryPackProfile(reference: GalleryExtensionReference): Promise<void> {
+export async function deleteGalleryPackProfile(reference: WorldbookGalleryExtensionReference): Promise<void> {
   const existingEntries = await getWorldbook(reference.worldbookName);
   const existing = findGalleryPackEntry(existingEntries, reference);
   if (!existing) return;
@@ -138,7 +140,7 @@ export async function deleteGalleryPackProfile(reference: GalleryExtensionRefere
 }
 
 export function serializeGalleryPackWorkshopSource(
-  reference: GalleryExtensionReference,
+  reference: WorldbookGalleryExtensionReference,
   characterName: string,
   gallery: GalleryPackImage[],
 ): string {

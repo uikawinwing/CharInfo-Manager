@@ -2,8 +2,19 @@ export const GALLERY_PACK_FORMAT = 'char-info-gallery-pack';
 export const GALLERY_PACK_VERSION = 1;
 export const DEFAULT_EMBEDDED_GALLERY_LIMIT = 3;
 
-export type GalleryExtensionReference = {
+export type WorldbookGalleryExtensionReference = {
   worldbookName: string;
+  packId: string;
+  profileId: string;
+};
+
+export type RemoteGalleryExtensionReference = {
+  url: string;
+};
+
+export type GalleryExtensionReference = WorldbookGalleryExtensionReference | RemoteGalleryExtensionReference;
+
+export type GalleryPackIdentity = {
   packId: string;
   profileId: string;
 };
@@ -86,7 +97,18 @@ function isHttpsUrl(value: string): boolean {
 
 export function normalizeGalleryExtensionReference(value: unknown): GalleryExtensionReference | null {
   if (!isRecord(value)) return null;
-  const reference = {
+  const hasWorldbookReference = 'worldbookName' in value || 'packId' in value || 'profileId' in value;
+  const hasRemoteReference = 'url' in value;
+  if (hasWorldbookReference && hasRemoteReference) return null;
+
+  if (hasRemoteReference) {
+    const reference: RemoteGalleryExtensionReference = {
+      url: typeof value.url === 'string' ? value.url.trim() : '',
+    };
+    return validateGalleryExtensionReference(reference).length === 0 ? reference : null;
+  }
+
+  const reference: WorldbookGalleryExtensionReference = {
     worldbookName: typeof value.worldbookName === 'string' ? value.worldbookName.trim() : '',
     packId: typeof value.packId === 'string' ? value.packId.trim().toLowerCase() : '',
     profileId: typeof value.profileId === 'string' ? value.profileId.trim().toLowerCase() : '',
@@ -94,8 +116,25 @@ export function normalizeGalleryExtensionReference(value: unknown): GalleryExten
   return validateGalleryExtensionReference(reference).length === 0 ? reference : null;
 }
 
+export function isWorldbookGalleryExtensionReference(
+  reference: GalleryExtensionReference,
+): reference is WorldbookGalleryExtensionReference {
+  return 'worldbookName' in reference;
+}
+
+export function isRemoteGalleryExtensionReference(
+  reference: GalleryExtensionReference,
+): reference is RemoteGalleryExtensionReference {
+  return 'url' in reference;
+}
+
 export function validateGalleryExtensionReference(reference: GalleryExtensionReference): string[] {
   const errors: string[] = [];
+  if (isRemoteGalleryExtensionReference(reference)) {
+    if (!isHttpsUrl(reference.url.trim())) errors.push('远端扩展图库 URL 必须使用有效的 HTTPS URL。');
+    return errors;
+  }
+
   if (!reference.worldbookName.trim()) errors.push('扩展图库世界书名称不能为空。');
   if (reference.worldbookName.trim().length > MAX_WORLDBOOK_NAME_LENGTH) {
     errors.push(`扩展图库世界书名称不能超过 ${MAX_WORLDBOOK_NAME_LENGTH} 个字符。`);
@@ -117,12 +156,18 @@ export function validateGalleryExtensionReference(reference: GalleryExtensionRef
 }
 
 export function createGalleryPackPayload(
-  reference: GalleryExtensionReference,
+  identity: GalleryPackIdentity,
   characterName: string,
   gallery: GalleryPackImage[],
 ): GalleryPackPayload {
-  const normalizedReference = normalizeGalleryExtensionReference(reference);
-  if (!normalizedReference) throw new Error(validateGalleryExtensionReference(reference)[0] || '扩展图库引用无效。');
+  const packId = identity.packId.trim().toLowerCase();
+  const profileId = identity.profileId.trim().toLowerCase();
+  if (!ID_PATTERN.test(packId)) {
+    throw new Error('图库包 ID 必须以小写字母或数字开头，只能包含小写字母、数字、点、下划线和连字符，且最长 64 个字符。');
+  }
+  if (!ID_PATTERN.test(profileId)) {
+    throw new Error('图库角色 ID 必须以小写字母或数字开头，只能包含小写字母、数字、点、下划线和连字符，且最长 64 个字符。');
+  }
 
   const normalizedCharacterName = characterName.trim();
   if (!normalizedCharacterName) throw new Error('扩展图库角色姓名不能为空。');
@@ -148,8 +193,8 @@ export function createGalleryPackPayload(
   return {
     format: GALLERY_PACK_FORMAT,
     version: GALLERY_PACK_VERSION,
-    packId: normalizedReference.packId,
-    profileId: normalizedReference.profileId,
+    packId,
+    profileId,
     characterName: normalizedCharacterName,
     gallery: normalizedGallery,
   };
@@ -159,7 +204,6 @@ export function serializeGalleryPackPayload(payload: GalleryPackPayload): string
   return `${JSON.stringify(
     createGalleryPackPayload(
       {
-        worldbookName: 'serialization-placeholder',
         packId: payload.packId,
         profileId: payload.profileId,
       },
@@ -183,7 +227,6 @@ export function parseGalleryPackPayload(value: unknown): GalleryPackPayload {
 
   return createGalleryPackPayload(
     {
-      worldbookName: 'parse-placeholder',
       packId: raw.packId,
       profileId: raw.profileId,
     },
@@ -198,13 +241,13 @@ export function parseGalleryPackPayload(value: unknown): GalleryPackPayload {
   );
 }
 
-export function galleryPackEntryName(reference: Pick<GalleryExtensionReference, 'packId' | 'profileId'>): string {
+export function galleryPackEntryName(reference: GalleryPackIdentity): string {
   return `[CharInfo][Gallery][${reference.packId}][${reference.profileId}]`;
 }
 
 export function findGalleryPackEntry(
   entries: readonly GalleryPackEntryLike[],
-  reference: GalleryExtensionReference,
+  reference: GalleryPackIdentity,
 ): { entry: GalleryPackEntryLike; payload: GalleryPackPayload } | null {
   const matches = entries.flatMap(entry => {
     if (typeof entry.content !== 'string') return [];
