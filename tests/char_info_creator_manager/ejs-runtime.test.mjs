@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { evaluateManagedEjs } from '../../src/char_info_creator_manager/ejsRuntime.ts';
+import {
+  evaluateManagedEjs,
+  writeStatusGallerySnapshotToCurrentChat,
+} from '../../src/char_info_creator_manager/ejsRuntime.ts';
 
 async function withFakeWindow(fakeWindow, callback) {
   const previousWindow = globalThis.window;
@@ -63,6 +66,48 @@ test('兼容本地旧 d.ts 的 evaltemplate 大小写', async () => {
 
   await withFakeWindow(fakeWindow, () => evaluateManagedEjs('managed-only', false));
   assert.equal(evaluated, 'managed-only');
+});
+
+test('即时状态栏相簿写入只修改 externalGalleries 并保存变量', async () => {
+  const writes = [];
+  const calls = [];
+  const fakeWindow = {};
+  fakeWindow.parent = fakeWindow;
+  fakeWindow.EjsTemplate = {
+    async prepareContext() {
+      return {
+        setLocalVar(path, value) {
+          writes.push([path, value]);
+        },
+      };
+    },
+    async evalTemplate(code, context, options) {
+      calls.push(['evalTemplate', options]);
+      const body = code.slice(code.indexOf('<%_') + 3, code.indexOf('_%>'));
+      new Function('setLocalVar', body)(context.setLocalVar);
+      return '';
+    },
+    async saveVariables() {
+      calls.push(['saveVariables']);
+    },
+  };
+
+  await withFakeWindow(fakeWindow, () =>
+    writeStatusGallerySnapshotToCurrentChat(
+      '克瑞西达',
+      [{ title: '状态栏立绘', url: 'https://files.catbox.moe/status.png' }],
+      true,
+    ),
+  );
+
+  assert.deepEqual(writes, [
+    [
+      'status.externalGalleries.partners["克瑞西达"].images',
+      [{ title: '状态栏立绘', url: 'https://files.catbox.moe/status.png' }],
+    ],
+  ]);
+  assert.equal(calls[0][1].when, 'char-info-creator-status-gallery-save');
+  assert.deepEqual(calls[1], ['saveVariables']);
 });
 
 test('缺少 saveVariables 时拒绝假装应用成功', async () => {

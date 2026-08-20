@@ -19,40 +19,50 @@ test('管理器预览保留动态图片与其他图床的原始地址', () => {
   assert.equal(normalizePortraitMediaUrlForBrowser(otherHostUrl)?.url, otherHostUrl);
 });
 
-test('管理器相册预览复用统一媒体识别，并直接预览图片与视频', () => {
-  const appSource = readFileSync(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
+test('管理器 WebM 默认暂停，只在 hover 或触屏操作时播放，并保证单实例播放', () => {
+  const galleryStepSource = readFileSync(
+    new URL('../../src/char_info_creator_manager/components/GalleryStep.vue', import.meta.url),
+    'utf8',
+  );
 
-  assert.match(appSource, /normalizePortraitMediaUrlForBrowser\(value\)/);
-  assert.match(appSource, /resolveGalleryPreviewMedia\(image\)/);
-  assert.match(appSource, /<video[\s\S]*v-if="galleryPreviewMediaKind\(image\) === 'video'"[\s\S]*autoplay[\s\S]*muted[\s\S]*loop[\s\S]*playsinline/u);
-  assert.match(appSource, /<img[\s\S]*v-else-if="resolveGalleryPreviewUrl\(image\)"/u);
-  assert.match(appSource, /@loadeddata="onGalleryPreviewLoad\(image\)"/);
-  assert.match(appSource, /@load="onGalleryPreviewLoad\(image\)"/);
-  assert.match(appSource, /@error="onGalleryPreviewError\(image\)"/);
-  assert.match(appSource, /nextMediaSourceIndex\(fromIndex, sources\.length\)/);
-  assert.match(appSource, /@click="moveImageSource\(image, sourceIndex, -1\)"/);
-  assert.match(appSource, /@click="moveImageSource\(image, sourceIndex, 1\)"/);
-  assert.match(appSource, /\[CharInfo\]\[ImageFallback\]\[Creator\]/);
-  assert.match(appSource, /IntersectionObserver/u);
-  assert.match(appSource, /image\.sources\[sourceIndex\]/);
+  assert.match(galleryStepSource, /normalizePortraitMediaUrlForBrowser\(value\)/);
+  assert.match(galleryStepSource, /resolveGalleryPreviewMedia\(image\)/);
+  assert.match(galleryStepSource, /<video[\s\S]*v-if="galleryPreviewMediaKind\(image\) === 'video'"[\s\S]*muted[\s\S]*loop[\s\S]*playsinline[\s\S]*preload="metadata"/u);
+  assert.doesNotMatch(galleryStepSource, /\n\s+autoplay\s*\n/u);
+  assert.match(galleryStepSource, /@pointerenter="onGalleryVideoPointerEnter\(image, \$event\)"/u);
+  assert.match(galleryStepSource, /@pointerup="onGalleryVideoPointerUp\(image, \$event\)"/u);
+  assert.match(galleryStepSource, /function pauseOtherGalleryVideos\(exceptImageId: number\)[\s\S]*?element\.pause\(\)/u);
+  assert.match(galleryStepSource, /function playGalleryVideo\(image: EditableGalleryImage\)[\s\S]*?pauseOtherGalleryVideos\(image\.id\)[\s\S]*?element\.play\(\)/u);
+  const observerBlock = galleryStepSource.slice(
+    galleryStepSource.indexOf('function initializeGalleryPreviewObserver()'),
+    galleryStepSource.indexOf('onMounted(initializeGalleryPreviewObserver)'),
+  );
+  assert.doesNotMatch(observerBlock, /playGalleryVideo|\.play\(/u);
+  assert.match(observerBlock, /pauseGalleryVideo\(imageId\)/u);
+  assert.match(galleryStepSource, /@loadeddata="onGalleryPreviewLoad\(image\)"/);
+  assert.match(galleryStepSource, /@load="onGalleryPreviewLoad\(image\)"/);
+  assert.match(galleryStepSource, /@error="onGalleryPreviewError\(image\)"/);
+  assert.match(galleryStepSource, /nextMediaSourceIndex\(fromIndex, sources\.length\)/);
+  assert.match(galleryStepSource, /@click="moveImageSource\(image, sourceIndex, -1\)"/);
+  assert.match(galleryStepSource, /@click="moveImageSource\(image, sourceIndex, 1\)"/);
+  assert.match(galleryStepSource, /\[CharInfo\]\[ImageFallback\]\[Creator\]/);
 });
 
 test('视频主立绘不会被写成头像，Creator 会继续使用可用静态图片', () => {
-  const appSource = readFileSync(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
+  const galleryStepSource = readFileSync(
+    new URL('../../src/char_info_creator_manager/components/GalleryStep.vue', import.meta.url),
+    'utf8',
+  );
+  const galleryEditorSource = readFileSync(
+    new URL('../../src/char_info_creator_manager/galleryEditor.ts', import.meta.url),
+    'utf8',
+  );
 
+  assert.match(galleryEditorSource, /function preferredStaticImageUrl[\s\S]*?media\?\.kind === 'image'/u);
+  assert.match(galleryStepSource, /只列出静态图片；视频不会写入状态栏头像/u);
   assert.match(
-    appSource,
-    /function galleryAvatarUrl\(image: EditableGalleryImage \| null\)[\s\S]*?normalizePortraitMediaUrlForBrowser\(source\)[\s\S]*?media\?\.kind === 'image'/u,
-  );
-  assert.match(appSource, /:disabled="!galleryAvatarUrl\(image\)"/u);
-  assert.match(appSource, /视频不可作为头像/u);
-  assert.match(
-    appSource,
-    /if \(avatarMedia\?\.kind === 'video'\)[\s\S]*?firstAvatarGalleryImage\(\)[\s\S]*?profile\.avatarUrl = galleryAvatarUrl\(fallbackImage\)/u,
-  );
-  assert.match(
-    appSource,
-    /if \(!galleryAvatarUrl\(selectedAvatarGalleryImage\(\)\)\)[\s\S]*?avatarGalleryImageId\.value = firstAvatarGalleryImage\(\)\?\.id \?\? null/u,
+    galleryStepSource,
+    /if \(avatarMedia\?\.kind === 'video'\)[\s\S]*?firstStaticImage\(gallery\.value\)[\s\S]*?emit\('update:avatarUrl', preferredStaticImageUrl\(fallback\)\)/u,
   );
 });
 
@@ -97,7 +107,7 @@ test('Viewer 玩家角色封面依次尝试备用图床，全部失败后显示�
   assert.match(librarySource, /return imageSources\(character\)\[coverIndexes\[character\.entry\.uid\] \?\? 0\] \?\? ''/u);
 });
 
-test('世界书角色库封面跳过视频主立绘，并继续查找后续静态图片', () => {
+test('世界书角色库封面优先使用显式封面，并跳过视频继续查找静态图片', () => {
   const librarySource = readFileSync(
     new URL('../../src/char_info_viewer_runtime/WorldbookCharacterLibrary.vue', import.meta.url),
     'utf8',
@@ -105,7 +115,7 @@ test('世界书角色库封面跳过视频主立绘，并继续查找后续静�
 
   assert.match(
     librarySource,
-    /character\.profile\.avatarUrl, \.\.\.character\.profile\.gallery\.flatMap\(image => image\.sources\)/u,
+    /character\.profile\.coverUrl, character\.profile\.avatarUrl, \.\.\.character\.profile\.gallery\.flatMap\(image => image\.sources\)/u,
   );
   assert.match(librarySource, /media\?\.kind === 'image' \? \[media\.url\] : \[\]/u);
 });
@@ -124,10 +134,13 @@ test('Viewer 玩家角色库保留紧凑列表与自适应图片卡片', () => {
 });
 
 test('相册步骤只提供外部图床快捷入口，不实现自动上传', () => {
-  const appSource = readFileSync(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
+  const galleryStepSource = readFileSync(
+    new URL('../../src/char_info_creator_manager/components/GalleryStep.vue', import.meta.url),
+    'utf8',
+  );
 
-  assert.match(appSource, /href="https:\/\/catbox\.moe\/"/);
-  assert.match(appSource, /href="https:\/\/imgbb\.com\/"/);
-  assert.match(appSource, /target="_blank"\s+rel="noopener noreferrer"/);
-  assert.doesNotMatch(appSource, /\/api\/files|uploadImage|uploadTo/);
+  assert.match(galleryStepSource, /href="https:\/\/catbox\.moe\/"/);
+  assert.match(galleryStepSource, /href="https:\/\/imgbb\.com\/"/);
+  assert.match(galleryStepSource, /target="_blank"\s+rel="noopener noreferrer"/);
+  assert.doesNotMatch(galleryStepSource, /\/api\/files|uploadImage|uploadTo/);
 });

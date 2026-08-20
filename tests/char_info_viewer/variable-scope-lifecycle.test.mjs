@@ -21,13 +21,14 @@ test('手动 MVU 导入写回卡片所属消息楼层而不是 latest', () => {
   assert.match(importServiceSource, /message_id:\s*number/);
 });
 
-test('视觉资料只读取 CharInfo 聊天路径，状态栏仅保留头像写入', () => {
+test('Viewer 只读取 CharInfo 视觉资料，状态栏只接收单向相簿与头像投影', () => {
   assert.match(themeSource, /chatVariables\.char_info/);
   assert.match(themeSource, /charInfo\?\.profiles/);
   assert.doesNotMatch(themeSource, /externalGalleries/);
   assert.match(ejsProfileSource, /char_info\.profiles/);
   assert.match(ejsProfileSource, /status\.externalAvatars\.partners/);
-  assert.doesNotMatch(ejsProfileSource, /setLocalVar\([\s\S]*status\.externalGalleries\.partners/);
+  assert.doesNotMatch(ejsProfileSource, /setLocalVar\(`status\.externalGalleries/);
+  assert.match(creatorManagerSource, /syncStatusGallerySnapshotToCurrentChat/);
   assert.match(previewBuilderSource, /char_info\.profiles/);
   assert.doesNotMatch(previewBuilderSource, /externalGalleries|char_info_visuals|dryRun|merge:/);
 });

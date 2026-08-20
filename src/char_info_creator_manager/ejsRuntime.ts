@@ -32,7 +32,7 @@ function resolveEjsTemplateRuntime(): EjsTemplateRuntimeApi {
   throw new Error('未检测到 ST-Prompt-Template 的 EjsTemplate 接口。');
 }
 
-export async function evaluateManagedEjs(code: string, debugEnabled = false): Promise<void> {
+async function evaluateCreatorEjs(code: string, debugEnabled: boolean, when: string): Promise<void> {
   const runtime = resolveEjsTemplateRuntime();
   const evaluate = runtime.evalTemplate ?? runtime.evaltemplate;
   if (!runtime.prepareContext || !evaluate || !runtime.saveVariables) {
@@ -42,7 +42,21 @@ export async function evaluateManagedEjs(code: string, debugEnabled = false): Pr
   const context = await runtime.prepareContext();
   await evaluate.call(runtime, code, context, {
     logging: debugEnabled,
-    when: 'char-info-creator-apply',
+    when,
   });
   await runtime.saveVariables();
+}
+
+export async function evaluateManagedEjs(code: string, debugEnabled = false): Promise<void> {
+  await evaluateCreatorEjs(code, debugEnabled, 'char-info-creator-apply');
+}
+
+export async function writeStatusGallerySnapshotToCurrentChat(
+  characterName: string,
+  images: ReadonlyArray<{ title: string; url: string }>,
+  debugEnabled = false,
+): Promise<void> {
+  const path = `status.externalGalleries.partners[${JSON.stringify(characterName)}].images`;
+  const code = `<%_\nsetLocalVar(${JSON.stringify(path)}, ${JSON.stringify(images)});\n_%>`;
+  await evaluateCreatorEjs(code, debugEnabled, 'char-info-creator-status-gallery-save');
 }

@@ -11,6 +11,7 @@ export type GalleryExtensionReference = {
 export type GalleryPackImage = {
   title: string;
   sources: string[];
+  viewerVisible?: boolean;
 };
 
 export type GalleryPackPayload = {
@@ -133,6 +134,7 @@ export function createGalleryPackPayload(
   const normalizedGallery = gallery.map((image, index) => ({
     title: image.title.trim() || `扩展立绘 ${index + 1}`,
     sources: normalizeSources(image.sources),
+    ...(image.viewerVisible === false ? { viewerVisible: false } : {}),
   }));
   if (normalizedGallery.length === 0) throw new Error('扩展图库至少需要一张图片。');
   normalizedGallery.forEach((image, imageIndex) => {
@@ -193,6 +195,7 @@ export function parseGalleryPackPayload(value: unknown): GalleryPackPayload {
       return {
         title: typeof image.title === 'string' ? image.title : '',
         sources: normalizeSources(image.sources),
+        ...(image.viewerVisible === false || image.viewer_visible === false ? { viewerVisible: false } : {}),
       };
     }),
   );

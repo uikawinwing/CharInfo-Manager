@@ -210,5 +210,5 @@ test('Creator 对 importable legacy 解除写入阻塞，并启用升级保存�
   assert.match(creatorSource, /class="migration-banner"/);
   assert.match(creatorSource, /legacyVisualInspection\.value\.state !== 'importable'/);
   assert.match(creatorSource, /upsertManagedEjsBlockWithLegacyMigration/);
-  assert.match(creatorSource, /升级并保存新版配置/);
+  assert.match(creatorSource, /升级并保存到世界书/);
 });
