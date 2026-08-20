@@ -2,17 +2,8 @@
   <header
     ref="headerElement"
     class="illustrated-header"
-    :class="{ compact, ornate, 'has-wrapped-name': hasWrappedName }"
-    :style="ornate ? venusNameFrameCssVars : undefined"
+    :class="{ compact, 'has-wrapped-name': hasWrappedName }"
   >
-    <div v-if="ornate" class="illustrated-name-rail top" aria-hidden="true">
-      <span class="rail-flourish left"></span>
-      <span class="rail-line"></span>
-      <span class="rail-center"></span>
-      <span class="rail-line"></span>
-      <span class="rail-flourish right"></span>
-    </div>
-
     <h1 class="illustrated-name">{{ vm.nameText }}</h1>
     <span ref="nameMeasurementElement" class="illustrated-name illustrated-name-measure" aria-hidden="true">
       {{ vm.nameText }}
@@ -31,11 +22,6 @@
       <span class="illustrated-tier">{{ vm.tierText }}</span>
     </div>
 
-    <div v-if="ornate" class="illustrated-name-rail bottom" aria-hidden="true">
-      <span class="rail-line"></span>
-      <span class="rail-center"></span>
-      <span class="rail-line"></span>
-    </div>
   </header>
 </template>
 
@@ -43,17 +29,14 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import type { CharacterViewModel } from '../../services/characterViewModel';
-import { venusNameFrameCssVars } from './venusAssets';
 
 const props = withDefaults(
   defineProps<{
     vm: CharacterViewModel;
     compact?: boolean;
-    ornate?: boolean;
   }>(),
   {
     compact: false,
-    ornate: false,
   },
 );
 
@@ -117,76 +100,6 @@ watch(() => props.vm.nameText, updateNameLayout, { flush: 'post' });
 .illustrated-header:not(.compact) {
   min-height: var(--illustrated-header-min-height);
   justify-content: center;
-}
-
-.illustrated-name-rail {
-  display: grid;
-  width: min(100%, 560px);
-  align-items: center;
-  pointer-events: none;
-}
-
-.illustrated-name-rail.top {
-  height: 26px;
-  grid-template-columns: minmax(42px, 0.28fr) minmax(34px, 1fr) auto minmax(34px, 1fr) minmax(42px, 0.28fr);
-  column-gap: 8px;
-  margin-bottom: -4px;
-}
-
-.illustrated-name-rail.bottom {
-  width: min(86%, 520px);
-  height: 24px;
-  grid-template-columns: minmax(42px, 1fr) auto minmax(42px, 1fr);
-  column-gap: 8px;
-  margin-top: -4px;
-}
-
-.rail-line {
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(var(--illustrated-tier-accent-rgb), 0.88),
-    rgba(255, 255, 240, 0.44),
-    rgba(var(--illustrated-tier-accent-rgb), 0.72),
-    transparent
-  );
-  filter: drop-shadow(0 0 6px rgba(var(--illustrated-tier-accent-rgb), 0.2)) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
-  opacity: 0.78;
-}
-
-.rail-flourish,
-.rail-center {
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: contain;
-  filter: drop-shadow(0 0 7px rgba(var(--illustrated-tier-accent-rgb), 0.24)) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
-  opacity: 0.78;
-}
-
-.rail-flourish {
-  height: 18px;
-}
-
-.rail-flourish.left {
-  background-image: var(--venus-name-left-flourish-url);
-}
-
-.rail-flourish.right {
-  background-image: var(--venus-name-right-flourish-url);
-}
-
-.illustrated-name-rail.top .rail-center {
-  width: clamp(118px, 26cqw, 164px);
-  height: 26px;
-  background-image: var(--venus-name-center-crest-url);
-}
-
-.illustrated-name-rail.bottom .rail-center {
-  width: clamp(108px, 24cqw, 152px);
-  height: 22px;
-  background-image: var(--venus-name-bottom-crest-url);
-  opacity: 0.66;
 }
 
 .illustrated-level-tier {
@@ -265,39 +178,6 @@ watch(() => props.vm.nameText, updateNameLayout, { flush: 'post' });
 
 .illustrated-header.has-wrapped-name .illustrated-name-measure {
   font-size: clamp(30px, 4.2cqw, 38px);
-}
-
-.illustrated-header.ornate {
-  gap: 5px;
-}
-
-.illustrated-header.ornate .illustrated-level-tier {
-  margin-bottom: -2px;
-}
-
-.illustrated-header.ornate .illustrated-level-tier::before,
-.illustrated-header.ornate .illustrated-level-tier::after {
-  content: none;
-}
-
-.illustrated-header.ornate .illustrated-name {
-  max-width: 100%;
-  overflow: hidden;
-  white-space: normal;
-  color: #fffdf5;
-  letter-spacing: 0;
-  text-wrap: balance;
-  text-shadow:
-    0 2px 0 rgba(12, 22, 34, 0.45),
-    0 3px 12px rgba(0, 0, 0, 0.68),
-    0 0 18px rgba(var(--illustrated-tier-accent-rgb), 0.22);
-}
-
-.illustrated-header.ornate .illustrated-subtitle {
-  max-width: 100%;
-  color: rgba(255, 255, 246, 0.95);
-  font-weight: 700;
-  white-space: normal;
 }
 
 .illustrated-subtitle {
@@ -394,14 +274,6 @@ watch(() => props.vm.nameText, updateNameLayout, { flush: 'post' });
 
 .illustrated-header.compact .illustrated-subtitle {
   font-size: 12px;
-}
-
-.illustrated-header.compact.ornate .illustrated-name {
-  font-size: clamp(23px, 7cqw, 30px);
-}
-
-.illustrated-header.compact.ornate .illustrated-name-rail {
-  width: min(100%, 360px);
 }
 
 @media (max-width: 420px) {

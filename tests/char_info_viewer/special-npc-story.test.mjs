@@ -20,17 +20,9 @@ function sectionBetween(source, start, end) {
 }
 
 test('Special NPC 档案只在有自定义故事时显示资料/故事二级切换，并保持六项主导航', () => {
-  const specialTabs = sectionBetween(sheetSource, 'if (props.specialNpc) {', 'const mergedTabs');
-  assert.deepEqual(
-    [...specialTabs.matchAll(/\{ key: '([^']+)', label: '([^']+)' \}/gu)].map(match => [match[1], match[2]]),
-    [
-      ['overview', '首页'],
-      ['characterPanel', '面板'],
-      ['profile', '档案'],
-      ['skills', '技能'],
-      ['holdings', '持有'],
-      ['divinity', '登神'],
-    ],
+  assert.match(
+    sheetSource,
+    /const tabs = computed<IllustratedTab\[\]>\(\(\) => \[[\s\S]*?\{ key: 'overview', label: '首页' \},[\s\S]*?\{ key: 'characterPanel', label: '面板' \},[\s\S]*?\{ key: 'profile', label: '档案' \},[\s\S]*?\{ key: 'skills', label: '技能' \},[\s\S]*?\{ key: 'holdings', label: '持有' \},[\s\S]*?\{ key: 'divinity', label: '登神' \},[\s\S]*?\]\);/u,
   );
   assert.match(sheetSource, /v-if="specialNpc && hasCustomStorySections"[\s\S]*?资料[\s\S]*?故事/u);
   assert.match(sheetSource, /const activeProfileSubview = ref<'info' \| 'story'>\('info'\)/u);

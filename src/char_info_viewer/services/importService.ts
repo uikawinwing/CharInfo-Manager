@@ -387,21 +387,6 @@ export async function importToMvuVariables(data: CharacterData, targetScope: Mes
   await writeResult;
 }
 
-export function mergeDxCharacterIntoMvuData(
-  data: CharacterData,
-  appearVariableName: string,
-  characterName: string,
-  currentVariables: Mvu.MvuData,
-  showSuccessToast = true,
-): 'imported' | 'already_imported' {
-  if (Number(currentVariables[appearVariableName]) === 1) return 'already_imported';
-
-  mergeCharacterIntoMvuData(data, currentVariables);
-  if (showSuccessToast) toastr.success(`${characterName} 已插入变量`);
-  currentVariables[appearVariableName] = 1;
-  return 'imported';
-}
-
 function stripCharInfoWrapper(originalYaml: string): string {
   const content = String(originalYaml ?? '').trim();
   const wrapped = content.match(/^<char_info\b[^>]*>\s*([\s\S]*?)\s*<\/char_info>$/i);

@@ -22,7 +22,6 @@ test('illustrated character chooses image or video from the currently selected p
   const source = fs.readFileSync(componentPath, 'utf8');
 
   assert.match(source, /normalizePortraitMediaUrlForBrowser\(activePortraitUrl\.value\)\?\.kind === 'video'/);
-  assert.doesNotMatch(source, /presentationProfile\?\.portraitKind === 'video'/);
 });
 
 test('同一张立绘失败或卡住时都会按 sources 顺序切换备用图床', () => {

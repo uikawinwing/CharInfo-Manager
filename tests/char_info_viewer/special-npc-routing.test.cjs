@@ -196,17 +196,3 @@ test('旧版视觉兼容继续复用解析 warning 样式，并明确提示迁�
   assert.match(appSource, /正文旧版角色图片字段/);
 });
 
-test('手造 DX 引用仍使用同名立绘的 Special NPC 路由', () => {
-  const data = resolveCharacterVisualConfig(
-    { 姓名: '维纳丝·珀菈·索伦蒂斯', __dx_character_ref: 'dx_venus' },
-    {
-      char_info: {
-        profiles: {
-          '维纳丝·珀菈·索伦蒂斯': { gallery: [{ sources: ['https://example.com/special.png'] }] },
-        },
-      },
-    },
-  );
-
-  assert.equal(buildCharacterViewModel(data).layoutKind, 'special_npc');
-});

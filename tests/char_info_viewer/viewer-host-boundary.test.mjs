@@ -9,10 +9,6 @@ const specialSheetSource = await readFile(
   new URL('src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue', repoRoot),
   'utf8',
 );
-const divinityPanelSource = await readFile(
-  new URL('src/char_info_viewer/components/illustrated/IllustratedDivinityPanel.vue', repoRoot),
-  'utf8',
-);
 const runtimeSource = await readFile(new URL('src/char_info_viewer_runtime/runtime.ts', repoRoot), 'utf8');
 const runtimeRootSource = await readFile(new URL('src/char_info_viewer_runtime/RuntimeRoot.vue', repoRoot), 'utf8');
 const nativeMountSource = await readFile(
@@ -36,8 +32,6 @@ test('viewer scopes theme variables to its own card root', () => {
 test('multiple cards do not repeat static viewer element ids in the host document', () => {
   assert.doesNotMatch(appSource, /id="(?:particle-canvas|import-action-(?:btn|menu))"/);
   assert.doesNotMatch(specialSheetSource, /id="import-action-menu"/);
-  assert.match(divinityPanelSource, /const contentId = useId\(\)/);
-  assert.match(divinityPanelSource, /:aria-controls="contentId"/);
 });
 
 test('vNext runtime mounts cards from raw message text before display formatting', () => {

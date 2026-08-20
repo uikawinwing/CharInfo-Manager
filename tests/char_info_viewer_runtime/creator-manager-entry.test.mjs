@@ -187,8 +187,9 @@ test('当前聊天资料库由悬浮入口打开角色列表，并完整显示�
   );
   assert.match(
     viewerSource,
-    /props\.entranceQuoteOverride === undefined[\s\S]*?cloneLoadedDxCharacterDataWithOverrides\(resolvedData, \{[\s\S]*?登场台词: props\.entranceQuoteOverride/u,
+    /props\.entranceQuoteOverride === undefined[\s\S]*?cloneCharacterDataWithVisualOverrides\(resolvedData, \{[\s\S]*?登场台词: props\.entranceQuoteOverride/u,
   );
+  assert.doesNotMatch(viewerSource, /cloneLoadedDxCharacterDataWithOverrides/u);
 });
 
 test('角色详情是在聊天上方可拖动的非模态窗口，不显示开发说明', () => {

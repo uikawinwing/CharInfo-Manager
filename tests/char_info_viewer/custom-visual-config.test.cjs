@@ -172,29 +172,6 @@ test('旧版只有 gallery 时仍启用特殊版并标记初次随机图片', ()
   assert.equal(data.__char_info_randomize_initial_image, true);
 });
 
-test('豪华／DX 版不会读取 Aoo 状态栏公版相册', () => {
-  const data = resolveCharacterVisualConfig(
-    {
-      姓名: '傲雪',
-      __dx_character_ref: 'dx_anastasia',
-    },
-    {
-      status: {
-        externalGalleries: {
-          partners: {
-            傲雪: {
-              images: [{ title: 'image1', url: 'https://example.com/public.png' }],
-            },
-          },
-        },
-      },
-    },
-  );
-
-  assert.equal(data.角色图片, undefined);
-  assert.equal(data.__char_info_image_urls, undefined);
-});
-
 test('普通版也不再读取 Aoo externalGalleries', () => {
   const data = resolveCharacterVisualConfig(
     { 姓名: '傲雪' },

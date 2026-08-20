@@ -12,23 +12,6 @@ const creatorManagerControllerSource = await readFile(new URL('src/char_info_cre
 const viewerRuntimeSource = await readFile(new URL('src/char_info_viewer_runtime/runtime.ts', repoRoot), 'utf8');
 const previewBuilderSource = await readFile(new URL('docs/previews/char_info_ejs_builder.html', repoRoot), 'utf8');
 
-test('DX 角色自动导入绑定聊天、楼层与 swipe，事件只负责时序且卸载时清理', () => {
-  assert.match(appSource, /Mvu\.events\.BEFORE_MESSAGE_UPDATE/);
-  assert.match(appSource, /messageContainsDxCharacterReference\(context\.message_content, reference\)/);
-  assert.match(appSource, /tavern_events\.GENERATION_ENDED/);
-  assert.match(appSource, /messageId !== props\.messageId/);
-  assert.doesNotMatch(appSource, /Mvu\.events\.VARIABLE_UPDATE_ENDED/);
-  assert.doesNotMatch(appSource, /mergeIntoFinalVariables\(context\.variables\)/);
-  assert.match(appSource, /enqueueDxCharacterImport\(queueKey/);
-  assert.match(appSource, /Mvu\.getMvuData\(targetScope\)/);
-  assert.match(appSource, /Mvu\.replaceMvuData\(currentVariables, targetScope\)/);
-  assert.match(appSource, /dxCharacterAutoImportDisposed = true/);
-  assert.match(appSource, /dxCharacterAutoImportEventListener\?\.stop\(\)/);
-  assert.match(appSource, /dxCharacterGenerationEndedEventListener\?\.stop\(\)/);
-  assert.match(appSource, /SillyTavern\.getCurrentChatId\(\) !== chatId/);
-  assert.match(appSource, /readActiveSwipeId\(props\.messageId\) !== swipeId/);
-});
-
 test('手动 MVU 导入写回卡片所属消息楼层而不是 latest', () => {
   assert.match(
     appSource,
