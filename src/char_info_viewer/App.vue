@@ -80,7 +80,7 @@
         {{ deprecatedVisualSyntaxWarning }}
       </div>
 
-      <IllustratedCharacterSheet
+      <IllustratedV2Sheet
         v-if="(shouldShowIllustratedLayout || shouldShowSpecialNpcLayout) && vm"
         :vm="vm"
         :attributes="attributes"
@@ -530,7 +530,7 @@ import {
   parseDxCharacterReference,
 } from '@/char_info_viewer/dxRuntime';
 import type { CharacterData, FriendlyYamlError, ThemeResolved, ViewerSaveFeedback, ViewerSaveState } from './types';
-import IllustratedCharacterSheet from './components/illustrated/IllustratedCharacterSheet.vue';
+import IllustratedV2Sheet from './components/illustrated/IllustratedV2Sheet.vue';
 
 const props = withDefaults(
   defineProps<{

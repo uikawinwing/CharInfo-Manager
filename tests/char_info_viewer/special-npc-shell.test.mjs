@@ -201,7 +201,7 @@ test('Special NPC 手机登神页使用紧凑分隔行，不沿用 DX 的厚重�
 
 test('App 在 Special NPC 分支复用有立绘页面，而不是挂载独立空壳', async () => {
   const source = await readFile(appPath, 'utf8');
-  assert.match(source, /<IllustratedCharacterSheet[\s\S]*?v-if="\(shouldShowIllustratedLayout \|\| shouldShowSpecialNpcLayout\) && vm"/);
+  assert.match(source, /<IllustratedV2Sheet[\s\S]*?v-if="\(shouldShowIllustratedLayout \|\| shouldShowSpecialNpcLayout\) && vm"/);
   assert.match(source, /:special-npc="shouldShowSpecialNpcLayout"/);
   assert.doesNotMatch(source, /SpecialNpcShell/);
   assert.match(source, /vm\.value\?\.layoutKind === 'special_npc' && !illustratedFallbackActive\.value/);
