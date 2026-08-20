@@ -32,12 +32,12 @@ test('mobile illustrated character navigation exposes active state and reliable 
   );
 });
 
-test('illustrated character navigation renders only tabs that exist for the current NPC', () => {
-  assert.match(sheetSource, /const mergedTabs: IllustratedTab\[\] = \[\{ key: 'overview', label: '首页' \}\];/);
-  assert.match(sheetSource, /props\.vm\.visibleTabs\.forEach\(tab => \{/);
-  assert.match(sheetSource, /mergedTabs\.push\(\{ key: 'characterStory', label: '角色故事' \}\)/);
-  assert.match(sheetSource, /tabs\.value\.some\(tab => tab\.key === activeSpecialTab\.value\)/);
-  assert.doesNotMatch(sheetSource, /illustratedTabOrder|availableKeys|available:/);
+test('Special NPC navigation keeps the current six tabs without DX-only story tabs', () => {
+  assert.match(
+    sheetSource,
+    /const tabs = computed<IllustratedTab\[\]>\(\(\) => \[[\s\S]*?\{ key: 'overview', label: '首页' \},[\s\S]*?\{ key: 'characterPanel', label: '面板' \},[\s\S]*?\{ key: 'profile', label: '档案' \},[\s\S]*?\{ key: 'skills', label: '技能' \},[\s\S]*?\{ key: 'holdings', label: '持有' \},[\s\S]*?\{ key: 'divinity', label: '登神' \},[\s\S]*?\]\);/,
+  );
+  assert.doesNotMatch(sheetSource, /mergedTabs|characterStory|illustratedTabOrder|availableKeys|available:/);
   assert.doesNotMatch(navSource, /:disabled="!tab\.available"|暂无\$\{tab\.label\}资料/);
 });
 

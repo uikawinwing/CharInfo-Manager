@@ -1,10 +1,3 @@
-import {
-  resolveDxCharacterProfile,
-  resolveDxStoryBookLink,
-  type CharacterStoryBookLink,
-  type CharacterPresentationProfile,
-  isLoadedDxCharacterData,
-} from '@/char_info_viewer/dxRuntime';
 import type { CharacterProfileMetadata, CharacterStorySection } from '../../char_info_shared/characterVisualProfile';
 import type { CharacterData } from '../types';
 import { getSmartArray, hasArrayContent, hasText, normalizeDisplayText } from './common';
@@ -12,8 +5,7 @@ import { prioritizeImageSourceGroups } from './imageSourcePriority';
 import { normalizePortraitMediaUrlForBrowser } from './imageUrl';
 import { isSpecialNpcVisualData, resolveCharacterVisualMetadata } from './themeService';
 
-export type TabKey =
-  'profile' | 'skills' | 'equipment' | 'inventory' | 'divinity' | 'characterStory' | 'backstory' | 'statusEffects';
+export type TabKey = 'profile' | 'skills' | 'equipment' | 'inventory' | 'divinity' | 'backstory' | 'statusEffects';
 
 export type ViewTab = {
   key: TabKey;
@@ -45,7 +37,7 @@ export type DivinityKingdom = {
   description: string;
 };
 
-export type CharacterLayoutKind = 'default' | 'illustrated' | 'special_npc';
+export type CharacterLayoutKind = 'default' | 'special_npc';
 
 export type CharacterViewModel = {
   nameText: string;
@@ -72,7 +64,6 @@ export type CharacterViewModel = {
   imageSourceGroups: string[][];
   randomizeInitialImage: boolean;
   layoutKind: CharacterLayoutKind;
-  presentationProfile: CharacterPresentationProfile | null;
   resourceBoxes: ResourceBox[];
   skills: ItemObject[];
   equipments: ItemObject[];
@@ -83,7 +74,6 @@ export type CharacterViewModel = {
   divinityElements: ItemObject[];
   divinityPowers: ItemObject[];
   divinityLaws: ItemObject[];
-  storyBookLink: CharacterStoryBookLink | null;
   visibleTabs: ViewTab[];
 };
 
@@ -93,7 +83,6 @@ export const tabOrder: ViewTab[] = [
   { key: 'equipment', label: '装备' },
   { key: 'inventory', label: '背包' },
   { key: 'divinity', label: '登神长阶' },
-  { key: 'characterStory', label: '角色故事' },
   { key: 'backstory', label: '背景故事' },
   { key: 'statusEffects', label: '状态效果' },
 ];
@@ -430,35 +419,9 @@ function resolveConfiguredImageSourceGroups(data: CharacterData): string[][] {
   }, []);
 }
 
-function resolveCharacterPresentationProfileForData(
-  data: CharacterData,
-  nameText: string,
-): CharacterPresentationProfile | null {
-  if (!isLoadedDxCharacterData(data)) return null;
-  const reference = textFromUnknown(pickField(data, '__dx_character_ref'));
-  return resolveDxCharacterProfile(reference, nameText);
-}
-
-function resolveCharacterImage(
-  data: CharacterData,
-  presentationProfile: CharacterPresentationProfile | null,
-): CharacterImageResolution {
-  const isDxProfile = presentationProfile?.edition === 'dx';
-  const configuredSourceGroups =
-    isDxProfile || (!presentationProfile && !isSpecialNpcVisualData(data)) ? [] : resolveConfiguredImageSourceGroups(data);
+function resolveCharacterImage(data: CharacterData): CharacterImageResolution {
+  const configuredSourceGroups = isSpecialNpcVisualData(data) ? resolveConfiguredImageSourceGroups(data) : [];
   const configuredUrls = configuredSourceGroups.map(sources => sources[0]);
-
-  if (presentationProfile) {
-    const source = textFromUnknown(pickField(data, '特殊立绘')) ? 'special_portrait' : 'map';
-    const urls = configuredUrls.length > 0 ? configuredUrls : [presentationProfile.imageUrl];
-    return {
-      url: urls[0],
-      urls,
-      sourceGroups: configuredSourceGroups.length > 0 ? configuredSourceGroups : urls.map(url => [url]),
-      randomizeInitialImage: configuredUrls.length > 1 && data.__char_info_randomize_initial_image === true,
-      source,
-    };
-  }
 
   if (configuredUrls.length > 0) {
     return {
@@ -522,13 +485,11 @@ export function buildCharacterViewModel(
   const divinityLaws = mergeNamedObjectArrays(divinityRoot.法则, data.法则);
   const skills = asNamedObjectArray(data.技能);
   const equipments = asNamedObjectArray(data.装备);
-  const presentationProfile = resolveCharacterPresentationProfileForData(data, nameText);
-  const image = resolveCharacterImage(data, presentationProfile);
+  const image = resolveCharacterImage(data);
   const imageSourceGroups = prioritizeImageSourceGroups(image.sourceGroups, imageSourcePriority);
   const imageUrls = imageSourceGroups.map(sources => sources[0]);
   const imageUrl = imageUrls[0] ?? image.url;
-  const isSpecialNpc = !presentationProfile && isSpecialNpcVisualData(data) && imageUrls.length > 0;
-  const storyBookLink = resolveDxStoryBookLink(presentationProfile);
+  const isSpecialNpc = isSpecialNpcVisualData(data) && imageUrls.length > 0;
   const hasDivinity =
     hasText(divinityGodTitle) ||
     !!divinityKingdom ||
@@ -543,7 +504,6 @@ export function buildCharacterViewModel(
     if (tab.key === 'equipment') return equipments.length > 0;
     if (tab.key === 'inventory') return hasInventory;
     if (tab.key === 'divinity') return hasDivinity;
-    if (tab.key === 'characterStory') return storyBookLink !== null;
     if (tab.key === 'backstory') return hasText(backstoryText);
     if (tab.key === 'statusEffects') return hasStatusEffects;
     return false;
@@ -578,8 +538,7 @@ export function buildCharacterViewModel(
     imageUrls,
     imageSourceGroups,
     randomizeInitialImage: image.randomizeInitialImage,
-    layoutKind: presentationProfile ? 'illustrated' : isSpecialNpc ? 'special_npc' : 'default',
-    presentationProfile,
+    layoutKind: isSpecialNpc ? 'special_npc' : 'default',
     resourceBoxes,
     skills,
     equipments,
@@ -590,7 +549,6 @@ export function buildCharacterViewModel(
     divinityElements,
     divinityPowers,
     divinityLaws,
-    storyBookLink,
     visibleTabs,
   };
 }

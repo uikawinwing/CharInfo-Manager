@@ -61,7 +61,7 @@ test('Special NPC attributes always keep a three-over-two flag composition', () 
   );
 });
 
-test('illustrated and DX overview themes share one geometry scale', () => {
+test('Special NPC overview uses the shared geometry scale', () => {
   assert.match(
     sheetSource,
     /\.illustrated-wrapper\s*\{[^}]*--illustrated-flag-width:\s*128px;[^}]*--illustrated-flag-height:\s*156px;[^}]*--illustrated-resource-height:\s*72px;/,
@@ -73,26 +73,12 @@ test('illustrated and DX overview themes share one geometry scale', () => {
   assert.match(overviewSource, /\.illustrated-resource\s*\{[^}]*min-height:\s*var\(--illustrated-resource-height\);/);
 });
 
-test('illustrated and DX desktop headers share one readable title scale', () => {
+test('Special NPC desktop header keeps one readable title scale', () => {
   assert.match(
     headerSource,
     /\.illustrated-header:not\(\.compact\)\s*\{[^}]*min-height:\s*var\(--illustrated-header-min-height\);/,
   );
   assert.match(headerSource, /\.illustrated-name\s*\{[^}]*font-size:\s*clamp\(30px, 4\.2cqw, 38px\);/);
-  assert.match(
-    headerSource,
-    /\.illustrated-header\.ornate \.illustrated-name\s*\{[^}]*white-space:\s*normal;[^}]*text-wrap:\s*balance;/,
-  );
-  const anastasiaTitleRule = sheetSource.match(
-    /\.illustrated-theme-anastasia :deep\(\.illustrated-header \.illustrated-name\)\s*\{[^}]*\}/,
-  )?.[0];
-  const irisTitleRule = sheetSource.match(
-    /\.illustrated-theme-iris :deep\(\.illustrated-header \.illustrated-name\)\s*\{[^}]*\}/,
-  )?.[0];
-  assert.ok(anastasiaTitleRule);
-  assert.ok(irisTitleRule);
-  assert.doesNotMatch(anastasiaTitleRule, /font-size:/);
-  assert.doesNotMatch(irisTitleRule, /font-size:/);
 });
 
 test('overview stays screenshot-oriented, with a Special NPC scroll fallback only when content overflows', () => {

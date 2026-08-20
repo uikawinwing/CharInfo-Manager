@@ -4,7 +4,6 @@
     class="viewer-root"
     :class="{
       'viewer-root-embedded': props.embedded,
-      'illustrated-viewer-root': shouldShowIllustratedLayout,
       'special-npc-viewer-root': shouldShowSpecialNpcLayout,
       'force-mobile-layout': props.forceMobileLayout,
       'viewer-effects-disabled': !props.effectsEnabled,
@@ -49,7 +48,7 @@
     </div>
 
     <section
-      v-else-if="initializingViewer || loadingDxCharacter"
+      v-else-if="initializingViewer"
       class="viewer-loading-shell"
       role="status"
       aria-live="polite"
@@ -68,7 +67,7 @@
         <div class="viewer-loading-resources" aria-hidden="true">
           <span v-for="index in 3" :key="index"></span>
         </div>
-        <p>{{ loadingDxCharacter ? '正在读取专属角色资料…' : '正在建立角色档案…' }}</p>
+        <p>正在建立角色档案…</p>
       </div>
     </section>
 
@@ -81,7 +80,7 @@
       </div>
 
       <IllustratedCharacterSheet
-        v-if="(shouldShowIllustratedLayout || shouldShowSpecialNpcLayout) && vm"
+        v-if="shouldShowSpecialNpcLayout && vm"
         :vm="vm"
         :attributes="attributes"
         :importing="saveBusy"
@@ -523,7 +522,7 @@ import {
   statusEffectType,
   type TabKey,
 } from './services/characterViewModel';
-import { importToMvuVariables, mergeDxCharacterIntoMvuData, saveToChatWorldbook } from './services/importService';
+import { importToMvuVariables, saveToChatWorldbook } from './services/importService';
 import { createParticleEngine, type ParticleEngine } from './services/particleEngine';
 import {
   applyTheme,
@@ -535,14 +534,6 @@ import {
   resolveTheme,
 } from './services/themeService';
 import { parseCharacterYaml, parseCharacterYamlLoose } from './services/yamlParser';
-import {
-  cloneLoadedDxCharacterDataWithOverrides,
-  enqueueDxCharacterImport,
-  isLoadedDxCharacterData,
-  loadDxCharacterReference,
-  messageContainsDxCharacterReference,
-  parseDxCharacterReference,
-} from '@/char_info_viewer/dxRuntime';
 import type { CharacterData, FriendlyYamlError, ThemeResolved, ViewerSaveFeedback, ViewerSaveState } from './types';
 import IllustratedCharacterSheet from './components/illustrated/IllustratedCharacterSheet.vue';
 
@@ -584,12 +575,11 @@ const sheetData = ref<CharacterData | null>(null);
 const mvuImportData = ref<CharacterData | null>(null);
 const parseError = ref<FriendlyYamlError | null>(null);
 const originalYamlText = ref('');
-const parseMode = ref<'strict' | 'loose' | 'builtin'>('strict');
+const parseMode = ref<'strict' | 'loose'>('strict');
 const parseWarnings = ref<string[]>([]);
 const deprecatedVisualSyntaxWarning = ref('');
 const looseParsing = ref(false);
 const initializingViewer = ref(true);
-const loadingDxCharacter = ref(false);
 const theme = ref<ThemeResolved | null>(null);
 const activeTab = ref<TabKey>('profile');
 let previewBaseData: CharacterData | null = null;
@@ -619,11 +609,6 @@ watch(
 
 let importButtonResetTimer: ReturnType<typeof setTimeout> | null = null;
 let previewYamlRefreshTimer: ReturnType<typeof setTimeout> | null = null;
-let dxCharacterAutoImportTimer: ReturnType<typeof setTimeout> | null = null;
-let dxCharacterAutoImportEventListener: EventOnReturn | null = null;
-let dxCharacterGenerationEndedEventListener: EventOnReturn | null = null;
-let dxCharacterAutoImportStarted = false;
-let dxCharacterAutoImportDisposed = false;
 let listenerDocument: Document | null = null;
 
 const defaultParseErrorTips = [
@@ -661,11 +646,9 @@ const vm = computed(() =>
   sheetData.value ? buildCharacterViewModel(sheetData.value, props.imageSourcePriority) : null,
 );
 const illustratedFallbackActive = ref(false);
-const isIllustratedLayout = computed(() => vm.value?.layoutKind === 'illustrated');
 const shouldShowSpecialNpcLayout = computed(
   () => vm.value?.layoutKind === 'special_npc' && !illustratedFallbackActive.value,
 );
-const shouldShowIllustratedLayout = computed(() => isIllustratedLayout.value && !illustratedFallbackActive.value);
 const isPortraitLayout = computed(() => false);
 const isPortraitDetailTab = computed(() => isPortraitLayout.value && activeTab.value !== 'profile');
 const portraitImageUrl = computed(() => vm.value?.imageUrl || '');
@@ -789,11 +772,10 @@ async function initFromYaml() {
   parseMode.value = 'strict';
   parseWarnings.value = [];
   theme.value = null;
-  loadingDxCharacter.value = false;
   previewBaseData = null;
 
   if (props.previewMode && props.previewData) {
-    previewBaseData = stripUntrustedDxReference(props.previewData);
+    previewBaseData = props.previewData;
     await applyParsedCharacterData(previewBaseData, 'strict', []);
     nextTick(() => setupParticleEngine());
     return;
@@ -804,154 +786,21 @@ async function initFromYaml() {
     return;
   }
 
-  const dxCharacterReference = parseDxCharacterReference(yamlText);
-  if (!props.previewMode && dxCharacterReference.kind === 'reference') {
-    loadingDxCharacter.value = true;
-    try {
-      const dxCharacterData = await loadDxCharacterReference(dxCharacterReference.reference);
-      mvuImportData.value = dxCharacterData.data;
-      await applyParsedCharacterData(dxCharacterData.data, 'builtin');
-      await nextTick();
-      setupParticleEngine();
-      scheduleDxCharacterAutoImport(
-        dxCharacterData.injectData,
-        dxCharacterData.appearVariableName,
-        dxCharacterData.data.姓名 || dxCharacterData.reference,
-        dxCharacterData.reference,
-      );
-    } catch (err: any) {
-      const message = err?.message || String(err);
-      console.error('[CharInfo Viewer] DX character profile load failed:', err);
-      parseError.value = { message: `专属角色资料加载失败：${message}` };
-      if (typeof toastr !== 'undefined') toastr.error(`专属角色资料加载失败：${message}`);
-    } finally {
-      loadingDxCharacter.value = false;
-    }
-    return;
-  }
-
   const parsed = parseCharacterYaml(yamlText);
   if (!parsed.success) {
     parseError.value = parsed.error;
     return;
   }
 
-  previewBaseData = stripUntrustedDxReference(parsed.data);
+  previewBaseData = parsed.data;
   await applyParsedCharacterData(previewBaseData, parsed.mode ?? 'strict', parsed.warnings ?? []);
 
   nextTick(() => setupParticleEngine());
 }
 
-function scheduleDxCharacterAutoImport(
-  data: CharacterData,
-  appearVariableName: string,
-  characterName: string,
-  reference: string,
-) {
-  if (props.previewMode || props.readOnly) return;
-  if (dxCharacterAutoImportTimer) clearTimeout(dxCharacterAutoImportTimer);
-  dxCharacterAutoImportTimer = setTimeout(() => {
-    dxCharacterAutoImportTimer = null;
-    void autoImportDxCharacter(data, appearVariableName, characterName, reference);
-  }, 0);
-}
-
-function readActiveSwipeId(messageId: number): number | null {
-  const message = getChatMessages(messageId, { include_swipes: true })[0];
-  return message ? message.swipe_id : null;
-}
-
-function isDxCharacterImportContextCurrent(chatId: string, swipeId: number, reference: string): boolean {
-  if (dxCharacterAutoImportDisposed || SillyTavern.getCurrentChatId() !== chatId) return false;
-  if (readActiveSwipeId(props.messageId) !== swipeId) return false;
-
-  const message = getChatMessages(props.messageId)[0];
-  return Boolean(message && messageContainsDxCharacterReference(message.message, reference));
-}
-
-async function autoImportDxCharacter(
-  data: CharacterData,
-  appearVariableName: string,
-  characterName: string,
-  reference: string,
-) {
-  if (dxCharacterAutoImportStarted) return;
-  dxCharacterAutoImportStarted = true;
-
-  try {
-    await waitGlobalInitialized('Mvu');
-    const chatId = SillyTavern.getCurrentChatId();
-    const swipeId = readActiveSwipeId(props.messageId);
-    if (swipeId === null || !isDxCharacterImportContextCurrent(chatId, swipeId, reference)) return;
-
-    const targetScope = { type: 'message', message_id: props.messageId } as const;
-    let successToastShown = false;
-
-    const mergeIntoFinalVariables = (variables: Mvu.MvuData) => {
-      const result = mergeDxCharacterIntoMvuData(data, appearVariableName, characterName, variables, !successToastShown);
-      if (result === 'imported') successToastShown = true;
-      return result;
-    };
-
-    const mvuUpdateReached = new Promise<void>(resolve => {
-      dxCharacterAutoImportEventListener = eventOn(Mvu.events.BEFORE_MESSAGE_UPDATE, context => {
-        if (!isDxCharacterImportContextCurrent(chatId, swipeId, reference)) return;
-        if (!messageContainsDxCharacterReference(context.message_content, reference)) return;
-
-        resolve();
-      });
-    });
-    const targetGenerationEnded = new Promise<void>(resolve => {
-      dxCharacterGenerationEndedEventListener = eventOn(tavern_events.GENERATION_ENDED, messageId => {
-        if (messageId !== props.messageId) return;
-        if (!isDxCharacterImportContextCurrent(chatId, swipeId, reference)) return;
-        resolve();
-      });
-    });
-
-    await Promise.race([
-      Promise.all([mvuUpdateReached, targetGenerationEnded]),
-      new Promise<'fallback'>(resolve => setTimeout(() => resolve('fallback'), 1000)),
-    ]);
-    if (!isDxCharacterImportContextCurrent(chatId, swipeId, reference)) return;
-
-    await waitUntil(
-      () =>
-        !isDxCharacterImportContextCurrent(chatId, swipeId, reference) ||
-        _.has(Mvu.getMvuData(targetScope), 'stat_data'),
-    );
-    if (!isDxCharacterImportContextCurrent(chatId, swipeId, reference)) return;
-
-    const queueKey = `${chatId}\u0000${props.messageId}\u0000${swipeId}`;
-    await enqueueDxCharacterImport(queueKey, async () => {
-      if (!isDxCharacterImportContextCurrent(chatId, swipeId, reference)) return;
-      const currentVariables = Mvu.getMvuData(targetScope);
-      if (mergeIntoFinalVariables(currentVariables) === 'imported') {
-        await Mvu.replaceMvuData(currentVariables, targetScope);
-      }
-    });
-    if (!isDxCharacterImportContextCurrent(chatId, swipeId, reference)) return;
-
-    const verifiedVariables = Mvu.getMvuData(targetScope);
-    const characterInserted = _.has(verifiedVariables, `stat_data.关系列表.${characterName}`);
-    const appearMarked = Number(verifiedVariables[appearVariableName]) === 1;
-    if (!characterInserted || !appearMarked) {
-      throw new Error('MVU 写入后的读回验证失败。');
-    }
-  } catch (err: any) {
-    console.error('[CharInfo Viewer] DX character auto import failed:', err);
-    if (typeof toastr !== 'undefined') toastr.error(`特殊角色自动注入失败：${err?.message || String(err)}`);
-  } finally {
-    dxCharacterAutoImportEventListener?.stop();
-    dxCharacterAutoImportEventListener = null;
-    dxCharacterGenerationEndedEventListener?.stop();
-    dxCharacterGenerationEndedEventListener = null;
-  }
-}
-
 async function applyParsedCharacterData(
   data: CharacterData,
-  mode: 'strict' | 'loose' | 'builtin',
+  mode: 'strict' | 'loose',
   warnings: string[] = [],
 ) {
   const resolvedData = props.previewMode
@@ -973,13 +822,9 @@ async function applyParsedCharacterData(
   const displayData =
     props.entranceQuoteOverride === undefined
       ? resolvedData
-      : isLoadedDxCharacterData(resolvedData)
-        ? cloneLoadedDxCharacterDataWithOverrides(resolvedData, {
-            登场台词: props.entranceQuoteOverride,
-          })
-        : cloneCharacterDataWithVisualOverrides(resolvedData, {
-            登场台词: props.entranceQuoteOverride,
-          });
+      : cloneCharacterDataWithVisualOverrides(resolvedData, {
+          登场台词: props.entranceQuoteOverride,
+        });
   sheetData.value = displayData;
   illustratedFallbackActive.value = false;
   parseError.value = null;
@@ -987,11 +832,6 @@ async function applyParsedCharacterData(
   parseWarnings.value = warnings;
   theme.value = resolveTheme(displayData);
   if (viewerRootRef.value) applyTheme(theme.value, viewerRootRef.value);
-}
-
-function stripUntrustedDxReference(data: CharacterData): CharacterData {
-  const { __dx_character_ref: _reservedDxReference, ...ordinaryData } = data;
-  return ordinaryData;
 }
 
 function useIllustratedFallback() {
@@ -1010,7 +850,7 @@ async function tryLooseParse() {
       return;
     }
 
-    previewBaseData = stripUntrustedDxReference(parsed.data);
+    previewBaseData = parsed.data;
     await applyParsedCharacterData(previewBaseData, parsed.mode ?? 'loose', parsed.warnings ?? []);
     await nextTick();
     setupParticleEngine();
@@ -1031,10 +871,6 @@ function flashImportButton(temp: string, duration = 1200) {
   if (importButtonResetTimer) {
     clearTimeout(importButtonResetTimer);
     importButtonResetTimer = null;
-  }
-  if (dxCharacterAutoImportTimer) {
-    clearTimeout(dxCharacterAutoImportTimer);
-    dxCharacterAutoImportTimer = null;
   }
   importButtonText.value = temp;
   importButtonResetTimer = setTimeout(() => {
@@ -1154,7 +990,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  dxCharacterAutoImportDisposed = true;
   engine?.destroy();
   engine = null;
   if (importButtonResetTimer) {
@@ -1165,14 +1000,6 @@ onBeforeUnmount(() => {
     clearTimeout(previewYamlRefreshTimer);
     previewYamlRefreshTimer = null;
   }
-  if (dxCharacterAutoImportTimer) {
-    clearTimeout(dxCharacterAutoImportTimer);
-    dxCharacterAutoImportTimer = null;
-  }
-  dxCharacterAutoImportEventListener?.stop();
-  dxCharacterAutoImportEventListener = null;
-  dxCharacterGenerationEndedEventListener?.stop();
-  dxCharacterGenerationEndedEventListener = null;
   listenerDocument?.removeEventListener('click', onDocumentClick);
   listenerDocument?.removeEventListener('keydown', onKeydown);
   listenerDocument = null;
@@ -1197,10 +1024,6 @@ onBeforeUnmount(() => {
   padding: 24px 12px 48px;
   color: #f0f0f0;
   font-family: 'Noto Sans SC', sans-serif;
-}
-
-.viewer-root.illustrated-viewer-root {
-  min-height: 0;
 }
 
 .viewer-root.special-npc-viewer-root {

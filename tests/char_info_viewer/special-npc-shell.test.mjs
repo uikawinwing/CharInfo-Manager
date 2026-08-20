@@ -139,7 +139,7 @@ test('Special NPC 手机首页将台词与资料直接叠在立绘渐变上，�
   assert.match(sheet, /:deep\(\.illustrated-name:not\(\.illustrated-name-measure\)\)\s*\{[\s\S]*?order:\s*1/);
   assert.match(
     sheet,
-    /\.illustrated-shell\.is-special-npc\.is-overview-tab[\s\S]*?:deep\(\.illustrated-subtitle\),[\s\S]*?:deep\(\.illustrated-level-tier\),[\s\S]*?:deep\(\.illustrated-name-rail\)[\s\S]*?display:\s*none/,
+    /\.illustrated-shell\.is-special-npc\.is-overview-tab[\s\S]*?:deep\(\.illustrated-subtitle\),[\s\S]*?:deep\(\.illustrated-level-tier\)\s*\{[\s\S]*?display:\s*none/,
   );
 });
 
@@ -183,12 +183,12 @@ test('Special NPC 把装备与背包合并为持有，并把资源集中到第�
   assert.doesNotMatch(panel, /illustrated-attribute/);
 });
 
-test('Special NPC 手机登神页使用紧凑分隔行，不沿用 DX 的厚重卡片', async () => {
+test('Special NPC 手机登神页使用紧凑分隔行', async () => {
   const [sheet, defaultDivinity] = await Promise.all([
     readFile(shellPath, 'utf8'),
     readFile(defaultDivinityPath, 'utf8'),
   ]);
-  assert.match(sheet, /<IllustratedDivinityPanel[\s\S]*?:compact="specialNpc"/);
+  assert.match(sheet, /<IllustratedDefaultDivinityPanel[\s\S]*?:compact="specialNpc"/);
   assert.match(defaultDivinity, /'is-compact': compact/);
   assert.match(defaultDivinity, /v-if="!compact \|\| vm\.divinityGodTitle \|\| vm\.divinityKingdom" class="default-divinity-hero"/);
   assert.match(defaultDivinity, /<h3 v-if="vm\.divinityGodTitle \|\| !compact">\{\{ vm\.divinityGodTitle \|\| '登神长阶' \}\}<\/h3>/);
@@ -201,7 +201,7 @@ test('Special NPC 手机登神页使用紧凑分隔行，不沿用 DX 的厚重�
 
 test('App 在 Special NPC 分支复用有立绘页面，而不是挂载独立空壳', async () => {
   const source = await readFile(appPath, 'utf8');
-  assert.match(source, /<IllustratedCharacterSheet[\s\S]*?v-if="\(shouldShowIllustratedLayout \|\| shouldShowSpecialNpcLayout\) && vm"/);
+  assert.match(source, /<IllustratedCharacterSheet[\s\S]*?v-if="shouldShowSpecialNpcLayout && vm"/);
   assert.match(source, /:special-npc="shouldShowSpecialNpcLayout"/);
   assert.doesNotMatch(source, /SpecialNpcShell/);
   assert.match(source, /vm\.value\?\.layoutKind === 'special_npc' && !illustratedFallbackActive\.value/);

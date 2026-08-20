@@ -228,31 +228,6 @@ function tabIcon(key: IllustratedTabKey): string {
   opacity: 0.42;
 }
 
-:global(.illustrated-theme-anastasia .illustrated-tabs) {
-  border-top-color: rgba(10, 45, 78, 0.3);
-  background: linear-gradient(180deg, rgba(228, 237, 242, 0.94), rgba(190, 210, 221, 0.96));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
-}
-
-:global(.illustrated-theme-anastasia .illustrated-tab-button),
-:global(.illustrated-theme-anastasia .illustrated-nav-save-button) {
-  color: #315873;
-  font-weight: 700;
-  text-shadow: none;
-}
-
-:global(.illustrated-theme-anastasia .illustrated-tab-button:hover:not(:disabled)),
-:global(.illustrated-theme-anastasia .illustrated-tab-button.active:not(:disabled)),
-:global(.illustrated-theme-anastasia .illustrated-nav-save-button:hover:not(:disabled)) {
-  color: #0a2d4e;
-}
-
-:global(.illustrated-theme-anastasia .illustrated-tab-button.active::after),
-:global(.illustrated-theme-anastasia .illustrated-nav-save-button::after) {
-  background: #bd3b4b;
-  opacity: 0.82;
-}
-
 @media (min-width: 901px) {
   .illustrated-tabs.is-side-rail {
     align-self: stretch;

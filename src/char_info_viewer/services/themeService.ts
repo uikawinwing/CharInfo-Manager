@@ -1,5 +1,4 @@
 import type { CharacterData, ThemeResolved } from '../types';
-import { isLoadedDxCharacterData } from '@/char_info_viewer/dxRuntime';
 import {
   normalizeProfileMetadata,
   type CharacterProfileMetadata,
@@ -458,8 +457,6 @@ export function resolveCharacterVisualConfig(
   data: CharacterData,
   chatVariables: Record<string, unknown>,
 ): CharacterData {
-  if (isLoadedDxCharacterData(data)) return data;
-
   const hasLegacySyntax = hasUntrustedImageSyntax(data);
   const baseData = stripUntrustedImageData(data);
   const namedVisualResolution = resolveNamedVisualConfig(data, chatVariables);
@@ -477,8 +474,6 @@ export async function resolveCharacterVisualConfigWithExtensions(
   data: CharacterData,
   chatVariables: Record<string, unknown>,
 ): Promise<CharacterData> {
-  if (isLoadedDxCharacterData(data)) return data;
-
   const hasLegacySyntax = hasUntrustedImageSyntax(data);
   const baseData = stripUntrustedImageData(data);
   const namedVisualResolution = resolveNamedVisualConfig(data, chatVariables);

@@ -76,7 +76,7 @@ test('Creator Viewer 预览可直接使用完整 char_info 或纯 YAML 临时资
   assert.equal(resolveCreatorViewerPreviewYaml(profile, 'pasted', wrapped), '姓名: 千爻\n等级: 13');
 });
 
-test('Creator 挂载真实 Viewer 作为只读草稿预览，并隔离聊天变量与 DX 自动注入', async () => {
+test('Creator 挂载真实 Viewer 作为只读草稿预览，并隔离聊天视觉变量', async () => {
   const creatorSource = await readFile(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
   const viewerSource = await readFile(new URL('../../src/char_info_viewer/App.vue', import.meta.url), 'utf8');
 
@@ -88,10 +88,9 @@ test('Creator 挂载真实 Viewer 作为只读草稿预览，并隔离聊天变�
   assert.match(creatorSource, /完整 &lt;char_info&gt; 或纯 YAML/);
   assert.match(creatorSource, /resolveCreatorViewerPreviewYaml/);
   assert.match(viewerSource, /props\.previewMode[\s\S]*resolveCharacterVisualPreview/);
-  assert.match(viewerSource, /if \(props\.previewMode \|\| props\.readOnly\) return;/);
   assert.match(viewerSource, /previewData\?: CharacterData/);
   assert.match(viewerSource, /\[\(\) => props\.yamlText, \(\) => props\.previewData, \(\) => props\.visualConfigOverride\]/);
-  assert.match(viewerSource, /if \(props\.previewMode && props\.previewData\)[\s\S]*previewBaseData = stripUntrustedDxReference\(props\.previewData\)[\s\S]*applyParsedCharacterData/);
+  assert.match(viewerSource, /if \(props\.previewMode && props\.previewData\)[\s\S]*previewBaseData = props\.previewData;[\s\S]*applyParsedCharacterData/);
   assert.match(creatorSource, /updateViewerPreviewScale/);
   assert.match(creatorSource, /viewerPreviewMobileLayout/);
   assert.match(creatorSource, /if \(mobileLayout\) \{[\s\S]*viewerPreviewScale\.value = 1;[\s\S]*viewerPreviewCanvasWidth\.value = availableWidth;[\s\S]*return;/);
