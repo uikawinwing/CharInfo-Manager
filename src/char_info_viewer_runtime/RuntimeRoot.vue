@@ -2474,28 +2474,41 @@ onBeforeUnmount(() => {
 
 @media (min-width: 721px) {
   .char-info-library-overlay.force-mobile-layout .char-info-library-viewer {
+    display: flex;
     flex: 1 1 auto;
     min-height: 0;
+    align-items: center;
+    justify-content: center;
     padding: 12px 6px 20px;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: contain;
+    overflow: hidden;
+    container-type: size;
   }
 
   .char-info-library-overlay.force-mobile-layout .char-info-library-viewer > .viewer-root {
+    display: flex;
     width: 100%;
-    height: auto;
-    min-height: 100%;
+    height: 100%;
+    min-height: 0;
+    align-items: center;
+    justify-content: center;
   }
 
   .char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-wrapper.force-mobile-layout {
     width: min(100%, 640px);
     height: auto;
     max-width: 640px;
-    margin: 0 auto;
+    margin: auto;
+  }
+
+  .char-info-library-overlay.force-mobile-layout
+    .char-info-library-viewer
+    .illustrated-wrapper.force-mobile-layout.is-special-npc {
+    width: min(640px, 100cqw, 66.6667cqh);
+    max-width: none;
   }
 
   .char-info-library-overlay.force-mobile-layout .char-info-library-viewer .illustrated-shell {
+    width: 100%;
     height: auto !important;
     min-height: 0;
   }

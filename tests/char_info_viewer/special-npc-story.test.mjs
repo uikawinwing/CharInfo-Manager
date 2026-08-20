@@ -69,11 +69,11 @@ test('Special NPC 故事页复用 detail panels 整页滚动，并提供 mobile 
   assert.match(sheetSource, /\.illustrated-panels\s*\{[\s\S]*?overflow-y:\s*auto;/u);
   assert.match(
     sheetSource,
-    /@media \(max-width: 900px\)[\s\S]*?\.illustrated-profile-story-section\s*\{[\s\S]*?padding:\s*15px 14px;/u,
+    /@mixin illustrated-mobile-content[\s\S]*?\.illustrated-profile-story-section\s*\{[\s\S]*?padding:\s*15px 14px;/u,
   );
   assert.match(
     sheetSource,
-    /@media \(max-width: 900px\)[\s\S]*?\.illustrated-profile-story-section p\s*\{[\s\S]*?font-size:\s*12px;[\s\S]*?line-height:\s*1\.78;/u,
+    /@mixin illustrated-mobile-content[\s\S]*?\.illustrated-profile-story-section p\s*\{[\s\S]*?font-size:\s*12px;[\s\S]*?line-height:\s*1\.78;/u,
   );
   assert.doesNotMatch(sheetSource, /\.illustrated-profile-story-section\s*\{[^}]*overflow-y:\s*(auto|scroll)/u);
 });

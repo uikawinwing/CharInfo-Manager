@@ -111,7 +111,7 @@ test('玩家世界书库与独立 Creator 编辑器都接收强制移动布局�
   assert.doesNotMatch(managerAppSource, /768\s*[×x]\s*1388/u);
 });
 
-test('强制移动布局会进入 Viewer 与 Special NPC 内部，而不是只改变外层窗口', () => {
+test('强制移动布局复用 Viewer 与 Special NPC 的同一套移动版式规则', () => {
   assert.match(viewerAppSource, /forceMobileLayout\?: boolean/u);
   assert.match(viewerAppSource, /'force-mobile-layout': props\.forceMobileLayout/u);
   assert.match(viewerAppSource, /:force-mobile-layout="props\.forceMobileLayout"[\s\S]*?:special-npc="shouldShowSpecialNpcLayout"/u);
@@ -119,25 +119,31 @@ test('强制移动布局会进入 Viewer 与 Special NPC 内部，而不是只�
     illustratedSheetSource,
     /'is-special-npc': specialNpc, 'force-mobile-layout': forceMobileLayout/u,
   );
+  assert.match(illustratedSheetSource, /@mixin illustrated-mobile-content\s*\{/u);
+  assert.match(illustratedSheetSource, /@mixin illustrated-compact-mobile-content\s*\{/u);
   assert.match(
     illustratedSheetSource,
-    /\.illustrated-wrapper\.force-mobile-layout\s*\{[^}]*max-width:\s*min\(100%, 640px\);/u,
+    /@media \(max-width: 900px\) \{[\s\S]*?@include illustrated-mobile-content;/u,
   );
   assert.match(
     illustratedSheetSource,
-    /\.illustrated-wrapper\.force-mobile-layout \.illustrated-shell\s*\{[^}]*flex-direction:\s*column;/u,
+    /\.illustrated-wrapper\.force-mobile-layout\s*\{[^}]*@include illustrated-mobile-content;[^}]*@include illustrated-compact-mobile-content;/u,
   );
-  assert.match(
+  assert.doesNotMatch(
     illustratedSheetSource,
-    /\.illustrated-wrapper\.force-mobile-layout \.illustrated-shell\.is-special-npc\s*\{[^}]*height:\s*auto;[^}]*min-height:\s*0;[^}]*aspect-ratio:\s*2 \/ 3;/u,
+    /\.illustrated-wrapper\.force-mobile-layout\.is-special-npc\s*\{/u,
+    'Force Mobile Special NPC 不应维护独立尺寸分支，应沿用统一的移动布局外壳',
   );
-  assert.match(
+  assert.doesNotMatch(
     illustratedSheetSource,
-    /\.illustrated-wrapper\.force-mobile-layout \.illustrated-shell\.is-special-npc\.is-overview-tab \.illustrated-data-pane\s*\{[^}]*display:\s*none;/u,
+    /\.illustrated-wrapper\.force-mobile-layout \.illustrated-shell\s*\{/u,
+    'Force Mobile 不应再维护独立的角色卡内容布局副本',
   );
+  assert.match(illustratedTabNavSource, /@mixin illustrated-mobile-side-rail/u);
+  assert.match(illustratedTabNavSource, /@mixin illustrated-compact-tabs/u);
   assert.match(
     illustratedTabNavSource,
-    /\.illustrated-tabs\.force-mobile-layout\.is-side-rail\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\) 44px;/u,
+    /@include illustrated-compact-tabs\('\.illustrated-tabs\.force-mobile-layout'\);[\s\S]*?@include illustrated-mobile-side-rail\('\.illustrated-tabs\.force-mobile-layout\.is-side-rail'\);/u,
   );
 });
 
@@ -175,11 +181,12 @@ test('手机角色详情把资料分页固定在三键栏上方，并在首页�
   );
   assert.match(
     runtimeRootSource,
-    /@media \(min-width: 721px\) \{[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer\s*\{[\s\S]*?overflow-y:\s*auto;[\s\S]*?\.illustrated-wrapper\.force-mobile-layout\s*\{[\s\S]*?max-width:\s*640px;[\s\S]*?\.illustrated-shell\.is-special-npc\s*\{[\s\S]*?aspect-ratio:\s*2 \/ 3;/u,
+    /@media \(min-width: 721px\) \{[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer\s*\{[\s\S]*?overflow:\s*hidden;[\s\S]*?container-type:\s*size;[\s\S]*?> \.viewer-root\s*\{[\s\S]*?height:\s*100%;[\s\S]*?\.illustrated-wrapper\.force-mobile-layout\.is-special-npc\s*\{[\s\S]*?width:\s*min\(640px, 100cqw, 66\.6667cqh\);[\s\S]*?\.illustrated-shell\.is-special-npc\s*\{[\s\S]*?aspect-ratio:\s*2 \/ 3;/u,
   );
   assert.doesNotMatch(
     runtimeRootSource,
-    /\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer \.illustrated-wrapper\s*\{[^}]*max-width:\s*none;/u,
+    /\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer\s*\{[^}]*overflow-y:\s*auto/u,
+    '桌面 Force Mobile 不应依赖纵向滚动才能看到整张卡',
   );
   assert.match(
     illustratedSheetSource,
