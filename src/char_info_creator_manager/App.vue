@@ -480,260 +480,30 @@
             </div>
 
             <div id="manager-step-4-content" class="mobile-step-content">
-              <section class="avatar-source-panel">
-                <div class="metadata-editor-heading">
-                  <div>
-                    <h3>状态栏头像</h3>
-                    <p>通常直接复用一张相册图片；只有需要单独头像时才填写专用 URL。</p>
-                  </div>
-                </div>
-
-                <div class="avatar-source-options" role="radiogroup" aria-label="状态栏头像来源">
-                  <label class="avatar-source-option" :class="{ active: avatarSourceMode === 'gallery' }">
-                    <input
-                      :checked="avatarSourceMode === 'gallery'"
-                      type="radio"
-                      name="avatar-source-mode"
-                      value="gallery"
-                      @change="setAvatarSourceMode('gallery')"
-                    />
-                    <span>
-                      <strong>从相册选择</strong>
-                      <small>推荐；所选图片的首选地址会作为状态栏头像。</small>
-                    </span>
-                  </label>
-                  <label class="avatar-source-option" :class="{ active: avatarSourceMode === 'custom' }">
-                    <input
-                      :checked="avatarSourceMode === 'custom'"
-                      type="radio"
-                      name="avatar-source-mode"
-                      value="custom"
-                      @change="setAvatarSourceMode('custom')"
-                    />
-                    <span>
-                      <strong>使用独立头像</strong>
-                      <small>适合专门裁切的头像图标。</small>
-                    </span>
-                  </label>
-                </div>
-
-                <label v-if="avatarSourceMode === 'gallery'" class="field avatar-gallery-picker">
-                  <span class="field-label">选择相册图片</span>
-                  <select v-model.number="avatarGalleryImageId" @change="syncAvatarUrlFromGallery">
-                    <option v-for="(image, index) in profile.gallery" :key="image.id" :value="image.id">
-                      第 {{ index + 1 }} 张 · {{ image.title || `图片 ${index + 1}` }}
-                    </option>
-                  </select>
-                  <small class="field-guidance">如果这张图片的首选地址之后修改，头像会同步更新。</small>
-                </label>
-
-                <label v-else class="field avatar-custom-url">
-                  <span class="field-label">独立头像 URL <small>选填</small></span>
-                  <input
-                    v-model="profile.avatarUrl"
-                    type="url"
-                    inputmode="url"
-                    autocomplete="off"
-                    placeholder="https://…/avatar.webp"
-                  />
-                </label>
-              </section>
-
-              <section class="gallery-storage-panel">
-                <label class="gallery-storage-toggle">
-                  <input v-model="useExtendedGallery" type="checkbox" @change="onExtendedGalleryChange" />
-                  <span>
-                    <strong>使用独立扩展图库</strong>
-                    <small>
-                      {{
-                        useExtendedGallery
-                          ? `前 ${DEFAULT_EMBEDDED_GALLERY_LIMIT} 张随角色条目保存，其余图片进入独立图库世界书`
-                          : '默认：全部图片随角色资料保存'
-                      }}
-                    </small>
-                  </span>
-                </label>
-
-                <div v-if="useExtendedGallery" class="gallery-storage-fields">
-                  <label class="field field-full">
-                    <span class="field-label">扩展图库世界书</span>
-                    <input
-                      v-model="galleryPackWorldbookName"
-                      type="text"
-                      maxlength="128"
-                      autocomplete="off"
-                      placeholder="例如：命定之诗-CharInfo图库"
-                    />
-                  </label>
-                  <label class="field">
-                    <span class="field-label">图库包 ID</span>
-                    <input
-                      v-model="galleryPackId"
-                      type="text"
-                      maxlength="64"
-                      spellcheck="false"
-                      placeholder="creator-project"
-                    />
-                  </label>
-                  <label class="field">
-                    <span class="field-label">图库角色 ID</span>
-                    <input
-                      v-model="galleryProfileId"
-                      type="text"
-                      maxlength="64"
-                      spellcheck="false"
-                      placeholder="character-id"
-                    />
-                  </label>
-                </div>
-                <ul
-                  v-if="useExtendedGallery && validationErrors.length"
-                  class="gallery-storage-errors"
-                  aria-live="polite"
-                >
-                  <li v-for="error in validationErrors" :key="error">{{ error }}</li>
-                </ul>
-                <p v-if="galleryExtensionMessage" class="gallery-storage-message" aria-live="polite">
-                  {{ loadingGalleryExtension ? '读取中：' : '' }}{{ galleryExtensionMessage }}
-                </p>
-              </section>
-
-              <div class="image-host-links">
-                <div>
-                  <strong>需要上传图片？</strong>
-                  <small>在图片托管网站上传后，请复制 HTTPS 原图直链并粘贴到下方。</small>
-                </div>
-                <a href="https://catbox.moe/" target="_blank" rel="noopener noreferrer">打开 Catbox</a>
-                <a href="https://imgbb.com/" target="_blank" rel="noopener noreferrer">打开 ImgBB</a>
-              </div>
-
-              <div class="gallery-list">
-                <article v-for="(image, index) in profile.gallery" :key="image.id" class="gallery-card">
-                  <div class="image-preview">
-                    <video
-                      v-if="galleryPreviewMediaKind(image) === 'video'"
-                      :key="`${image.id}:${image.previewSourceIndex}:${resolveGalleryPreviewUrl(image)}`"
-                      :ref="element => setGalleryPreviewElement(image, element)"
-                      :data-gallery-image-id="image.id"
-                      :src="resolveGalleryPreviewUrl(image)"
-                      autoplay
-                      muted
-                      loop
-                      playsinline
-                      preload="auto"
-                      @loadeddata="onGalleryPreviewLoad(image)"
-                      @error="onGalleryPreviewError(image)"
-                    ></video>
-                    <img
-                      v-else-if="resolveGalleryPreviewUrl(image)"
-                      :key="`${image.id}:${image.previewSourceIndex}:${resolveGalleryPreviewUrl(image)}`"
-                      :ref="element => setGalleryPreviewElement(image, element)"
-                      :data-gallery-image-id="image.id"
-                      :src="resolveGalleryPreviewUrl(image)"
-                      :alt="image.title || `第 ${index + 1} 张立绘`"
-                      loading="lazy"
-                      referrerpolicy="no-referrer"
-                      @load="onGalleryPreviewLoad(image)"
-                      @error="onGalleryPreviewError(image)"
-                    />
-                    <span v-else aria-hidden="true">▧</span>
-                    <span v-if="galleryPreviewMediaKind(image) === 'video'" class="gallery-media-kind">视频</span>
-                    <b v-if="index === 0">主立绘</b>
-                    <b v-else-if="isExtendedGalleryImage(index)" class="gallery-location-badge is-extension">
-                      扩展图库
-                    </b>
-                    <b v-else-if="useExtendedGallery" class="gallery-location-badge">随角色保存</b>
-                  </div>
-
-                  <div class="gallery-fields">
-                    <label class="field">
-                      <span class="field-label">图片标题</span>
-                      <input v-model="image.title" type="text" autocomplete="off" />
-                    </label>
-                    <div class="source-list">
-                      <label v-for="(_source, sourceIndex) in image.sources" :key="sourceIndex" class="field">
-                        <span class="field-label">
-                          图片地址 {{ sourceIndex + 1 }}
-                          <small>{{ sourceIndex === 0 ? '首选' : '加载失败时备用' }}</small>
-                        </span>
-                        <span class="source-input-row">
-                          <input
-                            v-model="image.sources[sourceIndex]"
-                            type="url"
-                            inputmode="url"
-                            autocomplete="off"
-                            placeholder="https://…/portrait.webp"
-                            @input="onGallerySourceInput(image)"
-                          />
-                          <span class="source-order-actions">
-                            <button
-                              type="button"
-                              class="source-order-button"
-                              :disabled="sourceIndex === 0"
-                              :aria-label="`上移第 ${sourceIndex + 1} 个图片地址`"
-                              title="提高优先级"
-                              @click="moveImageSource(image, sourceIndex, -1)"
-                            >
-                              ↑
-                            </button>
-                            <button
-                              type="button"
-                              class="source-order-button"
-                              :disabled="sourceIndex === image.sources.length - 1"
-                              :aria-label="`下移第 ${sourceIndex + 1} 个图片地址`"
-                              title="降低优先级"
-                              @click="moveImageSource(image, sourceIndex, 1)"
-                            >
-                              ↓
-                            </button>
-                            <button
-                              type="button"
-                              class="remove-source-button"
-                              :disabled="image.sources.length === 1"
-                              :aria-label="`删除第 ${sourceIndex + 1} 个图片地址`"
-                              title="删除"
-                              @click="removeImageSource(image, sourceIndex)"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        </span>
-                      </label>
-                      <button type="button" class="add-source-button" @click="addImageSource(image)">
-                        ＋ 添加备用图片地址
-                      </button>
-                    </div>
-                  </div>
-
-                  <div class="gallery-actions">
-                    <button type="button" title="上移" :disabled="index === 0" @click="moveImage(index, -1)">↑</button>
-                    <button
-                      type="button"
-                      title="下移"
-                      :disabled="index === profile.gallery.length - 1"
-                      @click="moveImage(index, 1)"
-                    >
-                      ↓
-                    </button>
-                    <button
-                      class="danger"
-                      type="button"
-                      title="删除"
-                      :disabled="profile.gallery.length === 1"
-                      @click="removeImage(index)"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </article>
-              </div>
-
-              <button class="add-image-button" type="button" @click="addImage">＋ 添加一张图片</button>
-
-              <div class="wizard-step-actions">
-                <button type="button" class="secondary-button" @click="goToStep(3)">上一步</button>
-                <button type="button" class="primary-button" @click="goToStep(5)">下一步：确认写入</button>
-              </div>
+              <GalleryStep
+                v-model:gallery="profile.gallery"
+                :avatar-url="profile.avatarUrl"
+                :cover-url="profile.coverUrl"
+                :use-extended-gallery="useExtendedGallery"
+                :gallery-pack-worldbook-name="galleryPackWorldbookName"
+                :gallery-pack-id="galleryPackId"
+                :gallery-profile-id="galleryProfileId"
+                :validation-errors="validationErrors"
+                :gallery-extension-message="galleryExtensionMessage"
+                :loading-gallery-extension="loadingGalleryExtension"
+                :embedded-gallery-limit="DEFAULT_EMBEDDED_GALLERY_LIMIT"
+                :character-name="profile.characterName"
+                :debug-enabled="props.debugEnabled"
+                @update:avatar-url="profile.avatarUrl = $event"
+                @update:cover-url="profile.coverUrl = $event"
+                @update:use-extended-gallery="useExtendedGallery = $event"
+                @update:gallery-pack-worldbook-name="galleryPackWorldbookName = $event"
+                @update:gallery-pack-id="galleryPackId = $event"
+                @update:gallery-profile-id="galleryProfileId = $event"
+                @extended-gallery-change="onExtendedGalleryChange"
+                @previous="goToStep(3)"
+                @next="goToStep(5)"
+              />
             </div>
           </section>
 
@@ -802,21 +572,26 @@
               </div>
               <div class="save-actions">
                 <button
-                  v-if="saveState === 'success'"
                   class="secondary-button"
                   type="button"
-                  :disabled="applyingSavedProfile"
-                  @click="applySavedProfileToCurrentChat"
+                  :disabled="!canApplyCurrentProfile || applyingSavedProfile"
+                  title="立即写入当前聊天的 CharInfo 变量、状态栏头像与状态栏相簿"
+                  @click="applyCurrentProfileToCurrentChat"
                 >
-                  {{ applyingSavedProfile ? '正在应用…' : '应用已保存版本到当前聊天' }}
+                  {{ applyingSavedProfile ? '正在写入…' : '即时写入变量及状态栏' }}
                 </button>
-                <button class="primary-button" type="submit" :disabled="!canSave">
+                <button
+                  class="primary-button"
+                  type="submit"
+                  :disabled="!canSave"
+                  title="仅保存到世界书条目，不修改当前聊天变量"
+                >
                   {{
                     saving
-                      ? '正在写入…'
+                      ? '正在保存…'
                       : legacyVisualInspection.state === 'importable'
-                        ? '升级并保存新版配置'
-                        : '保存并写入所选条目'
+                        ? '升级并保存到世界书'
+                        : '保存到世界书'
                   }}
                 </button>
               </div>
@@ -881,16 +656,6 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 
 import {
-  normalizePortraitMediaUrlForBrowser,
-  type NormalizedPortraitMedia,
-  type PortraitMediaKind,
-} from '../char_info_viewer/services/imageUrl';
-import {
-  createMediaSourceTimeout,
-  nextMediaSourceIndex,
-  type MediaSourceTimeout,
-} from '../char_info_viewer/services/mediaSourceFallback';
-import {
   createStableGalleryId,
   DEFAULT_EMBEDDED_GALLERY_LIMIT,
   validateGalleryExtensionReference,
@@ -901,8 +666,12 @@ import {
   parseWorldbookCharacterEntryTitle,
 } from '../char_info_shared/characterEntryLibrary';
 import { copyTextWithDocumentSelection, copyTextWithFallback } from './clipboard';
+import GalleryStep from './components/GalleryStep.vue';
+import type { EditableGalleryImage } from './galleryEditor';
 import {
   buildManagedEjsBlock,
+  buildStatusGalleryImages,
+  countUnsupportedStatusGalleryItems,
   createEmptyProfile,
   DEFAULT_RACE_COLOR,
   DEFAULT_TIER_COLOR,
@@ -911,6 +680,7 @@ import {
   inspectManagedBlock,
   isHttpsUrl,
   normalizeProfile,
+  STATUS_GALLERY_IMAGE_EXTENSIONS,
   validateProfile,
   type CharacterProfileMetadata,
   type CharacterStorySection,
@@ -929,20 +699,13 @@ import {
 } from './galleryPackStorage';
 import { buildWorldbookList } from '../char_info_shared/worldbookList';
 import ViewerApp from '../char_info_viewer/App.vue';
-import { evaluateManagedEjs } from './ejsRuntime';
+import { evaluateManagedEjs, writeStatusGallerySnapshotToCurrentChat } from './ejsRuntime';
 import {
   buildCreatorViewerPreviewData,
   buildCreatorViewerVisualOverride,
   resolveCreatorViewerPreviewYaml,
   type CreatorViewerPreviewSource,
 } from './viewerPreview';
-
-interface EditableGalleryImage {
-  id: number;
-  title: string;
-  sources: string[];
-  previewSourceIndex: number;
-}
 
 interface EditableStorySection {
   id: number;
@@ -1037,8 +800,6 @@ const viewerPreviewCanvasRef = ref<HTMLElement | null>(null);
 let viewerPreviewResizeObserver: ResizeObserver | null = null;
 
 const profile = reactive<EditableProfile>(toEditableProfile(createEmptyProfile()));
-const avatarSourceMode = ref<'gallery' | 'custom'>('gallery');
-const avatarGalleryImageId = ref<number | null>(profile.gallery[0]?.id ?? null);
 
 function defaultGalleryReference(): GalleryExtensionReference {
   return {
@@ -1100,10 +861,15 @@ function toSerializableMetadata(): CharacterProfileMetadata | undefined {
   return normalizeProfile({
     characterName: profile.characterName,
     avatarUrl: profile.avatarUrl,
+    coverUrl: profile.coverUrl,
     raceColor: profile.raceColor,
     tierColor: profile.tierColor,
     entranceQuote: profile.entranceQuote,
-    gallery: profile.gallery.map(({ title, sources }) => ({ title, sources: [...sources] })),
+    gallery: profile.gallery.map(({ title, sources, viewerVisible }) => ({
+      title,
+      sources: [...sources],
+      ...(viewerVisible === false ? { viewerVisible: false } : {}),
+    })),
     metadata: {
       author: profile.metadata.author,
       version: profile.metadata.version,
@@ -1120,10 +886,15 @@ function toFullSerializableProfile(): CharacterVisualProfile {
   return {
     characterName: profile.characterName,
     avatarUrl: profile.avatarUrl,
+    coverUrl: profile.coverUrl,
     raceColor: profile.raceColor,
     tierColor: profile.tierColor,
     entranceQuote: profile.entranceQuote,
-    gallery: profile.gallery.map(({ title, sources }) => ({ title, sources: [...sources] })),
+    gallery: profile.gallery.map(({ title, sources, viewerVisible }) => ({
+      title,
+      sources: [...sources],
+      ...(viewerVisible === false ? { viewerVisible: false } : {}),
+    })),
     ...(metadata ? { metadata } : {}),
   };
 }
@@ -1139,53 +910,11 @@ function toSerializableProfile(): CharacterVisualProfile {
   };
 }
 
-function selectedAvatarGalleryImage(): EditableGalleryImage | null {
-  if (avatarGalleryImageId.value === null) return null;
-  return profile.gallery.find(image => image.id === avatarGalleryImageId.value) ?? null;
-}
-
-function galleryAvatarUrl(image: EditableGalleryImage | null): string {
-  return image?.sources.find(source => isHttpsUrl(source))?.trim() ?? '';
-}
-
-function syncAvatarUrlFromGallery() {
-  if (avatarSourceMode.value !== 'gallery') return;
-  profile.avatarUrl = galleryAvatarUrl(selectedAvatarGalleryImage());
-}
-
-function syncAvatarEditorFromProfile() {
-  const avatarUrl = profile.avatarUrl.trim();
-  const matchedImage = avatarUrl ? profile.gallery.find(image => galleryAvatarUrl(image) === avatarUrl) : undefined;
-
-  if (matchedImage) {
-    avatarSourceMode.value = 'gallery';
-    avatarGalleryImageId.value = matchedImage.id;
-    return;
-  }
-
-  const hasConfiguredGalleryImage = profile.gallery.some(image => !!galleryAvatarUrl(image));
-  if (!avatarUrl && !hasConfiguredGalleryImage) {
-    avatarSourceMode.value = 'gallery';
-    avatarGalleryImageId.value = profile.gallery[0]?.id ?? null;
-    return;
-  }
-
-  avatarSourceMode.value = 'custom';
-  avatarGalleryImageId.value = null;
-}
-
-function setAvatarSourceMode(mode: 'gallery' | 'custom') {
-  avatarSourceMode.value = mode;
-  if (mode === 'gallery') {
-    avatarGalleryImageId.value ??= profile.gallery[0]?.id ?? null;
-    syncAvatarUrlFromGallery();
-  }
-}
-
 function replaceProfile(value: CharacterVisualProfile) {
   const editable = toEditableProfile(value);
   profile.characterName = editable.characterName;
   profile.avatarUrl = editable.avatarUrl;
+  profile.coverUrl = editable.coverUrl;
   profile.raceColor = editable.raceColor;
   profile.tierColor = editable.tierColor;
   customizeColors.value = !!(editable.raceColor || editable.tierColor);
@@ -1197,11 +926,11 @@ function replaceProfile(value: CharacterVisualProfile) {
   profile.metadata.sex = editable.metadata.sex;
   profile.metadata.race = editable.metadata.race;
   profile.metadata.storySections.splice(0, profile.metadata.storySections.length, ...editable.metadata.storySections);
-  syncAvatarEditorFromProfile();
   applyGalleryReference(value.galleryExtension);
 }
 
 const selectedEntry = computed(() => entries.value.find(entry => entry.uid === selectedEntryUid.value) ?? null);
+const canApplyCurrentProfile = computed(() => validationErrors.value.length === 0 && !applyingSavedProfile.value);
 const canPreviewViewer = computed(() => !!selectedEntry.value && profile.characterName.trim().length > 0);
 const viewerPreviewProfile = computed(() => toFullSerializableProfile());
 const viewerPreviewSampleData = computed(() => buildCreatorViewerPreviewData(viewerPreviewProfile.value));
@@ -1235,9 +964,11 @@ const embeddedGalleryCount = computed(() =>
 );
 const extendedGalleryImages = computed<GalleryImage[]>(() =>
   useExtendedGallery.value
-    ? profile.gallery
-        .slice(DEFAULT_EMBEDDED_GALLERY_LIMIT)
-        .map(({ title, sources }) => ({ title, sources: [...sources] }))
+    ? profile.gallery.slice(DEFAULT_EMBEDDED_GALLERY_LIMIT).map(({ title, sources, viewerVisible }) => ({
+        title,
+        sources: [...sources],
+        ...(viewerVisible === false ? { viewerVisible: false } : {}),
+      }))
     : [],
 );
 const filteredWorldbooks = computed(() => {
@@ -1246,127 +977,6 @@ const filteredWorldbooks = computed(() => {
   if (!query || isShowingSelectedName) return worldbooks.value;
   return worldbooks.value.filter(worldbook => worldbook.toLocaleLowerCase().includes(query));
 });
-
-function resolveGalleryPreviewSources(image: EditableGalleryImage): NormalizedPortraitMedia[] {
-  return image.sources.reduce<NormalizedPortraitMedia[]>((sources, value) => {
-    const media = normalizePortraitMediaUrlForBrowser(value);
-    if (media && !sources.some(source => source.url === media.url)) sources.push(media);
-    return sources;
-  }, []);
-}
-
-function resolveGalleryPreviewMedia(image: EditableGalleryImage): NormalizedPortraitMedia | null {
-  const sources = resolveGalleryPreviewSources(image);
-  return sources[Math.min(image.previewSourceIndex, Math.max(0, sources.length - 1))] ?? null;
-}
-
-function resolveGalleryPreviewUrl(image: EditableGalleryImage): string {
-  return resolveGalleryPreviewMedia(image)?.url ?? '';
-}
-
-function galleryPreviewMediaKind(image: EditableGalleryImage): PortraitMediaKind | null {
-  return resolveGalleryPreviewMedia(image)?.kind ?? null;
-}
-
-function debugGalleryPreview(image: EditableGalleryImage, event: string, details: Record<string, unknown> = {}) {
-  if (!props.debugEnabled) return;
-  const sources = resolveGalleryPreviewSources(image);
-  console.info('[CharInfo][ImageFallback][Creator]', {
-    event,
-    character: profile.characterName,
-    imageTitle: image.title,
-    sourceIndex: image.previewSourceIndex,
-    url: sources[image.previewSourceIndex]?.url ?? '',
-    ...details,
-  });
-}
-
-const galleryPreviewElements = new Map<number, HTMLImageElement | HTMLVideoElement>();
-const galleryPreviewTimeouts = new Map<number, MediaSourceTimeout>();
-const visibleGalleryPreviewIds = new Set<number>();
-let galleryPreviewObserver: IntersectionObserver | null = null;
-
-function galleryPreviewTimeoutFor(image: EditableGalleryImage): MediaSourceTimeout {
-  let timeout = galleryPreviewTimeouts.get(image.id);
-  if (timeout) return timeout;
-  timeout = createMediaSourceTimeout(() => {
-    if (!visibleGalleryPreviewIds.has(image.id)) return;
-    debugGalleryPreview(image, 'timeout');
-    advanceGalleryPreviewSource(image, 'timeout');
-  });
-  galleryPreviewTimeouts.set(image.id, timeout);
-  return timeout;
-}
-
-function clearGalleryPreviewTimeout(image: EditableGalleryImage) {
-  galleryPreviewTimeouts.get(image.id)?.clear();
-}
-
-function advanceGalleryPreviewSource(image: EditableGalleryImage, reason: 'error' | 'timeout') {
-  clearGalleryPreviewTimeout(image);
-  const sources = resolveGalleryPreviewSources(image);
-  const fromIndex = image.previewSourceIndex;
-  const nextIndex = nextMediaSourceIndex(fromIndex, sources.length);
-  if (nextIndex !== null) {
-    image.previewSourceIndex = nextIndex;
-    debugGalleryPreview(image, 'fallback', { reason, fromIndex, toIndex: nextIndex });
-    debugGalleryPreview(image, 'try');
-    return;
-  }
-  debugGalleryPreview(image, 'all_failed', { reason, fromIndex });
-}
-
-function onGalleryPreviewLoad(image: EditableGalleryImage) {
-  clearGalleryPreviewTimeout(image);
-  debugGalleryPreview(image, 'loaded');
-}
-
-function onGalleryPreviewError(image: EditableGalleryImage) {
-  debugGalleryPreview(image, 'error');
-  advanceGalleryPreviewSource(image, 'error');
-}
-
-function setGalleryPreviewElement(image: EditableGalleryImage, element: unknown) {
-  const previous = galleryPreviewElements.get(image.id);
-  if (previous) galleryPreviewObserver?.unobserve(previous);
-
-  if (!(element instanceof HTMLImageElement) && !(element instanceof HTMLVideoElement)) {
-    galleryPreviewElements.delete(image.id);
-    visibleGalleryPreviewIds.delete(image.id);
-    clearGalleryPreviewTimeout(image);
-    return;
-  }
-
-  galleryPreviewElements.set(image.id, element);
-  if (galleryPreviewObserver) {
-    galleryPreviewObserver.observe(element);
-    return;
-  }
-
-  visibleGalleryPreviewIds.add(image.id);
-  debugGalleryPreview(image, 'try');
-  galleryPreviewTimeoutFor(image).arm();
-}
-
-function initializeGalleryPreviewObserver() {
-  if (typeof IntersectionObserver === 'undefined') return;
-  galleryPreviewObserver = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      const imageId = Number((entry.target as HTMLImageElement | HTMLVideoElement).dataset.galleryImageId);
-      const image = profile.gallery.find(candidate => candidate.id === imageId);
-      if (!image) return;
-      if (entry.isIntersecting) {
-        visibleGalleryPreviewIds.add(imageId);
-        debugGalleryPreview(image, 'try');
-        galleryPreviewTimeoutFor(image).arm();
-      } else {
-        visibleGalleryPreviewIds.delete(imageId);
-        clearGalleryPreviewTimeout(image);
-      }
-    });
-  });
-  galleryPreviewElements.forEach(element => galleryPreviewObserver?.observe(element));
-}
 
 const filteredEntries = computed(() => {
   const query = entrySearch.value.trim().toLocaleLowerCase();
@@ -1596,10 +1206,6 @@ function onExtendedGalleryChange() {
   galleryPackWorldbookName.value ||= defaults.worldbookName;
   galleryPackId.value ||= defaults.packId;
   galleryProfileId.value ||= defaults.profileId;
-}
-
-function isExtendedGalleryImage(index: number): boolean {
-  return useExtendedGallery.value && index >= DEFAULT_EMBEDDED_GALLERY_LIMIT;
 }
 
 async function loadWorldbooks() {
@@ -1859,57 +1465,6 @@ function moveStorySection(index: number, offset: -1 | 1) {
   profile.metadata.storySections.splice(targetIndex, 0, section);
 }
 
-function addImage() {
-  const number = profile.gallery.length + 1;
-  profile.gallery.push({
-    id: nextImageId++,
-    title: number === 1 ? '主立绘' : `备用立绘 ${number}`,
-    sources: [''],
-    previewSourceIndex: 0,
-  });
-}
-
-function addImageSource(image: EditableGalleryImage) {
-  image.sources.push('');
-}
-
-function onGallerySourceInput(image: EditableGalleryImage) {
-  image.previewSourceIndex = 0;
-  if (avatarSourceMode.value === 'gallery' && avatarGalleryImageId.value === image.id) syncAvatarUrlFromGallery();
-}
-
-function removeImageSource(image: EditableGalleryImage, sourceIndex: number) {
-  if (image.sources.length <= 1) return;
-  image.sources.splice(sourceIndex, 1);
-  image.previewSourceIndex = 0;
-  if (avatarSourceMode.value === 'gallery' && avatarGalleryImageId.value === image.id) syncAvatarUrlFromGallery();
-}
-
-function moveImageSource(image: EditableGalleryImage, sourceIndex: number, offset: -1 | 1) {
-  const targetIndex = sourceIndex + offset;
-  if (targetIndex < 0 || targetIndex >= image.sources.length) return;
-  const [source] = image.sources.splice(sourceIndex, 1);
-  image.sources.splice(targetIndex, 0, source);
-  image.previewSourceIndex = 0;
-  if (avatarSourceMode.value === 'gallery' && avatarGalleryImageId.value === image.id) syncAvatarUrlFromGallery();
-}
-
-function removeImage(index: number) {
-  if (profile.gallery.length <= 1) return;
-  const [removed] = profile.gallery.splice(index, 1);
-  if (avatarSourceMode.value === 'gallery' && avatarGalleryImageId.value === removed.id) {
-    avatarGalleryImageId.value = profile.gallery[0]?.id ?? null;
-    syncAvatarUrlFromGallery();
-  }
-}
-
-function moveImage(index: number, offset: -1 | 1) {
-  const targetIndex = index + offset;
-  if (targetIndex < 0 || targetIndex >= profile.gallery.length) return;
-  const [image] = profile.gallery.splice(index, 1);
-  profile.gallery.splice(targetIndex, 0, image);
-}
-
 async function copyEjs() {
   if (!generatedCode.value) return;
   try {
@@ -1949,6 +1504,34 @@ function downloadGalleryPackJson() {
   anchor.click();
   URL.revokeObjectURL(url);
   galleryPackDownloadMessage.value = `已下载 ${anchor.download}；其中只有禁用的扩展图库条目，不会注入提示词。`;
+}
+
+function readStatusGallerySnapshotFromCurrentChat(characterName: string): unknown[] | null {
+  const chatVariables = getVariables({ type: 'chat' });
+  const chatRecord = chatVariables && typeof chatVariables === 'object' ? (chatVariables as Record<string, unknown>) : {};
+  const status = chatRecord.status;
+  const externalGalleries =
+    status && typeof status === 'object' ? (status as Record<string, unknown>).externalGalleries : undefined;
+  const partners =
+    externalGalleries && typeof externalGalleries === 'object'
+      ? (externalGalleries as Record<string, unknown>).partners
+      : undefined;
+  const gallery =
+    partners && typeof partners === 'object' ? (partners as Record<string, unknown>)[characterName] : undefined;
+  return gallery && typeof gallery === 'object' && Array.isArray((gallery as Record<string, unknown>).images)
+    ? ((gallery as Record<string, unknown>).images as unknown[])
+    : null;
+}
+
+async function syncStatusGallerySnapshotToCurrentChat(
+  characterName: string,
+  images: ReturnType<typeof buildStatusGalleryImages>,
+): Promise<void> {
+  await writeStatusGallerySnapshotToCurrentChat(characterName, images, props.debugEnabled);
+  const appliedImages = readStatusGallerySnapshotFromCurrentChat(characterName);
+  if (JSON.stringify(appliedImages) !== JSON.stringify(images)) {
+    throw new Error('status.externalGalleries 中的状态栏相簿没有正确写入。');
+  }
 }
 
 async function saveToEntry() {
@@ -2034,11 +1617,13 @@ async function saveToEntry() {
     const migrationSummary = legacyMigrationSource
       ? `旧版 ${legacyMigrationSource} 已升级为 char_info.profiles v2；`
       : '';
-    saveMessage.value = galleryReference
-      ? `保存成功：${migrationSummary}角色条目保留 ${embeddedGalleryCount.value} 张基础图片，${extendedGalleryImages.value.length} 张图片已写入独立图库世界书。`
-      : legacyMigrationSource
-        ? `升级成功：${migrationSummary}原条目其余内容保持不变。`
-        : '保存成功：角色视觉资料已写入，原条目其余内容保持不变。';
+    saveMessage.value = `${
+      galleryReference
+        ? `保存成功：${migrationSummary}角色条目保留 ${embeddedGalleryCount.value} 张基础图片，${extendedGalleryImages.value.length} 张图片已写入独立图库世界书。`
+        : legacyMigrationSource
+          ? `升级成功：${migrationSummary}原条目其余内容保持不变。`
+          : '保存成功：角色视觉资料已写入世界书条目，原条目其余内容保持不变。'
+    } 当前聊天变量未修改；如需立即生效，请点击「即时写入变量及状态栏」。`;
     console.info('[CharInfo Creator Manager] Managed EJS saved', {
       worldbook: worldbookName,
       entryUid: entry.uid,
@@ -2053,42 +1638,81 @@ async function saveToEntry() {
   }
 }
 
-async function applySavedProfileToCurrentChat() {
-  const worldbookName = selectedWorldbookName.value;
-  const entry = selectedEntry.value;
-  if (!entry || applyingSavedProfile.value) return;
+async function applyCurrentProfileToCurrentChat() {
+  if (!canApplyCurrentProfile.value || applyingSavedProfile.value) return;
 
   applyingSavedProfile.value = true;
-  applyMessage.value = '正在只执行当前角色的 CharInfo 受管理 EJS…';
+  applyMessage.value = '正在即时写入当前编辑资料、状态栏头像与状态栏相簿…';
   try {
-    const latestEntries = await getWorldbook(worldbookName);
-    const latestEntry = latestEntries.find(item => item.uid === entry.uid);
-    if (!latestEntry) throw new Error(`找不到世界书条目 #${entry.uid}。`);
+    const currentProfile = normalizeProfile(toFullSerializableProfile());
+    const managedCode = buildManagedEjsBlock(currentProfile);
+    const expectedStatusGalleryImages = buildStatusGalleryImages(currentProfile.gallery);
+    const unsupportedStatusGalleryItems = countUnsupportedStatusGalleryItems(currentProfile.gallery);
 
-    const managed = extractManagedEjsBlock(latestEntry.content);
-    await evaluateManagedEjs(managed.code, props.debugEnabled);
+    await evaluateManagedEjs(managedCode, props.debugEnabled);
+    await syncStatusGallerySnapshotToCurrentChat(currentProfile.characterName, expectedStatusGalleryImages);
 
     const chatVariables = getVariables({ type: 'chat' });
-    const charInfo = chatVariables.char_info;
+    const chatRecord = chatVariables && typeof chatVariables === 'object' ? (chatVariables as Record<string, unknown>) : {};
+    const charInfo = chatRecord.char_info;
     const profiles = charInfo && typeof charInfo === 'object' ? (charInfo as { profiles?: unknown }).profiles : undefined;
     const appliedProfile =
       profiles && typeof profiles === 'object'
-        ? (profiles as Record<string, unknown>)[managed.profile.characterName]
+        ? (profiles as Record<string, unknown>)[currentProfile.characterName]
         : undefined;
     if (!appliedProfile || typeof appliedProfile !== 'object') {
-      throw new Error('EJS 已执行，但当前聊天变量中没有读回该角色的 CharInfo profile。');
+      throw new Error('即时写入已执行，但当前聊天变量中没有读回该角色的 CharInfo profile。');
+    }
+
+    const appliedRecord = appliedProfile as Record<string, unknown>;
+    const expectedGallery = currentProfile.gallery.map(image => ({
+      title: image.title,
+      sources: [...image.sources],
+      ...(image.viewerVisible === false ? { viewer_visible: false } : {}),
+    }));
+    if (JSON.stringify(appliedRecord.gallery ?? null) !== JSON.stringify(expectedGallery)) {
+      throw new Error('即时写入已执行，但 char_info.profiles 中的 gallery 与当前编辑内容不一致。');
+    }
+
+    const status = chatRecord.status;
+    const expectedAvatarUrl = currentProfile.avatarUrl.trim();
+    if (expectedAvatarUrl) {
+      const externalAvatars = status && typeof status === 'object' ? (status as Record<string, unknown>).externalAvatars : undefined;
+      const partners =
+        externalAvatars && typeof externalAvatars === 'object'
+          ? (externalAvatars as Record<string, unknown>).partners
+          : undefined;
+      const avatar =
+        partners && typeof partners === 'object'
+          ? (partners as Record<string, unknown>)[currentProfile.characterName]
+          : undefined;
+      const appliedAvatarUrl =
+        avatar && typeof avatar === 'object' && typeof (avatar as Record<string, unknown>).url === 'string'
+          ? ((avatar as Record<string, unknown>).url as string)
+          : '';
+      if (appliedAvatarUrl !== expectedAvatarUrl) {
+        throw new Error('即时写入已执行，但 status.externalAvatars 中的状态栏头像没有正确写入。');
+      }
+    }
+
+    if (unsupportedStatusGalleryItems > 0) {
+      const supportedFormats = STATUS_GALLERY_IMAGE_EXTENSIONS.map(extension => extension.slice(1)).join(' / ');
+      toastr.warning(
+        `即时写入成功，但状态栏相簿目前仅支援 ${supportedFormats}。${unsupportedStatusGalleryItems} 个其他格式媒体不会进入状态栏相簿；CharInfo 相簿仍已完整写入。`,
+      );
     }
 
     await props.onForceRefresh?.();
-    applyMessage.value = `已把「${managed.profile.characterName}」的已保存视觉资料应用到当前聊天并强制刷新 CharInfo。`;
-    console.info('[CharInfo Creator Manager] Managed EJS applied to current chat', {
-      worldbook: worldbookName,
-      entryUid: entry.uid,
-      character: managed.profile.characterName,
+    const appliedParts = [`CharInfo 图库 ${currentProfile.gallery.length} 张`, `状态栏相簿 ${expectedStatusGalleryImages.length} 张`];
+    if (expectedAvatarUrl) appliedParts.push('状态栏头像');
+    applyMessage.value = `已即时写入「${currentProfile.characterName}」（${appliedParts.join('、')}）并刷新 CharInfo。`;
+    console.info('[CharInfo Creator Manager] Current profile applied to current chat', {
+      character: currentProfile.characterName,
+      statusGalleryImages: expectedStatusGalleryImages.length,
     });
   } catch (error) {
-    console.error('[CharInfo Creator Manager] Failed to apply managed EJS:', error);
-    applyMessage.value = `应用失败：${error instanceof Error ? error.message : String(error)}`;
+    console.error('[CharInfo Creator Manager] Failed to apply current profile:', error);
+    applyMessage.value = `即时写入失败：${error instanceof Error ? error.message : String(error)}`;
   } finally {
     applyingSavedProfile.value = false;
   }
@@ -2117,19 +1741,12 @@ watch(viewerPreviewSource, () => {
 });
 
 onMounted(() => {
-  initializeGalleryPreviewObserver();
   void loadWorldbooks();
 });
 
 onBeforeUnmount(() => {
   viewerPreviewResizeObserver?.disconnect();
   viewerPreviewResizeObserver = null;
-  galleryPreviewObserver?.disconnect();
-  galleryPreviewObserver = null;
-  galleryPreviewTimeouts.forEach(timeout => timeout.dispose());
-  galleryPreviewTimeouts.clear();
-  galleryPreviewElements.clear();
-  visibleGalleryPreviewIds.clear();
 });
 </script>
 

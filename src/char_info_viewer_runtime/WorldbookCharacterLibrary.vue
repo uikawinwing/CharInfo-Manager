@@ -342,12 +342,21 @@
                 <div class="character-detail-media">
                   <video
                     v-if="item.media?.kind === 'video'"
+                    :ref="element => setDetailVideoElement(item.sourceIndex, element)"
                     :src="item.media.url"
-                    controls
+                    :aria-label="`预览视频：${item.title || `角色图片 ${index + 1}`}；鼠标悬停播放，触屏点击播放或暂停`"
                     muted
                     loop
                     playsinline
                     preload="metadata"
+                    role="button"
+                    tabindex="0"
+                    title="鼠标悬停播放；触屏点击播放或暂停"
+                    @pointerenter="onDetailVideoPointerEnter(item.sourceIndex, $event)"
+                    @pointerleave="onDetailVideoPointerLeave(item.sourceIndex, $event)"
+                    @pointerup="onDetailVideoPointerUp(item.sourceIndex, $event)"
+                    @keydown.enter.prevent="toggleDetailVideo(item.sourceIndex)"
+                    @keydown.space.prevent="toggleDetailVideo(item.sourceIndex)"
                     @error="advanceDetailMedia(item.sourceIndex)"
                   ></video>
                   <img
@@ -388,7 +397,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 
 import {
   collectEncounteredCharacters,
@@ -454,6 +463,10 @@ const coverIndexes = reactive<Record<number, number>>({});
 const detailUid = ref<number | null>(null);
 const detailGalleryIndexes = reactive<Record<string, number>>({});
 const detailExtensionGallery = reactive<Record<number, GalleryImage[]>>({});
+const detailVideoElements = new Map<number, HTMLVideoElement>();
+const activeDetailVideoIndex = ref<number | null>(null);
+let detailVideoHoverTimer: number | null = null;
+let detailVideoObserver: IntersectionObserver | null = null;
 let entriesLoadRevision = 0;
 
 const worldbookCharacters = computed<LibraryCharacter[]>(() => {
@@ -577,10 +590,12 @@ function sortCharacters(characters: LibraryCharacter[], order: SortOrder): Libra
 }
 
 function imageSources(character: LibraryCharacter): string[] {
-  return [character.profile.avatarUrl, ...(character.profile.gallery[0]?.sources ?? [])].flatMap(value => {
-    const media = normalizePortraitMediaUrlForBrowser(value);
-    return media?.kind === 'image' ? [media.url] : [];
-  });
+  return [character.profile.coverUrl, character.profile.avatarUrl, ...character.profile.gallery.flatMap(image => image.sources)].flatMap(
+    value => {
+      const media = normalizePortraitMediaUrlForBrowser(value);
+      return media?.kind === 'image' ? [media.url] : [];
+    },
+  );
 }
 
 function coverUrl(character: LibraryCharacter): string {
@@ -598,7 +613,99 @@ function mediaSources(image: GalleryImage): Media[] {
   });
 }
 
+function pauseDetailVideo(index: number) {
+  detailVideoElements.get(index)?.pause();
+  if (activeDetailVideoIndex.value === index) activeDetailVideoIndex.value = null;
+}
+
+function pauseOtherDetailVideos(exceptIndex: number) {
+  detailVideoElements.forEach((video, index) => {
+    if (index !== exceptIndex) video.pause();
+  });
+  if (activeDetailVideoIndex.value !== exceptIndex) activeDetailVideoIndex.value = null;
+}
+
+function clearDetailVideoHoverTimer() {
+  if (detailVideoHoverTimer === null) return;
+  window.clearTimeout(detailVideoHoverTimer);
+  detailVideoHoverTimer = null;
+}
+
+function pauseAllDetailVideos() {
+  clearDetailVideoHoverTimer();
+  detailVideoElements.forEach(video => video.pause());
+  activeDetailVideoIndex.value = null;
+}
+
+function playDetailVideo(index: number) {
+  const video = detailVideoElements.get(index);
+  if (!video) return;
+  pauseOtherDetailVideos(index);
+  activeDetailVideoIndex.value = index;
+  void video.play().catch(() => {
+    if (activeDetailVideoIndex.value === index) activeDetailVideoIndex.value = null;
+  });
+}
+
+function toggleDetailVideo(index: number) {
+  const video = detailVideoElements.get(index);
+  if (!video) return;
+  if (!video.paused && activeDetailVideoIndex.value === index) pauseDetailVideo(index);
+  else playDetailVideo(index);
+}
+
+function onDetailVideoPointerEnter(index: number, event: PointerEvent) {
+  if (event.pointerType !== 'mouse') return;
+  clearDetailVideoHoverTimer();
+  detailVideoHoverTimer = window.setTimeout(() => {
+    detailVideoHoverTimer = null;
+    playDetailVideo(index);
+  }, 150);
+}
+
+function onDetailVideoPointerLeave(index: number, event: PointerEvent) {
+  if (event.pointerType !== 'mouse') return;
+  clearDetailVideoHoverTimer();
+  pauseDetailVideo(index);
+}
+
+function onDetailVideoPointerUp(index: number, event: PointerEvent) {
+  clearDetailVideoHoverTimer();
+  if (event.pointerType !== 'mouse') toggleDetailVideo(index);
+}
+
+function setDetailVideoElement(index: number, element: unknown) {
+  const previous = detailVideoElements.get(index);
+  if (previous && previous !== element) {
+    detailVideoObserver?.unobserve(previous);
+    previous.pause();
+  }
+  if (!(element instanceof HTMLVideoElement)) {
+    detailVideoElements.delete(index);
+    if (activeDetailVideoIndex.value === index) activeDetailVideoIndex.value = null;
+    return;
+  }
+  if (previous === element) return;
+  detailVideoElements.set(index, element);
+  detailVideoObserver?.observe(element);
+}
+
+function initializeDetailVideoObserver() {
+  if (typeof IntersectionObserver === 'undefined') return;
+  detailVideoObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) {
+        const video = entry.target as HTMLVideoElement;
+        const index = Array.from(detailVideoElements.entries()).find(([, candidate]) => candidate === video)?.[0];
+        if (index !== undefined) pauseDetailVideo(index);
+      }
+    });
+  });
+  detailVideoElements.forEach(video => detailVideoObserver?.observe(video));
+}
+
 function advanceDetailMedia(index: number) {
+  pauseDetailVideo(index);
   const key = `${detailUid.value}:${index}`;
   detailGalleryIndexes[key] = (detailGalleryIndexes[key] ?? 0) + 1;
 }
@@ -648,6 +755,7 @@ async function loadWorldbooks() {
 
 async function loadEntries(worldbookName: string) {
   const revision = ++entriesLoadRevision;
+  pauseAllDetailVideos();
   detailUid.value = null;
   toggleMessage.value = '';
   if (!worldbookName) {
@@ -691,6 +799,7 @@ async function toggleCharacter(character: LibraryCharacter) {
 }
 
 function openDetails(character: LibraryCharacter) {
+  pauseAllDetailVideos();
   detailUid.value = character.entry.uid;
   Object.keys(detailGalleryIndexes).forEach(key => delete detailGalleryIndexes[key]);
   delete detailExtensionGallery[character.entry.uid];
@@ -704,6 +813,7 @@ function openDetails(character: LibraryCharacter) {
 }
 
 function closeDetails() {
+  pauseAllDetailVideos();
   detailUid.value = null;
 }
 
@@ -716,7 +826,16 @@ watch(selectedWorldbookName, worldbookName => {
   mobileMoreOpen.value = false;
   void loadEntries(worldbookName);
 });
-onMounted(() => void loadWorldbooks());
+onMounted(() => {
+  initializeDetailVideoObserver();
+  void loadWorldbooks();
+});
+onBeforeUnmount(() => {
+  detailVideoObserver?.disconnect();
+  detailVideoObserver = null;
+  pauseAllDetailVideos();
+  detailVideoElements.clear();
+});
 </script>
 
 <style scoped>
@@ -839,6 +958,8 @@ select { color: var(--text); background: #0d121a; border: 1px solid var(--border
 .character-detail-gallery-grid figure { min-width: 0; margin: 0; overflow: hidden; background: var(--surface-raised); border: 1px solid var(--border); border-radius: 12px; }
 .character-detail-media { display: grid; aspect-ratio: 3 / 4; overflow: hidden; place-items: center; color: var(--text-muted); background: var(--surface-soft); font-size: 11px; }
 .character-detail-media img, .character-detail-media video { width: 100%; height: 100%; object-fit: cover; }
+.character-detail-media video { cursor: pointer; }
+.character-detail-media video:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
 .character-detail-gallery-grid figcaption { padding: 9px 10px; }
 .character-detail-gallery-empty { padding: 18px; color: var(--text-muted); text-align: center; background: var(--surface-raised); border: 1px dashed var(--border); border-radius: 10px; }
 .character-detail-content-note { margin: 0 0 12px; color: var(--text-muted); font-size: 10px; }

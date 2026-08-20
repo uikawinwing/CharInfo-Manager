@@ -106,8 +106,14 @@ test('Special NPC 档案隐藏属性与资源，持有沿用技能的紧凑行�
   assert.match(sheet, /\.illustrated-group-panel\.is-collapsed \.illustrated-group-chevron\s*\{[\s\S]*?rotate\(-90deg\)/);
   assert.match(sheet, /\.illustrated-panels::-webkit-scrollbar\s*\{[\s\S]*?display:\s*none/);
   assert.match(sheet, /\.illustrated-panels\s*\{[\s\S]*?overflow-y:\s*auto;[\s\S]*?scrollbar-width:\s*none/);
-  assert.match(sheet, /@media \(max-width: 640px\)[\s\S]*?\.illustrated-group-panel\s*\{[\s\S]*?margin-inline:\s*6px/);
-  assert.match(sheet, /@media \(max-width: 640px\)[\s\S]*?\.illustrated-group-toggle\s*\{[\s\S]*?padding:\s*7px 12px 7px 28px;[\s\S]*?font-size:\s*12px/);
+  assert.match(
+    sheet,
+    /@mixin illustrated-compact-mobile-content[\s\S]*?\.illustrated-group-panel\s*\{[\s\S]*?margin-inline:\s*6px/,
+  );
+  assert.match(
+    sheet,
+    /@mixin illustrated-compact-mobile-content[\s\S]*?\.illustrated-group-toggle\s*\{[\s\S]*?padding:\s*7px 12px 7px 28px;[\s\S]*?font-size:\s*12px/,
+  );
   assert.match(
     itemCard,
     /@media \(max-width: 640px\)[\s\S]*?\.illustrated-list-item\.is-compact-holding\s*\{[\s\S]*?margin:\s*0 8px;[\s\S]*?padding:\s*14px 14px 15px/,
@@ -151,7 +157,10 @@ test('Special NPC 手机详情沿用当前立绘静态快照，并把 Save 收�
   ]);
   assert.match(sheet, /ref="detailWallpaperCanvas"/);
   assert.match(sheet, /\.illustrated-mobile-detail-wallpaper\s*\{\s*display:\s*none/);
-  assert.match(sheet, /@media \(max-width: 900px\)[\s\S]*?\.illustrated-mobile-detail-wallpaper\s*\{[\s\S]*?display:\s*block/);
+  assert.match(
+    sheet,
+    /@mixin illustrated-mobile-content[\s\S]*?\.illustrated-mobile-detail-wallpaper\s*\{[\s\S]*?display:\s*block/,
+  );
   assert.match(sheet, /context\.drawImage\(source,/);
   assert.match(sheet, /activeSpecialTab\.value === 'overview' && tab !== 'overview'/);
   assert.match(sheet, /ref="portraitImageElement"/);

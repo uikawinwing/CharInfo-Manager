@@ -253,6 +253,7 @@ function normalizeVisualConfigGallery(value: unknown): string[][] {
 
   return candidates.reduce<string[][]>((groups, candidate) => {
     const record = asRecord(candidate);
+    if (record?.viewerVisible === false || record?.viewer_visible === false) return groups;
     const sourceCandidates = Array.isArray(record?.sources) ? record.sources : [record?.url ?? candidate];
     const sources = sourceCandidates.reduce<string[]>((urls, sourceCandidate) => {
       const source = normalizeVisualConfigUrl(sourceCandidate);

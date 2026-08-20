@@ -3,6 +3,10 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const appSource = await readFile(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
+const galleryStepSource = await readFile(
+  new URL('../../src/char_info_creator_manager/components/GalleryStep.vue', import.meta.url),
+  'utf8',
+);
 
 function sectionBetween(start, end) {
   const startIndex = appSource.indexOf(start);
@@ -40,17 +44,20 @@ test('Creator Step 2 按角色资料、展示文案、角色故事、作者署�
   assert.doesNotMatch(stepTwo, /Viewer|story_sections|编辑器内部排序 ID/u, 'Creator 可见文案不应暴露实现术语');
 });
 
-test('Creator Step 4 把状态栏头像与相册放在一起，并允许相册选择或独立头像', () => {
+test('Creator Step 4 由独立 GalleryStep 管理唯一用途、批量显示范围与用途标签', () => {
   const stepFour = sectionBetween('id="manager-step-4"', 'id="manager-step-5"');
 
   assert.match(stepFour, /<h2>相册与头像<\/h2>/u);
-  assert.match(stepFour, /状态栏头像/u);
-  assert.match(stepFour, /setAvatarSourceMode\('gallery'\)/u);
-  assert.match(stepFour, /setAvatarSourceMode\('custom'\)/u);
-  assert.match(stepFour, /v-model\.number="avatarGalleryImageId"/u);
-  assert.match(stepFour, /v-model="profile\.avatarUrl"/u);
-  assert.match(appSource, /function syncAvatarEditorFromProfile\(\)[\s\S]*?hasConfiguredGalleryImage/u);
-  assert.match(appSource, /function onGallerySourceInput\(image: EditableGalleryImage\)[\s\S]*?syncAvatarUrlFromGallery/u);
+  assert.match(stepFour, /<GalleryStep/u);
+  assert.match(stepFour, /:avatar-url="profile\.avatarUrl"/u);
+  assert.match(stepFour, /:cover-url="profile\.coverUrl"/u);
+  assert.match(galleryStepSource, /<span class="field-label">主立绘<\/span>/u);
+  assert.match(galleryStepSource, /<span class="field-label">状态栏头像<\/span>/u);
+  assert.match(galleryStepSource, /<span class="field-label">角色库封面<\/span>/u);
+  assert.match(galleryStepSource, /Viewer \+ 相册/u);
+  assert.match(galleryStepSource, /仅相册/u);
+  assert.match(galleryStepSource, /class="usage-pill/u);
+  assert.match(galleryStepSource, /批量选择/u);
 });
 
 test('Creator 编辑态 story id 不会进入序列化 metadata', () => {
@@ -70,8 +77,8 @@ test('Creator metadata/story UI 在 mobile 与 force-mobile 下保持单列和�
     /@mixin mobile-manager-layout[\s\S]*?\.metadata-field-grid,[\s\S]*?grid-template-columns:\s*1fr;/u,
   );
   assert.match(
-    appSource,
-    /@mixin mobile-manager-layout[\s\S]*?\.avatar-source-options\s*\{[\s\S]*?grid-template-columns:\s*1fr;/u,
+    galleryStepSource,
+    /@media \(max-width: 900px\)[\s\S]*?\.role-grid,[\s\S]*?grid-template-columns:\s*1fr;/u,
   );
   assert.match(
     appSource,

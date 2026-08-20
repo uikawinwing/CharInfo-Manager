@@ -16,10 +16,17 @@ test('点击玩家角色库中的角色先打开 Viewer 详情', () => {
   assert.doesNotMatch(librarySource, /v-html="detailEntryBody"/u);
 });
 
-test('Viewer 详情展示图库并支持图片、视频和备用源回退', () => {
+test('Viewer 详情展示图库并让视频按 hover 或触屏单实例播放', () => {
   assert.match(librarySource, /\.\.\.character\.profile\.gallery/u);
   assert.match(librarySource, /findGalleryPackEntry/u);
   assert.match(librarySource, /item\.media\?\.kind === 'video'/u);
+  assert.doesNotMatch(librarySource, /\n\s+controls\s*\n/u);
+  assert.match(librarySource, /preload="metadata"/u);
+  assert.match(librarySource, /@pointerenter="onDetailVideoPointerEnter\(item\.sourceIndex, \$event\)"/u);
+  assert.match(librarySource, /@pointerup="onDetailVideoPointerUp\(item\.sourceIndex, \$event\)"/u);
+  assert.match(librarySource, /function playDetailVideo\(index: number\)[\s\S]*?pauseOtherDetailVideos\(index\)[\s\S]*?video\.play\(\)/u);
+  assert.match(librarySource, /new IntersectionObserver[\s\S]*?pauseDetailVideo\(index\)/u);
+  assert.match(librarySource, /function closeDetails\(\)[\s\S]*?pauseAllDetailVideos\(\)/u);
   assert.match(librarySource, /@error="advanceDetailMedia\(item\.sourceIndex\)"/u);
   assert.match(librarySource, /detailGalleryIndexes\[key\] = \(detailGalleryIndexes\[key\] \?\? 0\) \+ 1/u);
 });

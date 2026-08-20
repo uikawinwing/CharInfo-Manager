@@ -3,6 +3,8 @@ import test from 'node:test';
 
 import {
   buildManagedEjsBlock,
+  buildStatusGalleryImages,
+  countUnsupportedStatusGalleryItems,
   createEmptyProfile,
   extractManagedEjsBlock,
   inspectManagedBlock,
@@ -128,9 +130,10 @@ test('v2 生成区块只保留一份可读 profile 配置', () => {
   assert.match(block, /const npcName = profile\.characterName;/);
   assert.ok(block.includes('setLocalVar(`char_info.profiles[${JSON.stringify(npcName)}]`, {'));
   assert.match(block, /schema_version: 2/);
+  assert.match(block, /profile\.coverUrl \? \{ cover_url: profile\.coverUrl \} : \{\}/);
   assert.match(
     block,
-    /gallery: profile\.gallery\.map\(image => \(\{ title: image\.title, sources: image\.sources \}\)\)/,
+    /gallery: profile\.gallery\.map\(image => \(\{ title: image\.title, sources: image\.sources, \.\.\.\(image\.viewerVisible === false \? \{ viewer_visible: false \} : \{\}\) \}\)\)/,
   );
   assert.match(block, /status\.externalAvatars\.partners/);
   assert.doesNotMatch(block, /status\.externalGalleries\.partners/);
@@ -151,6 +154,23 @@ test('v2 生成区块只保留一份可读 profile 配置', () => {
   const inspection = inspectManagedBlock(block);
   assert.equal(inspection.state, 'valid');
   assert.deepEqual(inspection.profile, profile);
+});
+
+test('状态栏相簿单向投影只使用受支持静态格式，并允许视频使用静态 fallback', () => {
+  const gallery = [
+    { title: '视频主立绘', sources: ['https://files.catbox.moe/main.webm'] },
+    {
+      title: '视频与静态 fallback',
+      sources: ['https://files.catbox.moe/alt.mp4', 'https://files.catbox.moe/alt.webp?cache=1'],
+    },
+    { title: '静态立绘', sources: ['https://files.catbox.moe/still.avif'] },
+  ];
+
+  assert.deepEqual(buildStatusGalleryImages(gallery), [
+    { title: '视频与静态 fallback', url: 'https://files.catbox.moe/alt.webp?cache=1' },
+    { title: '静态立绘', url: 'https://files.catbox.moe/still.avif' },
+  ]);
+  assert.equal(countUnsupportedStatusGalleryItems(gallery), 1);
 });
 
 test('旧 v1 区块仍可读取，并在保存时自动迁移为 v2', () => {

@@ -25,10 +25,13 @@ test('mobile illustrated character navigation keeps the main page outside the sc
 test('mobile illustrated character navigation exposes active state and reliable touch targets', () => {
   assert.match(navSource, /:aria-current="activeTab === [^?]+ \? 'page' : undefined"/);
   assert.match(navSource, /\.illustrated-tab-button\s*\{[^}]*min-height:\s*44px;/);
-  assert.match(navSource, /@media \(max-width: 640px\)[\s\S]*?\.illustrated-tab-scroll\s*\{[^}]*overflow-x:\s*auto;/);
   assert.match(
     navSource,
-    /@media \(max-width: 640px\)[\s\S]*?\.illustrated-home-button,[\s\S]*?\.illustrated-nav-save-button\s*\{[^}]*flex:\s*0 0 auto;/,
+    /@mixin illustrated-compact-tabs[\s\S]*?#\{\$root\} \.illustrated-tab-scroll\s*\{[^}]*overflow-x:\s*auto;/,
+  );
+  assert.match(
+    navSource,
+    /@mixin illustrated-compact-tabs[\s\S]*?#\{\$root\} \.illustrated-home-button,[\s\S]*?#\{\$root\} \.illustrated-nav-save-button\s*\{[^}]*flex:\s*0 0 auto;/,
   );
 });
 

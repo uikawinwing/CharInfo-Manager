@@ -7,6 +7,7 @@ import {
 export interface GalleryImage {
   title: string;
   sources: string[];
+  viewerVisible?: boolean;
 }
 
 export interface CharacterStorySection {
@@ -26,6 +27,7 @@ export interface CharacterProfileMetadata {
 export interface CharacterVisualProfile {
   characterName: string;
   avatarUrl: string;
+  coverUrl: string;
   raceColor: string;
   tierColor: string;
   entranceQuote: string;
@@ -38,9 +40,12 @@ type StoredGalleryImage = {
   title?: unknown;
   sources?: unknown;
   url?: unknown;
+  viewerVisible?: unknown;
+  viewer_visible?: unknown;
 };
 
-type StoredCharacterVisualProfile = Omit<CharacterVisualProfile, 'gallery' | 'metadata'> & {
+type StoredCharacterVisualProfile = Omit<CharacterVisualProfile, 'gallery' | 'metadata' | 'coverUrl'> & {
+  coverUrl?: unknown;
   gallery: StoredGalleryImage[];
   metadata?: unknown;
 };
@@ -56,6 +61,32 @@ export const DEFAULT_TIER_COLOR = '#B7D9E8';
 export const CHAR_INFO_PROFILE_SCHEMA_VERSION = 2;
 export const MANAGED_BLOCK_START = '<%# char-info-ejs-builder:start:v2 %>';
 export const MANAGED_BLOCK_END = '<%# char-info-ejs-builder:end:v2 %>';
+export const STATUS_GALLERY_IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.avif'] as const;
+
+export interface StatusGalleryImage {
+  title: string;
+  url: string;
+}
+
+export function isStatusGalleryImageUrl(value: string): boolean {
+  try {
+    const pathname = new URL(value).pathname.toLowerCase();
+    return STATUS_GALLERY_IMAGE_EXTENSIONS.some(extension => pathname.endsWith(extension));
+  } catch {
+    return false;
+  }
+}
+
+export function buildStatusGalleryImages(gallery: readonly GalleryImage[]): StatusGalleryImage[] {
+  return gallery.flatMap(image => {
+    const url = image.sources.find(isStatusGalleryImageUrl);
+    return url ? [{ title: image.title, url }] : [];
+  });
+}
+
+export function countUnsupportedStatusGalleryItems(gallery: readonly GalleryImage[]): number {
+  return gallery.length - buildStatusGalleryImages(gallery).length;
+}
 
 const LEGACY_MANAGED_BLOCK_START = '<%# char-info-ejs-builder:start:v1 %>';
 const LEGACY_MANAGED_BLOCK_END = '<%# char-info-ejs-builder:end:v1 %>';
@@ -137,6 +168,7 @@ export function createEmptyProfile(characterName = ''): CharacterVisualProfile {
   return {
     characterName,
     avatarUrl: '',
+    coverUrl: '',
     raceColor: '',
     tierColor: '',
     entranceQuote: '',
@@ -173,8 +205,10 @@ export function validateProfile(profile: CharacterVisualProfile): string[] {
   }
   validateEjsSafeText(errors, '角色姓名', profile.characterName);
   validateEjsSafeText(errors, '头像 URL', profile.avatarUrl);
+  validateEjsSafeText(errors, '封面 URL', profile.coverUrl);
   validateEjsSafeText(errors, '登场台词', profile.entranceQuote);
   if (profile.avatarUrl.trim() && !isHttpsUrl(profile.avatarUrl)) errors.push('头像必须使用有效的 HTTPS URL。');
+  if (profile.coverUrl.trim() && !isHttpsUrl(profile.coverUrl)) errors.push('角色库封面必须使用有效的 HTTPS URL。');
   if (profile.raceColor.trim() && !HEX_PATTERN.test(normalizeHex(profile.raceColor))) {
     errors.push('种族颜色必须使用 #RRGGBB 格式。');
   }
@@ -182,6 +216,9 @@ export function validateProfile(profile: CharacterVisualProfile): string[] {
     errors.push('阶层颜色必须使用 #RRGGBB 格式。');
   }
   if (profile.gallery.length === 0) errors.push('至少需要一张主立绘。');
+  if (profile.gallery.length > 0 && !profile.gallery.some(image => image.viewerVisible !== false)) {
+    errors.push('至少需要一张用于 Viewer 的主立绘。');
+  }
 
   profile.gallery.forEach((image, index) => {
     validateEjsSafeText(errors, `第 ${index + 1} 张立绘标题`, image.title);
@@ -222,6 +259,7 @@ export function normalizeProfile(
   return {
     characterName: profile.characterName.trim(),
     avatarUrl: profile.avatarUrl.trim(),
+    coverUrl: typeof profile.coverUrl === 'string' ? profile.coverUrl.trim() : '',
     raceColor: profile.raceColor.trim() ? normalizeHex(profile.raceColor) : '',
     tierColor: profile.tierColor.trim() ? normalizeHex(profile.tierColor) : '',
     entranceQuote: profile.entranceQuote.trim(),
@@ -230,6 +268,9 @@ export function normalizeProfile(
         (typeof image.title === 'string' ? image.title.trim() : '') ||
         (index === 0 ? '主立绘' : `备用立绘 ${index + 1}`),
       sources: readGallerySources(image),
+      ...(image.viewerVisible === false || ('viewer_visible' in image && image.viewer_visible === false)
+        ? { viewerVisible: false }
+        : {}),
     })),
     ...(galleryExtension ? { galleryExtension } : {}),
     ...(metadata ? { metadata } : {}),
@@ -420,10 +461,13 @@ export function buildManagedEjsBlock(input: CharacterVisualProfile): string {
   lines.push('', '  const npcName = profile.characterName;', '');
   lines.push('  setLocalVar(`char_info.profiles[${JSON.stringify(npcName)}]`, {');
   lines.push(`    schema_version: ${CHAR_INFO_PROFILE_SCHEMA_VERSION},`);
+  lines.push('    ...(profile.coverUrl ? { cover_url: profile.coverUrl } : {}),');
   lines.push('    ...(profile.raceColor ? { custom_racecolor: profile.raceColor } : {}),');
   lines.push('    ...(profile.tierColor ? { custom_tiercolor: profile.tierColor } : {}),');
   lines.push("    ...(profile.entranceQuote ? { '登场台词': profile.entranceQuote } : {}),");
-  lines.push('    gallery: profile.gallery.map(image => ({ title: image.title, sources: image.sources })),');
+  lines.push(
+    '    gallery: profile.gallery.map(image => ({ title: image.title, sources: image.sources, ...(image.viewerVisible === false ? { viewer_visible: false } : {}) })),',
+  );
   if (profile.galleryExtension) {
     lines.push('    gallery_extension: profile.galleryExtension,');
   }

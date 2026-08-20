@@ -145,17 +145,26 @@ test('手动刷新会重读变量并强制重挂当前 CharInfo floors', async (
   assert.match(source, /onRefreshLibrary: \(\) => void forceRefreshCharInfo\(\)/);
 });
 
-test('Creator 应用已保存资料时复用同一 Force Refresh callback', async () => {
+test('Creator 即时写入当前 draft 时强校验 CharInfo、状态栏相簿与头像，并复用同一 Force Refresh callback', async () => {
   const runtimeSource = await readFile(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
   const overlaySource = await readFile(new URL('../../src/char_info_creator_manager/overlay.ts', import.meta.url), 'utf8');
   const appSource = await readFile(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
 
   assert.match(runtimeSource, /onForceRefresh: forceRefreshCharInfo/);
   assert.match(overlaySource, /onForceRefresh: options\.onForceRefresh/);
-  assert.match(appSource, /extractManagedEjsBlock\(latestEntry\.content\)/);
-  assert.match(appSource, /evaluateManagedEjs\(managed\.code, props\.debugEnabled\)/);
+  assert.match(appSource, /const canApplyCurrentProfile = computed/u);
+  assert.match(appSource, /applyCurrentProfileToCurrentChat/u);
+  assert.match(appSource, /normalizeProfile\(toFullSerializableProfile\(\)\)/u);
+  assert.match(appSource, /buildManagedEjsBlock\(currentProfile\)/u);
+  assert.match(appSource, /syncStatusGallerySnapshotToCurrentChat\(currentProfile\.characterName, expectedStatusGalleryImages\)/u);
+  assert.match(appSource, /JSON\.stringify\(appliedRecord\.gallery \?\? null\) !== JSON\.stringify\(expectedGallery\)/u);
+  assert.match(appSource, /status\.externalGalleries 中的状态栏相簿没有正确写入/u);
+  assert.match(appSource, /status\.externalAvatars 中的状态栏头像没有正确写入/u);
+  assert.match(appSource, /toastr\.warning/u);
+  assert.match(appSource, /状态栏相簿目前仅支援/u);
   assert.match(appSource, /await props\.onForceRefresh\?\.\(\)/);
-  assert.match(appSource, /应用已保存版本到当前聊天/);
+  assert.match(appSource, /即时写入变量及状态栏/u);
+  assert.match(appSource, /当前聊天变量未修改/u);
 });
 
 test('从世界书角色库进入 Creator 时提供直接返回角色库的回调', async () => {

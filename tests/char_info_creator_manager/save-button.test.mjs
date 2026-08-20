@@ -4,10 +4,14 @@ import test from 'node:test';
 
 const appSource = readFileSync(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
 
-test('Creator Step 5 renders a real submit action wired to saveToEntry', () => {
+test('Creator Step 5 separates worldbook save from immediate chat/status write', () => {
   assert.match(appSource, /<form\s+v-show="activeStep !== 1"[\s\S]*@submit\.prevent="saveToEntry"/u);
   assert.match(appSource, /id="manager-step-5"[\s\S]*class="save-bar"[\s\S]*type="submit"/u);
-  assert.match(appSource, /保存并写入所选条目/u);
+  assert.match(appSource, /保存到世界书/u);
+  assert.match(appSource, /即时写入变量及状态栏/u);
+  assert.match(appSource, /@click="applyCurrentProfileToCurrentChat"/u);
+  assert.match(appSource, /title="仅保存到世界书条目，不修改当前聊天变量"/u);
+  assert.match(appSource, /title="立即写入当前聊天的 CharInfo 变量、状态栏头像与状态栏相簿"/u);
   assert.match(appSource, /:disabled="!canSave"/u);
 });
 
