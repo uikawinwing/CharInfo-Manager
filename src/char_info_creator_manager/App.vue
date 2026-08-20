@@ -520,11 +520,16 @@
                 <label v-if="avatarSourceMode === 'gallery'" class="field avatar-gallery-picker">
                   <span class="field-label">选择相册图片</span>
                   <select v-model.number="avatarGalleryImageId" @change="syncAvatarUrlFromGallery">
-                    <option v-for="(image, index) in profile.gallery" :key="image.id" :value="image.id">
-                      第 {{ index + 1 }} 张 · {{ image.title || `图片 ${index + 1}` }}
+                    <option
+                      v-for="(image, index) in profile.gallery"
+                      :key="image.id"
+                      :value="image.id"
+                      :disabled="!galleryAvatarUrl(image)"
+                    >
+                      第 {{ index + 1 }} 张 · {{ image.title || `图片 ${index + 1}` }}{{ galleryAvatarUrl(image) ? '' : '（视频不可作为头像）' }}
                     </option>
                   </select>
-                  <small class="field-guidance">如果这张图片的首选地址之后修改，头像会同步更新。</small>
+                  <small class="field-guidance">头像只使用图片媒体；视频主立绘不会写入状态栏头像。如果这张图片的首选地址之后修改，头像会同步更新。</small>
                 </label>
 
                 <label v-else class="field avatar-custom-url">
@@ -802,13 +807,13 @@
               </div>
               <div class="save-actions">
                 <button
-                  v-if="saveState === 'success'"
+                  v-if="canApplySavedProfile"
                   class="secondary-button"
                   type="button"
                   :disabled="applyingSavedProfile"
                   @click="applySavedProfileToCurrentChat"
                 >
-                  {{ applyingSavedProfile ? '正在应用…' : '应用已保存版本到当前聊天' }}
+                  {{ applyingSavedProfile ? '正在应用…' : '应用到当前聊天变量' }}
                 </button>
                 <button class="primary-button" type="submit" :disabled="!canSave">
                   {{
@@ -1145,7 +1150,16 @@ function selectedAvatarGalleryImage(): EditableGalleryImage | null {
 }
 
 function galleryAvatarUrl(image: EditableGalleryImage | null): string {
-  return image?.sources.find(source => isHttpsUrl(source))?.trim() ?? '';
+  if (!image) return '';
+  for (const source of image.sources) {
+    const media = normalizePortraitMediaUrlForBrowser(source);
+    if (media?.kind === 'image') return media.url;
+  }
+  return '';
+}
+
+function firstAvatarGalleryImage(): EditableGalleryImage | null {
+  return profile.gallery.find(image => !!galleryAvatarUrl(image)) ?? null;
 }
 
 function syncAvatarUrlFromGallery() {
@@ -1156,6 +1170,7 @@ function syncAvatarUrlFromGallery() {
 function syncAvatarEditorFromProfile() {
   const avatarUrl = profile.avatarUrl.trim();
   const matchedImage = avatarUrl ? profile.gallery.find(image => galleryAvatarUrl(image) === avatarUrl) : undefined;
+  const avatarMedia = avatarUrl ? normalizePortraitMediaUrlForBrowser(avatarUrl) : null;
 
   if (matchedImage) {
     avatarSourceMode.value = 'gallery';
@@ -1163,10 +1178,20 @@ function syncAvatarEditorFromProfile() {
     return;
   }
 
+  if (avatarMedia?.kind === 'video') {
+    const fallbackImage = firstAvatarGalleryImage();
+    if (fallbackImage) {
+      avatarSourceMode.value = 'gallery';
+      avatarGalleryImageId.value = fallbackImage.id;
+      profile.avatarUrl = galleryAvatarUrl(fallbackImage);
+      return;
+    }
+  }
+
   const hasConfiguredGalleryImage = profile.gallery.some(image => !!galleryAvatarUrl(image));
   if (!avatarUrl && !hasConfiguredGalleryImage) {
     avatarSourceMode.value = 'gallery';
-    avatarGalleryImageId.value = profile.gallery[0]?.id ?? null;
+    avatarGalleryImageId.value = null;
     return;
   }
 
@@ -1177,7 +1202,9 @@ function syncAvatarEditorFromProfile() {
 function setAvatarSourceMode(mode: 'gallery' | 'custom') {
   avatarSourceMode.value = mode;
   if (mode === 'gallery') {
-    avatarGalleryImageId.value ??= profile.gallery[0]?.id ?? null;
+    if (!galleryAvatarUrl(selectedAvatarGalleryImage())) {
+      avatarGalleryImageId.value = firstAvatarGalleryImage()?.id ?? null;
+    }
     syncAvatarUrlFromGallery();
   }
 }
@@ -1202,6 +1229,10 @@ function replaceProfile(value: CharacterVisualProfile) {
 }
 
 const selectedEntry = computed(() => entries.value.find(entry => entry.uid === selectedEntryUid.value) ?? null);
+const canApplySavedProfile = computed(() => {
+  const entry = selectedEntry.value;
+  return !!entry && inspectManagedBlock(entry.content).state === 'valid';
+});
 const canPreviewViewer = computed(() => !!selectedEntry.value && profile.characterName.trim().length > 0);
 const viewerPreviewProfile = computed(() => toFullSerializableProfile());
 const viewerPreviewSampleData = computed(() => buildCreatorViewerPreviewData(viewerPreviewProfile.value));
@@ -1898,7 +1929,7 @@ function removeImage(index: number) {
   if (profile.gallery.length <= 1) return;
   const [removed] = profile.gallery.splice(index, 1);
   if (avatarSourceMode.value === 'gallery' && avatarGalleryImageId.value === removed.id) {
-    avatarGalleryImageId.value = profile.gallery[0]?.id ?? null;
+    avatarGalleryImageId.value = firstAvatarGalleryImage()?.id ?? null;
     syncAvatarUrlFromGallery();
   }
 }
@@ -2034,11 +2065,13 @@ async function saveToEntry() {
     const migrationSummary = legacyMigrationSource
       ? `旧版 ${legacyMigrationSource} 已升级为 char_info.profiles v2；`
       : '';
-    saveMessage.value = galleryReference
-      ? `保存成功：${migrationSummary}角色条目保留 ${embeddedGalleryCount.value} 张基础图片，${extendedGalleryImages.value.length} 张图片已写入独立图库世界书。`
-      : legacyMigrationSource
-        ? `升级成功：${migrationSummary}原条目其余内容保持不变。`
-        : '保存成功：角色视觉资料已写入，原条目其余内容保持不变。';
+    saveMessage.value = `${
+      galleryReference
+        ? `保存成功：${migrationSummary}角色条目保留 ${embeddedGalleryCount.value} 张基础图片，${extendedGalleryImages.value.length} 张图片已写入独立图库世界书。`
+        : legacyMigrationSource
+          ? `升级成功：${migrationSummary}原条目其余内容保持不变。`
+          : '保存成功：角色视觉资料已写入世界书条目，原条目其余内容保持不变。'
+    } 当前聊天变量尚未改变；如需立即生效，请点击「应用到当前聊天变量」。`;
     console.info('[CharInfo Creator Manager] Managed EJS saved', {
       worldbook: worldbookName,
       entryUid: entry.uid,
@@ -2069,7 +2102,8 @@ async function applySavedProfileToCurrentChat() {
     await evaluateManagedEjs(managed.code, props.debugEnabled);
 
     const chatVariables = getVariables({ type: 'chat' });
-    const charInfo = chatVariables.char_info;
+    const chatRecord = chatVariables && typeof chatVariables === 'object' ? (chatVariables as Record<string, unknown>) : {};
+    const charInfo = chatRecord.char_info;
     const profiles = charInfo && typeof charInfo === 'object' ? (charInfo as { profiles?: unknown }).profiles : undefined;
     const appliedProfile =
       profiles && typeof profiles === 'object'
@@ -2079,8 +2113,37 @@ async function applySavedProfileToCurrentChat() {
       throw new Error('EJS 已执行，但当前聊天变量中没有读回该角色的 CharInfo profile。');
     }
 
+    const appliedRecord = appliedProfile as Record<string, unknown>;
+    const expectedGallery = managed.profile.gallery.map(image => ({ title: image.title, sources: [...image.sources] }));
+    if (JSON.stringify(appliedRecord.gallery ?? null) !== JSON.stringify(expectedGallery)) {
+      throw new Error('EJS 已执行，但 char_info.profiles 中的 gallery 与已保存版本不一致。');
+    }
+
+    const expectedAvatarUrl = managed.profile.avatarUrl.trim();
+    if (expectedAvatarUrl) {
+      const status = chatRecord.status;
+      const externalAvatars = status && typeof status === 'object' ? (status as Record<string, unknown>).externalAvatars : undefined;
+      const partners =
+        externalAvatars && typeof externalAvatars === 'object'
+          ? (externalAvatars as Record<string, unknown>).partners
+          : undefined;
+      const avatar =
+        partners && typeof partners === 'object'
+          ? (partners as Record<string, unknown>)[managed.profile.characterName]
+          : undefined;
+      const appliedAvatarUrl =
+        avatar && typeof avatar === 'object' && typeof (avatar as Record<string, unknown>).url === 'string'
+          ? ((avatar as Record<string, unknown>).url as string)
+          : '';
+      if (appliedAvatarUrl !== expectedAvatarUrl) {
+        throw new Error('EJS 已执行，但 status.externalAvatars 中的状态栏头像没有正确写入。');
+      }
+    }
+
     await props.onForceRefresh?.();
-    applyMessage.value = `已把「${managed.profile.characterName}」的已保存视觉资料应用到当前聊天并强制刷新 CharInfo。`;
+    const appliedParts = [`图库 ${managed.profile.gallery.length} 张`];
+    if (expectedAvatarUrl) appliedParts.push('状态栏头像');
+    applyMessage.value = `已把「${managed.profile.characterName}」写入当前聊天变量（${appliedParts.join('、')}）并强制刷新 CharInfo。`;
     console.info('[CharInfo Creator Manager] Managed EJS applied to current chat', {
       worldbook: worldbookName,
       entryUid: entry.uid,

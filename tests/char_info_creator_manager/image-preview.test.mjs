@@ -37,6 +37,25 @@ test('管理器相册预览复用统一媒体识别，并直接预览图片与�
   assert.match(appSource, /image\.sources\[sourceIndex\]/);
 });
 
+test('视频主立绘不会被写成头像，Creator 会继续使用可用静态图片', () => {
+  const appSource = readFileSync(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
+
+  assert.match(
+    appSource,
+    /function galleryAvatarUrl\(image: EditableGalleryImage \| null\)[\s\S]*?normalizePortraitMediaUrlForBrowser\(source\)[\s\S]*?media\?\.kind === 'image'/u,
+  );
+  assert.match(appSource, /:disabled="!galleryAvatarUrl\(image\)"/u);
+  assert.match(appSource, /视频不可作为头像/u);
+  assert.match(
+    appSource,
+    /if \(avatarMedia\?\.kind === 'video'\)[\s\S]*?firstAvatarGalleryImage\(\)[\s\S]*?profile\.avatarUrl = galleryAvatarUrl\(fallbackImage\)/u,
+  );
+  assert.match(
+    appSource,
+    /if \(!galleryAvatarUrl\(selectedAvatarGalleryImage\(\)\)\)[\s\S]*?avatarGalleryImageId\.value = firstAvatarGalleryImage\(\)\?\.id \?\? null/u,
+  );
+});
+
 test('Creator 在初始化资料前先建立编辑器状态', () => {
   const appSource = readFileSync(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
   const profileInitialization = appSource.indexOf(
@@ -76,6 +95,19 @@ test('Viewer 玩家角色封面依次尝试备用图床，全部失败后显示�
   assert.match(librarySource, /@error="advanceCover\(character\)"/u);
   assert.match(librarySource, /coverIndexes\[character\.entry\.uid\] = \(coverIndexes\[character\.entry\.uid\] \?\? 0\) \+ 1/u);
   assert.match(librarySource, /return imageSources\(character\)\[coverIndexes\[character\.entry\.uid\] \?\? 0\] \?\? ''/u);
+});
+
+test('世界书角色库封面跳过视频主立绘，并继续查找后续静态图片', () => {
+  const librarySource = readFileSync(
+    new URL('../../src/char_info_viewer_runtime/WorldbookCharacterLibrary.vue', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(
+    librarySource,
+    /character\.profile\.avatarUrl, \.\.\.character\.profile\.gallery\.flatMap\(image => image\.sources\)/u,
+  );
+  assert.match(librarySource, /media\?\.kind === 'image' \? \[media\.url\] : \[\]/u);
 });
 
 test('Viewer 玩家角色库保留紧凑列表与自适应图片卡片', () => {

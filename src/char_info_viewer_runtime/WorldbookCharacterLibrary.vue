@@ -577,7 +577,7 @@ function sortCharacters(characters: LibraryCharacter[], order: SortOrder): Libra
 }
 
 function imageSources(character: LibraryCharacter): string[] {
-  return [character.profile.avatarUrl, ...(character.profile.gallery[0]?.sources ?? [])].flatMap(value => {
+  return [character.profile.avatarUrl, ...character.profile.gallery.flatMap(image => image.sources)].flatMap(value => {
     const media = normalizePortraitMediaUrlForBrowser(value);
     return media?.kind === 'image' ? [media.url] : [];
   });
