@@ -1,0 +1,25 @@
+.char-info-library-overlay.force-mobile-layout
+  .char-info-library-viewer
+  > .viewer-root:not(.special-npc-viewer-root) {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 720px) {
+  .char-info-library-viewer > .viewer-root:not(.special-npc-viewer-root) {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (min-width: 721px) {
+  .char-info-library-overlay.force-mobile-layout
+    .char-info-library-viewer
+    > .viewer-root:not(.special-npc-viewer-root) {
+    align-items: flex-start;
+  }
+}

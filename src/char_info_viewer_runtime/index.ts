@@ -1,4 +1,5 @@
 import { createCharInfoRuntime, type CharInfoRuntime } from './runtime';
+import './mobileViewerScroll.css';
 
 type CharInfoHostWindow = Window &
   typeof globalThis & {
