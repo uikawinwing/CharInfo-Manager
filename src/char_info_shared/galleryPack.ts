@@ -1,3 +1,5 @@
+import { isSupportedRemoteMediaUrl } from './remoteMediaUrl.ts';
+
 export const GALLERY_PACK_FORMAT = 'char-info-gallery-pack';
 export const GALLERY_PACK_VERSION = 1;
 export const DEFAULT_EMBEDDED_GALLERY_LIMIT = 3;
@@ -143,6 +145,11 @@ export function createGalleryPackPayload(
     image.sources.forEach((source, sourceIndex) => {
       if (!isHttpsUrl(source)) {
         throw new Error(`第 ${imageIndex + 1} 张扩展图片的第 ${sourceIndex + 1} 个 URL 必须使用 HTTPS。`);
+      }
+      if (!isSupportedRemoteMediaUrl(source)) {
+        throw new Error(
+          `第 ${imageIndex + 1} 张扩展图片的第 ${sourceIndex + 1} 个 URL 只支持 PNG / JPG / JPEG / GIF / APNG / WebP / AVIF / MP4 / WebM 直链。`,
+        );
       }
     });
   });

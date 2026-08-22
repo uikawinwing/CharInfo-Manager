@@ -57,6 +57,7 @@
           :alt="vm.nameText"
           loading="lazy"
           decoding="async"
+          referrerpolicy="no-referrer"
           @load="onPortraitLoaded"
           @error="onPortraitLoadError"
         />

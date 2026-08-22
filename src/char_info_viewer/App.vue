@@ -143,7 +143,7 @@
           <div class="sheet-body" :class="{ 'portrait-body': isPortraitLayout, 'is-detail-tab': isPortraitDetailTab }">
             <section v-if="isPortraitLayout" class="portrait-main-panel">
               <div class="portrait-image-shell">
-                <img class="portrait-image" :src="portraitImageUrl" :alt="nameText" />
+                <img class="portrait-image" :src="portraitImageUrl" :alt="nameText" referrerpolicy="no-referrer" />
               </div>
               <div class="portrait-info-panel">
                 <span class="level-badge portrait-level-badge">Lv.{{ levelText }}</span>

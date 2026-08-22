@@ -22,3 +22,20 @@ test('Catbox 静态立绘保留原始 URL，以复用浏览器缓存与作者 fa
     kind: 'image',
   });
 });
+
+test('远程立绘只接受 HTTPS 且必须是明确支持的媒体格式', () => {
+  assert.equal(normalizePortraitMediaUrlForBrowser('http://example.com/a.png'), null);
+  assert.equal(normalizePortraitMediaUrlForBrowser('javascript:alert(1)'), null);
+  assert.equal(normalizePortraitMediaUrlForBrowser('data:image/png;base64,AAAA'), null);
+  assert.equal(normalizePortraitMediaUrlForBrowser('https://example.com/a.svg'), null);
+  assert.equal(normalizePortraitMediaUrlForBrowser('https://example.com/a.html'), null);
+  assert.equal(normalizePortraitMediaUrlForBrowser('https://example.com/file?id=1'), null);
+  assert.equal(normalizePortraitMediaUrlForBrowser('https://user:pass@example.com/a.png'), null);
+});
+
+test('MP4 与 WebM 仍按视频处理', () => {
+  for (const extension of ['mp4', 'webm']) {
+    const url = `https://example.com/portrait.${extension}`;
+    assert.deepEqual(normalizePortraitMediaUrlForBrowser(url), { url, kind: 'video' });
+  }
+});

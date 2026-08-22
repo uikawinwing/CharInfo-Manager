@@ -3,6 +3,7 @@ import {
   validateGalleryExtensionReference,
   type GalleryExtensionReference,
 } from './galleryPack.ts';
+import { isSupportedRemoteImageUrl, isSupportedRemoteMediaUrl } from './remoteMediaUrl.ts';
 
 export interface GalleryImage {
   title: string;
@@ -209,6 +210,12 @@ export function validateProfile(profile: CharacterVisualProfile): string[] {
   validateEjsSafeText(errors, '登场台词', profile.entranceQuote);
   if (profile.avatarUrl.trim() && !isHttpsUrl(profile.avatarUrl)) errors.push('头像必须使用有效的 HTTPS URL。');
   if (profile.coverUrl.trim() && !isHttpsUrl(profile.coverUrl)) errors.push('角色库封面必须使用有效的 HTTPS URL。');
+  if (profile.avatarUrl.trim() && isHttpsUrl(profile.avatarUrl) && !isSupportedRemoteImageUrl(profile.avatarUrl)) {
+    errors.push('头像只支持 PNG / JPG / JPEG / GIF / APNG / WebP / AVIF 图片直链。');
+  }
+  if (profile.coverUrl.trim() && isHttpsUrl(profile.coverUrl) && !isSupportedRemoteImageUrl(profile.coverUrl)) {
+    errors.push('角色库封面只支持 PNG / JPG / JPEG / GIF / APNG / WebP / AVIF 图片直链。');
+  }
   if (profile.raceColor.trim() && !HEX_PATTERN.test(normalizeHex(profile.raceColor))) {
     errors.push('种族颜色必须使用 #RRGGBB 格式。');
   }
@@ -231,6 +238,10 @@ export function validateProfile(profile: CharacterVisualProfile): string[] {
       validateEjsSafeText(errors, `第 ${index + 1} 张立绘的第 ${sourceIndex + 1} 个 URL`, source);
       if (!isHttpsUrl(source)) {
         errors.push(`第 ${index + 1} 张立绘的第 ${sourceIndex + 1} 个 URL 必须使用有效的 HTTPS URL。`);
+      } else if (!isSupportedRemoteMediaUrl(source)) {
+        errors.push(
+          `第 ${index + 1} 张立绘的第 ${sourceIndex + 1} 个 URL 只支持 PNG / JPG / JPEG / GIF / APNG / WebP / AVIF / MP4 / WebM 直链。`,
+        );
       }
     });
   });

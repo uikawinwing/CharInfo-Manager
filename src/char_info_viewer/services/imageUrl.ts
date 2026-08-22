@@ -1,7 +1,9 @@
+import { remoteMediaKindFromUrl, type RemoteMediaKind } from '../../char_info_shared/remoteMediaUrl.ts';
+
 const CATBOX_FILE_HOST = 'files.catbox.moe';
 const CATBOX_IMAGE_PROXY_ORIGIN = 'https://wsrv.nl/';
 
-export type PortraitMediaKind = 'image' | 'video';
+export type PortraitMediaKind = RemoteMediaKind;
 
 export type NormalizedPortraitMedia = {
   url: string;
@@ -38,11 +40,8 @@ export function normalizeHttpImageUrlForBrowser(url: string): string {
 
 export function normalizePortraitMediaUrlForBrowser(url: string): NormalizedPortraitMedia | null {
   const trimmed = url.trim();
-  const parsed = parseAbsoluteImageUrl(trimmed);
-  if (!parsed || (parsed.protocol !== 'http:' && parsed.protocol !== 'https:')) return null;
-
-  const pathname = parsed.pathname.toLowerCase();
-  const kind: PortraitMediaKind = /\.(mp4|webm)$/.test(pathname) ? 'video' : 'image';
+  const kind = remoteMediaKindFromUrl(trimmed);
+  if (!kind) return null;
 
   return {
     // 立绘保留作者原始 URL，确保浏览器缓存、预加载与 sources fallback 使用同一资源地址。
