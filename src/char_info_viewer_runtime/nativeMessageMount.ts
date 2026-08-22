@@ -47,13 +47,15 @@ export function buildRawMessageWithCardSlots(
   const slots: CharInfoCardSlot[] = [];
 
   for (const [index, card] of cards.entries()) {
-    const start = source.indexOf(card.content, cursor);
-    if (start < 0) return null;
+    const start = card.sourceStart;
+    const end = card.sourceEnd;
+    if (start < cursor || end < start || end > source.length) return null;
+    if (source.slice(start, end) !== card.content) return null;
 
     const token = createSlotToken(source, card, index);
     tokenizedSource += source.slice(cursor, start) + token;
     slots.push({ cardId: card.id, token });
-    cursor = start + card.content.length;
+    cursor = end;
   }
 
   tokenizedSource += source.slice(cursor);

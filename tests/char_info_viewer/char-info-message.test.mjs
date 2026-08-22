@@ -43,6 +43,53 @@ test('projects multiple complete blocks case-insensitively with stable ordinals'
   );
 });
 
+test('ignores char_info inside think and only captures char_info inside gametxt', () => {
+  const text = [
+    '<think>',
+    '<char_info>姓名: Thought</char_info>',
+    '</think>',
+    'intermediate text',
+    '<gametxt>',
+    '<char_info>姓名: Iris</char_info>',
+    '</gametxt>',
+    '<char_info>姓名: Tail</char_info>',
+  ].join('\n');
+
+  const projection = projectCharInfoMessage({ messageId: 20, swipeId: 0, text });
+
+  assert.deepEqual(projection.cards.map(card => card.content), ['<char_info>姓名: Iris</char_info>']);
+});
+
+test('ignores char_info after closing gametxt', () => {
+  const text = '<gametxt>\n<char_info>姓名: Iris</char_info>\n</gametxt>\n<char_info>姓名: Tail</char_info>';
+  const projection = projectCharInfoMessage({ messageId: 21, swipeId: 0, text });
+
+  assert.deepEqual(projection.cards.map(card => card.content), ['<char_info>姓名: Iris</char_info>']);
+});
+
+test('does not let a char_info opening tag in think cross into gametxt or later content', () => {
+  const text = [
+    '<think>',
+    '<char_info>',
+    'draft only',
+    '</think>',
+    '<gametxt>',
+    '正文',
+    '</char_info>',
+    '</gametxt>',
+  ].join('\n');
+
+  const projection = projectCharInfoMessage({ messageId: 22, swipeId: 0, text });
+  assert.deepEqual(projection.cards, []);
+});
+
+test('an unclosed think region is never scanned for char_info', () => {
+  const text = '<think>\n<char_info>姓名: Thought</char_info>';
+  const projection = projectCharInfoMessage({ messageId: 23, swipeId: 0, text });
+
+  assert.deepEqual(projection.cards, []);
+});
+
 test('leaves an incomplete streaming block as ordinary text', () => {
   const text = 'streaming\n<char_info>\n姓名: Iris';
   const projection = projectCharInfoMessage({ messageId: 3, swipeId: 0, text });
@@ -76,6 +123,17 @@ test('replaces raw char_info blocks with private slots before display formatting
   assert.match(prepared.slots[0].token, /^CHARINFOVIEWERSLOT[A-Z0-9]+ENDX*$/);
   assert.equal(prepared.source, `Before\n${prepared.slots[0].token}\nAfter`);
   assert.doesNotMatch(prepared.source, /<char_info|姓名: Iris|名称: 星光/i);
+});
+
+test('slot replacement uses the scoped source position instead of an identical char_info inside think', () => {
+  const block = '<char_info>姓名: Iris</char_info>';
+  const source = `<think>\n${block}\n</think>\n<gametxt>\n${block}\n</gametxt>`;
+  const projection = projectCharInfoMessage({ messageId: 24, swipeId: 0, text: source });
+  const prepared = buildRawMessageWithCardSlots(source, projection.cards);
+
+  assert.ok(prepared);
+  assert.equal(projection.cards.length, 1);
+  assert.equal(prepared.source, `<think>\n${block}\n</think>\n<gametxt>\n${prepared.slots[0].token}\n</gametxt>`);
 });
 
 test('keeps identical raw cards in ordinal order without DOM text matching', () => {
