@@ -189,12 +189,13 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
     .readFileSync(path.join(import.meta.dirname, entry.script), 'utf-8')
     .includes('@obfuscate');
   const script_filepath = path.parse(entry.script);
+  const standaloneBrowserPreview = entry.script.replaceAll('\\', '/') === 'src/char_info_v2_theme_lab/index.ts';
 
   return (_env, argv) => ({
     experiments: {
       outputModule: true,
     },
-    devtool: argv.mode === 'production' ? 'source-map' : 'eval-source-map',
+    devtool: standaloneBrowserPreview ? false : argv.mode === 'production' ? 'source-map' : 'eval-source-map',
     watchOptions: {
       ignored: ['**/dist', '**/node_modules'],
     },
@@ -521,6 +522,10 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
     },
     externals: ({ context, request }, callback) => {
       if (!context || !request) {
+        return callback();
+      }
+
+      if (standaloneBrowserPreview && request === 'vue') {
         return callback();
       }
 

@@ -13,6 +13,8 @@ import {
 test('运行时设置使用稳定默认值并修复越界输入', () => {
   assert.deepEqual(defaultRuntimeSettings(), {
     activeFloorLimit: 6,
+    maxCardsPerMessage: 4,
+    unlimitedCardsPerMessage: false,
     effectsEnabled: true,
     forceMobileLayout: false,
     debugEnabled: false,
@@ -26,6 +28,8 @@ test('运行时设置使用稳定默认值并修复越界输入', () => {
     }),
     {
       activeFloorLimit: 6,
+      maxCardsPerMessage: 4,
+      unlimitedCardsPerMessage: false,
       effectsEnabled: true,
       forceMobileLayout: false,
       debugEnabled: false,
@@ -40,6 +44,8 @@ test('运行时设置使用稳定默认值并修复越界输入', () => {
     }),
     {
       activeFloorLimit: 12,
+      maxCardsPerMessage: 4,
+      unlimitedCardsPerMessage: false,
       effectsEnabled: false,
       forceMobileLayout: false,
       debugEnabled: false,
@@ -81,6 +87,8 @@ test('运行时设置只读写脚本变量命名空间，并保留其他脚本�
 
   assert.deepEqual(readRuntimeSettings(original), {
     activeFloorLimit: 8,
+    maxCardsPerMessage: 4,
+    unlimitedCardsPerMessage: false,
     effectsEnabled: false,
     forceMobileLayout: false,
     debugEnabled: false,
@@ -98,6 +106,8 @@ test('运行时设置只读写脚本变量命名空间，并保留其他脚本�
         cacheVersion: 3,
         settings: {
           activeFloorLimit: 4,
+          maxCardsPerMessage: 4,
+          unlimitedCardsPerMessage: false,
           effectsEnabled: true,
           forceMobileLayout: false,
           debugEnabled: false,

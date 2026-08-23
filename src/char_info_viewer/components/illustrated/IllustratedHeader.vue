@@ -182,7 +182,7 @@ watch(() => props.vm.nameText, updateNameLayout, { flush: 'post' });
 
 .illustrated-subtitle {
   display: flex;
-  max-height: 3em;
+  max-height: calc(3em + 8px);
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;

@@ -1,7 +1,11 @@
 <template>
   <div
     class="illustrated-wrapper"
-    :class="{ 'is-special-npc': specialNpc, 'force-mobile-layout': forceMobileLayout }"
+    :class="{
+      'is-special-npc': specialNpc,
+      'uses-v2-navigation': useSideRailNavigation,
+      'force-mobile-layout': forceMobileLayout,
+    }"
   >
     <main
       ref="shellElement"
@@ -294,7 +298,7 @@
         </div>
 
         <IllustratedTabNav
-          v-if="!specialNpc"
+          v-if="!useSideRailNavigation"
           :tabs="tabs"
           :active-tab="activeSpecialTab"
           :importing="importing"
@@ -307,7 +311,7 @@
       </section>
 
       <IllustratedTabNav
-        v-if="specialNpc"
+        v-if="useSideRailNavigation"
         side-rail
         :tabs="tabs"
         :active-tab="activeSpecialTab"
@@ -384,7 +388,10 @@ const props = defineProps<{
   debugEnabled: boolean;
   forceMobileLayout: boolean;
   specialNpc: boolean;
+  sideRailNavigation?: boolean;
 }>();
+
+const useSideRailNavigation = computed(() => props.specialNpc || props.sideRailNavigation === true);
 
 defineEmits<{
   toggleAttributeFormula: [key: string];
@@ -1602,6 +1609,76 @@ watchEffect(() => {
   }
 }
 
+@mixin illustrated-v2-mobile-header {
+  .illustrated-shell.is-overview-tab .illustrated-mobile-header-overlay {
+    padding: 0 2px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .illustrated-shell.is-overview-tab
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-header.compact) {
+    gap: 4px;
+  }
+
+  .illustrated-shell.is-overview-tab
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-name:not(.illustrated-name-measure)) {
+    order: 1;
+    margin: 0 !important;
+    font-size: clamp(24px, 8cqw, 28px);
+    line-height: 1.12;
+    text-shadow: 0 3px 16px rgba(0, 0, 0, 0.94);
+  }
+
+  .illustrated-shell.is-overview-tab
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-subtitle),
+  .illustrated-shell.is-overview-tab
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-level-tier) {
+    display: none;
+  }
+
+  .illustrated-shell.is-overview-tab
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-subtitle) {
+    order: 2;
+    gap: 5px;
+    font-size: 10px;
+    line-height: 1.35;
+    text-shadow: 0 2px 7px rgba(0, 0, 0, 0.95);
+  }
+
+  .illustrated-shell.is-overview-tab
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-level-tier) {
+    order: 3;
+    margin: 2px 0 0;
+    padding: 2px 0;
+  }
+
+  .illustrated-shell.is-overview-tab
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-level),
+  .illustrated-shell.is-overview-tab
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-tier) {
+    font-size: 10px;
+  }
+
+  .illustrated-shell.is-overview-tab
+    .illustrated-mobile-header-overlay
+    :deep(.illustrated-badge-separator) {
+    margin: 0 10px;
+  }
+}
+
 @mixin illustrated-mobile-content {
   .illustrated-shell {
     flex-direction: column;
@@ -1788,74 +1865,6 @@ watchEffect(() => {
     -webkit-backdrop-filter: blur(5px);
   }
 
-  .illustrated-shell.is-special-npc.is-overview-tab .illustrated-mobile-header-overlay {
-    padding: 0 2px;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-
-  .illustrated-shell.is-special-npc.is-overview-tab
-    .illustrated-mobile-header-overlay
-    :deep(.illustrated-header.compact) {
-    gap: 4px;
-  }
-
-  .illustrated-shell.is-special-npc.is-overview-tab
-    .illustrated-mobile-header-overlay
-    :deep(.illustrated-name:not(.illustrated-name-measure)) {
-    order: 1;
-    margin: 0 !important;
-    font-size: clamp(24px, 8cqw, 28px);
-    line-height: 1.12;
-    text-shadow: 0 3px 16px rgba(0, 0, 0, 0.94);
-  }
-
-  .illustrated-shell.is-special-npc.is-overview-tab
-    .illustrated-mobile-header-overlay
-    :deep(.illustrated-subtitle),
-  .illustrated-shell.is-special-npc.is-overview-tab
-    .illustrated-mobile-header-overlay
-    :deep(.illustrated-level-tier) {
-    display: none;
-  }
-
-  .illustrated-shell.is-special-npc.is-overview-tab
-    .illustrated-mobile-header-overlay
-    :deep(.illustrated-subtitle) {
-    order: 2;
-    gap: 5px;
-    font-size: 10px;
-    line-height: 1.35;
-    text-shadow: 0 2px 7px rgba(0, 0, 0, 0.95);
-  }
-
-  .illustrated-shell.is-special-npc.is-overview-tab
-    .illustrated-mobile-header-overlay
-    :deep(.illustrated-level-tier) {
-    order: 3;
-    margin: 2px 0 0;
-    padding: 2px 0;
-  }
-
-  .illustrated-shell.is-special-npc.is-overview-tab
-    .illustrated-mobile-header-overlay
-    :deep(.illustrated-level),
-  .illustrated-shell.is-special-npc.is-overview-tab
-    .illustrated-mobile-header-overlay
-    :deep(.illustrated-tier) {
-    font-size: 10px;
-  }
-
-  .illustrated-shell.is-special-npc.is-overview-tab
-    .illustrated-mobile-header-overlay
-    :deep(.illustrated-badge-separator) {
-    margin: 0 10px;
-  }
-
   .illustrated-shell.is-overview-tab .illustrated-panels {
     display: none;
   }
@@ -1946,6 +1955,10 @@ watchEffect(() => {
   }
 
   @include illustrated-mobile-content;
+
+  .illustrated-wrapper.uses-v2-navigation {
+    @include illustrated-v2-mobile-header;
+  }
 
   .illustrated-quote-dialog-backdrop {
     align-items: flex-end;
@@ -2064,6 +2077,10 @@ watchEffect(() => {
   max-width: min(100%, 640px);
   @include illustrated-mobile-content;
   @include illustrated-compact-mobile-content;
+}
+
+.illustrated-wrapper.force-mobile-layout.uses-v2-navigation {
+  @include illustrated-v2-mobile-header;
 }
 
 </style>
