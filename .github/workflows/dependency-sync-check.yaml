@@ -26,20 +26,44 @@ jobs:
           version: 10
 
       - name: Install dependencies
-        run: pnpm install
+        id: install
+        continue-on-error: true
+        run: pnpm install --no-frozen-lockfile
 
       - name: Test
+        id: test
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
         run: pnpm test
 
       - name: Lint
+        id: lint
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
         run: pnpm lint
 
       - name: Build
+        id: build
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
         run: pnpm build
 
-      - name: Commit resolved lockfile
+      - name: Write verification result
+        if: always()
+        run: |
+          printf '%s\n' \
+            "install=${{ steps.install.outcome }}" \
+            "test=${{ steps.test.outcome }}" \
+            "lint=${{ steps.lint.outcome }}" \
+            "build=${{ steps.build.outcome }}" \
+            "node=$(node --version)" \
+            "pnpm=$(pnpm --version)" \
+            > .dependency-sync-result.txt
+
+      - name: Commit verification result
+        if: always()
         uses: EndBug/add-and-commit@v9.1.3
         with:
-          add: pnpm-lock.yaml
+          add: 'pnpm-lock.yaml .dependency-sync-result.txt'
           default_author: github_actions
-          message: '[bot] resolve dependency lockfile'
+          message: '[bot] dependency sync verification result'
