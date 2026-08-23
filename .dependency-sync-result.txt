@@ -1,0 +1,6 @@
+install=success
+test=failure
+lint=failure
+build=failure
+node=v24.19.0
+pnpm=10.34.5
