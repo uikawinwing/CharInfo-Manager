@@ -4,3 +4,484 @@ lint=failure
 build=failure
 node=v24.19.0
 pnpm=10.34.5
+
+=== install tail ===
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +868
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 868, reused 0, downloaded 40, added 12
+Progress: resolved 868, reused 0, downloaded 177, added 74
+Progress: resolved 868, reused 0, downloaded 393, added 193
+Progress: resolved 868, reused 0, downloaded 625, added 348
+Progress: resolved 868, reused 0, downloaded 868, added 632
+Progress: resolved 868, reused 0, downloaded 868, added 868, done
+.../node_modules/@parcel/watcher install$ node scripts/build-from-source.js
+.../node_modules/unrs-resolver postinstall$ node postinstall.js
+.../node_modules/vue-demi postinstall$ node -e "try{require('./scripts/postinstall.js')}catch(e){}"
+.../node_modules/@parcel/watcher install: Done
+.../node_modules/unrs-resolver postinstall: Done
+.../node_modules/vue-demi postinstall: Done
+
+dependencies:
++ @pixi/react 8.0.5
++ @vueuse/components 14.4.0
++ @vueuse/core 14.4.0
++ @vueuse/integrations 14.4.0
++ @vueuse/shared 14.4.0
++ async-wait-until 2.0.31
++ compare-versions 6.1.1
++ dedent 1.7.2
++ gsap 3.15.0
++ jquery 4.0.0
++ jqueryui 1.11.1
++ js-yaml 4.3.1
++ json5 2.2.3
++ jsonrepair 3.15.0
++ klona 2.0.6
++ lodash 4.18.1
++ pinia 3.0.4
++ pixi.js 8.20.0
++ react 19.2.8
++ react-dom 19.2.8
++ toastr 2.1.4
++ vue 3.5.41
++ vue-final-modal 4.5.5
++ vue-router 5.2.0
++ vue-word-highlighter 1.2.6
++ vue3-pixi 1.0.1
++ yaml 2.9.0
++ zod 4.4.3
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/postcss 4.3.3
++ @types/jquery 4.0.1
++ @types/jqueryui 1.12.24
++ @types/js-yaml 4.0.9
++ @types/lodash 4.17.25
++ @types/react 19.2.18
++ @types/react-dom 19.2.4
++ @types/showdown 2.0.6
++ @types/toastr 2.1.44
++ @types/webpack 5.28.5
++ @typescript-eslint/parser 8.67.0
++ autoprefixer 10.5.4
++ chokidar 5.0.0
++ css-loader 7.1.4
++ eslint 10.9.0
++ eslint-config-prettier 10.1.8
++ eslint-import-resolver-typescript 4.4.5
++ eslint-plugin-better-tailwindcss 4.7.0
++ eslint-plugin-import-x 4.17.1
++ eslint-plugin-pinia 0.4.2
++ eslint-plugin-vue 10.10.0
++ eslint-webpack-plugin 6.0.0
++ globals 17.11.0
++ html-inline-css-loader 0.2.1
++ html-inline-css-webpack-plugin 1.11.2
++ html-inline-script-webpack-plugin 3.2.1
++ html-loader 5.1.0
++ html-webpack-inline-svg-plugin 2.3.0
++ html-webpack-plugin 5.6.8
++ javascript-obfuscator 5.6.0
++ mini-css-extract-plugin 2.10.2
++ postcss 8.5.26
++ postcss-cli 11.0.1
++ postcss-load-config 6.0.1
++ postcss-loader 8.2.1
++ postcss-minify 1.2.0
++ prettier 3.9.6
++ remark 15.0.1
++ remark-html 16.0.1
++ remark-loader 6.0.0
++ sass 1.103.1
++ sass-loader 17.0.0
++ socket.io 4.8.3
++ style-loader 4.0.0
++ tailwindcss 4.3.3
++ terser-webpack-plugin 5.6.1
++ ts-loader 9.6.2
++ ts-node 10.9.2
++ tsconfig-paths-webpack-plugin 4.2.0
++ tslib 2.8.1
++ type-fest 5.8.0
++ typescript 6.0.3
++ typescript-eslint 8.67.0
++ unplugin-auto-import 21.1.0
++ unplugin-vue-components 32.1.0
++ vue-eslint-parser 10.4.1
++ vue-loader 17.4.2
++ vue-style-loader 4.1.3
++ webpack 5.109.2
++ webpack-cli 7.2.2
++ webpack-obfuscator 3.6.1
++ yaml-loader 0.9.0
+
+Done in 6.6s using pnpm v10.34.5
+
+=== test tail ===
+✔ Creator 即时写入当前 draft 时强校验 CharInfo、状态栏相簿与头像，并复用同一 Force Refresh callback (6.295843ms)
+✔ 从世界书角色库进入 Creator 时提供直接返回角色库的回调 (2.543632ms)
+✔ Debug 模式从运行时设置传入 Viewer 与 Creator，并默认不输出日志 (1.81398ms)
+✔ Debug 日志覆盖尝试、失败、超时、切换、成功与全部失败 (0.455271ms)
+(node:2708) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/CharInfo-Manager/CharInfo-Manager/src/char_info_viewer_runtime/runtimeSettings.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/runner/work/CharInfo-Manager/CharInfo-Manager/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 强制移动布局默认关闭，非法值安全归一化为关闭 (4.449914ms)
+✔ 强制移动布局随运行时设置持久化 (1.170346ms)
+✔ 设置开关和角色库强制移动布局沿用 720px 布局契约 (1.377935ms)
+✔ 玩家世界书库与独立 Creator 编辑器都接收强制移动布局设置 (0.951337ms)
+✔ 强制移动布局复用 Viewer 与 Special NPC 的同一套移动版式规则 (0.985852ms)
+✔ 手机角色详情顶部只展示信息，操作移至底部安全区 (0.787541ms)
+✔ 手机角色详情把资料分页固定在三键栏上方，并在首页首屏显示姓名块 (1.401979ms)
+(node:2714) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/CharInfo-Manager/CharInfo-Manager/src/char_info_viewer/services/imageSourcePriority.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/runner/work/CharInfo-Manager/CharInfo-Manager/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 按用户域名优先级稳定重排同一图片的镜像来源 (2.458093ms)
+✔ 无匹配时保留作者原顺序，且不重排不同图片 (0.425085ms)
+✔ 完整 URL 会提取 hostname，域名规则可匹配子域名并丢弃无效模式 (0.408053ms)
+✔ 图片源优先级随既有 char_info_runtime.settings 持久化，且保留其他脚本数据 (3.155816ms)
+✔ 旧版已填写优先级会自动保持启用，空设置使用关闭的推荐示例 (0.919569ms)
+✔ 图片来源优先级使用开关和逐项表单，不暴露自由文本配置 (0.576607ms)
+/home/runner/work/CharInfo-Manager/CharInfo-Manager/node_modules/.pnpm/ts-node@10.9.2_@types+node@26.2.0_typescript@6.0.3/node_modules/ts-node/src/index.ts:859
+    return new TSError(diagnosticText, diagnosticCodes, diagnostics);
+           ^
+TSError: ⨯ Unable to compile TypeScript:
+error TS5101: Option 'baseUrl' is deprecated and will stop functioning in TypeScript 7.0. Specify compilerOption '"ignoreDeprecations": "6.0"' to silence this error.
+  Visit https://aka.ms/ts6 for migration information.
+error TS5107: Option 'moduleResolution=node10' is deprecated and will stop functioning in TypeScript 7.0. Specify compilerOption '"ignoreDeprecations": "6.0"' to silence this error.
+  Visit https://aka.ms/ts6 for migration information.
+
+    at createTSError (/home/runner/work/CharInfo-Manager/CharInfo-Manager/node_modules/.pnpm/ts-node@10.9.2_@types+node@26.2.0_typescript@6.0.3/node_modules/ts-node/src/index.ts:859:12)
+    at reportTSError (/home/runner/work/CharInfo-Manager/CharInfo-Manager/node_modules/.pnpm/ts-node@10.9.2_@types+node@26.2.0_typescript@6.0.3/node_modules/ts-node/src/index.ts:863:19)
+    at /home/runner/work/CharInfo-Manager/CharInfo-Manager/node_modules/.pnpm/ts-node@10.9.2_@types+node@26.2.0_typescript@6.0.3/node_modules/ts-node/src/index.ts:1379:34
+    at Object.compile (/home/runner/work/CharInfo-Manager/CharInfo-Manager/node_modules/.pnpm/ts-node@10.9.2_@types+node@26.2.0_typescript@6.0.3/node_modules/ts-node/src/index.ts:1455:13)
+    at Module.m._compile (/home/runner/work/CharInfo-Manager/CharInfo-Manager/node_modules/.pnpm/ts-node@10.9.2_@types+node@26.2.0_typescript@6.0.3/node_modules/ts-node/src/index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2003:10
+    at Object.require.extensions.<computed> [as .js] (/home/runner/work/CharInfo-Manager/CharInfo-Manager/node_modules/.pnpm/ts-node@10.9.2_@types+node@26.2.0_typescript@6.0.3/node_modules/ts-node/src/index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) {
+  diagnosticCodes: [ 5101, 5107 ]
+}
+✖ tests/char_info_viewer_runtime/legacy-gallery-migration.test.cjs (539.242774ms)
+✔ 手机版普通角色详情由 Viewer 根节点接管纵向滚动 (1.906763ms)
+✔ Special NPC 保持固定视口，不被普通卡滚动补丁接管 (0.331088ms)
+✔ 桌面 Force Mobile 普通卡从顶部开始滚动，避免居中导致顶部内容不可达 (0.280914ms)
+(node:2736) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/CharInfo-Manager/CharInfo-Manager/src/char_info_viewer_runtime/runtimeSettings.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/runner/work/CharInfo-Manager/CharInfo-Manager/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 运行时设置使用稳定默认值并修复越界输入 (7.993716ms)
+✔ 悬浮角色按钮位置作为脚本 UI 偏好独立保存 (0.989359ms)
+✔ 运行时设置只读写脚本变量命名空间，并保留其他脚本数据 (0.645606ms)
+ℹ tests 234
+ℹ suites 0
+ℹ pass 221
+ℹ fail 13
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6347.231073
+
+✖ failing tests:
+
+test at tests/char_info_viewer/animated-image-url.test.cjs:1:1
+✖ tests/char_info_viewer/animated-image-url.test.cjs (360.354587ms)
+  'test failed'
+
+test at tests/char_info_viewer/custom-visual-config.test.cjs:1:1
+✖ tests/char_info_viewer/custom-visual-config.test.cjs (392.453987ms)
+  'test failed'
+
+test at tests/char_info_viewer/divinity-laws.test.cjs:1:1
+✖ tests/char_info_viewer/divinity-laws.test.cjs (328.952246ms)
+  'test failed'
+
+test at tests/char_info_viewer/image-layout-routing.test.cjs:1:1
+✖ tests/char_info_viewer/image-layout-routing.test.cjs (360.526189ms)
+  'test failed'
+
+test at tests/char_info_viewer/image-preload.test.cjs:1:1
+✖ tests/char_info_viewer/image-preload.test.cjs (331.623205ms)
+  'test failed'
+
+test at tests/char_info_viewer/import-service-divinity-laws.test.cjs:1:1
+✖ tests/char_info_viewer/import-service-divinity-laws.test.cjs (369.247734ms)
+  'test failed'
+
+test at tests/char_info_viewer/item-tags.test.cjs:1:1
+✖ tests/char_info_viewer/item-tags.test.cjs (303.821679ms)
+  'test failed'
+
+test at tests/char_info_viewer/mobile-entrance-quote.test.cjs:1:1
+✖ tests/char_info_viewer/mobile-entrance-quote.test.cjs (469.145159ms)
+  'test failed'
+
+test at tests/char_info_viewer/portrait-gallery-controls.test.cjs:1:1
+✖ tests/char_info_viewer/portrait-gallery-controls.test.cjs (385.737757ms)
+  'test failed'
+
+test at tests/char_info_viewer/save-actions.test.cjs:1:1
+✖ tests/char_info_viewer/save-actions.test.cjs (384.418821ms)
+  'test failed'
+
+test at tests/char_info_viewer/special-npc-routing.test.cjs:1:1
+✖ tests/char_info_viewer/special-npc-routing.test.cjs (395.809294ms)
+  'test failed'
+
+test at tests/char_info_viewer/yaml-autofix-indentation.test.cjs:1:1
+✖ tests/char_info_viewer/yaml-autofix-indentation.test.cjs (382.937393ms)
+  'test failed'
+
+test at tests/char_info_viewer_runtime/legacy-gallery-migration.test.cjs:1:1
+✖ tests/char_info_viewer_runtime/legacy-gallery-migration.test.cjs (539.242774ms)
+  'test failed'
+ ELIFECYCLE  Test failed. See above for more details.
+
+=== lint tail ===
+  248:26  error  Unknown class detected: char-info-library-list-action            better-tailwindcss/no-unknown-classes
+  258:20  error  Unknown class detected: char-info-library-icon-action            better-tailwindcss/no-unknown-classes
+  270:20  error  Unknown class detected: char-info-library-icon-action            better-tailwindcss/no-unknown-classes
+  270:50  error  Unknown class detected: char-info-library-close-action           better-tailwindcss/no-unknown-classes
+  282:20  error  Unknown class detected: char-info-library-viewer                 better-tailwindcss/no-unknown-classes
+  296:28  error  Unknown class detected: char-info-library-placeholder            better-tailwindcss/no-unknown-classes
+  310:19  error  Unknown class detected: char-info-library-viewer-mobile-dock     better-tailwindcss/no-unknown-classes
+  320:24  error  Unknown class detected: primary                                  better-tailwindcss/no-unknown-classes
+  344:17  error  Unknown class detected: char-info-settings-backdrop              better-tailwindcss/no-unknown-classes
+  346:16  error  Unknown class detected: char-info-settings-dialog                better-tailwindcss/no-unknown-classes
+  356:21  error  Unknown class detected: char-info-settings-fields                better-tailwindcss/no-unknown-classes
+  369:25  error  Unknown class detected: char-info-settings-switch                better-tailwindcss/no-unknown-classes
+  377:25  error  Unknown class detected: char-info-settings-switch                better-tailwindcss/no-unknown-classes
+  385:25  error  Unknown class detected: char-info-settings-switch                better-tailwindcss/no-unknown-classes
+  393:27  error  Unknown class detected: char-info-settings-priority              better-tailwindcss/no-unknown-classes
+  394:27  error  Unknown class detected: char-info-settings-switch                better-tailwindcss/no-unknown-classes
+  394:53  error  Unknown class detected: char-info-settings-priority-switch       better-tailwindcss/no-unknown-classes
+  399:28  error  Unknown class detected: char-info-settings-priority-toggle-wrap  better-tailwindcss/no-unknown-classes
+  403:26  error  Unknown class detected: char-info-settings-priority-toggle       better-tailwindcss/no-unknown-classes
+  412:64  error  Unknown class detected: char-info-settings-priority-editor       better-tailwindcss/no-unknown-classes
+  414:27  error  Unknown class detected: char-info-settings-priority-list         better-tailwindcss/no-unknown-classes
+  418:26  error  Unknown class detected: char-info-settings-priority-row          better-tailwindcss/no-unknown-classes
+  420:32  error  Unknown class detected: char-info-settings-priority-index        better-tailwindcss/no-unknown-classes
+  429:31  error  Unknown class detected: char-info-settings-priority-actions      better-tailwindcss/no-unknown-classes
+  459:27  error  Unknown class detected: char-info-settings-priority-footer       better-tailwindcss/no-unknown-classes
+  467:42  error  Unknown class detected: char-info-settings-feedback              better-tailwindcss/no-unknown-classes
+  471:40  error  Unknown class detected: primary                                  better-tailwindcss/no-unknown-classes
+
+/home/runner/work/CharInfo-Manager/CharInfo-Manager/src/char_info_viewer_runtime/WorldbookCharacterLibrary.vue
+    2:15  error  Unknown class detected: manager-root                                                  better-tailwindcss/no-unknown-classes
+    2:28  error  Unknown class detected: library-mode                                                  better-tailwindcss/no-unknown-classes
+    2:53  error  Unknown class detected: force-mobile-layout                                           better-tailwindcss/no-unknown-classes
+    3:18  error  Unknown class detected: manager-dialog                                                better-tailwindcss/no-unknown-classes
+    3:33  error  Unknown class detected: library-dialog                                                better-tailwindcss/no-unknown-classes
+    4:22  error  Unknown class detected: dialog-header                                                 better-tailwindcss/no-unknown-classes
+    4:36  error  Unknown class detected: library-header                                                better-tailwindcss/no-unknown-classes
+    5:21  error  Unknown class detected: header-title                                                  better-tailwindcss/no-unknown-classes
+    6:23  error  Unknown class detected: library-title-icon                                            better-tailwindcss/no-unknown-classes
+   11:24  error  Unknown class detected: phase-badge                                                   better-tailwindcss/no-unknown-classes
+   14:21  error  Unknown class detected: character-source-switch                                       better-tailwindcss/no-unknown-classes
+   16:40  error  Unknown class detected: active                                                        better-tailwindcss/no-unknown-classes
+   19:21  error  Unknown class detected: library-header-worldbook                                      better-tailwindcss/no-unknown-classes
+   29:20  error  Unknown class detected: icon-button                                                   better-tailwindcss/no-unknown-classes
+   29:32  error  Unknown class detected: library-refresh-button                                        better-tailwindcss/no-unknown-classes
+   39:21  error  Unknown class detected: header-actions                                                better-tailwindcss/no-unknown-classes
+   40:23  error  Unknown class detected: manager-view-switch                                           better-tailwindcss/no-unknown-classes
+   41:42  error  Unknown class detected: active                                                        better-tailwindcss/no-unknown-classes
+   54:26  error  Unknown class detected: close-button                                                  better-tailwindcss/no-unknown-classes
+   58:23  error  Unknown class detected: library-page                                                  better-tailwindcss/no-unknown-classes
+   59:21  error  Unknown class detected: mobile-library-context                                        better-tailwindcss/no-unknown-classes
+   60:23  error  Unknown class detected: character-source-switch                                       better-tailwindcss/no-unknown-classes
+   62:42  error  Unknown class detected: active                                                        better-tailwindcss/no-unknown-classes
+   64:25  error  Unknown class detected: mobile-library-worldbook                                      better-tailwindcss/no-unknown-classes
+   74:55  error  Unknown class detected: character-library                                             better-tailwindcss/no-unknown-classes
+   75:23  error  Unknown class detected: character-library-toolbar                                     better-tailwindcss/no-unknown-classes
+   76:27  error  Unknown class detected: library-search-field                                          better-tailwindcss/no-unknown-classes
+   91:49  error  Unknown class detected: mobile-library-filter-panel                                   better-tailwindcss/no-unknown-classes
+   92:27  error  Unknown class detected: mobile-library-filter-options                                 better-tailwindcss/no-unknown-classes
+  103:29  error  Unknown class detected: character-race-filter                                         better-tailwindcss/no-unknown-classes
+  110:29  error  Unknown class detected: character-order-select                                        better-tailwindcss/no-unknown-classes
+  120:25  error  Unknown class detected: character-library-control-row                                 better-tailwindcss/no-unknown-classes
+  121:27  error  Unknown class detected: character-library-filter-buttons                              better-tailwindcss/no-unknown-classes
+  122:30  error  Unknown class detected: character-library-control-label                               better-tailwindcss/no-unknown-classes
+  134:27  error  Unknown class detected: character-library-meta-controls                               better-tailwindcss/no-unknown-classes
+  135:31  error  Unknown class detected: character-race-filter                                         better-tailwindcss/no-unknown-classes
+  142:31  error  Unknown class detected: character-order-select                                        better-tailwindcss/no-unknown-classes
+  152:27  error  Unknown class detected: character-library-view-options                                better-tailwindcss/no-unknown-classes
+  153:29  error  Unknown class detected: character-library-layout-switch                               better-tailwindcss/no-unknown-classes
+  170:57  error  Unknown class detected: character-card-columns                                        better-tailwindcss/no-unknown-classes
+  179:27  error  Unknown class detected: character-library-summary                                     better-tailwindcss/no-unknown-classes
+  184:20  error  Unknown class detected: character-library-grid                                        better-tailwindcss/no-unknown-classes
+  186:18  error  Unknown class detected: image-card-view                                               better-tailwindcss/no-unknown-classes
+  187:46  error  Concatenated classes may be purged by Tailwind CSS. Avoid dynamic class construction  better-tailwindcss/no-concatenated-classes
+  193:22  error  Unknown class detected: character-library-card                                        better-tailwindcss/no-unknown-classes
+  202:24  error  Unknown class detected: character-cover-button                                        better-tailwindcss/no-unknown-classes
+  215:37  error  Unknown class detected: character-cover-placeholder                                   better-tailwindcss/no-unknown-classes
+  216:31  error  Unknown class detected: character-cover-silhouette                                    better-tailwindcss/no-unknown-classes
+  224:24  error  Unknown class detected: character-library-card-copy                                   better-tailwindcss/no-unknown-classes
+  234:30  error  Unknown class detected: character-library-card-meta                                   better-tailwindcss/no-unknown-classes
+  236:55  error  Unknown class detected: entry-status                                                  better-tailwindcss/no-unknown-classes
+  237:58  error  Unknown class detected: encountered                                                   better-tailwindcss/no-unknown-classes
+  238:64  error  Unknown class detected: visual-missing                                                better-tailwindcss/no-unknown-classes
+  240:54  error  Unknown class detected: character-library-card-author                                 better-tailwindcss/no-unknown-classes
+  244:24  error  Unknown class detected: character-entry-toggle                                        better-tailwindcss/no-unknown-classes
+  257:55  error  Unknown class detected: character-library-no-results                                  better-tailwindcss/no-unknown-classes
+  258:42  error  Unknown class detected: character-library-feedback                                    better-tailwindcss/no-unknown-classes
+  261:74  error  Unknown class detected: character-library-empty                                       better-tailwindcss/no-unknown-classes
+  261:98  error  Unknown class detected: library-page-empty                                            better-tailwindcss/no-unknown-classes
+  264:32  error  Unknown class detected: message                                                       better-tailwindcss/no-unknown-classes
+  264:40  error  Unknown class detected: error                                                         better-tailwindcss/no-unknown-classes
+  266:45  error  Unknown class detected: mobile-library-dock                                           better-tailwindcss/no-unknown-classes
+  275:26  error  Unknown class detected: mobile-library-dock-home                                      better-tailwindcss/no-unknown-classes
+  286:23  error  Unknown class detected: mobile-library-more                                           better-tailwindcss/no-unknown-classes
+  291:47  error  Unknown class detected: mobile-library-more-menu                                      better-tailwindcss/no-unknown-classes
+  308:14  error  Unknown class detected: character-detail-layer                                        better-tailwindcss/no-unknown-classes
+  314:23  error  Unknown class detected: character-detail-dialog                                       better-tailwindcss/no-unknown-classes
+  315:24  error  Unknown class detected: character-detail-header                                       better-tailwindcss/no-unknown-classes
+  317:26  error  Unknown class detected: character-detail-status                                       better-tailwindcss/no-unknown-classes
+  324:22  error  Unknown class detected: character-detail-profile-meta                                 better-tailwindcss/no-unknown-classes
+  331:26  error  Unknown class detected: close-button                                                  better-tailwindcss/no-unknown-classes
+  334:21  error  Unknown class detected: character-detail-body                                         better-tailwindcss/no-unknown-classes
+  335:27  error  Unknown class detected: character-detail-gallery                                      better-tailwindcss/no-unknown-classes
+  336:25  error  Unknown class detected: character-detail-section-heading                              better-tailwindcss/no-unknown-classes
+  340:25  error  Unknown class detected: character-detail-gallery-grid                                 better-tailwindcss/no-unknown-classes
+  342:29  error  Unknown class detected: character-detail-media                                        better-tailwindcss/no-unknown-classes
+  375:57  error  Unknown class detected: character-detail-gallery-empty                                better-tailwindcss/no-unknown-classes
+  378:27  error  Unknown class detected: character-detail-content                                      better-tailwindcss/no-unknown-classes
+  379:25  error  Unknown class detected: character-detail-section-heading                              better-tailwindcss/no-unknown-classes
+  383:23  error  Unknown class detected: character-detail-content-note                                 better-tailwindcss/no-unknown-classes
+  388:24  error  Unknown class detected: character-detail-footer                                       better-tailwindcss/no-unknown-classes
+  389:26  error  Unknown class detected: secondary-button                                              better-tailwindcss/no-unknown-classes
+  390:26  error  Unknown class detected: primary-button                                                better-tailwindcss/no-unknown-classes
+
+/home/runner/work/CharInfo-Manager/CharInfo-Manager/util/common.ts
+  113:13  error  There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  120:11  error  There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+
+✖ 768 problems (768 errors, 0 warnings)
+
+ ELIFECYCLE  Command failed with exit code 1.
+
+=== build tail ===
+ @ ./src/char_info_viewer_runtime/RuntimeRoot.vue 1:38-111 6:20-26 2:0-68 2:0-68
+ @ ./src/char_info_viewer_runtime/runtime.ts 9:0-44 589:28-39
+ @ ./src/char_info_viewer_runtime/index.ts 1:0-50 15:24-45
+
+[1m[31mERROR[39m[22m in [1m./src/char_info_viewer/components/illustrated/IllustratedItemCard.vue?vue&type=script&setup=true&lang=ts[39m[22m (./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer/components/illustrated/IllustratedItemCard.vue?vue&type=script&setup=true&lang=ts) [1m[32m[39m[22m
+[1m[tsl] [1m[31mERROR[39m[22m[1m
+      TS5101: Option 'baseUrl' is [1m[33mdeprecated[39m[22m[1m and will stop functioning in TypeScript 7.0. Specify compilerOption '"ignoreDeprecations": "6.0"' to silence this [1m[31merror[39m[22m[1m.
+  Visit https://aka.ms/ts6 for migration information.[39m[22m
+ @ ./src/char_info_viewer/components/illustrated/IllustratedItemCard.vue?vue&type=script&setup=true&lang=ts 1:38-746 1:38-746 1:747-1444 1:747-1444
+ @ ./src/char_info_viewer/components/illustrated/IllustratedItemCard.vue 1:38-119 7:49-55 2:0-76 2:0-76
+ @ ./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue?vue&type=script&setup=true&lang=ts 83:0-60 642:91-110 656:83-102 669:95-114 703:107-126 739:107-126 759:99-118
+ @ ./src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue?vue&type=script&setup=true&lang=ts 1:38-752 1:38-752 1:753-1456 1:753-1456
+ @ ./src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue 1:38-125 7:49-55 2:0-82 2:0-82
+ @ ./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer/App.vue?vue&type=script&setup=true&lang=ts 223:0-95 716:66-91
+ @ ./src/char_info_viewer/App.vue?vue&type=script&setup=true&lang=ts 1:38-706 1:38-706 1:707-1364 1:707-1364
+ @ ./src/char_info_viewer/App.vue 1:38-103 7:49-55 2:0-60 2:0-60
+ @ ./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer_runtime/RuntimeRoot.vue?vue&type=script&setup=true&lang=ts 105:0-52 577:64-73 958:70-79
+ @ ./src/char_info_viewer_runtime/RuntimeRoot.vue?vue&type=script&setup=true&lang=ts 1:38-714 1:38-714 1:715-1380 1:715-1380
+ @ ./src/char_info_viewer_runtime/RuntimeRoot.vue 1:38-111 6:20-26 2:0-68 2:0-68
+ @ ./src/char_info_viewer_runtime/runtime.ts 9:0-44 589:28-39
+ @ ./src/char_info_viewer_runtime/index.ts 1:0-50 15:24-45
+
+[1m[31mERROR[39m[22m in [1m./src/char_info_viewer/components/illustrated/IllustratedOverviewPanel.vue?vue&type=script&setup=true&lang=ts[39m[22m (./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer/components/illustrated/IllustratedOverviewPanel.vue?vue&type=script&setup=true&lang=ts) [1m[32m[39m[22m
+[1m[tsl] [1m[31mERROR[39m[22m[1m
+      TS5101: Option 'baseUrl' is [1m[33mdeprecated[39m[22m[1m and will stop functioning in TypeScript 7.0. Specify compilerOption '"ignoreDeprecations": "6.0"' to silence this [1m[31merror[39m[22m[1m.
+  Visit https://aka.ms/ts6 for migration information.[39m[22m
+ @ ./src/char_info_viewer/components/illustrated/IllustratedOverviewPanel.vue?vue&type=script&setup=true&lang=ts 1:38-751 1:38-751 1:752-1454 1:752-1454
+ @ ./src/char_info_viewer/components/illustrated/IllustratedOverviewPanel.vue 1:38-124 7:49-55 2:0-81 2:0-81
+ @ ./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue?vue&type=script&setup=true&lang=ts 84:0-70 567:62-86
+ @ ./src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue?vue&type=script&setup=true&lang=ts 1:38-752 1:38-752 1:753-1456 1:753-1456
+ @ ./src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue 1:38-125 7:49-55 2:0-82 2:0-82
+ @ ./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer/App.vue?vue&type=script&setup=true&lang=ts 223:0-95 716:66-91
+ @ ./src/char_info_viewer/App.vue?vue&type=script&setup=true&lang=ts 1:38-706 1:38-706 1:707-1364 1:707-1364
+ @ ./src/char_info_viewer/App.vue 1:38-103 7:49-55 2:0-60 2:0-60
+ @ ./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer_runtime/RuntimeRoot.vue?vue&type=script&setup=true&lang=ts 105:0-52 577:64-73 958:70-79
+ @ ./src/char_info_viewer_runtime/RuntimeRoot.vue?vue&type=script&setup=true&lang=ts 1:38-714 1:38-714 1:715-1380 1:715-1380
+ @ ./src/char_info_viewer_runtime/RuntimeRoot.vue 1:38-111 6:20-26 2:0-68 2:0-68
+ @ ./src/char_info_viewer_runtime/runtime.ts 9:0-44 589:28-39
+ @ ./src/char_info_viewer_runtime/index.ts 1:0-50 15:24-45
+
+[1m[31mERROR[39m[22m in [1m./src/char_info_viewer/components/illustrated/IllustratedPageTitle.vue?vue&type=script&setup=true&lang=ts[39m[22m (./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer/components/illustrated/IllustratedPageTitle.vue?vue&type=script&setup=true&lang=ts) [1m[32m[39m[22m
+[1m[tsl] [1m[31mERROR[39m[22m[1m
+      TS5101: Option 'baseUrl' is [1m[33mdeprecated[39m[22m[1m and will stop functioning in TypeScript 7.0. Specify compilerOption '"ignoreDeprecations": "6.0"' to silence this [1m[31merror[39m[22m[1m.
+  Visit https://aka.ms/ts6 for migration information.[39m[22m
+ @ ./src/char_info_viewer/components/illustrated/IllustratedPageTitle.vue?vue&type=script&setup=true&lang=ts 1:38-747 1:38-747 1:748-1446 1:748-1446
+ @ ./src/char_info_viewer/components/illustrated/IllustratedPageTitle.vue 1:38-120 7:49-55 2:0-77 2:0-77
+ @ ./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue?vue&type=script&setup=true&lang=ts 85:0-62 561:66-86
+ @ ./src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue?vue&type=script&setup=true&lang=ts 1:38-752 1:38-752 1:753-1456 1:753-1456
+ @ ./src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue 1:38-125 7:49-55 2:0-82 2:0-82
+ @ ./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer/App.vue?vue&type=script&setup=true&lang=ts 223:0-95 716:66-91
+ @ ./src/char_info_viewer/App.vue?vue&type=script&setup=true&lang=ts 1:38-706 1:38-706 1:707-1364 1:707-1364
+ @ ./src/char_info_viewer/App.vue 1:38-103 7:49-55 2:0-60 2:0-60
+ @ ./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer_runtime/RuntimeRoot.vue?vue&type=script&setup=true&lang=ts 105:0-52 577:64-73 958:70-79
+ @ ./src/char_info_viewer_runtime/RuntimeRoot.vue?vue&type=script&setup=true&lang=ts 1:38-714 1:38-714 1:715-1380 1:715-1380
+ @ ./src/char_info_viewer_runtime/RuntimeRoot.vue 1:38-111 6:20-26 2:0-68 2:0-68
+ @ ./src/char_info_viewer_runtime/runtime.ts 9:0-44 589:28-39
+ @ ./src/char_info_viewer_runtime/index.ts 1:0-50 15:24-45
+
+[1m[31mERROR[39m[22m in [1m./src/char_info_viewer/components/illustrated/IllustratedProfilePanel.vue?vue&type=script&setup=true&lang=ts[39m[22m (./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer/components/illustrated/IllustratedProfilePanel.vue?vue&type=script&setup=true&lang=ts) [1m[32m[39m[22m
+[1m[tsl] [1m[31mERROR[39m[22m[1m
+      TS5101: Option 'baseUrl' is [1m[33mdeprecated[39m[22m[1m and will stop functioning in TypeScript 7.0. Specify compilerOption '"ignoreDeprecations": "6.0"' to silence this [1m[31merror[39m[22m[1m.
+  Visit https://aka.ms/ts6 for migration information.[39m[22m
+ @ ./src/char_info_viewer/components/illustrated/IllustratedProfilePanel.vue?vue&type=script&setup=true&lang=ts 1:38-750 1:38-750 1:751-1452 1:751-1452
+ @ ./src/char_info_viewer/components/illustrated/IllustratedProfilePanel.vue 1:38-123 7:49-55 2:0-80 2:0-80
+ @ ./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue?vue&type=script&setup=true&lang=ts 86:0-68 595:74-97
+ @ ./src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue?vue&type=script&setup=true&lang=ts 1:38-752 1:38-752 1:753-1456 1:753-1456
+ @ ./src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue 1:38-125 7:49-55 2:0-82 2:0-82
+ @ ./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer/App.vue?vue&type=script&setup=true&lang=ts 223:0-95 716:66-91
+ @ ./src/char_info_viewer/App.vue?vue&type=script&setup=true&lang=ts 1:38-706 1:38-706 1:707-1364 1:707-1364
+ @ ./src/char_info_viewer/App.vue 1:38-103 7:49-55 2:0-60 2:0-60
+ @ ./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer_runtime/RuntimeRoot.vue?vue&type=script&setup=true&lang=ts 105:0-52 577:64-73 958:70-79
+ @ ./src/char_info_viewer_runtime/RuntimeRoot.vue?vue&type=script&setup=true&lang=ts 1:38-714 1:38-714 1:715-1380 1:715-1380
+ @ ./src/char_info_viewer_runtime/RuntimeRoot.vue 1:38-111 6:20-26 2:0-68 2:0-68
+ @ ./src/char_info_viewer_runtime/runtime.ts 9:0-44 589:28-39
+ @ ./src/char_info_viewer_runtime/index.ts 1:0-50 15:24-45
+
+[1m[31mERROR[39m[22m in [1m./src/char_info_viewer/components/illustrated/IllustratedTabNav.vue?vue&type=script&setup=true&lang=ts[39m[22m (./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer/components/illustrated/IllustratedTabNav.vue?vue&type=script&setup=true&lang=ts) [1m[32m[39m[22m
+[1m[tsl] [1m[31mERROR[39m[22m[1m
+      TS5101: Option 'baseUrl' is [1m[33mdeprecated[39m[22m[1m and will stop functioning in TypeScript 7.0. Specify compilerOption '"ignoreDeprecations": "6.0"' to silence this [1m[31merror[39m[22m[1m.
+  Visit https://aka.ms/ts6 for migration information.[39m[22m
+ @ ./src/char_info_viewer/components/illustrated/IllustratedTabNav.vue?vue&type=script&setup=true&lang=ts 1:38-744 1:38-744 1:745-1440 1:745-1440
+ @ ./src/char_info_viewer/components/illustrated/IllustratedTabNav.vue 1:38-117 7:49-55 2:0-74 2:0-74
+ @ ./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue?vue&type=script&setup=true&lang=ts 87:0-56 778:58-75 792:54-71
+ @ ./src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue?vue&type=script&setup=true&lang=ts 1:38-752 1:38-752 1:753-1456 1:753-1456
+ @ ./src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue 1:38-125 7:49-55 2:0-82 2:0-82
+ @ ./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer/App.vue?vue&type=script&setup=true&lang=ts 223:0-95 716:66-91
+ @ ./src/char_info_viewer/App.vue?vue&type=script&setup=true&lang=ts 1:38-706 1:38-706 1:707-1364 1:707-1364
+ @ ./src/char_info_viewer/App.vue 1:38-103 7:49-55 2:0-60 2:0-60
+ @ ./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer_runtime/RuntimeRoot.vue?vue&type=script&setup=true&lang=ts 105:0-52 577:64-73 958:70-79
+ @ ./src/char_info_viewer_runtime/RuntimeRoot.vue?vue&type=script&setup=true&lang=ts 1:38-714 1:38-714 1:715-1380 1:715-1380
+ @ ./src/char_info_viewer_runtime/RuntimeRoot.vue 1:38-111 6:20-26 2:0-68 2:0-68
+ @ ./src/char_info_viewer_runtime/runtime.ts 9:0-44 589:28-39
+ @ ./src/char_info_viewer_runtime/index.ts 1:0-50 15:24-45
+
+[1m[31mERROR[39m[22m in [1m./src/char_info_viewer_runtime/RuntimeRoot.vue?vue&type=script&setup=true&lang=ts[39m[22m (./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer_runtime/RuntimeRoot.vue?vue&type=script&setup=true&lang=ts) [1m[32m[39m[22m
+[1m[tsl] [1m[31mERROR[39m[22m[1m
+      TS5101: Option 'baseUrl' is [1m[33mdeprecated[39m[22m[1m and will stop functioning in TypeScript 7.0. Specify compilerOption '"ignoreDeprecations": "6.0"' to silence this [1m[31merror[39m[22m[1m.
+  Visit https://aka.ms/ts6 for migration information.[39m[22m
+ @ ./src/char_info_viewer_runtime/RuntimeRoot.vue?vue&type=script&setup=true&lang=ts 1:38-714 1:38-714 1:715-1380 1:715-1380
+ @ ./src/char_info_viewer_runtime/RuntimeRoot.vue 1:38-111 6:20-26 2:0-68 2:0-68
+ @ ./src/char_info_viewer_runtime/runtime.ts 9:0-44 589:28-39
+ @ ./src/char_info_viewer_runtime/index.ts 1:0-50 15:24-45
+
+[1m[31mERROR[39m[22m in [1m./src/char_info_viewer_runtime/WorldbookCharacterLibrary.vue?vue&type=script&setup=true&lang=ts[39m[22m (./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer_runtime/WorldbookCharacterLibrary.vue?vue&type=script&setup=true&lang=ts) [1m[32m[39m[22m
+[1m[tsl] [1m[31mERROR[39m[22m[1m
+      TS5101: Option 'baseUrl' is [1m[33mdeprecated[39m[22m[1m and will stop functioning in TypeScript 7.0. Specify compilerOption '"ignoreDeprecations": "6.0"' to silence this [1m[31merror[39m[22m[1m.
+  Visit https://aka.ms/ts6 for migration information.[39m[22m
+ @ ./src/char_info_viewer_runtime/WorldbookCharacterLibrary.vue?vue&type=script&setup=true&lang=ts 1:38-728 1:38-728 1:729-1408 1:729-1408
+ @ ./src/char_info_viewer_runtime/WorldbookCharacterLibrary.vue 1:38-125 7:49-55 2:0-82 2:0-82
+ @ ./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-vue-components!./node_modules/.pnpm/unplugin@3.3.0_webpack@5.109.2/node_modules/unplugin/dist/webpack/loaders/transform.mjs??unplugin-auto-import!./node_modules/.pnpm/ts-loader@9.6.2_loader-utils@1.4.2_typescript@6.0.3_webpack@5.109.2/node_modules/ts-loader/index.js??clonedRuleSet-10!./node_modules/.pnpm/vue-loader@17.4.2_@vue+compiler-sfc@3.5.41_vue@3.5.41_typescript@6.0.3__webpack@5.109.2/node_modules/vue-loader/dist/index.js??ruleSet[1].rules[6].use[0]!./src/char_info_viewer_runtime/RuntimeRoot.vue?vue&type=script&setup=true&lang=ts 106:0-72 600:58-83
+ @ ./src/char_info_viewer_runtime/RuntimeRoot.vue?vue&type=script&setup=true&lang=ts 1:38-714 1:38-714 1:715-1380 1:715-1380
+ @ ./src/char_info_viewer_runtime/RuntimeRoot.vue 1:38-111 6:20-26 2:0-68 2:0-68
+ @ ./src/char_info_viewer_runtime/runtime.ts 9:0-44 589:28-39
+ @ ./src/char_info_viewer_runtime/index.ts 1:0-50 15:24-45
+
+[1m[33m49 errors have detailed information that is not shown.
+Use 'stats.errorDetails: true' resp. '--stats-error-details' to show it.[39m[22m
+
+webpack 5.109.2 compiled with [1m[31m49 errors[39m[22m in 7579 ms
+ ELIFECYCLE  Command failed with exit code 1.
