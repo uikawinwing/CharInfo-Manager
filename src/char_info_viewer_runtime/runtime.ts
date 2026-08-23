@@ -23,7 +23,6 @@ import {
 import type { ViewerSaveFeedback } from '../char_info_viewer/types';
 import type { RuntimeMessageView, RuntimeViewState } from './types';
 
-const MAX_CARDS_PER_MESSAGE = 4;
 const DIRTY_BATCH_SIZE = 3;
 const DIRTY_FLUSH_DELAY_MS = 20;
 const REMOUNT_LOOP_GUARD_MS = 3000;
@@ -79,6 +78,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   });
   const mountedMessages = new Map<number, MountedMessage>();
   const remountAttempts = new Map<number, RemountAttempt>();
+  const overflowWarnings = new Map<number, string>();
   const activeFloorIds = new Set<number>();
   const dirtyMessageIds = new Set<number>();
   const eventStops: Array<() => void> = [];
@@ -285,6 +285,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   const updateSettings = (value: CharInfoUiSettings): CharInfoUiSettings => {
     const nextSettings = normalizeRuntimeSettings(value);
     state.settings.activeFloorLimit = nextSettings.activeFloorLimit;
+    state.settings.maxCardsPerMessage = nextSettings.maxCardsPerMessage;
+    state.settings.unlimitedCardsPerMessage = nextSettings.unlimitedCardsPerMessage;
     state.settings.effectsEnabled = nextSettings.effectsEnabled;
     state.settings.forceMobileLayout = nextSettings.forceMobileLayout;
     state.settings.debugEnabled = nextSettings.debugEnabled;
@@ -363,6 +365,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   const clearMessages = () => {
     Array.from(mountedMessages.keys()).forEach(removeMessage);
     remountAttempts.clear();
+    overflowWarnings.clear();
     activeFloorIds.clear();
     dirtyMessageIds.clear();
   };
@@ -406,17 +409,28 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       return;
     }
 
+    const maxCards = state.settings.unlimitedCardsPerMessage
+      ? Number.MAX_SAFE_INTEGER
+      : state.settings.maxCardsPerMessage;
     const projection = projectCharInfoMessage({
       messageId,
       swipeId: source.swipeId,
       text: source.message.message,
-      maxCards: MAX_CARDS_PER_MESSAGE,
+      maxCards,
     });
     if (projection.overflow) {
+      const warningSignature = `${source.swipeId}:${state.settings.maxCardsPerMessage}:${source.message.message}`;
+      if (overflowWarnings.get(messageId) !== warningSignature) {
+        overflowWarnings.set(messageId, warningSignature);
+        toastr.warning(
+          `第 ${messageId} 楼的 CharInfo 数量超过当前上限 ${state.settings.maxCardsPerMessage}，因此该楼层暂不渲染。可在「查看器设置」提高「每个消息楼层最多支持」或开启「不限单楼层数量」。`,
+        );
+      }
       console.warn(`[CharInfo Runtime] 第 ${messageId} 楼包含过多 char_info，已保留原始消息。`);
       removeMessage(messageId);
       return;
     }
+    overflowWarnings.delete(messageId);
     if (projection.cards.length === 0) {
       removeMessage(messageId);
       return;

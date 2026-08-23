@@ -75,6 +75,8 @@ test('图片源优先级随既有 char_info_runtime.settings 持久化，且保�
 
   assert.deepEqual(readRuntimeSettings(merged), {
     activeFloorLimit: 8,
+    maxCardsPerMessage: 4,
+    unlimitedCardsPerMessage: false,
     effectsEnabled: false,
     forceMobileLayout: false,
     debugEnabled: false,
