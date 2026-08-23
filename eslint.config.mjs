@@ -28,6 +28,8 @@ export default [
       ...eslintPluginBetterTailwindcss.configs['recommended-error'].rules,
       'better-tailwindcss/enforce-consistent-line-wrapping': ['off', { preferSingleLine: true, printWidth: 120 }],
       'better-tailwindcss/no-unregistered-classes': ['off', { ignore: ['fa-*'] }],
+      'better-tailwindcss/no-unknown-classes': 'off',
+      'better-tailwindcss/no-concatenated-classes': 'off',
     },
     settings: {
       'better-tailwindcss': {
@@ -74,6 +76,12 @@ export default [
       yoda: 'error',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
+    },
+  },
+  {
+    files: ['util/common.ts'],
+    rules: {
+      'preserve-caught-error': 'off',
     },
   },
   {
