@@ -1,0 +1,45 @@
+name: dependency_sync_check
+
+on:
+  push:
+    branches:
+      - chore/template-dependency-update-clean
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Test
+        run: pnpm test
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+      - name: Commit resolved lockfile
+        uses: EndBug/add-and-commit@v9.1.3
+        with:
+          add: pnpm-lock.yaml
+          default_author: github_actions
+          message: '[bot] resolve dependency lockfile'
