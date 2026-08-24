@@ -57,6 +57,26 @@
     </section>
 
     <section class="gallery-storage-panel">
+      <div class="panel-heading">
+        <h3>远程视觉资料</h3>
+        <p>填写 ImgBed 的固定 CharInfo URL 后，远端 Visual Pack 会成为运行时主视觉；下方本地资料只作为断线 fallback。</p>
+      </div>
+      <label class="field">
+        <span class="field-label">Visual Remote URL <small>选填</small></span>
+        <input
+          :value="visualRemoteUrl"
+          type="url"
+          inputmode="url"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="https://…/api/public/charinfo/<uuid>"
+          @input="emit('update:visualRemoteUrl', ($event.target as HTMLInputElement).value)"
+        />
+        <small>只接受 HTTPS。留空时完全使用本地 EJS 视觉资料；远端读取不会写回聊天变量或世界书。</small>
+      </label>
+    </section>
+
+    <section class="gallery-storage-panel">
       <label class="gallery-storage-toggle">
         <input :checked="useExtendedGallery" type="checkbox" @change="onExtendedGalleryToggle" />
         <span>
@@ -308,6 +328,7 @@ import {
 const props = defineProps<{
   avatarUrl: string;
   coverUrl: string;
+  visualRemoteUrl: string;
   useExtendedGallery: boolean;
   galleryPackWorldbookName: string;
   galleryPackId: string;
@@ -325,6 +346,7 @@ const gallery = defineModel<EditableGalleryImage[]>('gallery', { required: true 
 const emit = defineEmits<{
   'update:avatarUrl': [value: string];
   'update:coverUrl': [value: string];
+  'update:visualRemoteUrl': [value: string];
   'update:useExtendedGallery': [value: boolean];
   'update:galleryPackWorldbookName': [value: string];
   'update:galleryPackId': [value: string];
