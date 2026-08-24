@@ -34,6 +34,7 @@ export interface CharacterVisualProfile {
   entranceQuote: string;
   gallery: GalleryImage[];
   galleryExtension?: GalleryExtensionReference;
+  visualRemoteUrl?: string;
   metadata?: CharacterProfileMetadata;
 }
 
@@ -45,8 +46,12 @@ type StoredGalleryImage = {
   viewer_visible?: unknown;
 };
 
-type StoredCharacterVisualProfile = Omit<CharacterVisualProfile, 'gallery' | 'metadata' | 'coverUrl'> & {
+type StoredCharacterVisualProfile = Omit<
+  CharacterVisualProfile,
+  'gallery' | 'metadata' | 'coverUrl' | 'visualRemoteUrl'
+> & {
   coverUrl?: unknown;
+  visualRemoteUrl?: unknown;
   gallery: StoredGalleryImage[];
   metadata?: unknown;
 };
@@ -208,8 +213,12 @@ export function validateProfile(profile: CharacterVisualProfile): string[] {
   validateEjsSafeText(errors, '头像 URL', profile.avatarUrl);
   validateEjsSafeText(errors, '封面 URL', profile.coverUrl);
   validateEjsSafeText(errors, '登场台词', profile.entranceQuote);
+  if (profile.visualRemoteUrl) validateEjsSafeText(errors, '远程视觉 URL', profile.visualRemoteUrl);
   if (profile.avatarUrl.trim() && !isHttpsUrl(profile.avatarUrl)) errors.push('头像必须使用有效的 HTTPS URL。');
   if (profile.coverUrl.trim() && !isHttpsUrl(profile.coverUrl)) errors.push('角色库封面必须使用有效的 HTTPS URL。');
+  if (profile.visualRemoteUrl?.trim() && !isHttpsUrl(profile.visualRemoteUrl)) {
+    errors.push('远程视觉资料必须使用有效的 HTTPS URL。');
+  }
   if (profile.avatarUrl.trim() && isHttpsUrl(profile.avatarUrl) && !isSupportedRemoteImageUrl(profile.avatarUrl)) {
     errors.push('头像只支持 PNG / JPG / JPEG / GIF / APNG / WebP / AVIF 图片直链。');
   }
@@ -266,6 +275,7 @@ export function normalizeProfile(
   profile: CharacterVisualProfile | StoredCharacterVisualProfile,
 ): CharacterVisualProfile {
   const galleryExtension = normalizeGalleryExtensionReference(profile.galleryExtension);
+  const visualRemoteUrl = typeof profile.visualRemoteUrl === 'string' ? profile.visualRemoteUrl.trim() : '';
   const metadata = normalizeProfileMetadata(profile.metadata);
   return {
     characterName: profile.characterName.trim(),
@@ -284,6 +294,7 @@ export function normalizeProfile(
         : {}),
     })),
     ...(galleryExtension ? { galleryExtension } : {}),
+    ...(visualRemoteUrl ? { visualRemoteUrl } : {}),
     ...(metadata ? { metadata } : {}),
   };
 }
@@ -472,6 +483,7 @@ export function buildManagedEjsBlock(input: CharacterVisualProfile): string {
   lines.push('', '  const npcName = profile.characterName;', '');
   lines.push('  setLocalVar(`char_info.profiles[${JSON.stringify(npcName)}]`, {');
   lines.push(`    schema_version: ${CHAR_INFO_PROFILE_SCHEMA_VERSION},`);
+  lines.push('    ...(profile.visualRemoteUrl ? { visual_remote_url: profile.visualRemoteUrl } : {}),');
   lines.push('    ...(profile.coverUrl ? { cover_url: profile.coverUrl } : {}),');
   lines.push('    ...(profile.raceColor ? { custom_racecolor: profile.raceColor } : {}),');
   lines.push('    ...(profile.tierColor ? { custom_tiercolor: profile.tierColor } : {}),');
