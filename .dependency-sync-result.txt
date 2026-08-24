@@ -1,0 +1,292 @@
+install=success
+test=success
+lint=success
+build=success
+node=v24.19.0
+pnpm=10.34.5
+
+=== install tail ===
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +868
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 868, reused 0, downloaded 83, added 44
+Progress: resolved 868, reused 0, downloaded 264, added 214
+Progress: resolved 868, reused 0, downloaded 609, added 598
+Progress: resolved 868, reused 0, downloaded 868, added 868, done
+.../node_modules/@parcel/watcher install$ node scripts/build-from-source.js
+.../node_modules/unrs-resolver postinstall$ node postinstall.js
+.../node_modules/vue-demi postinstall$ node -e "try{require('./scripts/postinstall.js')}catch(e){}"
+.../node_modules/@parcel/watcher install: Done
+.../node_modules/unrs-resolver postinstall: Done
+.../node_modules/vue-demi postinstall: Done
+
+dependencies:
++ @pixi/react 8.0.5
++ @vueuse/components 14.4.0
++ @vueuse/core 14.4.0
++ @vueuse/integrations 14.4.0
++ @vueuse/shared 14.4.0
++ async-wait-until 2.0.31
++ compare-versions 6.1.1
++ dedent 1.7.2
++ gsap 3.15.0
++ jquery 4.0.0
++ jqueryui 1.11.1
++ js-yaml 4.3.1
++ json5 2.2.3
++ jsonrepair 3.15.0
++ klona 2.0.6
++ lodash 4.18.1
++ pinia 3.0.4
++ pixi.js 8.20.0
++ react 19.2.8
++ react-dom 19.2.8
++ toastr 2.1.4
++ vue 3.5.41
++ vue-final-modal 4.5.5
++ vue-router 5.2.0
++ vue-word-highlighter 1.2.6
++ vue3-pixi 1.0.1
++ yaml 2.9.0
++ zod 4.4.3
+
+devDependencies:
++ @eslint/js 10.0.1
++ @tailwindcss/postcss 4.3.3
++ @types/jquery 4.0.1
++ @types/jqueryui 1.12.24
++ @types/js-yaml 4.0.9
++ @types/lodash 4.17.25
++ @types/react 19.2.18
++ @types/react-dom 19.2.4
++ @types/showdown 2.0.6
++ @types/toastr 2.1.44
++ @types/webpack 5.28.5
++ @typescript-eslint/parser 8.67.0
++ autoprefixer 10.5.4
++ chokidar 5.0.0
++ css-loader 7.1.4
++ eslint 10.9.0
++ eslint-config-prettier 10.1.8
++ eslint-import-resolver-typescript 4.4.5
++ eslint-plugin-better-tailwindcss 4.7.0
++ eslint-plugin-import-x 4.17.1
++ eslint-plugin-pinia 0.4.2
++ eslint-plugin-vue 10.10.0
++ eslint-webpack-plugin 6.0.0
++ globals 17.11.0
++ html-inline-css-loader 0.2.1
++ html-inline-css-webpack-plugin 1.11.2
++ html-inline-script-webpack-plugin 3.2.1
++ html-loader 5.1.0
++ html-webpack-inline-svg-plugin 2.3.0
++ html-webpack-plugin 5.6.8
++ javascript-obfuscator 5.6.0
++ mini-css-extract-plugin 2.10.2
++ postcss 8.5.26
++ postcss-cli 11.0.1
++ postcss-load-config 6.0.1
++ postcss-loader 8.2.1
++ postcss-minify 1.2.0
++ prettier 3.9.6
++ remark 15.0.1
++ remark-html 16.0.1
++ remark-loader 6.0.0
++ sass 1.103.1
++ sass-loader 17.0.0
++ socket.io 4.8.3
++ style-loader 4.0.0
++ tailwindcss 4.3.3
++ terser-webpack-plugin 5.6.1
++ ts-loader 9.6.2
++ ts-node 10.9.2
++ tsconfig-paths-webpack-plugin 4.2.0
++ tslib 2.8.1
++ type-fest 5.8.0
++ typescript 6.0.3
++ typescript-eslint 8.67.0
++ unplugin-auto-import 21.1.0
++ unplugin-vue-components 32.1.0
++ vue-eslint-parser 10.4.1
++ vue-loader 17.4.2
++ vue-style-loader 4.1.3
++ webpack 5.109.2
++ webpack-cli 7.2.2
++ webpack-obfuscator 3.6.1
++ yaml-loader 0.9.0
+
+Done in 5.3s using pnpm v10.34.5
+
+=== test tail ===
+✔ 暂时兼容的 char_info_visuals 同名资料仍可授予 Special NPC，并标记迁移来源 (0.29033ms)
+✔ 历史 char_info.visual / char_info.visuals 路径只按精确姓名兼容 Special NPC (0.587822ms)
+✔ status external gallery 单独存在时不得授予 Special NPC (0.176999ms)
+✔ 旧版视觉兼容继续复用解析 warning 样式，并明确提示迁移与停止维护风险 (0.713025ms)
+✔ Special NPC 沿用有立绘页面，并将导航作为桌面右侧栏和移动底栏 (17.973308ms)
+✔ Special NPC 手机卡片使用 2:3 固定比例，技能沿用紧凑但可读的移动排版 (7.494666ms)
+✔ Special NPC 档案隐藏属性与资源，持有沿用技能的紧凑行式布局 (4.158498ms)
+✔ Special NPC 手机首页将台词与资料直接叠在立绘渐变上，不保留双层矩形卡 (1.609341ms)
+✔ Special NPC 手机详情沿用当前立绘静态快照，并把 Save 收进六项底栏右侧操作位 (2.418865ms)
+✔ Special NPC 把装备与背包合并为持有，并把资源集中到第二项角色面板 (4.681298ms)
+✔ Special NPC 手机登神页使用紧凑分隔行 (2.47569ms)
+✔ App 在 Special NPC 分支复用有立绘页面，而不是挂载独立空壳 (2.774034ms)
+✔ Special NPC 档案只在有自定义故事时显示资料/故事二级切换，并保持六项主导航 (1.193518ms)
+✔ 自定义故事严格使用 metadata story sections 和作者署名，不在故事视图重复原始 backstory (0.256366ms)
+✔ 作者、版本和作者说明在资料页使用独立作者信息块，不混入角色设定卡 (0.248472ms)
+✔ 没有自定义故事时不显示二级切换，并把原始背景故事作为档案 fallback (0.291582ms)
+✔ Special NPC 故事页复用 detail panels 整页滚动，并提供 mobile 可读排版 (0.52192ms)
+✔ 手动 MVU 导入写回卡片所属消息楼层而不是 latest (1.101737ms)
+✔ Viewer 只读取 CharInfo 视觉资料，状态栏只接收单向相簿与头像投影 (0.354479ms)
+✔ MVU 更新会刷新角色库与聊天视觉卡，资料始终重新读取最新作用域 (0.690953ms)
+✔ Creator 首屏优先打开 Viewer 指定的世界书与条目，所有世界书切换路径共用单次读取 (0.560401ms)
+✔ 快速切换世界书时只采纳最新条目请求，过期成功或失败不得覆盖结果或结束加载 (0.364748ms)
+✔ 聊天 DOM 观察器使用 SillyTavern 宿主页的构造器，避免 iframe realm 失配 (0.181868ms)
+✔ 聊天 DOM 观察器在无已挂载卡片时先于 mutations 遍历返回 (0.282655ms)
+✔ viewer requires immutable YAML and message context from the script host (1.281942ms)
+✔ viewer scopes theme variables to its own card root (0.163895ms)
+✔ multiple cards do not repeat static viewer element ids in the host document (0.296561ms)
+✔ vNext runtime mounts cards from raw message text before display formatting (0.613139ms)
+✔ runtime replaces an older loaded instance without refreshing native messages (0.17239ms)
+✔ runtime mutation observer skips all mutation traversal until a card is mounted (0.280642ms)
+✔ runtime stops repeated remounts and detects editing at the message boundary (0.239024ms)
+✔ runtime restores native message display only after a real script stop (0.233584ms)
+✔ 自动解析会补上顶格块标量缩进 (13.004325ms)
+✔ 自动修复能补上顶格块标量缩进并保留完整结构 (2.897053ms)
+✔ 修补只改动缺缩进的块内容行 (0.362654ms)
+✔ 缩进正常的资料不会被修补改动 (1.657059ms)
+✔ 多行顶格块内容整段归入块标量而不吞掉后续键 (0.814483ms)
+✔ 列表项内块标量缺缩进同样可修复 (0.840722ms)
+✔ 同一资料列表内漂移的命名条目会对齐并完整保留 (0.991773ms)
+✔ 命名列表项的兄弟字段缩进漂移时会统一到字段层级 (0.814393ms)
+✔ 内联多行文本溢出时升级为块标量并保留后续复杂结构 (0.891026ms)
+✔ 普通字段值含第二个映射冒号时加引号且不误伤 URL (1.046044ms)
+✔ 双冒号修补不会改写块标量内的正文 (0.376409ms)
+✔ 列表字段内已有嵌套对象时不会被拉平成兄弟字段 (0.374186ms)
+✔ 无法修补的资料仍回退到宽松提取 (1.014225ms)
+✔ 自动兼容不会改写块标量正文中的方括号或 Tab (0.264351ms)
+✔ 合法数组、数字和日期样式扩展字段保持原有数据类型 (1.16753ms)
+✔ 进入自动兼容路径后仍保留数字和合法数组类型 (0.582262ms)
+✔ 根节点为数组或标量时拒绝解析 (0.654035ms)
+✔ 自动解析失败后，手动读取只抢救基础资料 (0.62467ms)
+✔ Viewer 与 Creator 合并为一个脚本 entry，但内部模块仍保持分离 (1.454583ms)
+✔ 单脚本通信不再依赖 host window bridge (0.436141ms)
+✔ Viewer 与 Creator 共用一个脚本，但 Viewer 只依赖窄 Creator controller (1.413857ms)
+✔ 当前聊天与世界书角色库由 Viewer 独立切换，不依赖 Creator 状态 (0.383352ms)
+✔ Creator overlay 保持独立 iframe，但生命周期由同 bundle controller 管理 (0.458953ms)
+✔ 关闭 Creator 会真正卸载 Vue、样式和 iframe，不留下常驻 Editor (0.294548ms)
+✔ Creator Manager 样式不修改 ST 宿主页的 html 或 body (0.439748ms)
+✔ Creator 桌面编辑器保持固定窗口高度，步骤内容只在内部滚动 (0.392389ms)
+✔ 当前聊天资料库和设置宿主明确使用动态视口尺寸，避免 ST 移动端 html 高度为零 (0.49526ms)
+✔ 当前聊天资料库由悬浮入口打开角色列表，并完整显示角色立绘 (1.301268ms)
+✔ 角色详情是在聊天上方可拖动的非模态窗口，不显示开发说明 (0.659455ms)
+✔ 当前聊天角色库不再注册旧脚本按钮，并按角色清除好感度未读状态 (0.445538ms)
+✔ 主运行脚本会移除已经失效的旧角色视觉编辑按钮 (0.240507ms)
+(node:2725) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/CharInfo-Manager/CharInfo-Manager/src/char_info_viewer_runtime/currentCharacterLibrary.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/runner/work/CharInfo-Manager/CharInfo-Manager/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 当前角色资料库只读取最新消息 MVU 的关系列表 (2.743838ms)
+✔ 只把既有角色实际发生的好感度变化标记为未读 (0.404712ms)
+✔ 查看器资料保留当前快照，并把 MVU 外貌/着装字段转换为 Viewer 字段 (0.683941ms)
+✔ 资料库列表优先使用 avatarUrl 图片，并保留无头像时的姓名首字回退 (22.168784ms)
+✔ 手动刷新会重读变量并强制重挂当前 CharInfo floors (19.824918ms)
+✔ Creator 即时写入当前 draft 时强校验 CharInfo、状态栏相簿与头像，并复用同一 Force Refresh callback (2.488283ms)
+✔ 从世界书角色库进入 Creator 时提供直接返回角色库的回调 (3.71869ms)
+✔ Debug 模式从运行时设置传入 Viewer 与 Creator，并默认不输出日志 (1.639606ms)
+✔ Debug 日志覆盖尝试、失败、超时、切换、成功与全部失败 (0.416715ms)
+(node:2744) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/CharInfo-Manager/CharInfo-Manager/src/char_info_viewer_runtime/runtimeSettings.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/runner/work/CharInfo-Manager/CharInfo-Manager/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 强制移动布局默认关闭，非法值安全归一化为关闭 (3.587125ms)
+✔ 强制移动布局随运行时设置持久化 (0.976795ms)
+✔ 设置开关和角色库强制移动布局沿用 720px 布局契约 (1.301629ms)
+✔ 玩家世界书库与独立 Creator 编辑器都接收强制移动布局设置 (0.889583ms)
+✔ 强制移动布局复用 Viewer 与 Special NPC 的同一套移动版式规则 (0.958081ms)
+✔ 手机角色详情顶部只展示信息，操作移至底部安全区 (0.918517ms)
+✔ 手机角色详情把资料分页固定在三键栏上方，并在首页首屏显示姓名块 (1.416833ms)
+(node:2755) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/CharInfo-Manager/CharInfo-Manager/src/char_info_viewer/services/imageSourcePriority.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/runner/work/CharInfo-Manager/CharInfo-Manager/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 按用户域名优先级稳定重排同一图片的镜像来源 (2.504013ms)
+✔ 无匹配时保留作者原顺序，且不重排不同图片 (0.426964ms)
+✔ 完整 URL 会提取 hostname，域名规则可匹配子域名并丢弃无效模式 (0.811598ms)
+✔ 图片源优先级随既有 char_info_runtime.settings 持久化，且保留其他脚本数据 (3.434763ms)
+✔ 旧版已填写优先级会自动保持启用，空设置使用关闭的推荐示例 (1.015798ms)
+✔ 图片来源优先级使用开关和逐项表单，不暴露自由文本配置 (0.485572ms)
+✔ migrates legacy status galleries without deleting the old data (2.730434ms)
+✔ does not overwrite an existing CharInfo profile (0.343739ms)
+✔ leaves an unrecognized existing profile value untouched (0.250045ms)
+✔ adds a gallery to an existing profile without replacing its visual fields (0.334812ms)
+✔ Viewer Runtime 不再执行 legacy gallery 迁移或写回聊天变量 (0.830594ms)
+✔ 手机版普通角色详情由 Viewer 根节点接管纵向滚动 (1.510386ms)
+✔ Special NPC 保持固定视口，不被普通卡滚动补丁接管 (0.271514ms)
+✔ 桌面 Force Mobile 普通卡从顶部开始滚动，避免居中导致顶部内容不可达 (0.249103ms)
+(node:2776) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/CharInfo-Manager/CharInfo-Manager/src/char_info_viewer_runtime/runtimeSettings.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/runner/work/CharInfo-Manager/CharInfo-Manager/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 运行时设置使用稳定默认值并修复越界输入 (8.010385ms)
+✔ 悬浮角色按钮位置作为脚本 UI 偏好独立保存 (1.007542ms)
+✔ 运行时设置只读写脚本变量命名空间，并保留其他脚本数据 (0.549301ms)
+ℹ tests 300
+ℹ suites 0
+ℹ pass 300
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7261.927955
+
+=== lint tail ===
+
+> @ lint /home/runner/work/CharInfo-Manager/CharInfo-Manager
+> eslint
+
+
+=== build tail ===
+
+> @ build /home/runner/work/CharInfo-Manager/CharInfo-Manager
+> webpack --mode production
+
+[36m[schema_dump][0m 已将所有 schema.ts 转换为 schema.json
+[36m[tavern_sync][0m 已打包所有配置了的角色卡/世界书/预设
+(node:2839) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/CharInfo-Manager/CharInfo-Manager/webpack.config.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/runner/work/CharInfo-Manager/CharInfo-Manager/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+asset [1m[33mindex.js[39m[22m [1m[33m952 KiB[39m[22m [1m[32m[emitted][39m[22m [javascript module] [1m[32m[minimized][39m[22m [1m[33m[big][39m[22m (name: main) 1 related asset
+orphan modules 819 KiB [1m[33m[orphan][39m[22m 104 modules
+runtime modules 1.6 KiB 6 modules
+built modules 1.48 MiB [1m[33m[built][39m[22m
+  modules by path [1m./src/char_info_viewer/[39m[22m 358 KiB
+    modules by path [1m./src/char_info_viewer/components/illustrated/*.vue[39m[22m 248 KiB 18 modules
+    modules by path [1m./src/char_info_viewer/*.vue[39m[22m 110 KiB 2 modules
+  modules by path [1m./src/char_info_viewer_runtime/[39m[22m 1.02 MiB
+    modules by path [1m./src/char_info_viewer_runtime/*.vue[39m[22m 222 KiB 4 modules
+    + 2 modules
+  modules by path [1m./src/char_info_creator_manager/[39m[22m 107 KiB
+    modules by path [1m./src/char_info_creator_manager/*.vue[39m[22m 83.3 KiB 2 modules
+    modules by path [1m./src/char_info_creator_manager/components/*.vue[39m[22m 23.6 KiB 2 modules
+  modules by path [1m./node_modules/.pnpm/[39m[22m 9.45 KiB
+    [1m./node_modules/.pnpm/css-loader@7.1.4_webpack@5.109.2/node_modules/css-loader/di...(truncated)[39m[22m 505 bytes [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+    + 2 modules
+
+[1m[33mWARNING[39m[22m in [1masset size limit: The following asset(s) exceed the recommended size limit (244 KiB).
+This can impact web performance.
+Assets: 
+  index.js (952 KiB)[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mentrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (244 KiB). This can impact web performance.
+Entrypoints:
+  main (952 KiB)
+      index.js
+[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mwebpack performance recommendations: 
+You can limit the size of your bundles by using import() or require.ensure to lazy load some parts of your application.
+For more info visit https://webpack.js.org/guides/code-splitting/[39m[22m
+
+webpack 5.109.2 compiled with [1m[33m3 warnings[39m[22m in 7306 ms

@@ -1601,6 +1601,7 @@ async function saveToEntry() {
             `${error instanceof Error ? error.message : String(error)}；扩展图库恢复失败：${
               rollbackError instanceof Error ? rollbackError.message : String(rollbackError)
             }`,
+            { cause: rollbackError },
           );
         }
       }

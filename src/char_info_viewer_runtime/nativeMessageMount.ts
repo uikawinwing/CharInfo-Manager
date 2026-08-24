@@ -1,18 +1,44 @@
 import type { CharInfoCardPart } from '../char_info_viewer/runtime/charInfoMessage';
 
-const SLOT_TOKEN_PREFIX = 'CHARINFOVIEWERSLOT';
-const RUNTIME_HOST_SELECTOR = '[data-char-info-runtime-owned="1"][data-char-info-card-id]';
-const TAVERN_HELPER_RENDER_SELECTOR = 'div.TH-render';
-const TAVERN_HELPER_FRONTEND_MARKERS = ['html>', '<head>', '<body'] as const;
+export const BLOCKED_NATIVE_SCOPE_SELECTOR = [
+  '.TH-render',
+  '.TH-streaming',
+  'iframe',
+  'pre',
+  'code',
+  'script',
+  'style',
+  'textarea',
+  'think',
+  'thinking',
+  '[data-st-thinking]',
+  '[data-st-thoughts]',
+  '[data-reasoning]',
+  '.thinking',
+  '.think',
+  '.thoughts',
+  '.mes_reasoning_details',
+  '.mes_reasoning_summary',
+  '.mes_reasoning_header',
+  '.mes_reasoning',
+  '.mes_thoughts',
+  '.char-info-runtime-host',
+  '[data-char-info-runtime-owned]',
+  '[data-char-info]',
+  '.abby-card-shell',
+  '[data-abby-foreign="1"]',
+].join(',');
 
-export type CharInfoCardSlot = {
-  cardId: string;
-  token: string;
+type TextOffset = {
+  nodeIndex: number;
+  offset: number;
 };
 
-export type PreparedCharInfoMessage = {
-  source: string;
-  slots: CharInfoCardSlot[];
+export type TextRangeMatch = {
+  startNodeIndex: number;
+  startOffset: number;
+  endNodeIndex: number;
+  endOffset: number;
 };
 
 export type MountedNativeCardHost = {
@@ -20,191 +46,187 @@ export type MountedNativeCardHost = {
   restore(): void;
 };
 
-type PreservedTavernHelperRender = {
-  element: HTMLElement;
-  originalMarker: Comment;
+type CollapsedTextRangeMatch = TextRangeMatch & {
+  collapsedStart: number;
+  collapsedEnd: number;
 };
 
-type PreparedMountedContent = {
-  mountedContent: DocumentFragment;
-  rollbackContent: DocumentFragment;
-  preservedRenders: PreservedTavernHelperRender[];
-};
-
-function createSlotToken(source: string, card: CharInfoCardPart, index: number): string {
-  const fingerprint = card.renderKey.replace(/[^a-z0-9]/gi, '').toUpperCase();
-  let token = `${SLOT_TOKEN_PREFIX}${fingerprint}X${index}END`;
-  while (source.includes(token)) token += 'X';
-  return token;
+function normalizeRenderedBoundary(text: string): string {
+  return text
+    .split(/\r?\n/)
+    .map(line => line.replace(/^\s*[-+*]\s+/, ''))
+    .join('')
+    .replace(/\s+/g, '');
 }
 
-export function buildRawMessageWithCardSlots(
-  source: string,
-  cards: readonly CharInfoCardPart[],
-): PreparedCharInfoMessage | null {
-  let cursor = 0;
-  let tokenizedSource = '';
-  const slots: CharInfoCardSlot[] = [];
+function findCollapsedTextOccurrence(
+  chunks: readonly string[],
+  needle: string,
+  fromCollapsedIndex = 0,
+): CollapsedTextRangeMatch | null {
+  const collapsedNeedle = normalizeRenderedBoundary(needle);
+  if (!collapsedNeedle) return null;
 
-  for (const [index, card] of cards.entries()) {
-    const start = card.sourceStart;
-    const end = card.sourceEnd;
-    if (start < cursor || end < start || end > source.length) return null;
-    if (source.slice(start, end) !== card.content) return null;
+  const characters: string[] = [];
+  const offsets: TextOffset[] = [];
+  chunks.forEach((chunk, nodeIndex) => {
+    for (let offset = 0; offset < chunk.length; offset += 1) {
+      const character = chunk[offset];
+      if (/\s/.test(character)) continue;
+      characters.push(character);
+      offsets.push({ nodeIndex, offset });
+    }
+  });
 
-    const token = createSlotToken(source, card, index);
-    tokenizedSource += source.slice(cursor, start) + token;
-    slots.push({ cardId: card.id, token });
-    cursor = end;
+  const start = characters.join('').indexOf(collapsedNeedle, fromCollapsedIndex);
+  if (start < 0) return null;
+  const first = offsets[start];
+  const last = offsets[start + collapsedNeedle.length - 1];
+  if (!first || !last) return null;
+
+  return {
+    startNodeIndex: first.nodeIndex,
+    startOffset: first.offset,
+    endNodeIndex: last.nodeIndex,
+    endOffset: last.offset + 1,
+    collapsedStart: start,
+    collapsedEnd: start + collapsedNeedle.length,
+  };
+}
+
+export function findCollapsedTextRange(chunks: readonly string[], needle: string): TextRangeMatch | null {
+  const match = findCollapsedTextOccurrence(chunks, needle);
+  if (!match) return null;
+  return {
+    startNodeIndex: match.startNodeIndex,
+    startOffset: match.startOffset,
+    endNodeIndex: match.endNodeIndex,
+    endOffset: match.endOffset,
+  };
+}
+
+export function getCharInfoBody(source: string): string | null {
+  const match = source.match(/^<char_info\s*>([\s\S]*?)<\/char_info\s*>$/i);
+  const body = match?.[1] ?? '';
+  return body.trim() ? body : null;
+}
+
+function isBlockedTextNode(node: Text): boolean {
+  const parent = node.parentElement;
+  if (!parent) return true;
+  try {
+    return Boolean(parent.closest(BLOCKED_NATIVE_SCOPE_SELECTOR));
+  } catch {
+    return true;
   }
-
-  tokenizedSource += source.slice(cursor);
-  return { source: tokenizedSource, slots };
 }
 
-function escapeHtmlAttribute(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
-function createHostMarkup(slot: CharInfoCardSlot): string {
-  return `<div class="char-info-runtime-host" data-char-info-runtime-owned="1" data-char-info-card-id="${escapeHtmlAttribute(slot.cardId)}"></div>`;
-}
-
-export function injectCardHostsIntoDisplayedHtml(
-  displayedHtml: string,
-  slots: readonly CharInfoCardSlot[],
-): string | null {
-  let output = displayedHtml;
-
-  for (const slot of slots) {
-    const start = output.indexOf(slot.token);
-    if (start < 0 || output.indexOf(slot.token, start + slot.token.length) >= 0) return null;
-
-    output = output.slice(0, start) + createHostMarkup(slot) + output.slice(start + slot.token.length);
+function collectRenderableTextNodes(root: HTMLElement): Text[] {
+  const nodes: Text[] = [];
+  const walker = root.ownerDocument.createTreeWalker(root, 4);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (node.nodeType === 3 && !isBlockedTextNode(node as Text)) nodes.push(node as Text);
   }
-
-  return output;
+  return nodes;
 }
 
-export function isTavernHelperFrontendSource(source: string): boolean {
-  return TAVERN_HELPER_FRONTEND_MARKERS.some(marker => source.includes(marker));
+function getTopLevelChild(root: HTMLElement, node: Text): Element | null {
+  let element = node.parentElement;
+  if (element === root) return root;
+  while (element && element.parentElement !== root) {
+    element = element.parentElement;
+  }
+  return element?.parentElement === root ? element : null;
 }
 
-function collectTavernHelperFrontendMountPoints(root: ParentNode): HTMLElement[] {
-  return Array.from(root.querySelectorAll<HTMLElement>('pre')).filter(pre =>
-    isTavernHelperFrontendSource(pre.textContent ?? ''),
-  );
+function hasTextBefore(node: Text, offset: number, container: Element): boolean {
+  const range = node.ownerDocument.createRange();
+  range.selectNodeContents(container);
+  range.setEnd(node, offset);
+  const hasText = Boolean(range.toString().trim());
+  range.detach();
+  return hasText;
 }
 
-function collectPreservableTavernHelperRenders(root: HTMLElement): HTMLElement[] {
-  return Array.from(root.querySelectorAll<HTMLElement>(TAVERN_HELPER_RENDER_SELECTOR)).filter(
-    element => !element.parentElement?.closest(TAVERN_HELPER_RENDER_SELECTOR),
-  );
+function hasTextAfter(node: Text, offset: number, container: Element): boolean {
+  const range = node.ownerDocument.createRange();
+  range.selectNodeContents(container);
+  range.setStart(node, offset);
+  const hasText = Boolean(range.toString().trim());
+  range.detach();
+  return hasText;
 }
 
-function prepareMountedContent(root: HTMLElement, mountedHtml: string): PreparedMountedContent | null {
-  const stagedRoot = root.ownerDocument.createElement('div');
-  stagedRoot.innerHTML = mountedHtml;
+function createSafeBoundaryRange(root: HTMLElement, card: CharInfoCardPart): Range | null {
+  const body = getCharInfoBody(card.content);
+  if (!body) return null;
 
-  const frontendMountPoints = collectTavernHelperFrontendMountPoints(stagedRoot);
-  const existingRenders = collectPreservableTavernHelperRenders(root);
-  if (existingRenders.length > 0 && existingRenders.length !== frontendMountPoints.length) return null;
+  const nodes = collectRenderableTextNodes(root);
+  const chunks = nodes.map(node => node.nodeValue ?? '');
+  const match = findCollapsedTextRange(chunks, body);
+  if (!match) return null;
 
-  const preservedRenders = existingRenders.map(element => {
-    const originalMarker = root.ownerDocument.createComment('char-info-preserved-th-render');
-    element.replaceWith(originalMarker);
-    return { element, originalMarker };
-  });
+  const startNode = nodes[match.startNodeIndex];
+  const endNode = nodes[match.endNodeIndex];
+  if (!startNode || !endNode) return null;
 
-  const rollbackContent = root.ownerDocument.createDocumentFragment();
-  while (root.firstChild) rollbackContent.appendChild(root.firstChild);
+  const startTopLevel = getTopLevelChild(root, startNode);
+  const endTopLevel = getTopLevelChild(root, endNode);
+  if (!startTopLevel || !endTopLevel) return null;
 
-  preservedRenders.forEach((preserved, index) => {
-    frontendMountPoints[index].replaceWith(preserved.element);
-  });
-
-  const mountedContent = root.ownerDocument.createDocumentFragment();
-  while (stagedRoot.firstChild) mountedContent.appendChild(stagedRoot.firstChild);
-
-  return { mountedContent, rollbackContent, preservedRenders };
+  const range = root.ownerDocument.createRange();
+  if (startTopLevel === root || hasTextBefore(startNode, match.startOffset, startTopLevel)) {
+    range.setStart(startNode, match.startOffset);
+  } else {
+    range.setStartBefore(startTopLevel);
+  }
+  if (endTopLevel === root || hasTextAfter(endNode, match.endOffset, endTopLevel)) {
+    range.setEnd(endNode, match.endOffset);
+  } else {
+    range.setEndAfter(endTopLevel);
+  }
+  if (range.cloneContents().querySelector(BLOCKED_NATIVE_SCOPE_SELECTOR)) {
+    range.detach();
+    return null;
+  }
+  return range;
 }
 
-function rollbackMountedContent(root: HTMLElement, prepared: PreparedMountedContent): void {
-  prepared.preservedRenders.forEach(({ element, originalMarker }) => {
-    if (originalMarker.parentNode) originalMarker.replaceWith(element);
-  });
-  root.replaceChildren(prepared.rollbackContent);
-}
+function mountOneCard(root: HTMLElement, card: CharInfoCardPart): MountedNativeCardHost | null {
+  const range = createSafeBoundaryRange(root, card);
+  if (!range) return null;
 
-function resolveMessageId(root: HTMLElement, cards: readonly CharInfoCardPart[]): number | null {
-  const nativeMessageId = Number(root.closest<HTMLElement>('#chat > .mes')?.getAttribute('mesid'));
-  if (Number.isInteger(nativeMessageId) && nativeMessageId >= 0) return nativeMessageId;
+  const originalContent = range.extractContents();
+  const host = root.ownerDocument.createElement('div');
+  host.className = 'char-info-runtime-host';
+  host.dataset.charInfoRuntimeOwned = '1';
+  host.dataset.charInfoCardId = card.id;
+  range.insertNode(host);
+  range.detach();
 
-  const cardMessageId = Number(cards[0]?.id.split(':', 1)[0]);
-  return Number.isInteger(cardMessageId) && cardMessageId >= 0 ? cardMessageId : null;
-}
-
-function readRawMessage(messageId: number): string | null {
-  const message = getChatMessages(messageId)[0];
-  return message && typeof message.message === 'string' ? message.message : null;
-}
-
-function collectMountedHosts(root: HTMLElement, cards: readonly CharInfoCardPart[]): HTMLElement[] | null {
-  const hostsByCardId = new Map<string, HTMLElement>();
-  root.querySelectorAll<HTMLElement>(RUNTIME_HOST_SELECTOR).forEach(host => {
-    const cardId = host.dataset.charInfoCardId;
-    if (cardId && !hostsByCardId.has(cardId)) hostsByCardId.set(cardId, host);
-  });
-
-  const hosts = cards.map(card => hostsByCardId.get(card.id) ?? null);
-  return hosts.every((host): host is HTMLElement => Boolean(host)) ? hosts : null;
+  let restored = false;
+  return {
+    host,
+    restore() {
+      if (restored) return;
+      restored = true;
+      if (host.isConnected) host.replaceWith(originalContent);
+    },
+  };
 }
 
 export function mountCharInfoCardHosts(
   root: HTMLElement,
   cards: readonly CharInfoCardPart[],
 ): MountedNativeCardHost[] | null {
-  if (cards.length === 0) return [];
-
-  const messageId = resolveMessageId(root, cards);
-  if (messageId === null) return null;
-
-  const rawMessage = readRawMessage(messageId);
-  if (rawMessage === null) return null;
-
-  const prepared = buildRawMessageWithCardSlots(rawMessage, cards);
-  if (!prepared) return null;
-
-  const displayedHtml = formatAsDisplayedMessage(prepared.source, { message_id: messageId });
-  const mountedHtml = injectCardHostsIntoDisplayedHtml(displayedHtml, prepared.slots);
-  if (mountedHtml === null) return null;
-
-  const preparedContent = prepareMountedContent(root, mountedHtml);
-  if (!preparedContent) return null;
-
-  try {
-    root.replaceChildren(preparedContent.mountedContent);
-  } catch (error) {
-    rollbackMountedContent(root, preparedContent);
-    throw error;
+  const mounted: MountedNativeCardHost[] = [];
+  for (const card of cards) {
+    const cardMount = mountOneCard(root, card);
+    if (!cardMount) {
+      mounted.reverse().forEach(item => item.restore());
+      return null;
+    }
+    mounted.push(cardMount);
   }
-
-  const hosts = collectMountedHosts(root, cards);
-  if (!hosts) {
-    rollbackMountedContent(root, preparedContent);
-    return null;
-  }
-
-  let removed = false;
-  const restore = () => {
-    if (removed) return;
-    removed = true;
-    hosts.forEach(host => host.remove());
-  };
-
-  return hosts.map(host => ({ host, restore }));
+  return mounted;
 }
