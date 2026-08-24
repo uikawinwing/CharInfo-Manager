@@ -366,6 +366,36 @@
             />
           </label>
 
+          <label>
+            <span>
+              <strong>每个消息楼层最多支持</strong>
+              <small>超过此数量时，该楼层的 CharInfo Viewer 将暂不渲染并弹出提示。</small>
+            </span>
+            <input
+              v-model.number="maxCardsPerMessageDraft"
+              type="number"
+              :min="MIN_MAX_CARDS_PER_MESSAGE"
+              :max="MAX_MAX_CARDS_PER_MESSAGE"
+              :disabled="unlimitedCardsPerMessageDraft"
+              inputmode="numeric"
+              @change="applySettings"
+            />
+          </label>
+
+          <label>
+            <span>
+              <strong>不限单楼层数量</strong>
+              <small>警告：大量 Viewer 同时渲染可能明显增加性能与内存负担。</small>
+            </span>
+            <button
+              type="button"
+              :class="{ 'char-info-settings-danger-active': unlimitedCardsPerMessageDraft }"
+              @click="toggleUnlimitedCardsPerMessage"
+            >
+              {{ unlimitedCardsPerMessageDraft ? '已开启无限制' : '无限制' }}
+            </button>
+          </label>
+
           <label class="char-info-settings-switch">
             <span>
               <strong>视觉特效</strong>
@@ -487,7 +517,9 @@ import { buildCurrentCharacterViewerData } from './currentCharacterLibrary';
 import {
   DEFAULT_IMAGE_SOURCE_PRIORITY,
   MAX_ACTIVE_FLOOR_LIMIT,
+  MAX_MAX_CARDS_PER_MESSAGE,
   MIN_ACTIVE_FLOOR_LIMIT,
+  MIN_MAX_CARDS_PER_MESSAGE,
   type CharInfoUiSettings,
 } from './runtimeSettings';
 import type { RuntimeViewState } from './types';
@@ -525,6 +557,8 @@ const listWindowPosition = ref<{ left: number; top: number } | null>(null);
 const viewerWindowRef = ref<HTMLElement | null>(null);
 const viewerWindowPosition = ref<{ left: number; top: number } | null>(null);
 const floorLimitDraft = ref(props.state.settings.activeFloorLimit);
+const maxCardsPerMessageDraft = ref(props.state.settings.maxCardsPerMessage);
+const unlimitedCardsPerMessageDraft = ref(props.state.settings.unlimitedCardsPerMessage);
 const effectsEnabledDraft = ref(props.state.settings.effectsEnabled);
 const forceMobileLayoutDraft = ref(props.state.settings.forceMobileLayout);
 const debugEnabledDraft = ref(props.state.settings.debugEnabled);
@@ -851,6 +885,8 @@ function keepFloatingUiInViewport(): void {
 
 function replaceSettingsDraft(settings: CharInfoUiSettings): void {
   floorLimitDraft.value = settings.activeFloorLimit;
+  maxCardsPerMessageDraft.value = settings.maxCardsPerMessage;
+  unlimitedCardsPerMessageDraft.value = settings.unlimitedCardsPerMessage;
   effectsEnabledDraft.value = settings.effectsEnabled;
   forceMobileLayoutDraft.value = settings.forceMobileLayout;
   debugEnabledDraft.value = settings.debugEnabled;
@@ -858,10 +894,20 @@ function replaceSettingsDraft(settings: CharInfoUiSettings): void {
   imageSourcePriorityDraft.value = [...settings.imageSourcePriority];
 }
 
+function toggleUnlimitedCardsPerMessage(): void {
+  unlimitedCardsPerMessageDraft.value = !unlimitedCardsPerMessageDraft.value;
+  if (unlimitedCardsPerMessageDraft.value) {
+    toastr.warning('已开启单楼层 Viewer 无限制。大量 CharInfo 同时渲染可能明显增加性能与内存负担。');
+  }
+  applySettings();
+}
+
 function applySettings(): void {
   const priorityNormalization = normalizeImageSourcePriorityEntries(imageSourcePriorityDraft.value);
   const settings = props.onUpdateSettings({
     activeFloorLimit: Number(floorLimitDraft.value),
+    maxCardsPerMessage: Number(maxCardsPerMessageDraft.value),
+    unlimitedCardsPerMessage: unlimitedCardsPerMessageDraft.value,
     effectsEnabled: effectsEnabledDraft.value,
     forceMobileLayout: forceMobileLayoutDraft.value,
     debugEnabled: debugEnabledDraft.value,
@@ -1105,6 +1151,12 @@ onBeforeUnmount(() => {
 .char-info-settings-dialog button.primary {
   border-color: #d9b87a;
   background: rgba(217, 184, 122, 0.16);
+}
+
+.char-info-settings-dialog button.char-info-settings-danger-active {
+  border-color: rgba(255, 123, 123, 0.62);
+  background: rgba(255, 85, 85, 0.14);
+  color: #ffb1b1;
 }
 
 .char-info-settings-fields {

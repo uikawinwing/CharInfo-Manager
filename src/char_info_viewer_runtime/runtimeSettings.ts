@@ -5,10 +5,15 @@ import { normalizeImageSourcePriority } from '../char_info_viewer/services/image
 export const DEFAULT_ACTIVE_FLOOR_LIMIT = 6;
 export const MIN_ACTIVE_FLOOR_LIMIT = 1;
 export const MAX_ACTIVE_FLOOR_LIMIT = 20;
+export const DEFAULT_MAX_CARDS_PER_MESSAGE = 4;
+export const MIN_MAX_CARDS_PER_MESSAGE = 1;
+export const MAX_MAX_CARDS_PER_MESSAGE = 20;
 export const DEFAULT_IMAGE_SOURCE_PRIORITY = ['files.catbox.moe', 'i.ibb.co'];
 
 export type CharInfoUiSettings = {
   activeFloorLimit: number;
+  maxCardsPerMessage: number;
+  unlimitedCardsPerMessage: boolean;
   effectsEnabled: boolean;
   forceMobileLayout: boolean;
   debugEnabled: boolean;
@@ -23,6 +28,8 @@ export type CharInfoFloatingButtonPosition = {
 
 const DEFAULT_SETTINGS: CharInfoUiSettings = {
   activeFloorLimit: DEFAULT_ACTIVE_FLOOR_LIMIT,
+  maxCardsPerMessage: DEFAULT_MAX_CARDS_PER_MESSAGE,
+  unlimitedCardsPerMessage: false,
   effectsEnabled: true,
   forceMobileLayout: false,
   debugEnabled: false,
@@ -38,6 +45,13 @@ const SettingsSchema = z
       .min(MIN_ACTIVE_FLOOR_LIMIT)
       .max(MAX_ACTIVE_FLOOR_LIMIT)
       .catch(DEFAULT_SETTINGS.activeFloorLimit),
+    maxCardsPerMessage: z.coerce
+      .number()
+      .int()
+      .min(MIN_MAX_CARDS_PER_MESSAGE)
+      .max(MAX_MAX_CARDS_PER_MESSAGE)
+      .catch(DEFAULT_SETTINGS.maxCardsPerMessage),
+    unlimitedCardsPerMessage: z.boolean().catch(DEFAULT_SETTINGS.unlimitedCardsPerMessage),
     effectsEnabled: z.boolean().catch(DEFAULT_SETTINGS.effectsEnabled),
     forceMobileLayout: z.boolean().catch(DEFAULT_SETTINGS.forceMobileLayout),
     debugEnabled: z.boolean().catch(DEFAULT_SETTINGS.debugEnabled),
