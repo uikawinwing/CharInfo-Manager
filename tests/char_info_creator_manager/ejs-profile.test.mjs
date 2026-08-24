@@ -109,6 +109,29 @@ test('metadata 会经过 managed EJS round-trip 并写入 runtime profile v2', (
   assert.equal(block.indexOf('雪夜') < block.indexOf('归途'), true);
 });
 
+test('远程 Visual URL 允许不配置本地立绘，并经过 managed EJS round-trip', () => {
+  const remoteUrl = 'https://img.example.test/api/public/charinfo/album-id';
+  const remoteOnlyProfile = {
+    ...createEmptyProfile('远程角色'),
+    visualRemoteUrl: remoteUrl,
+  };
+
+  assert.deepEqual(validateProfile(remoteOnlyProfile), []);
+  const block = buildManagedEjsBlock(remoteOnlyProfile);
+  assert.match(block, /visual_remote_url: profile\.visualRemoteUrl/);
+  assert.match(block, new RegExp(remoteUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+
+  const inspection = inspectManagedBlock(block);
+  assert.equal(inspection.state, 'valid');
+  assert.equal(inspection.profile.visualRemoteUrl, remoteUrl);
+  assert.deepEqual(inspection.profile.gallery, [{ title: '主立绘', sources: [] }]);
+
+  assert.match(
+    validateProfile({ ...remoteOnlyProfile, visualRemoteUrl: 'http://img.example.test/api/public/charinfo/album-id' }).join('\n'),
+    /HTTPS/,
+  );
+});
+
 test('只提取经过验证的 CharInfo managed EJS，不执行条目其余内容', () => {
   const block = buildManagedEjsBlock(profile);
   const content = `条目前置正文\n${block}\n<%_ throw new Error('outside managed block'); _%>\n条目后置正文`;
