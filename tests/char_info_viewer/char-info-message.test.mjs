@@ -4,8 +4,8 @@ import test from 'node:test';
 import { projectCharInfoMessage } from '../../src/char_info_viewer/runtime/charInfoMessage.ts';
 import { selectRecentMessageIds } from '../../src/char_info_viewer/runtime/recentMessages.ts';
 import {
-  buildRawMessageWithCardSlots,
-  injectCardHostsIntoDisplayedHtml,
+  findCollapsedTextRange,
+  getCharInfoBody,
 } from '../../src/char_info_viewer_runtime/nativeMessageMount.ts';
 
 test('projects one char_info block while preserving surrounding message text', () => {
@@ -112,63 +112,21 @@ test('runtime selects only the latest six loaded floors by default', () => {
   assert.deepEqual(selectRecentMessageIds([3, 4]), [3, 4]);
 });
 
-test('replaces raw char_info blocks with private slots before display formatting', () => {
-  const source = 'Before\n<char_info>\n姓名: Iris\n技能:\n- 名称: 星光\n</char_info>\nAfter';
-  const projection = projectCharInfoMessage({ messageId: 12, swipeId: 2, text: source });
-  const prepared = buildRawMessageWithCardSlots(source, projection.cards);
-
-  assert.ok(prepared);
-  assert.equal(prepared.slots.length, 1);
-  assert.equal(prepared.slots[0].cardId, projection.cards[0].id);
-  assert.match(prepared.slots[0].token, /^CHARINFOVIEWERSLOT[A-Z0-9]+ENDX*$/);
-  assert.equal(prepared.source, `Before\n${prepared.slots[0].token}\nAfter`);
-  assert.doesNotMatch(prepared.source, /<char_info|姓名: Iris|名称: 星光/i);
-});
-
-test('slot replacement uses the scoped source position instead of an identical char_info inside think', () => {
-  const block = '<char_info>姓名: Iris</char_info>';
-  const source = `<think>\n${block}\n</think>\n<gametxt>\n${block}\n</gametxt>`;
-  const projection = projectCharInfoMessage({ messageId: 24, swipeId: 0, text: source });
-  const prepared = buildRawMessageWithCardSlots(source, projection.cards);
-
-  assert.ok(prepared);
-  assert.equal(projection.cards.length, 1);
-  assert.equal(prepared.source, `<think>\n${block}\n</think>\n<gametxt>\n${prepared.slots[0].token}\n</gametxt>`);
-});
-
-test('keeps identical raw cards in ordinal order without DOM text matching', () => {
-  const block = '<char_info>姓名: Iris</char_info>';
-  const source = `${block}\n正文\n${block}`;
-  const projection = projectCharInfoMessage({ messageId: 4, swipeId: 1, text: source });
-  const prepared = buildRawMessageWithCardSlots(source, projection.cards);
-
-  assert.ok(prepared);
-  assert.equal(prepared.slots.length, 2);
-  assert.notEqual(prepared.slots[0].token, prepared.slots[1].token);
-  assert.equal(prepared.source, `${prepared.slots[0].token}\n正文\n${prepared.slots[1].token}`);
-});
-
-test('injects card hosts into formatted HTML only through private slot tokens', () => {
-  const source = '<char_info>姓名: Iris</char_info>';
-  const projection = projectCharInfoMessage({ messageId: 5, swipeId: 0, text: source });
-  const prepared = buildRawMessageWithCardSlots(source, projection.cards);
-
-  assert.ok(prepared);
-  const html = injectCardHostsIntoDisplayedHtml(`<p>${prepared.slots[0].token}</p>`, prepared.slots);
-
-  assert.ok(html);
-  assert.match(html, /class="char-info-runtime-host"/);
-  assert.match(html, /data-char-info-runtime-owned="1"/);
-  assert.match(html, /data-char-info-card-id="5:0:0"/);
-  assert.doesNotMatch(html, new RegExp(prepared.slots[0].token));
-});
-
-test('rejects formatted output that loses or duplicates a private slot', () => {
-  const slots = [{ cardId: '1:0:0', token: 'CHARINFOVIEWERSLOTTESTX0END' }];
-
-  assert.equal(injectCardHostsIntoDisplayedHtml('<p>missing</p>', slots), null);
-  assert.equal(
-    injectCardHostsIntoDisplayedHtml(`${slots[0].token}<hr>${slots[0].token}`, slots),
-    null,
+test('locates a collapsed body after display formatting changes whitespace and list markers', () => {
+  assert.deepEqual(
+    findCollapsedTextRange(['姓名: Iris ', '技能: ', '名称: 星光'], '姓名: Iris\n技能:\n- 名称: 星光'),
+    {
+      startNodeIndex: 0,
+      startOffset: 0,
+      endNodeIndex: 2,
+      endOffset: 6,
+    },
   );
+});
+
+test('extracts a complete non-empty char_info body', () => {
+  const source = '<char_info>\n姓名: Iris\n- 技能: 星光\n</char_info>';
+
+  assert.equal(getCharInfoBody(source), '\n姓名: Iris\n- 技能: 星光\n');
+  assert.equal(getCharInfoBody('<char_info>\n\n</char_info>'), null);
 });

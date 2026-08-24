@@ -34,7 +34,7 @@ test('multiple cards do not repeat static viewer element ids in the host documen
   assert.doesNotMatch(specialSheetSource, /id="import-action-menu"/);
 });
 
-test('vNext runtime mounts cards from raw message text before display formatting', () => {
+test('vNext runtime mounts cards through local displayed-text ranges', () => {
   assert.equal(runtimeSource.match(/\bcreateApp\(/g)?.length, 1);
   assert.doesNotMatch(runtimeSource, /createElement\(['"]iframe['"]\)|<iframe|srcdoc/i);
   assert.match(runtimeSource, /createScriptIdDiv\(\)\.addClass\('char-info-runtime-root'\)\.appendTo\('body'\)/);
@@ -44,17 +44,15 @@ test('vNext runtime mounts cards from raw message text before display formatting
   assert.match(runtimeSource, /mountCharInfoCardHosts\(sourceElement, projection\.cards\)/);
   assert.doesNotMatch(runtimeRootSource, /\bv-html\b|char-info-runtime-text|char-info-runtime-source-hidden/);
 
-  assert.match(nativeMountSource, /const message = getChatMessages\(messageId\)\[0\]/);
-  assert.match(nativeMountSource, /buildRawMessageWithCardSlots\(rawMessage, cards\)/);
-  assert.match(nativeMountSource, /formatAsDisplayedMessage\(prepared\.source, \{ message_id: messageId \}\)/);
-  assert.match(nativeMountSource, /injectCardHostsIntoDisplayedHtml\(displayedHtml, prepared\.slots\)/);
-  assert.match(nativeMountSource, /while \(root\.firstChild\) rollbackContent\.appendChild\(root\.firstChild\)/);
-  assert.match(nativeMountSource, /root\.replaceChildren\(preparedContent\.mountedContent\)/);
-  assert.match(nativeMountSource, /hosts\.forEach\(host => host\.remove\(\)\)/);
-  assert.doesNotMatch(
-    nativeMountSource,
-    /createTreeWalker|TreeWalker|findTextRange|findCollapsedTextRange|getCharInfoBoundaryTexts|BLOCKED_NATIVE_SCOPE_SELECTOR/,
-  );
+  assert.match(nativeMountSource, /export const BLOCKED_NATIVE_SCOPE_SELECTOR/);
+  assert.match(nativeMountSource, /\.abby-card-shell/);
+  assert.match(nativeMountSource, /\[data-abby-foreign="1"\]/);
+  assert.match(nativeMountSource, /createTreeWalker\(root, 4\)/);
+  assert.match(nativeMountSource, /findCollapsedTextRange\(chunks, body\)/);
+  assert.match(nativeMountSource, /range\.cloneContents\(\)\.querySelector\(BLOCKED_NATIVE_SCOPE_SELECTOR\)/);
+  assert.match(nativeMountSource, /const originalContent = range\.extractContents\(\)/);
+  assert.match(nativeMountSource, /host\.replaceWith\(originalContent\)/);
+  assert.doesNotMatch(nativeMountSource, /root\.replaceChildren\(|formatAsDisplayedMessage|buildRawMessageWithCardSlots|injectCardHostsIntoDisplayedHtml/);
 });
 
 test('runtime replaces an older loaded instance without refreshing native messages', () => {
