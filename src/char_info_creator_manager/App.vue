@@ -484,6 +484,7 @@
                 v-model:gallery="profile.gallery"
                 :avatar-url="profile.avatarUrl"
                 :cover-url="profile.coverUrl"
+                :visual-remote-url="profile.visualRemoteUrl ?? ''"
                 :use-extended-gallery="useExtendedGallery"
                 :gallery-pack-worldbook-name="galleryPackWorldbookName"
                 :gallery-pack-id="galleryPackId"
@@ -496,6 +497,7 @@
                 :debug-enabled="props.debugEnabled"
                 @update:avatar-url="profile.avatarUrl = $event"
                 @update:cover-url="profile.coverUrl = $event"
+                @update:visual-remote-url="profile.visualRemoteUrl = $event.trim() || undefined"
                 @update:use-extended-gallery="useExtendedGallery = $event"
                 @update:gallery-pack-worldbook-name="galleryPackWorldbookName = $event"
                 @update:gallery-pack-id="galleryPackId = $event"
@@ -890,6 +892,7 @@ function toFullSerializableProfile(): CharacterVisualProfile {
     raceColor: profile.raceColor,
     tierColor: profile.tierColor,
     entranceQuote: profile.entranceQuote,
+    ...(profile.visualRemoteUrl?.trim() ? { visualRemoteUrl: profile.visualRemoteUrl.trim() } : {}),
     gallery: profile.gallery.map(({ title, sources, viewerVisible }) => ({
       title,
       sources: [...sources],
@@ -919,6 +922,7 @@ function replaceProfile(value: CharacterVisualProfile) {
   profile.tierColor = editable.tierColor;
   customizeColors.value = !!(editable.raceColor || editable.tierColor);
   profile.entranceQuote = editable.entranceQuote;
+  profile.visualRemoteUrl = editable.visualRemoteUrl;
   profile.gallery.splice(0, profile.gallery.length, ...editable.gallery);
   profile.metadata.author = editable.metadata.author;
   profile.metadata.version = editable.metadata.version;
@@ -1428,7 +1432,9 @@ function isStepComplete(step: StepId): boolean {
   if (step === 1) return !!selectedEntry.value;
   if (step === 2) return profile.characterName.trim().length > 0;
   if (step === 3) return furthestStep.value > 3;
-  if (step === 4) return configuredGalleryCount.value > 0 && furthestStep.value > 4;
+  if (step === 4) {
+    return (configuredGalleryCount.value > 0 || isHttpsUrl(profile.visualRemoteUrl ?? '')) && furthestStep.value > 4;
+  }
   return saveState.value === 'success';
 }
 
