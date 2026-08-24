@@ -219,6 +219,7 @@ export function validateProfile(profile: CharacterVisualProfile): string[] {
   if (profile.visualRemoteUrl?.trim() && !isHttpsUrl(profile.visualRemoteUrl)) {
     errors.push('远程视觉资料必须使用有效的 HTTPS URL。');
   }
+  const hasRemoteVisual = !!profile.visualRemoteUrl?.trim() && isHttpsUrl(profile.visualRemoteUrl);
   if (profile.avatarUrl.trim() && isHttpsUrl(profile.avatarUrl) && !isSupportedRemoteImageUrl(profile.avatarUrl)) {
     errors.push('头像只支持 PNG / JPG / JPEG / GIF / APNG / WebP / AVIF 图片直链。');
   }
@@ -231,8 +232,8 @@ export function validateProfile(profile: CharacterVisualProfile): string[] {
   if (profile.tierColor.trim() && !HEX_PATTERN.test(normalizeHex(profile.tierColor))) {
     errors.push('阶层颜色必须使用 #RRGGBB 格式。');
   }
-  if (profile.gallery.length === 0) errors.push('至少需要一张主立绘。');
-  if (profile.gallery.length > 0 && !profile.gallery.some(image => image.viewerVisible !== false)) {
+  if (!hasRemoteVisual && profile.gallery.length === 0) errors.push('至少需要一张主立绘。');
+  if (!hasRemoteVisual && profile.gallery.length > 0 && !profile.gallery.some(image => image.viewerVisible !== false)) {
     errors.push('至少需要一张用于 Viewer 的主立绘。');
   }
 
@@ -240,7 +241,7 @@ export function validateProfile(profile: CharacterVisualProfile): string[] {
     validateEjsSafeText(errors, `第 ${index + 1} 张立绘标题`, image.title);
     const sources = readGallerySources(image);
     if (sources.length === 0) {
-      errors.push(`第 ${index + 1} 张立绘至少需要一个有效的 HTTPS URL。`);
+      if (!hasRemoteVisual) errors.push(`第 ${index + 1} 张立绘至少需要一个有效的 HTTPS URL。`);
       return;
     }
     sources.forEach((source, sourceIndex) => {
