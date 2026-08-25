@@ -75,16 +75,10 @@ test('Creator 在初始化资料前先建立编辑器状态', () => {
     "const activeStep = ref<StepId>(1);",
     "const furthestStep = ref<StepId>(1);",
     'const customizeColors = ref(false);',
-    'const useExtendedGallery = ref(false);',
-    "const galleryPackWorldbookName = ref('');",
-    "const galleryPackId = ref('');",
-    "const galleryProfileId = ref('');",
-    'const loadingGalleryExtension = ref(false);',
-    "const galleryExtensionMessage = ref('');",
     'const saving = ref(false);',
+    'const applyingSavedProfile = ref(false);',
     "const saveState = ref<'idle' | 'success' | 'error'>('idle');",
     "const saveMessage = ref('选择世界书条目后即可写入。');",
-    "const galleryPackDownloadMessage = ref('');",
     'let nextImageId = 1;',
   ];
 
@@ -107,16 +101,29 @@ test('Viewer 玩家角色封面依次尝试备用图床，全部失败后显示�
   assert.match(librarySource, /return imageSources\(character\)\[coverIndexes\[character\.entry\.uid\] \?\? 0\] \?\? ''/u);
 });
 
-test('世界书角色库封面优先使用显式封面，并跳过视频继续查找静态图片', () => {
+test('世界书紧凑列表使用 libraryThumbnail，图片卡片才使用 720px gallery thumbnail', () => {
   const librarySource = readFileSync(
     new URL('../../src/char_info_viewer_runtime/WorldbookCharacterLibrary.vue', import.meta.url),
     'utf8',
   );
 
-  assert.match(librarySource, /remote\?\.coverUrl \?\? character\.profile\.coverUrl/u);
-  assert.match(librarySource, /remote\?\.avatarUrl \?\? character\.profile\.avatarUrl/u);
+  assert.match(librarySource, /layout\.value === 'cards'/u);
+  assert.match(librarySource, /remote\.coverUrl,[\s\S]*remote\.libraryThumbnailUrl,[\s\S]*remote\.avatarUrl/u);
+  assert.match(librarySource, /: \[remote\.libraryThumbnailUrl, remote\.avatarUrl\]/u);
   assert.match(librarySource, /image\.thumbnail \?\? ''/u);
   assert.match(librarySource, /media\?\.kind === 'image' \? \[media\.url\] : \[\]/u);
+});
+
+test('世界书远程 Gallery Pack 预览限制为六并发，不再一次打出全部角色请求', () => {
+  const librarySource = readFileSync(
+    new URL('../../src/char_info_viewer_runtime/WorldbookCharacterLibrary.vue', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(librarySource, /const REMOTE_PREVIEW_CONCURRENCY = 6/u);
+  assert.match(librarySource, /Math\.min\(REMOTE_PREVIEW_CONCURRENCY, loaded\.length\)/u);
+  assert.match(librarySource, /Array\.from\(\{ length: workerCount \}, \(\) => worker\(\)\)/u);
+  assert.match(librarySource, /void loadRemotePresentations\(loaded, revision, worldbookName\)/u);
 });
 
 test('Viewer 玩家角色库保留紧凑列表与自适应图片卡片', () => {

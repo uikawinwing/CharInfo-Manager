@@ -6,7 +6,7 @@ import { closeCreatorManager, openCreatorManager } from '../char_info_creator_ma
 import { projectCharInfoMessage } from '../char_info_viewer/runtime/charInfoMessage';
 import { selectRecentMessageIds } from '../char_info_viewer/runtime/recentMessages';
 import { preloadPortraitImages } from '../char_info_viewer/services/imagePreload';
-import { resolveRemoteVisualPresentation } from '../char_info_viewer/services/galleryPackService';
+import { resolveRemoteGalleryPresentation } from '../char_info_viewer/services/galleryPackService';
 import { resolveCharacterVisualPreloadUrls } from '../char_info_viewer/services/themeService';
 import RuntimeRoot from './RuntimeRoot.vue';
 import { collectChangedAffinityNames, collectCurrentCharacterSnapshots } from './currentCharacterLibrary';
@@ -38,13 +38,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function resolveCharacterRemoteVisualUrl(chatVariables: unknown, characterName: string): string {
+function resolveCharacterGalleryPackUrl(chatVariables: unknown, characterName: string): string {
   if (!isRecord(chatVariables) || !isRecord(chatVariables.char_info)) return '';
   const profiles = chatVariables.char_info.profiles;
   if (!isRecord(profiles)) return '';
   const profile = profiles[characterName];
-  if (!isRecord(profile) || typeof profile.visual_remote_url !== 'string') return '';
-  return profile.visual_remote_url.trim();
+  if (!isRecord(profile) || typeof profile.gallery_pack_url !== 'string') return '';
+  return profile.gallery_pack_url.trim();
 }
 
 type MountedMessage = {
@@ -166,27 +166,15 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     library.error = '';
   };
 
-  const applyLibrarySnapshot = async (mvuData: unknown, changedAffinityNames: readonly string[] = []) => {
+  const applyLibrarySnapshot = (mvuData: unknown, changedAffinityNames: readonly string[] = []) => {
     const library = state.library;
     if (!library) return;
 
     const chatVariables = getVariables({ type: 'chat' });
     const baseCharacters = collectCurrentCharacterSnapshots(mvuData, chatVariables);
-    const characters = await Promise.all(
-      baseCharacters.map(async character => {
-        const remoteUrl = resolveCharacterRemoteVisualUrl(chatVariables, character.name);
-        if (!remoteUrl) return character;
-        try {
-          const presentation = await resolveRemoteVisualPresentation(remoteUrl);
-          return presentation ? { ...character, avatarUrl: presentation.avatarUrl } : character;
-        } catch {
-          return character;
-        }
-      }),
-    );
-    const characterNames = new Set(characters.map(character => character.name));
+    const characterNames = new Set(baseCharacters.map(character => character.name));
     const sourcePriorities = state.settings.imageSourcePriorityEnabled ? state.settings.imageSourcePriority : [];
-    const preloadUrls = characters.slice(0, 8).flatMap(character => [
+    const preloadUrls = baseCharacters.slice(0, 8).flatMap(character => [
       character.avatarUrl,
       ...resolveCharacterVisualPreloadUrls(character.name, chatVariables, 1, sourcePriorities),
     ]);
@@ -198,9 +186,28 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
     library.messageId = Math.max(0, getLastMessageId());
     library.revision += 1;
-    library.characters = characters;
+    const snapshotRevision = library.revision;
+    library.characters = baseCharacters;
     library.unreadCharacterNames = Array.from(nextUnread);
     library.error = '';
+
+    void Promise.all(
+      baseCharacters.map(async character => {
+        const remoteUrl = resolveCharacterGalleryPackUrl(chatVariables, character.name);
+        if (!remoteUrl) return;
+        try {
+          const presentation = await resolveRemoteGalleryPresentation(remoteUrl);
+          if (!presentation?.avatarUrl) return;
+          if (!started || state.library !== library || library.revision !== snapshotRevision) return;
+          library.characters = library.characters.map(current =>
+            current.name === character.name ? { ...current, avatarUrl: presentation.avatarUrl } : current,
+          );
+          void preloadPortraitImages([presentation.avatarUrl]);
+        } catch {
+          // 远程头像失败时保留已经显示的本地资料，不阻塞角色库。
+        }
+      }),
+    );
   };
 
   const runLibraryRefresh = async (library: NonNullable<RuntimeViewState['library']>) => {

@@ -1,8 +1,3 @@
-import {
-  normalizeGalleryExtensionReference,
-  validateGalleryExtensionReference,
-  type GalleryExtensionReference,
-} from './galleryPack.ts';
 import { isSupportedRemoteImageUrl, isSupportedRemoteMediaUrl } from './remoteMediaUrl.ts';
 
 export interface GalleryImage {
@@ -34,8 +29,7 @@ export interface CharacterVisualProfile {
   tierColor: string;
   entranceQuote: string;
   gallery: GalleryImage[];
-  galleryExtension?: GalleryExtensionReference;
-  visualRemoteUrl?: string;
+  galleryPackUrl?: string;
   metadata?: CharacterProfileMetadata;
 }
 
@@ -50,10 +44,10 @@ type StoredGalleryImage = {
 
 type StoredCharacterVisualProfile = Omit<
   CharacterVisualProfile,
-  'gallery' | 'metadata' | 'coverUrl' | 'visualRemoteUrl'
+  'gallery' | 'metadata' | 'coverUrl' | 'galleryPackUrl'
 > & {
   coverUrl?: unknown;
-  visualRemoteUrl?: unknown;
+  galleryPackUrl?: unknown;
   gallery: StoredGalleryImage[];
   metadata?: unknown;
 };
@@ -217,13 +211,13 @@ export function validateProfile(profile: CharacterVisualProfile): string[] {
   validateEjsSafeText(errors, '头像 URL', profile.avatarUrl);
   validateEjsSafeText(errors, '封面 URL', profile.coverUrl);
   validateEjsSafeText(errors, '登场台词', profile.entranceQuote);
-  if (profile.visualRemoteUrl) validateEjsSafeText(errors, '远程视觉 URL', profile.visualRemoteUrl);
+  if (profile.galleryPackUrl) validateEjsSafeText(errors, 'Gallery Pack URL', profile.galleryPackUrl);
   if (profile.avatarUrl.trim() && !isHttpsUrl(profile.avatarUrl)) errors.push('头像必须使用有效的 HTTPS URL。');
   if (profile.coverUrl.trim() && !isHttpsUrl(profile.coverUrl)) errors.push('角色库封面必须使用有效的 HTTPS URL。');
-  if (profile.visualRemoteUrl?.trim() && !isHttpsUrl(profile.visualRemoteUrl)) {
-    errors.push('远程视觉资料必须使用有效的 HTTPS URL。');
+  if (profile.galleryPackUrl?.trim() && !isHttpsUrl(profile.galleryPackUrl)) {
+    errors.push('Gallery Pack 必须使用有效的 HTTPS URL。');
   }
-  const hasRemoteVisual = !!profile.visualRemoteUrl?.trim() && isHttpsUrl(profile.visualRemoteUrl);
+  const hasRemoteGallery = !!profile.galleryPackUrl?.trim() && isHttpsUrl(profile.galleryPackUrl);
   if (profile.avatarUrl.trim() && isHttpsUrl(profile.avatarUrl) && !isSupportedRemoteImageUrl(profile.avatarUrl)) {
     errors.push('头像只支持 PNG / JPG / JPEG / GIF / APNG / WebP / AVIF 图片直链。');
   }
@@ -236,8 +230,8 @@ export function validateProfile(profile: CharacterVisualProfile): string[] {
   if (profile.tierColor.trim() && !HEX_PATTERN.test(normalizeHex(profile.tierColor))) {
     errors.push('阶层颜色必须使用 #RRGGBB 格式。');
   }
-  if (!hasRemoteVisual && profile.gallery.length === 0) errors.push('至少需要一张主立绘。');
-  if (!hasRemoteVisual && profile.gallery.length > 0 && !profile.gallery.some(image => image.viewerVisible !== false)) {
+  if (!hasRemoteGallery && profile.gallery.length === 0) errors.push('至少需要一张主立绘。');
+  if (!hasRemoteGallery && profile.gallery.length > 0 && !profile.gallery.some(image => image.viewerVisible !== false)) {
     errors.push('至少需要一张用于 Viewer 的主立绘。');
   }
 
@@ -245,7 +239,7 @@ export function validateProfile(profile: CharacterVisualProfile): string[] {
     validateEjsSafeText(errors, `第 ${index + 1} 张立绘标题`, image.title);
     const sources = readGallerySources(image);
     if (sources.length === 0) {
-      if (!hasRemoteVisual) errors.push(`第 ${index + 1} 张立绘至少需要一个有效的 HTTPS URL。`);
+      if (!hasRemoteGallery) errors.push(`第 ${index + 1} 张立绘至少需要一个有效的 HTTPS URL。`);
       return;
     }
     sources.forEach((source, sourceIndex) => {
@@ -265,9 +259,6 @@ export function validateProfile(profile: CharacterVisualProfile): string[] {
       }
     }
   });
-  if (profile.galleryExtension) {
-    errors.push(...validateGalleryExtensionReference(profile.galleryExtension));
-  }
   errors.push(...validateProfileMetadata(profile.metadata));
   return errors;
 }
@@ -285,8 +276,7 @@ function readGallerySources(image: StoredGalleryImage): string[] {
 export function normalizeProfile(
   profile: CharacterVisualProfile | StoredCharacterVisualProfile,
 ): CharacterVisualProfile {
-  const galleryExtension = normalizeGalleryExtensionReference(profile.galleryExtension);
-  const visualRemoteUrl = typeof profile.visualRemoteUrl === 'string' ? profile.visualRemoteUrl.trim() : '';
+  const galleryPackUrl = typeof profile.galleryPackUrl === 'string' ? profile.galleryPackUrl.trim() : '';
   const metadata = normalizeProfileMetadata(profile.metadata);
   return {
     characterName: profile.characterName.trim(),
@@ -305,8 +295,7 @@ export function normalizeProfile(
         ? { viewerVisible: false }
         : {}),
     })),
-    ...(galleryExtension ? { galleryExtension } : {}),
-    ...(visualRemoteUrl ? { visualRemoteUrl } : {}),
+    ...(galleryPackUrl ? { galleryPackUrl } : {}),
     ...(metadata ? { metadata } : {}),
   };
 }
@@ -495,7 +484,7 @@ export function buildManagedEjsBlock(input: CharacterVisualProfile): string {
   lines.push('', '  const npcName = profile.characterName;', '');
   lines.push('  setLocalVar(`char_info.profiles[${JSON.stringify(npcName)}]`, {');
   lines.push(`    schema_version: ${CHAR_INFO_PROFILE_SCHEMA_VERSION},`);
-  lines.push('    ...(profile.visualRemoteUrl ? { visual_remote_url: profile.visualRemoteUrl } : {}),');
+  lines.push('    ...(profile.galleryPackUrl ? { gallery_pack_url: profile.galleryPackUrl } : {}),');
   lines.push('    ...(profile.coverUrl ? { cover_url: profile.coverUrl } : {}),');
   lines.push('    ...(profile.raceColor ? { custom_racecolor: profile.raceColor } : {}),');
   lines.push('    ...(profile.tierColor ? { custom_tiercolor: profile.tierColor } : {}),');
@@ -503,9 +492,6 @@ export function buildManagedEjsBlock(input: CharacterVisualProfile): string {
   lines.push(
     '    gallery: profile.gallery.map(image => ({ title: image.title, sources: image.sources, ...(image.thumbnail ? { thumbnail: image.thumbnail } : {}), ...(image.viewerVisible === false ? { viewer_visible: false } : {}) })),',
   );
-  if (profile.galleryExtension) {
-    lines.push('    gallery_extension: profile.galleryExtension,');
-  }
   if (profile.metadata) {
     lines.push('    metadata: profile.metadata,');
   }

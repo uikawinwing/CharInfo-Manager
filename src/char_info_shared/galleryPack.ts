@@ -2,13 +2,6 @@ import { isSupportedRemoteImageUrl, isSupportedRemoteMediaUrl } from './remoteMe
 
 export const GALLERY_PACK_FORMAT = 'char-info-gallery-pack';
 export const GALLERY_PACK_VERSION = 1;
-export const DEFAULT_EMBEDDED_GALLERY_LIMIT = 3;
-
-export type GalleryExtensionReference = {
-  worldbookName: string;
-  packId: string;
-  profileId: string;
-};
 
 export type GalleryPackImage = {
   title: string;
@@ -23,17 +16,12 @@ export type GalleryPackPayload = {
   packId: string;
   profileId: string;
   characterName: string;
+  avatarThumbnail: string | null;
+  libraryThumbnail: string | null;
   gallery: GalleryPackImage[];
 };
 
-export type GalleryPackEntryLike = {
-  uid?: number;
-  name?: string;
-  content?: string;
-};
-
 const ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/u;
-const MAX_WORLDBOOK_NAME_LENGTH = 128;
 const MAX_CHARACTER_NAME_LENGTH = 80;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -45,29 +33,6 @@ function hasControlCharacter(value: string): boolean {
     const codePoint = character.codePointAt(0) ?? 0;
     return codePoint <= 0x1f || codePoint === 0x7f;
   });
-}
-
-export function createStableGalleryId(value: string, fallback: string): string {
-  const source = value.trim();
-  if (!source) return fallback;
-
-  const normalized = source
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/^[^a-z0-9]+|[^a-z0-9._-]+$/g, '')
-    .slice(0, 64);
-  const containsNonAsciiCharacter = Array.from(source).some(character => (character.codePointAt(0) ?? 0) > 0x7f);
-  if (normalized && !containsNonAsciiCharacter) return normalized;
-
-  let hash = 0x811c9dc5;
-  Array.from(source).forEach(character => {
-    hash ^= character.codePointAt(0) ?? 0;
-    hash = Math.imul(hash, 0x01000193);
-  });
-  const suffix = (hash >>> 0).toString(36);
-  const base = normalized || fallback;
-  return `${base.slice(0, 63 - suffix.length)}-${suffix}`;
 }
 
 function normalizeSources(value: unknown): string[] {
@@ -88,151 +53,75 @@ function isHttpsUrl(value: string): boolean {
   }
 }
 
-export function normalizeGalleryExtensionReference(value: unknown): GalleryExtensionReference | null {
-  if (!isRecord(value)) return null;
-  const reference = {
-    worldbookName: typeof value.worldbookName === 'string' ? value.worldbookName.trim() : '',
-    packId: typeof value.packId === 'string' ? value.packId.trim().toLowerCase() : '',
-    profileId: typeof value.profileId === 'string' ? value.profileId.trim().toLowerCase() : '',
-  };
-  return validateGalleryExtensionReference(reference).length === 0 ? reference : null;
+function parsePackThumbnail(value: unknown, fieldName: 'avatarThumbnail' | 'libraryThumbnail'): string | null {
+  if (value === null) return null;
+  if (typeof value !== 'string') throw new Error(`Gallery Pack ${fieldName} 必须是 HTTPS 图片 URL 或 null。`);
+  const normalized = value.trim();
+  if (!normalized || !isHttpsUrl(normalized) || !isSupportedRemoteImageUrl(normalized)) {
+    throw new Error(`Gallery Pack ${fieldName} 必须是受支持的 HTTPS 图片直链或 null。`);
+  }
+  return normalized;
 }
 
-export function validateGalleryExtensionReference(reference: GalleryExtensionReference): string[] {
-  const errors: string[] = [];
-  if (!reference.worldbookName.trim()) errors.push('扩展图库世界书名称不能为空。');
-  if (reference.worldbookName.trim().length > MAX_WORLDBOOK_NAME_LENGTH) {
-    errors.push(`扩展图库世界书名称不能超过 ${MAX_WORLDBOOK_NAME_LENGTH} 个字符。`);
-  }
-  if (
-    hasControlCharacter(reference.worldbookName) ||
-    reference.worldbookName.includes('<%') ||
-    reference.worldbookName.includes('%>')
-  ) {
-    errors.push('扩展图库世界书名称包含不安全字符。');
-  }
-  if (!ID_PATTERN.test(reference.packId.trim().toLowerCase())) {
-    errors.push('图库包 ID 必须以小写字母或数字开头，只能包含小写字母、数字、点、下划线和连字符，且最长 64 个字符。');
-  }
-  if (!ID_PATTERN.test(reference.profileId.trim().toLowerCase())) {
-    errors.push('图库角色 ID 必须以小写字母或数字开头，只能包含小写字母、数字、点、下划线和连字符，且最长 64 个字符。');
-  }
-  return errors;
-}
+function parseGalleryImage(value: unknown, index: number): GalleryPackImage {
+  if (!isRecord(value)) throw new Error(`第 ${index + 1} 张远程图库图片格式无效。`);
 
-export function createGalleryPackPayload(
-  reference: GalleryExtensionReference,
-  characterName: string,
-  gallery: GalleryPackImage[],
-): GalleryPackPayload {
-  const normalizedReference = normalizeGalleryExtensionReference(reference);
-  if (!normalizedReference) throw new Error(validateGalleryExtensionReference(reference)[0] || '扩展图库引用无效。');
+  const title = typeof value.title === 'string' && value.title.trim() ? value.title.trim() : `立绘 ${index + 1}`;
+  if (hasControlCharacter(title)) throw new Error(`第 ${index + 1} 张远程图库图片标题无效。`);
 
-  const normalizedCharacterName = characterName.trim();
-  if (!normalizedCharacterName) throw new Error('扩展图库角色姓名不能为空。');
-  if (normalizedCharacterName.length > MAX_CHARACTER_NAME_LENGTH || hasControlCharacter(normalizedCharacterName)) {
-    throw new Error('扩展图库角色姓名无效。');
-  }
-
-  const normalizedGallery = gallery.map((image, index) => ({
-    title: image.title.trim() || `扩展立绘 ${index + 1}`,
-    sources: normalizeSources(image.sources),
-    ...(typeof image.thumbnail === 'string' && image.thumbnail.trim() ? { thumbnail: image.thumbnail.trim() } : {}),
-    ...(image.viewerVisible === false ? { viewerVisible: false } : {}),
-  }));
-  if (normalizedGallery.length === 0) throw new Error('扩展图库至少需要一张图片。');
-  normalizedGallery.forEach((image, imageIndex) => {
-    if (hasControlCharacter(image.title)) throw new Error(`第 ${imageIndex + 1} 张扩展图片标题无效。`);
-    if (image.sources.length === 0) throw new Error(`第 ${imageIndex + 1} 张扩展图片缺少 URL。`);
-    image.sources.forEach((source, sourceIndex) => {
-      if (!isHttpsUrl(source)) {
-        throw new Error(`第 ${imageIndex + 1} 张扩展图片的第 ${sourceIndex + 1} 个 URL 必须使用 HTTPS。`);
-      }
-      if (!isSupportedRemoteMediaUrl(source)) {
-        throw new Error(
-          `第 ${imageIndex + 1} 张扩展图片的第 ${sourceIndex + 1} 个 URL 只支持 PNG / JPG / JPEG / GIF / APNG / WebP / AVIF / MP4 / WebM 直链。`,
-        );
-      }
-    });
-    if (image.thumbnail && (!isHttpsUrl(image.thumbnail) || !isSupportedRemoteImageUrl(image.thumbnail))) {
-      throw new Error(`第 ${imageIndex + 1} 张扩展图片的缩略图必须使用受支持的 HTTPS 图片直链。`);
+  const sources = normalizeSources(value.sources);
+  if (sources.length === 0) throw new Error(`第 ${index + 1} 张远程图库图片缺少 URL。`);
+  sources.forEach((source, sourceIndex) => {
+    if (!isHttpsUrl(source)) {
+      throw new Error(`第 ${index + 1} 张远程图库图片的第 ${sourceIndex + 1} 个 URL 必须使用 HTTPS。`);
+    }
+    if (!isSupportedRemoteMediaUrl(source)) {
+      throw new Error(
+        `第 ${index + 1} 张远程图库图片的第 ${sourceIndex + 1} 个 URL 只支持 PNG / JPG / JPEG / GIF / APNG / WebP / AVIF / MP4 / WebM 直链。`,
+      );
     }
   });
 
-  return {
-    format: GALLERY_PACK_FORMAT,
-    version: GALLERY_PACK_VERSION,
-    packId: normalizedReference.packId,
-    profileId: normalizedReference.profileId,
-    characterName: normalizedCharacterName,
-    gallery: normalizedGallery,
-  };
-}
+  const thumbnail = typeof value.thumbnail === 'string' ? value.thumbnail.trim() : '';
+  if (thumbnail && (!isHttpsUrl(thumbnail) || !isSupportedRemoteImageUrl(thumbnail))) {
+    throw new Error(`第 ${index + 1} 张远程图库图片的缩略图必须使用受支持的 HTTPS 图片直链。`);
+  }
 
-export function serializeGalleryPackPayload(payload: GalleryPackPayload): string {
-  return `${JSON.stringify(
-    createGalleryPackPayload(
-      {
-        worldbookName: 'serialization-placeholder',
-        packId: payload.packId,
-        profileId: payload.profileId,
-      },
-      payload.characterName,
-      payload.gallery,
-    ),
-    null,
-    2,
-  )}\n`;
+  return {
+    title,
+    sources,
+    ...(thumbnail ? { thumbnail } : {}),
+    ...(value.viewerVisible === false || value.viewer_visible === false ? { viewerVisible: false } : {}),
+  };
 }
 
 export function parseGalleryPackPayload(value: unknown): GalleryPackPayload {
   const raw = typeof value === 'string' ? JSON.parse(value) : value;
-  if (!isRecord(raw)) throw new Error('扩展图库条目必须是 JSON 对象。');
-  if (raw.format !== GALLERY_PACK_FORMAT) throw new Error('条目不是 CharInfo 扩展图库。');
-  if (raw.version !== GALLERY_PACK_VERSION) throw new Error(`不支持扩展图库版本 ${String(raw.version)}。`);
-  if (typeof raw.packId !== 'string' || typeof raw.profileId !== 'string' || typeof raw.characterName !== 'string') {
-    throw new Error('扩展图库身份字段不完整。');
+  if (!isRecord(raw)) throw new Error('远程 Gallery Pack 必须是 JSON 对象。');
+  if (raw.format !== GALLERY_PACK_FORMAT) throw new Error('不是 CharInfo Gallery Pack。');
+  if (raw.version !== GALLERY_PACK_VERSION) throw new Error(`不支持 Gallery Pack 版本 ${String(raw.version)}。`);
+
+  const packId = typeof raw.packId === 'string' ? raw.packId.trim().toLowerCase() : '';
+  const profileId = typeof raw.profileId === 'string' ? raw.profileId.trim().toLowerCase() : '';
+  const characterName = typeof raw.characterName === 'string' ? raw.characterName.trim() : '';
+
+  if (!ID_PATTERN.test(packId)) throw new Error('Gallery Pack ID 无效。');
+  if (!ID_PATTERN.test(profileId)) throw new Error('Gallery Profile ID 无效。');
+  if (!characterName || characterName.length > MAX_CHARACTER_NAME_LENGTH || hasControlCharacter(characterName)) {
+    throw new Error('Gallery Pack 角色姓名无效。');
   }
-  if (!Array.isArray(raw.gallery)) throw new Error('扩展图库缺少 gallery 数组。');
+  if (!Object.prototype.hasOwnProperty.call(raw, 'avatarThumbnail')) throw new Error('Gallery Pack 缺少 avatarThumbnail。');
+  if (!Object.prototype.hasOwnProperty.call(raw, 'libraryThumbnail')) throw new Error('Gallery Pack 缺少 libraryThumbnail。');
+  if (!Array.isArray(raw.gallery)) throw new Error('Gallery Pack 缺少 gallery 数组。');
 
-  return createGalleryPackPayload(
-    {
-      worldbookName: 'parse-placeholder',
-      packId: raw.packId,
-      profileId: raw.profileId,
-    },
-    raw.characterName,
-    raw.gallery.map((image, index) => {
-      if (!isRecord(image)) throw new Error(`第 ${index + 1} 张扩展图片格式无效。`);
-      return {
-        title: typeof image.title === 'string' ? image.title : '',
-        sources: normalizeSources(image.sources),
-        ...(typeof image.thumbnail === 'string' && image.thumbnail.trim() ? { thumbnail: image.thumbnail.trim() } : {}),
-        ...(image.viewerVisible === false || image.viewer_visible === false ? { viewerVisible: false } : {}),
-      };
-    }),
-  );
-}
-
-export function galleryPackEntryName(reference: Pick<GalleryExtensionReference, 'packId' | 'profileId'>): string {
-  return `[CharInfo][Gallery][${reference.packId}][${reference.profileId}]`;
-}
-
-export function findGalleryPackEntry(
-  entries: readonly GalleryPackEntryLike[],
-  reference: GalleryExtensionReference,
-): { entry: GalleryPackEntryLike; payload: GalleryPackPayload } | null {
-  const matches = entries.flatMap(entry => {
-    if (typeof entry.content !== 'string') return [];
-    try {
-      const payload = parseGalleryPackPayload(entry.content);
-      return payload.packId === reference.packId && payload.profileId === reference.profileId
-        ? [{ entry, payload }]
-        : [];
-    } catch {
-      return [];
-    }
-  });
-  if (matches.length > 1) throw new Error(`扩展图库 ${reference.packId}/${reference.profileId} 存在重复条目。`);
-  return matches[0] ?? null;
+  return {
+    format: GALLERY_PACK_FORMAT,
+    version: GALLERY_PACK_VERSION,
+    packId,
+    profileId,
+    characterName,
+    avatarThumbnail: parsePackThumbnail(raw.avatarThumbnail, 'avatarThumbnail'),
+    libraryThumbnail: parsePackThumbnail(raw.libraryThumbnail, 'libraryThumbnail'),
+    gallery: raw.gallery.map(parseGalleryImage),
+  };
 }

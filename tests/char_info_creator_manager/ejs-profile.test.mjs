@@ -109,25 +109,26 @@ test('metadata 会经过 managed EJS round-trip 并写入 runtime profile v2', (
   assert.equal(block.indexOf('雪夜') < block.indexOf('归途'), true);
 });
 
-test('远程 Visual URL 允许不配置本地立绘，并经过 managed EJS round-trip', () => {
-  const remoteUrl = 'https://img.example.test/api/public/charinfo/album-id';
+test('Gallery Pack URL 允许不配置本地立绘，并经过 managed EJS round-trip', () => {
+  const remoteUrl = 'https://img.example.test/api/public/gallery/uika/elfa1';
   const remoteOnlyProfile = {
     ...createEmptyProfile('远程角色'),
-    visualRemoteUrl: remoteUrl,
+    galleryPackUrl: remoteUrl,
   };
 
   assert.deepEqual(validateProfile(remoteOnlyProfile), []);
   const block = buildManagedEjsBlock(remoteOnlyProfile);
-  assert.match(block, /visual_remote_url: profile\.visualRemoteUrl/);
-  assert.match(block, new RegExp(remoteUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.match(block, /gallery_pack_url: profile\.galleryPackUrl/);
+  assert.doesNotMatch(block, /visual_remote_url|gallery_extension/);
+  assert.ok(block.includes(remoteUrl));
 
   const inspection = inspectManagedBlock(block);
   assert.equal(inspection.state, 'valid');
-  assert.equal(inspection.profile.visualRemoteUrl, remoteUrl);
+  assert.equal(inspection.profile.galleryPackUrl, remoteUrl);
   assert.deepEqual(inspection.profile.gallery, [{ title: '主立绘', sources: [] }]);
 
   assert.match(
-    validateProfile({ ...remoteOnlyProfile, visualRemoteUrl: 'http://img.example.test/api/public/charinfo/album-id' }).join('\n'),
+    validateProfile({ ...remoteOnlyProfile, galleryPackUrl: 'http://img.example.test/api/public/gallery/uika/elfa1' }).join('\n'),
     /HTTPS/,
   );
 });

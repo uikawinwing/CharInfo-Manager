@@ -134,6 +134,19 @@ test('资料库列表优先使用 avatarUrl 图片，并保留无头像时的姓
   assert.match(source, /v-else[\s\S]*character\.name\.slice\(0,\s*1\)/);
 });
 
+test('当前角色库先显示基础资料，再异步逐个补远程 avatarThumbnail', async () => {
+  const source = await readFile(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
+  const baseRenderIndex = source.indexOf('library.characters = baseCharacters;');
+  const remoteResolveIndex = source.indexOf('void Promise.all(', baseRenderIndex);
+
+  assert.notEqual(baseRenderIndex, -1);
+  assert.notEqual(remoteResolveIndex, -1);
+  assert.ok(baseRenderIndex < remoteResolveIndex);
+  assert.match(source, /const snapshotRevision = library\.revision/u);
+  assert.match(source, /library\.revision !== snapshotRevision/u);
+  assert.match(source, /avatarUrl: presentation\.avatarUrl/u);
+});
+
 test('手动刷新会重读变量并强制重挂当前 CharInfo floors', async () => {
   const source = await readFile(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
 

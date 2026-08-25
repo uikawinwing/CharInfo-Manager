@@ -2,37 +2,77 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 
 const {
-  applyRemoteVisualPack,
+  applyRemoteGalleryPack,
   clearGalleryPackCache,
-  REMOTE_VISUAL_REVALIDATE_MS,
-  resolveGalleryExtension,
-  resolveRemoteVisualPresentation,
+  REMOTE_GALLERY_REVALIDATE_MS,
+  resolveRemoteGalleryConfig,
+  resolveRemoteGalleryPresentation,
 } = require('../../src/char_info_viewer/services/galleryPackService.ts');
 
-function pack({ visual = {}, gallery = [], characterName = 'Remote Character', extra = {} } = {}) {
+function pack({
+  gallery = [],
+  characterName = '克瑞西达',
+  avatarThumbnail = 'https://img.example.test/thumb/portrait.png?variant=avatar',
+  libraryThumbnail = 'https://img.example.test/thumb/portrait.png?variant=library',
+} = {}) {
   return {
-    format: 'char-info-visual-pack',
+    format: 'char-info-gallery-pack',
     version: 1,
-    packId: 'master',
-    profileId: 'album-id',
+    packId: 'uika',
+    profileId: '3f06921a-a41d-41a3-a849-c096ac69743b',
     characterName,
-    visual: {
-      entranceQuote: '',
-      raceColor: '',
-      tierColor: '',
-      avatarUrl: null,
-      coverUrl: null,
-      metadata: {},
-      ...visual,
-    },
+    avatarThumbnail,
+    libraryThumbnail,
     gallery,
-    ...extra,
   };
 }
 
-test('remote visual pack revalidates with ETag and replaces the EJS-owned visual layer', async () => {
+function realShapeGallery() {
+  return [
+    {
+      title: 'dynamic-wallpaper-pocket-watch_3 (3).webm',
+      sources: ['https://img.example.test/file/video.webm'],
+      thumbnail: null,
+    },
+    {
+      title: 'fe5883b677cbf71049a8b928b68d575d.png',
+      sources: ['https://img.example.test/file/portrait.png'],
+      thumbnail: 'https://img.example.test/thumb/portrait.png',
+    },
+    {
+      title: 'cresent.png',
+      sources: ['https://img.example.test/file/cresent.png'],
+      thumbnail: 'https://img.example.test/thumb/cresent.png',
+    },
+  ];
+}
+
+test('Gallery Pack presentation uses dedicated avatar/library thumbnails while keeping the normal gallery thumbnail for cards', async t => {
   clearGalleryPackCache();
-  const remoteUrl = 'https://img.example.test/api/public/charinfo/album-id';
+  const remoteUrl = 'https://img.example.test/api/public/gallery/uika/elfa1';
+  const originalFetch = global.fetch;
+  t.after(() => {
+    global.fetch = originalFetch;
+    clearGalleryPackCache();
+  });
+  global.fetch = async () =>
+    new Response(JSON.stringify(pack({ gallery: realShapeGallery() })), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', ETag: '"gallery-v1"' },
+    });
+
+  const presentation = await resolveRemoteGalleryPresentation(remoteUrl);
+  assert.equal(presentation.avatarUrl, 'https://img.example.test/thumb/portrait.png?variant=avatar');
+  assert.equal(presentation.libraryThumbnailUrl, 'https://img.example.test/thumb/portrait.png?variant=library');
+  assert.equal(presentation.coverUrl, 'https://img.example.test/thumb/portrait.png');
+  assert.equal(presentation.gallery.length, 3);
+  assert.equal(presentation.gallery[0].thumbnail, undefined);
+  assert.equal(presentation.gallery[1].thumbnail, 'https://img.example.test/thumb/portrait.png');
+});
+
+test('remote Gallery Pack revalidates with ETag and replaces only the remote image layer', async () => {
+  clearGalleryPackCache();
+  const remoteUrl = 'https://img.example.test/api/public/gallery/uika/elfa1';
   const originalFetch = global.fetch;
   const originalNow = Date.now;
   let now = 1_000;
@@ -43,108 +83,53 @@ test('remote visual pack revalidates with ETag and replaces the EJS-owned visual
   global.fetch = async (_input, init) => {
     requestCount += 1;
     seenIfNoneMatch.push(new Headers(init?.headers).get('If-None-Match'));
-
     if (requestCount === 1) {
-      return new Response(
-        JSON.stringify(
-          pack({
-            visual: {
-              entranceQuote: 'Remote quote',
-              raceColor: '#A9DBC3',
-              tierColor: '#B7D9E8',
-              coverUrl: 'https://img.example.test/cover.webp',
-              metadata: { author: 'Remote Author', version: 'v1' },
-              skills: ['must be ignored'],
-              mvu: { hp: 0 },
-            },
-            gallery: [{ title: 'A', sources: ['https://img.example.test/a.webp'] }],
-            characterName: 'Someone Else',
-            extra: { personality: 'must be ignored', worldbook: 'must be ignored' },
-          }),
-        ),
-        { status: 200, headers: { 'Content-Type': 'application/json', ETag: '"v1"' } },
-      );
+      return new Response(JSON.stringify(pack({ gallery: realShapeGallery() })), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ETag: '"v1"' },
+      });
     }
     if (requestCount === 2) return new Response(null, { status: 304, headers: { ETag: '"v1"' } });
-    if (requestCount === 3) {
-      return new Response(
-        JSON.stringify(
-          pack({
-            visual: {
-              entranceQuote: 'Updated quote',
-              raceColor: '',
-              tierColor: '#112233',
-              metadata: {},
-            },
-            gallery: [
-              { title: 'B', sources: ['https://img.example.test/b.webm'] },
-              { title: 'C', sources: ['https://img.example.test/c.webp'], viewerVisible: false },
-            ],
-          }),
-        ),
-        { status: 200, headers: { 'Content-Type': 'application/json', ETag: '"v2"' } },
-      );
-    }
-    return new Response(JSON.stringify(pack({ gallery: [] })), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json', ETag: '"v3"' },
-    });
+    return new Response(
+      JSON.stringify(pack({ gallery: [{ title: 'updated.png', sources: ['https://img.example.test/file/updated.png'] }] })),
+      { status: 200, headers: { 'Content-Type': 'application/json', ETag: '"v2"' } },
+    );
   };
 
   try {
     const base = {
       schema_version: 2,
-      visual_remote_url: remoteUrl,
-      custom_racecolor: '#FFFFFF',
-      custom_tiercolor: '#000000',
+      gallery_pack_url: remoteUrl,
       登场台词: 'Local quote',
-      cover_url: 'https://img.example.test/local-cover.webp',
-      metadata: { author: 'Local Author', version: 'local' },
+      custom_racecolor: '#A9DBC3',
+      metadata: { author: 'Local Author' },
       gallery: [{ title: 'Local', sources: ['https://img.example.test/local.webp'] }],
       local_only_marker: 'keep me',
     };
 
-    const first = await resolveGalleryExtension(base);
-    assert.deepEqual(first.gallery.map(item => item.title), ['A']);
+    const first = await resolveRemoteGalleryConfig(base);
+    assert.deepEqual(first.gallery.map(item => item.title), realShapeGallery().map(item => item.title));
+    assert.equal(first.cover_url, 'https://img.example.test/thumb/portrait.png');
+    assert.equal(first.登场台词, 'Local quote');
     assert.equal(first.custom_racecolor, '#A9DBC3');
-    assert.equal(first.custom_tiercolor, '#B7D9E8');
-    assert.equal(first.登场台词, 'Remote quote');
-    assert.equal(first.cover_url, 'https://img.example.test/cover.webp');
-    assert.deepEqual(first.metadata, { author: 'Remote Author', version: 'v1' });
+    assert.deepEqual(first.metadata, { author: 'Local Author' });
     assert.equal(first.local_only_marker, 'keep me');
-    assert.equal(first.characterName, undefined, 'remote characterName is informational and never becomes a local target');
-    assert.equal(first.skills, undefined);
-    assert.equal(first.mvu, undefined);
-    assert.equal(first.personality, undefined);
-    assert.equal(first.worldbook, undefined);
     assert.equal(requestCount, 1);
-    assert.deepEqual(seenIfNoneMatch, [null]);
 
-    now += REMOTE_VISUAL_REVALIDATE_MS - 1;
-    const cached = await resolveGalleryExtension(base);
-    assert.deepEqual(cached.gallery.map(item => item.title), ['A']);
+    now += REMOTE_GALLERY_REVALIDATE_MS - 1;
+    await resolveRemoteGalleryConfig(base);
     assert.equal(requestCount, 1);
 
     now += 2;
-    const unchanged = await resolveGalleryExtension(base);
-    assert.deepEqual(unchanged.gallery.map(item => item.title), ['A']);
+    await resolveRemoteGalleryConfig(base);
     assert.equal(requestCount, 2);
     assert.deepEqual(seenIfNoneMatch, [null, '"v1"']);
 
-    now += REMOTE_VISUAL_REVALIDATE_MS + 1;
-    const updated = await resolveGalleryExtension(base);
-    assert.deepEqual(updated.gallery.map(item => item.title), ['B', 'C']);
-    assert.equal(updated.custom_racecolor, undefined, 'remote blank color clears the local EJS fallback while online');
-    assert.equal(updated.custom_tiercolor, '#112233');
-    assert.equal(updated.登场台词, 'Updated quote');
-    assert.equal(updated.cover_url, undefined);
-    assert.equal(updated.metadata, undefined);
+    now += REMOTE_GALLERY_REVALIDATE_MS + 1;
+    const updated = await resolveRemoteGalleryConfig(base);
+    assert.deepEqual(updated.gallery.map(item => item.title), ['updated.png']);
+    assert.equal(updated.cover_url, 'https://img.example.test/file/updated.png');
     assert.equal(requestCount, 3);
-
-    now += REMOTE_VISUAL_REVALIDATE_MS + 1;
-    const emptied = await resolveGalleryExtension(base);
-    assert.deepEqual(emptied.gallery, [], 'a successful empty remote gallery must not resurrect stale local images');
-    assert.equal(requestCount, 4);
   } finally {
     global.fetch = originalFetch;
     Date.now = originalNow;
@@ -152,9 +137,9 @@ test('remote visual pack revalidates with ETag and replaces the EJS-owned visual
   }
 });
 
-test('remote visual failure uses local snapshot first, then stale cache after a successful fetch', async () => {
+test('remote Gallery Pack failure uses local gallery before first success and stale cache after success', async () => {
   clearGalleryPackCache();
-  const remoteUrl = 'https://img.example.test/api/public/charinfo/album-id';
+  const remoteUrl = 'https://img.example.test/api/public/gallery/uika/elfa1';
   const originalFetch = global.fetch;
   const originalNow = Date.now;
   let now = 10_000;
@@ -165,39 +150,30 @@ test('remote visual failure uses local snapshot first, then stale cache after a 
     requestCount += 1;
     if (requestCount === 1) throw new Error('offline before first success');
     if (requestCount === 2) {
-      return new Response(
-        JSON.stringify(
-          pack({
-            visual: { entranceQuote: 'Cached remote' },
-            gallery: [{ title: 'Remote', sources: ['https://img.example.test/remote.webp'] }],
-          }),
-        ),
-        { status: 200, headers: { 'Content-Type': 'application/json', ETag: '"v1"' } },
-      );
+      return new Response(JSON.stringify(pack({ gallery: realShapeGallery() })), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ETag: '"v1"' },
+      });
     }
     throw new Error('offline after cache');
   };
 
   try {
     const base = {
-      visual_remote_url: remoteUrl,
-      登场台词: 'Local',
+      gallery_pack_url: remoteUrl,
       gallery: [{ title: 'Local', sources: ['https://img.example.test/local.webp'] }],
     };
 
-    const localFallback = await resolveGalleryExtension(base);
+    const localFallback = await resolveRemoteGalleryConfig(base);
     assert.deepEqual(localFallback.gallery.map(item => item.title), ['Local']);
-    assert.equal(localFallback.登场台词, 'Local');
 
-    now += REMOTE_VISUAL_REVALIDATE_MS + 1;
-    const firstSuccess = await resolveGalleryExtension(base);
-    assert.deepEqual(firstSuccess.gallery.map(item => item.title), ['Remote']);
-    assert.equal(firstSuccess.登场台词, 'Cached remote');
+    now += REMOTE_GALLERY_REVALIDATE_MS + 1;
+    const firstSuccess = await resolveRemoteGalleryConfig(base);
+    assert.equal(firstSuccess.gallery.length, 3);
 
-    now += REMOTE_VISUAL_REVALIDATE_MS + 1;
-    const stale = await resolveGalleryExtension(base);
-    assert.deepEqual(stale.gallery.map(item => item.title), ['Remote']);
-    assert.equal(stale.登场台词, 'Cached remote');
+    now += REMOTE_GALLERY_REVALIDATE_MS + 1;
+    const stale = await resolveRemoteGalleryConfig(base);
+    assert.equal(stale.gallery.length, 3);
     assert.equal(requestCount, 3);
   } finally {
     global.fetch = originalFetch;
@@ -206,58 +182,26 @@ test('remote visual failure uses local snapshot first, then stale cache after a 
   }
 });
 
-test('applyRemoteVisualPack never spreads arbitrary remote fields into the local profile', () => {
+test('applyRemoteGalleryPack never spreads arbitrary pack fields into the local profile', () => {
   const base = {
-    visual_remote_url: 'https://img.example.test/api/public/charinfo/album-id',
+    gallery_pack_url: 'https://img.example.test/api/public/gallery/uika/elfa1',
     gallery: [{ title: 'Local', sources: ['https://img.example.test/local.webp'] }],
+    metadata: { author: 'Local' },
     safe_local_key: 1,
   };
-  const remote = pack({
-    visual: { entranceQuote: 'Remote', skills: ['evil'], personality: 'evil' },
-    gallery: [{ title: 'Remote', sources: ['https://img.example.test/remote.webp'] }],
-    extra: { mvu: { hp: 0 }, worldbook: 'evil' },
-  });
+  const remote = {
+    ...pack({ gallery: realShapeGallery() }),
+    skills: ['must never be exposed'],
+    mvu: { hp: 0 },
+    worldbook: 'must never be exposed',
+  };
 
-  const resolved = applyRemoteVisualPack(base, remote);
+  const resolved = applyRemoteGalleryPack(base, remote);
   assert.equal(resolved.safe_local_key, 1);
-  assert.equal(resolved.登场台词, 'Remote');
-  assert.deepEqual(resolved.gallery.map(item => item.title), ['Remote']);
+  assert.deepEqual(resolved.metadata, { author: 'Local' });
+  assert.equal(resolved.cover_url, 'https://img.example.test/thumb/portrait.png');
+  assert.equal(resolved.gallery.length, 3);
   assert.equal(resolved.skills, undefined);
-  assert.equal(resolved.personality, undefined);
   assert.equal(resolved.mvu, undefined);
   assert.equal(resolved.worldbook, undefined);
-});
-
-test('remote presentation exposes avatar, cover and gallery thumbnails without writing local state', async t => {
-  clearGalleryPackCache();
-  const remoteUrl = 'https://img.example.test/api/public/charinfo/album-id';
-  const originalFetch = global.fetch;
-  t.after(() => {
-    global.fetch = originalFetch;
-    clearGalleryPackCache();
-  });
-  global.fetch = async () =>
-    new Response(
-      JSON.stringify(
-        pack({
-          visual: {
-            avatarUrl: 'https://img.example.test/avatar.webp',
-            coverUrl: 'https://img.example.test/cover.webp',
-          },
-          gallery: [
-            {
-              title: 'Video',
-              sources: ['https://img.example.test/video.webm'],
-              thumbnail: 'https://img.example.test/video-thumb.webp',
-            },
-          ],
-        }),
-      ),
-      { status: 200, headers: { 'Content-Type': 'application/json', ETag: '"presentation"' } },
-    );
-
-  const presentation = await resolveRemoteVisualPresentation(remoteUrl);
-  assert.equal(presentation.avatarUrl, 'https://img.example.test/avatar.webp');
-  assert.equal(presentation.coverUrl, 'https://img.example.test/cover.webp');
-  assert.equal(presentation.gallery[0].thumbnail, 'https://img.example.test/video-thumb.webp');
 });
