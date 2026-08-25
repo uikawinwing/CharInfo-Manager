@@ -1,4 +1,4 @@
-import { isSupportedRemoteMediaUrl } from './remoteMediaUrl.ts';
+import { isSupportedRemoteImageUrl, isSupportedRemoteMediaUrl } from './remoteMediaUrl.ts';
 
 export const GALLERY_PACK_FORMAT = 'char-info-gallery-pack';
 export const GALLERY_PACK_VERSION = 1;
@@ -13,6 +13,7 @@ export type GalleryExtensionReference = {
 export type GalleryPackImage = {
   title: string;
   sources: string[];
+  thumbnail?: string;
   viewerVisible?: boolean;
 };
 
@@ -136,6 +137,7 @@ export function createGalleryPackPayload(
   const normalizedGallery = gallery.map((image, index) => ({
     title: image.title.trim() || `扩展立绘 ${index + 1}`,
     sources: normalizeSources(image.sources),
+    ...(typeof image.thumbnail === 'string' && image.thumbnail.trim() ? { thumbnail: image.thumbnail.trim() } : {}),
     ...(image.viewerVisible === false ? { viewerVisible: false } : {}),
   }));
   if (normalizedGallery.length === 0) throw new Error('扩展图库至少需要一张图片。');
@@ -152,6 +154,9 @@ export function createGalleryPackPayload(
         );
       }
     });
+    if (image.thumbnail && (!isHttpsUrl(image.thumbnail) || !isSupportedRemoteImageUrl(image.thumbnail))) {
+      throw new Error(`第 ${imageIndex + 1} 张扩展图片的缩略图必须使用受支持的 HTTPS 图片直链。`);
+    }
   });
 
   return {
@@ -202,6 +207,7 @@ export function parseGalleryPackPayload(value: unknown): GalleryPackPayload {
       return {
         title: typeof image.title === 'string' ? image.title : '',
         sources: normalizeSources(image.sources),
+        ...(typeof image.thumbnail === 'string' && image.thumbnail.trim() ? { thumbnail: image.thumbnail.trim() } : {}),
         ...(image.viewerVisible === false || image.viewer_visible === false ? { viewerVisible: false } : {}),
       };
     }),

@@ -416,6 +416,10 @@ import {
 } from '../char_info_shared/characterVisualProfile';
 import { findGalleryPackEntry } from '../char_info_shared/galleryPack';
 import { buildWorldbookList } from '../char_info_shared/worldbookList';
+import {
+  resolveRemoteVisualPresentation,
+  type RemoteVisualPresentation,
+} from '../char_info_viewer/services/galleryPackService';
 import { normalizePortraitMediaUrlForBrowser } from '../char_info_viewer/services/imageUrl';
 
 type LibraryCharacter = WorldbookCharacterEntry<WorldbookEntry, CharacterVisualProfile> & {
@@ -463,6 +467,7 @@ const coverIndexes = reactive<Record<number, number>>({});
 const detailUid = ref<number | null>(null);
 const detailGalleryIndexes = reactive<Record<string, number>>({});
 const detailExtensionGallery = reactive<Record<number, GalleryImage[]>>({});
+const remotePresentations = reactive<Record<number, RemoteVisualPresentation>>({});
 const detailVideoElements = new Map<number, HTMLVideoElement>();
 const activeDetailVideoIndex = ref<number | null>(null);
 let detailVideoHoverTimer: number | null = null;
@@ -533,7 +538,10 @@ const detailEntryBody = computed(() => {
 });
 const detailGallery = computed(() => {
   const character = detailCharacter.value;
-  return character ? [...character.profile.gallery, ...(detailExtensionGallery[character.entry.uid] ?? [])] : [];
+  if (!character) return [];
+  const remote = remotePresentations[character.entry.uid];
+  if (remote) return remote.gallery;
+  return [...character.profile.gallery, ...(detailExtensionGallery[character.entry.uid] ?? [])];
 });
 const detailGalleryItems = computed(() =>
   detailGallery.value.flatMap((image, index) => {
@@ -590,12 +598,16 @@ function sortCharacters(characters: LibraryCharacter[], order: SortOrder): Libra
 }
 
 function imageSources(character: LibraryCharacter): string[] {
-  return [character.profile.coverUrl, character.profile.avatarUrl, ...character.profile.gallery.flatMap(image => image.sources)].flatMap(
-    value => {
-      const media = normalizePortraitMediaUrlForBrowser(value);
-      return media?.kind === 'image' ? [media.url] : [];
-    },
-  );
+  const remote = remotePresentations[character.entry.uid];
+  const gallery = remote?.gallery ?? character.profile.gallery;
+  return [
+    remote?.coverUrl ?? character.profile.coverUrl,
+    remote?.avatarUrl ?? character.profile.avatarUrl,
+    ...gallery.flatMap(image => [image.thumbnail ?? '', ...image.sources]),
+  ].flatMap(value => {
+    const media = normalizePortraitMediaUrlForBrowser(value);
+    return media?.kind === 'image' ? [media.url] : [];
+  });
 }
 
 function coverUrl(character: LibraryCharacter): string {
@@ -765,7 +777,24 @@ async function loadEntries(worldbookName: string) {
   loadingEntries.value = true;
   try {
     const loaded = await getWorldbook(worldbookName);
-    if (revision === entriesLoadRevision && selectedWorldbookName.value === worldbookName) entries.value = loaded;
+    if (revision === entriesLoadRevision && selectedWorldbookName.value === worldbookName) {
+      entries.value = loaded;
+      Object.keys(remotePresentations).forEach(key => delete remotePresentations[Number(key)]);
+      void Promise.all(
+        loaded.map(async entry => {
+          const inspection = inspectManagedBlock(entry.content);
+          if (inspection.state !== 'valid' || !inspection.profile.visualRemoteUrl) return;
+          try {
+            const presentation = await resolveRemoteVisualPresentation(inspection.profile.visualRemoteUrl);
+            if (presentation && revision === entriesLoadRevision && selectedWorldbookName.value === worldbookName) {
+              remotePresentations[entry.uid] = presentation;
+            }
+          } catch (caught) {
+            console.warn(`[CharInfo Manager] 远程角色预览读取失败：${inspection.profile.characterName}`, caught);
+          }
+        }),
+      );
+    }
   } catch (caught) {
     if (revision === entriesLoadRevision) {
       entries.value = [];

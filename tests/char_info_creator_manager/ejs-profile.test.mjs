@@ -154,10 +154,9 @@ test('v2 生成区块只保留一份可读 profile 配置', () => {
   assert.ok(block.includes('setLocalVar(`char_info.profiles[${JSON.stringify(npcName)}]`, {'));
   assert.match(block, /schema_version: 2/);
   assert.match(block, /profile\.coverUrl \? \{ cover_url: profile\.coverUrl \} : \{\}/);
-  assert.match(
-    block,
-    /gallery: profile\.gallery\.map\(image => \(\{ title: image\.title, sources: image\.sources, \.\.\.\(image\.viewerVisible === false \? \{ viewer_visible: false \} : \{\}\) \}\)\)/,
-  );
+  assert.match(block, /gallery: profile\.gallery\.map\(image =>/);
+  assert.match(block, /image\.thumbnail \? \{ thumbnail: image\.thumbnail \} : \{\}/);
+  assert.match(block, /image\.viewerVisible === false \? \{ viewer_visible: false \} : \{\}/);
   assert.match(block, /status\.externalAvatars\.partners/);
   assert.doesNotMatch(block, /status\.externalGalleries\.partners/);
   assert.doesNotMatch(block, /char-info-ejs-builder:data:v1:/);

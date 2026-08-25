@@ -42,6 +42,12 @@ type RemoteVisualPackPayload = {
   gallery: GalleryPackImage[];
 };
 
+export type RemoteVisualPresentation = {
+  avatarUrl: string;
+  coverUrl: string;
+  gallery: GalleryPackImage[];
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -77,7 +83,7 @@ function normalizeOptionalHttpsUrl(value: unknown, label: string): string | null
     return url.toString();
   } catch (error) {
     if (error instanceof Error && error.message === `${label} must use HTTPS`) throw error;
-    throw new Error(`${label} must be an HTTPS URL or null`);
+    throw new Error(`${label} must be an HTTPS URL or null`, { cause: error });
   }
 }
 
@@ -197,6 +203,17 @@ async function fetchRemoteVisualPack(remoteUrl: string): Promise<RemoteVisualPac
   } finally {
     if (pendingRemoteReads.get(remoteUrl) === promise) pendingRemoteReads.delete(remoteUrl);
   }
+}
+
+export async function resolveRemoteVisualPresentation(remoteUrlValue: unknown): Promise<RemoteVisualPresentation | null> {
+  const remoteUrl = normalizeRemoteVisualUrl(remoteUrlValue);
+  if (!remoteUrl) return null;
+  const payload = await fetchRemoteVisualPack(remoteUrl);
+  return {
+    avatarUrl: payload.visual?.avatarUrl ?? '',
+    coverUrl: payload.visual?.coverUrl ?? '',
+    gallery: payload.gallery,
+  };
 }
 
 export function mergeGalleryExtension(

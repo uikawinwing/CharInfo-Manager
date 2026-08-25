@@ -8,6 +8,7 @@ import { isSupportedRemoteImageUrl, isSupportedRemoteMediaUrl } from './remoteMe
 export interface GalleryImage {
   title: string;
   sources: string[];
+  thumbnail?: string;
   viewerVisible?: boolean;
 }
 
@@ -42,6 +43,7 @@ type StoredGalleryImage = {
   title?: unknown;
   sources?: unknown;
   url?: unknown;
+  thumbnail?: unknown;
   viewerVisible?: unknown;
   viewer_visible?: unknown;
 };
@@ -85,7 +87,9 @@ export function isStatusGalleryImageUrl(value: string): boolean {
 
 export function buildStatusGalleryImages(gallery: readonly GalleryImage[]): StatusGalleryImage[] {
   return gallery.flatMap(image => {
-    const url = image.sources.find(isStatusGalleryImageUrl);
+    const url =
+      image.sources.find(isStatusGalleryImageUrl) ??
+      (image.thumbnail && isStatusGalleryImageUrl(image.thumbnail) ? image.thumbnail : '');
     return url ? [{ title: image.title, url }] : [];
   });
 }
@@ -254,6 +258,12 @@ export function validateProfile(profile: CharacterVisualProfile): string[] {
         );
       }
     });
+    if (image.thumbnail?.trim()) {
+      validateEjsSafeText(errors, `第 ${index + 1} 张立绘缩略图 URL`, image.thumbnail);
+      if (!isHttpsUrl(image.thumbnail) || !isSupportedRemoteImageUrl(image.thumbnail)) {
+        errors.push(`第 ${index + 1} 张立绘缩略图必须使用受支持的 HTTPS 图片直链。`);
+      }
+    }
   });
   if (profile.galleryExtension) {
     errors.push(...validateGalleryExtensionReference(profile.galleryExtension));
@@ -290,6 +300,7 @@ export function normalizeProfile(
         (typeof image.title === 'string' ? image.title.trim() : '') ||
         (index === 0 ? '主立绘' : `备用立绘 ${index + 1}`),
       sources: readGallerySources(image),
+      ...(typeof image.thumbnail === 'string' && image.thumbnail.trim() ? { thumbnail: image.thumbnail.trim() } : {}),
       ...(image.viewerVisible === false || ('viewer_visible' in image && image.viewer_visible === false)
         ? { viewerVisible: false }
         : {}),
@@ -490,7 +501,7 @@ export function buildManagedEjsBlock(input: CharacterVisualProfile): string {
   lines.push('    ...(profile.tierColor ? { custom_tiercolor: profile.tierColor } : {}),');
   lines.push("    ...(profile.entranceQuote ? { '登场台词': profile.entranceQuote } : {}),");
   lines.push(
-    '    gallery: profile.gallery.map(image => ({ title: image.title, sources: image.sources, ...(image.viewerVisible === false ? { viewer_visible: false } : {}) })),',
+    '    gallery: profile.gallery.map(image => ({ title: image.title, sources: image.sources, ...(image.thumbnail ? { thumbnail: image.thumbnail } : {}), ...(image.viewerVisible === false ? { viewer_visible: false } : {}) })),',
   );
   if (profile.galleryExtension) {
     lines.push('    gallery_extension: profile.galleryExtension,');

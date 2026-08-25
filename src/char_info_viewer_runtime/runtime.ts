@@ -6,6 +6,7 @@ import { closeCreatorManager, openCreatorManager } from '../char_info_creator_ma
 import { projectCharInfoMessage } from '../char_info_viewer/runtime/charInfoMessage';
 import { selectRecentMessageIds } from '../char_info_viewer/runtime/recentMessages';
 import { preloadPortraitImages } from '../char_info_viewer/services/imagePreload';
+import { resolveRemoteVisualPresentation } from '../char_info_viewer/services/galleryPackService';
 import { resolveCharacterVisualPreloadUrls } from '../char_info_viewer/services/themeService';
 import RuntimeRoot from './RuntimeRoot.vue';
 import { collectChangedAffinityNames, collectCurrentCharacterSnapshots } from './currentCharacterLibrary';
@@ -32,6 +33,19 @@ const CREATOR_BUTTON_NAME = '角色视觉编辑器';
 const LEGACY_CREATOR_BUTTON_NAME = '角色视觉编辑';
 const SETTINGS_HOST_CLASS = 'char-info-settings-host';
 const SETTINGS_BUTTON_NAME = 'CharInfo 设置';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function resolveCharacterRemoteVisualUrl(chatVariables: unknown, characterName: string): string {
+  if (!isRecord(chatVariables) || !isRecord(chatVariables.char_info)) return '';
+  const profiles = chatVariables.char_info.profiles;
+  if (!isRecord(profiles)) return '';
+  const profile = profiles[characterName];
+  if (!isRecord(profile) || typeof profile.visual_remote_url !== 'string') return '';
+  return profile.visual_remote_url.trim();
+}
 
 type MountedMessage = {
   messageId: number;
@@ -152,12 +166,24 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     library.error = '';
   };
 
-  const applyLibrarySnapshot = (mvuData: unknown, changedAffinityNames: readonly string[] = []) => {
+  const applyLibrarySnapshot = async (mvuData: unknown, changedAffinityNames: readonly string[] = []) => {
     const library = state.library;
     if (!library) return;
 
     const chatVariables = getVariables({ type: 'chat' });
-    const characters = collectCurrentCharacterSnapshots(mvuData, chatVariables);
+    const baseCharacters = collectCurrentCharacterSnapshots(mvuData, chatVariables);
+    const characters = await Promise.all(
+      baseCharacters.map(async character => {
+        const remoteUrl = resolveCharacterRemoteVisualUrl(chatVariables, character.name);
+        if (!remoteUrl) return character;
+        try {
+          const presentation = await resolveRemoteVisualPresentation(remoteUrl);
+          return presentation ? { ...character, avatarUrl: presentation.avatarUrl } : character;
+        } catch {
+          return character;
+        }
+      }),
+    );
     const characterNames = new Set(characters.map(character => character.name));
     const sourcePriorities = state.settings.imageSourcePriorityEnabled ? state.settings.imageSourcePriority : [];
     const preloadUrls = characters.slice(0, 8).flatMap(character => [
@@ -189,7 +215,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         await waitGlobalInitialized('Mvu');
         if (!started || state.library !== library) return;
 
-        applyLibrarySnapshot(Mvu.getMvuData({ type: 'message', message_id: 'latest' }), unreadNamesForRefresh);
+        await applyLibrarySnapshot(Mvu.getMvuData({ type: 'message', message_id: 'latest' }), unreadNamesForRefresh);
       }
     } catch (error) {
       if (state.library !== library) return;

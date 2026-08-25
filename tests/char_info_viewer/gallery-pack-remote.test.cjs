@@ -6,6 +6,7 @@ const {
   clearGalleryPackCache,
   REMOTE_VISUAL_REVALIDATE_MS,
   resolveGalleryExtension,
+  resolveRemoteVisualPresentation,
 } = require('../../src/char_info_viewer/services/galleryPackService.ts');
 
 function pack({ visual = {}, gallery = [], characterName = 'Remote Character', extra = {} } = {}) {
@@ -225,4 +226,38 @@ test('applyRemoteVisualPack never spreads arbitrary remote fields into the local
   assert.equal(resolved.personality, undefined);
   assert.equal(resolved.mvu, undefined);
   assert.equal(resolved.worldbook, undefined);
+});
+
+test('remote presentation exposes avatar, cover and gallery thumbnails without writing local state', async t => {
+  clearGalleryPackCache();
+  const remoteUrl = 'https://img.example.test/api/public/charinfo/album-id';
+  const originalFetch = global.fetch;
+  t.after(() => {
+    global.fetch = originalFetch;
+    clearGalleryPackCache();
+  });
+  global.fetch = async () =>
+    new Response(
+      JSON.stringify(
+        pack({
+          visual: {
+            avatarUrl: 'https://img.example.test/avatar.webp',
+            coverUrl: 'https://img.example.test/cover.webp',
+          },
+          gallery: [
+            {
+              title: 'Video',
+              sources: ['https://img.example.test/video.webm'],
+              thumbnail: 'https://img.example.test/video-thumb.webp',
+            },
+          ],
+        }),
+      ),
+      { status: 200, headers: { 'Content-Type': 'application/json', ETag: '"presentation"' } },
+    );
+
+  const presentation = await resolveRemoteVisualPresentation(remoteUrl);
+  assert.equal(presentation.avatarUrl, 'https://img.example.test/avatar.webp');
+  assert.equal(presentation.coverUrl, 'https://img.example.test/cover.webp');
+  assert.equal(presentation.gallery[0].thumbnail, 'https://img.example.test/video-thumb.webp');
 });

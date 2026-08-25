@@ -113,10 +113,9 @@ test('世界书角色库封面优先使用显式封面，并跳过视频继续�
     'utf8',
   );
 
-  assert.match(
-    librarySource,
-    /character\.profile\.coverUrl, character\.profile\.avatarUrl, \.\.\.character\.profile\.gallery\.flatMap\(image => image\.sources\)/u,
-  );
+  assert.match(librarySource, /remote\?\.coverUrl \?\? character\.profile\.coverUrl/u);
+  assert.match(librarySource, /remote\?\.avatarUrl \?\? character\.profile\.avatarUrl/u);
+  assert.match(librarySource, /image\.thumbnail \?\? ''/u);
   assert.match(librarySource, /media\?\.kind === 'image' \? \[media\.url\] : \[\]/u);
 });
 
