@@ -138,8 +138,10 @@ test('Viewer Save 状态跟随真实保存结果，不再使用宿主页顶部 p
   const runtimeRootSource = fs.readFileSync(path.join(repoRoot, 'src/char_info_viewer_runtime/RuntimeRoot.vue'), 'utf8');
   const runtimeSource = fs.readFileSync(path.join(repoRoot, 'src/char_info_viewer_runtime/runtime.ts'), 'utf8');
 
-  assert.match(appSource, /保存在聊天变量/u);
-  assert.match(illustratedSource, /保存在聊天变量/u);
+  assert.match(appSource, /导入至\[最新消息楼层\]变量/u);
+  assert.match(illustratedSource, /导入至\[最新消息楼层\]变量/u);
+  assert.match(appSource, /message_id:\s*Math\.max\(0,\s*getLastMessageId\(\)\)/u);
+  assert.doesNotMatch(appSource, /message_id:\s*props\.messageId/u);
   assert.doesNotMatch(appSource, /导入到角色状态/u);
   assert.doesNotMatch(illustratedSource, /导入到角色状态/u);
   assert.match(appSource, /target:\s*'chat-variable'[\s\S]*phase:\s*'pending'/u);
