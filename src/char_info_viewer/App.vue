@@ -479,7 +479,7 @@
             {{ saveButtonText }}
           </button>
           <div v-if="!props.readOnly" class="import-action-menu" :class="{ show: showImportMenu }">
-            <button type="button" :disabled="saveBusy" @click="onImportMvu">保存在聊天变量</button>
+            <button type="button" :disabled="saveBusy" @click="onImportMvu">导入至[最新消息楼层]变量</button>
             <button type="button" :disabled="saveBusy" @click="onImportWorldbook">导入到聊天世界书</button>
           </div>
         </div>
@@ -887,7 +887,7 @@ async function onImportMvu() {
 
   try {
     const ok = window.confirm(
-      `确定要将角色 "${importData.姓名 || '未命名角色'}" 保存在聊天变量吗？\n如果已存在同名角色，将会覆盖其数据。`,
+      `确定要将角色 "${importData.姓名 || '未命名角色'}" 导入至最新消息楼层变量吗？\n如果已存在同名角色，将会覆盖其数据。`,
     );
     if (!ok) return;
 
@@ -901,23 +901,23 @@ async function onImportMvu() {
     props.saveFeedback?.({
       target: 'chat-variable',
       phase: 'pending',
-      message: `${characterName} 正在保存到聊天变量…`,
-      successMessage: `✓ ${characterName} 已保存到聊天变量。`,
+      message: `${characterName} 正在导入至最新消息楼层变量…`,
+      successMessage: `✓ ${characterName} 已导入至最新消息楼层变量。`,
     });
-    await importToMvuVariables(importData, { type: 'message', message_id: props.messageId });
+    await importToMvuVariables(importData, { type: 'message', message_id: Math.max(0, getLastMessageId()) });
     importing.value = false;
     flashImportButton('✓ 已保存', 3000);
     props.saveFeedback?.({
       target: 'chat-variable',
       phase: 'success',
-      message: `✓ ${characterName} 已保存到聊天变量。`,
+      message: `✓ ${characterName} 已导入至最新消息楼层变量。`,
     });
   } catch (err: any) {
     console.error('MVU Import Error:', err);
     props.saveFeedback?.({
       target: 'chat-variable',
       phase: 'error',
-      message: `✕ ${err?.message || '保存到聊天变量失败。'}`,
+      message: `✕ ${err?.message || '导入至最新消息楼层变量失败。'}`,
     });
     flashImportButton('❌', 1800);
     window.alert(`保存失败: ${err?.message || String(err)}`);
