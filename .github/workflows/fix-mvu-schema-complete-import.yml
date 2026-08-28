@@ -176,22 +176,27 @@ jobs:
 
           export function mergeCharacterIntoMvuData'''
 
-          pattern = re.compile(
+          defaults_pattern = re.compile(
               r"function createNewCharacterDefaults\(\): Record<string, any> \{[\s\S]*?\n\}\n\nexport function mergeCharacterIntoMvuData"
           )
-          source, count = pattern.subn(lambda _m: helpers, source, count=1)
+          source, count = defaults_pattern.subn(lambda _m: helpers, source, count=1)
           if count != 1:
               raise SystemExit(f'failed to replace defaults block: {count}')
 
-          old_init = '''  const currentCharacter = currentVars.stat_data.关系列表[charName];
-          const mvuData: Record<string, any> = isRecord(currentCharacter)
-            ? { ...currentCharacter }
-            : createNewCharacterDefaults();'''
-          new_init = '''  const currentCharacter = currentVars.stat_data.关系列表[charName];
-          const mvuData: Record<string, any> = completeCharacterSchema(currentCharacter);'''
-          if old_init not in source:
-              raise SystemExit('failed to find current character initialization')
-          source = source.replace(old_init, new_init, 1)
+          init_pattern = re.compile(
+              r"  const currentCharacter = currentVars\.stat_data\.关系列表\[charName\];\n"
+              r"  const mvuData: Record<string, any> = isRecord\(currentCharacter\)\n"
+              r"    \? \{ \.\.\.currentCharacter \}\n"
+              r"    : createNewCharacterDefaults\(\);"
+          )
+          source, count = init_pattern.subn(
+              "  const currentCharacter = currentVars.stat_data.关系列表[charName];\n"
+              "  const mvuData: Record<string, any> = completeCharacterSchema(currentCharacter);",
+              source,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit(f'failed to replace current character initialization: {count}')
 
           resource_anchor = "  if (hasOwn(normalizedData, '背景故事')) mvuData.背景故事 = normalizedData.背景故事 || '';"
           if resource_anchor not in source:
@@ -202,27 +207,25 @@ jobs:
               1,
           )
 
-          old_divinity = '''  const divinityInput = isRecord(normalizedData.登神长阶) ? normalizedData.登神长阶 : {};
-          const hasDivinityInput =
-            hasOwn(normalizedData, '登神长阶') ||
-            ['神位', '神国', '要素', '权能', '法则'].some(key => hasOwn(normalizedData, key));
-          if (hasDivinityInput) {
-            const divinity = isRecord(mvuData.登神长阶) ? { ...mvuData.登神长阶 } : {};
-            divinity.是否开启 = true;'''
-          new_divinity = '''  const divinityInput = isRecord(normalizedData.登神长阶) ? normalizedData.登神长阶 : {};
-          const hasDivinityDetails = ['神位', '神国', '要素', '权能', '法则'].some(
-            key => hasOwn(divinityInput, key) || hasOwn(normalizedData, key),
-          );
-          const hasDivinityInput = hasOwn(normalizedData, '登神长阶') || hasDivinityDetails;
-          mvuData.登神长阶.是否开启 = false;
-          if (hasDivinityInput) {
-            const divinity = isRecord(mvuData.登神长阶) ? { ...mvuData.登神长阶 } : createNewCharacterDefaults().登神长阶;
-            divinity.是否开启 = hasOwn(divinityInput, '是否开启')
-              ? divinityInput.是否开启 === true
-              : hasDivinityDetails;'''
-          if old_divinity not in source:
-              raise SystemExit('failed to find divinity block')
-          source = source.replace(old_divinity, new_divinity, 1)
+          divinity_pattern = re.compile(
+              r"  const divinityInput = isRecord\(normalizedData\.登神长阶\) \? normalizedData\.登神长阶 : \{\};\n"
+              r"  const hasDivinityInput =[\s\S]*?"
+              r"    divinity\.是否开启 = true;"
+          )
+          divinity_replacement = '''  const divinityInput = isRecord(normalizedData.登神长阶) ? normalizedData.登神长阶 : {};
+            const hasDivinityDetails = ['神位', '神国', '要素', '权能', '法则'].some(
+              key => hasOwn(divinityInput, key) || hasOwn(normalizedData, key),
+            );
+            const hasDivinityInput = hasOwn(normalizedData, '登神长阶') || hasDivinityDetails;
+            mvuData.登神长阶.是否开启 = false;
+            if (hasDivinityInput) {
+              const divinity = isRecord(mvuData.登神长阶) ? { ...mvuData.登神长阶 } : createNewCharacterDefaults().登神长阶;
+              divinity.是否开启 = hasOwn(divinityInput, '是否开启')
+                ? divinityInput.是否开启 === true
+                : hasDivinityDetails;'''
+          source, count = divinity_pattern.subn(lambda _m: divinity_replacement, source, count=1)
+          if count != 1:
+              raise SystemExit(f'failed to replace divinity block: {count}')
 
           path.write_text(source, encoding='utf-8')
           PY
