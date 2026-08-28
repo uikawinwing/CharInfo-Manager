@@ -111,18 +111,23 @@ jobs:
 
           function completeCharacterSchema'''
 
-          pattern = re.compile(
-              r"function createNewCharacterDefaults\(\): Record<string, any> \{[\s\S]*?\n\}\n\nfunction completeCharacterSchema"
+          source, count = re.subn(
+              r"function createNewCharacterDefaults\(\): Record<string, any> \{[\s\S]*?\n\}\n\nfunction completeCharacterSchema",
+              lambda _m: replacement,
+              source,
+              count=1,
           )
-          source, count = pattern.subn(lambda _m: replacement, source, count=1)
           if count != 1:
               raise SystemExit(f'failed to replace character defaults block: {count}')
 
           old_write = '  currentVars.stat_data.关系列表[charName] = mvuData;'
-          new_write = '  currentVars.stat_data.关系列表[charName] = orderCharacterSchema(mvuData);'
           if old_write not in source:
               raise SystemExit('failed to find relationship writeback')
-          source = source.replace(old_write, new_write, 1)
+          source = source.replace(
+              old_write,
+              '  currentVars.stat_data.关系列表[charName] = orderCharacterSchema(mvuData);',
+              1,
+          )
           source_path.write_text(source, encoding='utf-8')
 
           test_path = Path('tests/char_info_viewer/import-service-divinity-laws.test.cjs')
@@ -162,34 +167,44 @@ jobs:
           if count != 1:
               raise SystemExit(f'failed to replace expected key order: {count}')
 
-          new_char_anchor = '''  COMPLETE_CHARACTER_KEYS.forEach(key => {
-            assert.ok(Object.prototype.hasOwnProperty.call(character, key), `missing schema key: ${key}`);
-          });'''
-          if new_char_anchor not in test_source:
-              raise SystemExit('failed to find new-character key assertion')
-          test_source = test_source.replace(
-              new_char_anchor,
-              new_char_anchor + '''
-            assert.deepEqual(Object.keys(character), COMPLETE_CHARACTER_KEYS);''',
-              1,
-          )
+          test_source += r'''
 
-          partial_anchor = '''  COMPLETE_CHARACTER_KEYS.forEach(key => {
-            assert.ok(Object.prototype.hasOwnProperty.call(character, key), `missing schema key: ${key}`);
-          });
-          assert.equal(character._保留字段, 'keep');'''
-          if partial_anchor not in test_source:
-              raise SystemExit('failed to find partial-character assertion')
-          test_source = test_source.replace(
-              partial_anchor,
-              '''  COMPLETE_CHARACTER_KEYS.forEach(key => {
-            assert.ok(Object.prototype.hasOwnProperty.call(character, key), `missing schema key: ${key}`);
-          });
-          assert.deepEqual(Object.keys(character).slice(0, COMPLETE_CHARACTER_KEYS.length), COMPLETE_CHARACTER_KEYS);
-          assert.deepEqual(Object.keys(character).slice(COMPLETE_CHARACTER_KEYS.length), ['_保留字段']);
-          assert.equal(character._保留字段, 'keep');''',
-              1,
-          )
+test('Viewer 导入后的标准字段顺序与实际 partners 变量顺序一致', () => {
+  const newVars = { stat_data: { 关系列表: {} } };
+  mergeCharacterIntoMvuData(
+    {
+      姓名: '顺序测试新角色',
+      性格: '性格应在等级与登神长阶之前',
+      资源: { HP: 100, MP: 80, SP: 60 },
+    },
+    newVars,
+  );
+
+  const newCharacter = newVars.stat_data.关系列表.顺序测试新角色;
+  assert.deepEqual(Object.keys(newCharacter), COMPLETE_CHARACTER_KEYS);
+  assert.ok(Object.keys(newCharacter).indexOf('性格') < Object.keys(newCharacter).indexOf('登神长阶'));
+
+  const existingVars = {
+    stat_data: {
+      关系列表: {
+        顺序测试旧角色: {
+          背景故事: '最先插入也应被重排',
+          登神长阶: { 是否开启: true },
+          _扩展字段: '保留但放在标准字段后',
+          性格: '旧性格',
+          在场: false,
+          等级: 7,
+        },
+      },
+    },
+  };
+
+  mergeCharacterIntoMvuData({ 姓名: '顺序测试旧角色' }, existingVars);
+  const existingCharacter = existingVars.stat_data.关系列表.顺序测试旧角色;
+  assert.deepEqual(Object.keys(existingCharacter).slice(0, COMPLETE_CHARACTER_KEYS.length), COMPLETE_CHARACTER_KEYS);
+  assert.deepEqual(Object.keys(existingCharacter).slice(COMPLETE_CHARACTER_KEYS.length), ['_扩展字段']);
+});
+'''
           test_path.write_text(test_source, encoding='utf-8')
           PY
 
