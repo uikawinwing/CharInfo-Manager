@@ -28,3 +28,17 @@ test('display-only locator fallback does not replace the raw CharInfo payload us
   assert.doesNotMatch(runtimeSource, /yamlText:\s*formatAsTavernRegexedString/);
   assert.doesNotMatch(runtimeSource, /yamlText:\s*formatAsDisplayedMessage/);
 });
+
+test('mount failures expose gated diagnostics for the real rendered message', () => {
+  assert.match(nativeMountSource, /readRuntimeSettings\(getVariables\(\{ type: 'script' \}\)\)\.debugEnabled/);
+  assert.match(nativeMountSource, /\[CharInfo Runtime\]\[mount-debug\]/);
+  assert.match(nativeMountSource, /rawCandidate:/);
+  assert.match(nativeMountSource, /finalDisplayCandidate:/);
+  assert.match(nativeMountSource, /mesTextActual:/);
+  assert.match(nativeMountSource, /renderableText:/);
+  assert.match(nativeMountSource, /charInfoElements,/);
+  assert.match(nativeMountSource, /blockedScopes:/);
+  assert.match(nativeMountSource, /mesTextHtml:/);
+  assert.match(nativeMountSource, /locator-text-not-found/);
+  assert.match(nativeMountSource, /candidate-range-crosses-blocked-scope/);
+});
