@@ -9,12 +9,18 @@ const nativeMountSource = await readFile(
 );
 const runtimeSource = await readFile(new URL('src/char_info_viewer_runtime/runtime.ts', repoRoot), 'utf8');
 
-test('native CharInfo mounting can locate post-regex display text', () => {
-  assert.match(nativeMountSource, /const candidates = \[rawBody\]/);
-  assert.match(nativeMountSource, /formatAsTavernRegexedString\(rawBody, 'ai_output', 'display', \{ depth \}\)/);
-  assert.match(nativeMountSource, /formatAsDisplayedMessage\(rawBody, \{ message_id: messageId \}\)/);
-  assert.match(nativeMountSource, /container\.textContent/);
-  assert.match(nativeMountSource, /getDisplayLocatorCandidates\(root, body\)/);
+test('native CharInfo mounting derives post-regex locator text from the whole displayed message', () => {
+  assert.match(nativeMountSource, /const message = getChatMessages\(messageId\)\[0\]/);
+  assert.match(nativeMountSource, /rawMessage\.slice\(card\.sourceStart, card\.sourceEnd\) !== card\.content/);
+  assert.match(nativeMountSource, /const markedCard = `\$\{parts\.openingTag\}\$\{startMarker\}\$\{parts\.body\}\$\{endMarker\}\$\{parts\.closingTag\}`/);
+  assert.match(nativeMountSource, /rawMessage\.slice\(0, card\.sourceStart\)/);
+  assert.match(nativeMountSource, /rawMessage\.slice\(card\.sourceEnd\)/);
+  assert.match(nativeMountSource, /formatAsDisplayedMessage\(markedMessage, \{ message_id: messageId \}\)/);
+  assert.match(nativeMountSource, /displayedText\.indexOf\(startMarker\)/);
+  assert.match(nativeMountSource, /displayedText\.indexOf\(endMarker, bodyStart\)/);
+  assert.match(nativeMountSource, /getDisplayLocatorCandidates\(root, card, body\)/);
+  assert.doesNotMatch(nativeMountSource, /formatAsDisplayedMessage\(rawBody/);
+  assert.doesNotMatch(nativeMountSource, /formatAsTavernRegexedString\(rawBody/);
 });
 
 test('display-only locator fallback does not replace the raw CharInfo payload used by Viewer', () => {
