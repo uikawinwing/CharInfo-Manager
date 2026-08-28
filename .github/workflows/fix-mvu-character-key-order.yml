@@ -167,44 +167,44 @@ jobs:
           if count != 1:
               raise SystemExit(f'failed to replace expected key order: {count}')
 
-          test_source += r'''
+          order_test = r'''
+          test('Viewer 导入后的标准字段顺序与实际 partners 变量顺序一致', () => {
+            const newVars = { stat_data: { 关系列表: {} } };
+            mergeCharacterIntoMvuData(
+              {
+                姓名: '顺序测试新角色',
+                性格: '性格应在等级与登神长阶之前',
+                资源: { HP: 100, MP: 80, SP: 60 },
+              },
+              newVars,
+            );
 
-test('Viewer 导入后的标准字段顺序与实际 partners 变量顺序一致', () => {
-  const newVars = { stat_data: { 关系列表: {} } };
-  mergeCharacterIntoMvuData(
-    {
-      姓名: '顺序测试新角色',
-      性格: '性格应在等级与登神长阶之前',
-      资源: { HP: 100, MP: 80, SP: 60 },
-    },
-    newVars,
-  );
+            const newCharacter = newVars.stat_data.关系列表.顺序测试新角色;
+            assert.deepEqual(Object.keys(newCharacter), COMPLETE_CHARACTER_KEYS);
+            assert.ok(Object.keys(newCharacter).indexOf('性格') < Object.keys(newCharacter).indexOf('登神长阶'));
 
-  const newCharacter = newVars.stat_data.关系列表.顺序测试新角色;
-  assert.deepEqual(Object.keys(newCharacter), COMPLETE_CHARACTER_KEYS);
-  assert.ok(Object.keys(newCharacter).indexOf('性格') < Object.keys(newCharacter).indexOf('登神长阶'));
+            const existingVars = {
+              stat_data: {
+                关系列表: {
+                  顺序测试旧角色: {
+                    背景故事: '最先插入也应被重排',
+                    登神长阶: { 是否开启: true },
+                    _扩展字段: '保留但放在标准字段后',
+                    性格: '旧性格',
+                    在场: false,
+                    等级: 7,
+                  },
+                },
+              },
+            };
 
-  const existingVars = {
-    stat_data: {
-      关系列表: {
-        顺序测试旧角色: {
-          背景故事: '最先插入也应被重排',
-          登神长阶: { 是否开启: true },
-          _扩展字段: '保留但放在标准字段后',
-          性格: '旧性格',
-          在场: false,
-          等级: 7,
-        },
-      },
-    },
-  };
-
-  mergeCharacterIntoMvuData({ 姓名: '顺序测试旧角色' }, existingVars);
-  const existingCharacter = existingVars.stat_data.关系列表.顺序测试旧角色;
-  assert.deepEqual(Object.keys(existingCharacter).slice(0, COMPLETE_CHARACTER_KEYS.length), COMPLETE_CHARACTER_KEYS);
-  assert.deepEqual(Object.keys(existingCharacter).slice(COMPLETE_CHARACTER_KEYS.length), ['_扩展字段']);
-});
-'''
+            mergeCharacterIntoMvuData({ 姓名: '顺序测试旧角色' }, existingVars);
+            const existingCharacter = existingVars.stat_data.关系列表.顺序测试旧角色;
+            assert.deepEqual(Object.keys(existingCharacter).slice(0, COMPLETE_CHARACTER_KEYS.length), COMPLETE_CHARACTER_KEYS);
+            assert.deepEqual(Object.keys(existingCharacter).slice(COMPLETE_CHARACTER_KEYS.length), ['_扩展字段']);
+          });
+          '''
+          test_source += '\n' + order_test.strip() + '\n'
           test_path.write_text(test_source, encoding='utf-8')
           PY
 
