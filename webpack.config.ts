@@ -50,10 +50,15 @@ function common_path(lhs: string, rhs: string) {
 
 function glob_script_files() {
   const results: string[] = [];
+<<<<<<< HEAD
   const internalModuleEntries = new Set(['src/char_info_creator_manager/index.ts']);
 
   fs.globSync(`{示例,src}/**/index.{ts,tsx,js,jsx}`)
     .filter(file => !internalModuleEntries.has(file.replaceAll('\\', '/')))
+=======
+
+  fs.globSync(`{示例,src}/**/index.{ts,tsx,js,jsx}`)
+>>>>>>> fd8153baf11ced5360854b92fb17395299e83151
     .filter(
       file => process.env.CI !== 'true' || !fs.readFileSync(path.join(import.meta.dirname, file)).includes('@no-ci'),
     )

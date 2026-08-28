@@ -1,5 +1,8 @@
 node_modules
+<<<<<<< HEAD
 .pnpm-store/
+=======
+>>>>>>> fd8153baf11ced5360854b92fb17395299e83151
 
 .DS_Store
 Thumbs.db
@@ -12,8 +15,11 @@ pnpm-debug.log*
 
 auto-imports.d.ts
 components.d.ts
+<<<<<<< HEAD
 dist/tsconfig.tsbuildinfo
 screenshots/
 .kilocode/
 .ai-bridge/
 charinfo_source/
+=======
+>>>>>>> fd8153baf11ced5360854b92fb17395299e83151
