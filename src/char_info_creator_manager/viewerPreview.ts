@@ -14,6 +14,8 @@ export type CreatorViewerVisualOverride = {
 
 export type CreatorViewerPreviewSource = 'sample' | 'pasted';
 
+export const CREATOR_VIEWER_REMOTE_GALLERY_SCOPE = 'creator-viewer';
+
 export function normalizeCreatorViewerPastedText(value: string): string {
   const text = String(value ?? '').trim();
   if (!text) return '';
@@ -149,6 +151,7 @@ export function buildCreatorViewerVisualOverride(profile: CharacterVisualProfile
     characterName: normalized.characterName,
     config: {
       schema_version: CHAR_INFO_PROFILE_SCHEMA_VERSION,
+      __char_info_remote_gallery_scope: CREATOR_VIEWER_REMOTE_GALLERY_SCOPE,
       ...(normalized.raceColor ? { custom_racecolor: normalized.raceColor } : {}),
       ...(normalized.tierColor ? { custom_tiercolor: normalized.tierColor } : {}),
       ...(normalized.entranceQuote ? { 登场台词: normalized.entranceQuote } : {}),
