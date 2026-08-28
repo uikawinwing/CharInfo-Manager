@@ -51,6 +51,12 @@ type CollapsedTextRangeMatch = TextRangeMatch & {
   collapsedEnd: number;
 };
 
+type CharInfoContentParts = {
+  openingTag: string;
+  body: string;
+  closingTag: string;
+};
+
 function normalizeRenderedBoundary(text: string): string {
   return text
     .split(/\r?\n/)
@@ -105,10 +111,14 @@ export function findCollapsedTextRange(chunks: readonly string[], needle: string
   };
 }
 
+function splitCharInfoContent(source: string): CharInfoContentParts | null {
+  const match = source.match(/^(<char_info\s*>)([\s\S]*?)(<\/char_info\s*>)$/i);
+  if (!match?.[2]?.trim()) return null;
+  return { openingTag: match[1], body: match[2], closingTag: match[3] };
+}
+
 export function getCharInfoBody(source: string): string | null {
-  const match = source.match(/^<char_info\s*>([\s\S]*?)<\/char_info\s*>$/i);
-  const body = match?.[1] ?? '';
-  return body.trim() ? body : null;
+  return splitCharInfoContent(source)?.body ?? null;
 }
 
 function getMessageId(root: HTMLElement): number | null {
@@ -117,33 +127,46 @@ function getMessageId(root: HTMLElement): number | null {
   return Number.isInteger(messageId) && messageId >= 0 ? messageId : null;
 }
 
-function getDisplayLocatorCandidates(root: HTMLElement, rawBody: string): string[] {
-  const candidates = [rawBody];
+function createLocatorMarker(card: CharInfoCardPart, edge: 'start' | 'end'): string {
+  const safeId = card.id.replace(/[^a-z0-9_-]/gi, '_');
+  return `\uE000CHARINFO_RUNTIME_${edge.toUpperCase()}_${safeId}\uE001`;
+}
+
+function getWholeMessageDisplayCandidate(root: HTMLElement, card: CharInfoCardPart): string | null {
   const messageId = getMessageId(root);
-  if (messageId === null) return candidates;
+  const parts = splitCharInfoContent(card.content);
+  if (messageId === null || !parts || typeof formatAsDisplayedMessage !== 'function') return null;
 
   try {
-    if (typeof formatAsTavernRegexedString === 'function') {
-      const depth = Math.max(0, getLastMessageId() - messageId);
-      const regexedBody = formatAsTavernRegexedString(rawBody, 'ai_output', 'display', { depth });
-      if (regexedBody && regexedBody !== rawBody) candidates.push(regexedBody);
-    }
-  } catch (error) {
-    console.warn('[CharInfo Runtime] 无法生成酒馆显示正则定位文本，将继续使用原始文本定位。', error);
-  }
+    const message = getChatMessages(messageId)[0];
+    const rawMessage = typeof message?.message === 'string' ? message.message : '';
+    if (!rawMessage || rawMessage.slice(card.sourceStart, card.sourceEnd) !== card.content) return null;
 
-  try {
-    if (typeof formatAsDisplayedMessage === 'function') {
-      const displayedHtml = formatAsDisplayedMessage(rawBody, { message_id: messageId });
-      const container = root.ownerDocument.createElement('div');
-      container.innerHTML = displayedHtml;
-      const displayedText = container.textContent ?? '';
-      if (displayedText && !candidates.includes(displayedText)) candidates.push(displayedText);
-    }
+    const startMarker = createLocatorMarker(card, 'start');
+    const endMarker = createLocatorMarker(card, 'end');
+    const markedCard = `${parts.openingTag}${startMarker}${parts.body}${endMarker}${parts.closingTag}`;
+    const markedMessage = `${rawMessage.slice(0, card.sourceStart)}${markedCard}${rawMessage.slice(card.sourceEnd)}`;
+    const displayedHtml = formatAsDisplayedMessage(markedMessage, { message_id: messageId });
+    const container = root.ownerDocument.createElement('div');
+    container.innerHTML = displayedHtml;
+    const displayedText = container.textContent ?? '';
+    const start = displayedText.indexOf(startMarker);
+    if (start < 0) return null;
+    const bodyStart = start + startMarker.length;
+    const end = displayedText.indexOf(endMarker, bodyStart);
+    if (end < bodyStart) return null;
+    const displayedBody = displayedText.slice(bodyStart, end);
+    return displayedBody.trim() ? displayedBody : null;
   } catch (error) {
-    console.warn('[CharInfo Runtime] 无法生成酒馆最终显示定位文本，将继续使用已有候选文本定位。', error);
+    console.warn('[CharInfo Runtime] 无法从整条酒馆显示消息生成 char_info 定位文本，将继续使用原始文本定位。', error);
+    return null;
   }
+}
 
+function getDisplayLocatorCandidates(root: HTMLElement, card: CharInfoCardPart, rawBody: string): string[] {
+  const candidates = [rawBody];
+  const displayedBody = getWholeMessageDisplayCandidate(root, card);
+  if (displayedBody && displayedBody !== rawBody) candidates.push(displayedBody);
   return candidates;
 }
 
@@ -199,7 +222,7 @@ function createSafeBoundaryRange(root: HTMLElement, card: CharInfoCardPart): Ran
 
   const nodes = collectRenderableTextNodes(root);
   const chunks = nodes.map(node => node.nodeValue ?? '');
-  const match = getDisplayLocatorCandidates(root, body)
+  const match = getDisplayLocatorCandidates(root, card, body)
     .map(candidate => findCollapsedTextRange(chunks, candidate))
     .find((candidate): candidate is TextRangeMatch => candidate !== null);
   if (!match) return null;
