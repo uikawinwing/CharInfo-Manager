@@ -2,12 +2,14 @@ import { parseGalleryPackPayload, type GalleryPackImage, type GalleryPackPayload
 import { normalizePortraitMediaUrlForBrowser } from './imageUrl.ts';
 
 export const REMOTE_GALLERY_REVALIDATE_MS = 5 * 60 * 1000;
+export const REMOTE_GALLERY_REQUEST_TIMEOUT_MS = 10 * 1000;
 
 const pendingRemoteReads = new Map<string, Promise<GalleryPackPayload>>();
 const remoteGalleryCache = new Map<
   string,
   { payload: GalleryPackPayload; etag: string | null; checkedAt: number }
 >();
+const scopedRemoteGalleryReads = new Map<string, Promise<unknown>>();
 
 export type RemoteGalleryPresentation = {
   avatarUrl: string;
@@ -32,6 +34,12 @@ function normalizeGalleryPackUrl(value: unknown): string | null {
   }
 }
 
+function normalizeRemoteGalleryScope(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return normalized || null;
+}
+
 function previewUrlFromGallery(gallery: readonly GalleryPackImage[]): string {
   for (const image of gallery) {
     if (image.thumbnail) return image.thumbnail;
@@ -54,9 +62,11 @@ async function fetchRemoteGalleryPack(remoteUrl: string): Promise<GalleryPackPay
   const promise = (async () => {
     const headers = new Headers();
     if (cached?.etag) headers.set('If-None-Match', cached.etag);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REMOTE_GALLERY_REQUEST_TIMEOUT_MS);
 
     try {
-      const response = await fetch(remoteUrl, { headers, credentials: 'omit' });
+      const response = await fetch(remoteUrl, { headers, credentials: 'omit', signal: controller.signal });
       if (response.status === 304) {
         if (!cached) throw new Error('Remote Gallery Pack returned 304 without a local cache');
         cached.checkedAt = Date.now();
@@ -76,6 +86,8 @@ async function fetchRemoteGalleryPack(remoteUrl: string): Promise<GalleryPackPay
       cached.checkedAt = Date.now();
       console.warn(`[CharInfo Viewer] 远程 Gallery Pack 刷新失败，继续使用缓存：${remoteUrl}`, error);
       return cached.payload;
+    } finally {
+      clearTimeout(timeout);
     }
   })();
 
@@ -110,7 +122,7 @@ export function applyRemoteGalleryPack(visualConfig: unknown, payload: GalleryPa
   };
 }
 
-export async function resolveRemoteGalleryConfig(visualConfig: unknown): Promise<unknown> {
+async function resolveRemoteGalleryConfigDirect(visualConfig: unknown): Promise<unknown> {
   if (!isRecord(visualConfig)) return visualConfig;
   const remoteUrl = normalizeGalleryPackUrl(visualConfig.gallery_pack_url);
   if (!remoteUrl) return visualConfig;
@@ -124,7 +136,24 @@ export async function resolveRemoteGalleryConfig(visualConfig: unknown): Promise
   }
 }
 
+export async function resolveRemoteGalleryConfig(visualConfig: unknown): Promise<unknown> {
+  if (!isRecord(visualConfig)) return visualConfig;
+  const scope = normalizeRemoteGalleryScope(visualConfig.__char_info_remote_gallery_scope);
+  if (!scope) return resolveRemoteGalleryConfigDirect(visualConfig);
+
+  const previous = scopedRemoteGalleryReads.get(scope) ?? Promise.resolve(undefined);
+  const current = previous.catch(() => undefined).then(() => resolveRemoteGalleryConfigDirect(visualConfig));
+  scopedRemoteGalleryReads.set(scope, current);
+
+  try {
+    return await current;
+  } finally {
+    if (scopedRemoteGalleryReads.get(scope) === current) scopedRemoteGalleryReads.delete(scope);
+  }
+}
+
 export function clearGalleryPackCache(): void {
   pendingRemoteReads.clear();
   remoteGalleryCache.clear();
+  scopedRemoteGalleryReads.clear();
 }

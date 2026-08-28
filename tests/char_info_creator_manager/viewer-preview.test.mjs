@@ -11,6 +11,7 @@ const profile = {
   raceColor: '#11AABB',
   tierColor: '#CC22DD',
   entranceQuote: '这是尚未保存的草稿台词。',
+  galleryPackUrl: 'https://img.example.test/api/public/gallery/uika/qianyao',
   gallery: [{ title: '主立绘', sources: ['https://example.com/url0.png', 'https://example.com/url1.png'] }],
   metadata: {
     author: '测试作者',
@@ -54,9 +55,11 @@ test('Creator Viewer 预览直接使用未保存 draft 的颜色、台词和完�
   const override = buildCreatorViewerVisualOverride(profile);
 
   assert.equal(override.characterName, '千爻');
+  assert.equal(override.config.__char_info_remote_gallery_scope, 'creator-viewer');
   assert.equal(override.config.custom_racecolor, '#11AABB');
   assert.equal(override.config.custom_tiercolor, '#CC22DD');
   assert.equal(override.config.登场台词, '这是尚未保存的草稿台词。');
+  assert.equal(override.config.gallery_pack_url, 'https://img.example.test/api/public/gallery/uika/qianyao');
   assert.deepEqual(override.config.gallery, [{
     title: '主立绘',
     sources: ['https://example.com/url0.png', 'https://example.com/url1.png'],
@@ -87,7 +90,7 @@ test('Creator 挂载真实 Viewer 作为只读草稿预览，并隔离聊天视�
   assert.match(creatorSource, /v-model="viewerPreviewPastedText"/);
   assert.match(creatorSource, /完整 &lt;char_info&gt; 或纯 YAML/);
   assert.match(creatorSource, /resolveCreatorViewerPreviewYaml/);
-  assert.match(viewerSource, /props\.previewMode[\s\S]*resolveCharacterVisualPreview/);
+  assert.match(viewerSource, /props\.previewMode[\s\S]*resolveRemoteGalleryConfig[\s\S]*resolveCharacterVisualPreview/);
   assert.match(viewerSource, /previewData\?: CharacterData/);
   assert.match(viewerSource, /\[\(\) => props\.yamlText, \(\) => props\.previewData, \(\) => props\.visualConfigOverride\]/);
   assert.match(viewerSource, /if \(props\.previewMode && props\.previewData\)[\s\S]*previewBaseData = props\.previewData;[\s\S]*applyParsedCharacterData/);
