@@ -1,0 +1,249 @@
+name: fix-mvu-schema-complete-import
+
+on:
+  push:
+    branches:
+      - fix/mvu-schema-complete-import
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Apply MVU schema import fix
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('src/char_info_viewer/services/importService.ts')
+          source = path.read_text(encoding='utf-8')
+
+          helpers = r'''function createResourceState(value = 0): Record<string, any> {
+            return {
+              当前: value,
+              上限: { _基础: value, 额外: 0 },
+            };
+          }
+
+          function finiteResourceNumber(value: unknown): number | null {
+            if (value === '' || value === null || value === undefined) return null;
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : null;
+          }
+
+          function completeResourceState(value: unknown): Record<string, any> {
+            const resource = isRecord(value) ? value : {};
+            const upper = isRecord(resource.上限) ? resource.上限 : {};
+            const current = finiteResourceNumber(resource.当前);
+            const base = finiteResourceNumber(upper._基础);
+            const extra = finiteResourceNumber(upper.额外) ?? 0;
+            const resolvedBase = base ?? current ?? 0;
+            const resolvedCurrent = current ?? resolvedBase + extra;
+
+            return {
+              当前: resolvedCurrent,
+              上限: {
+                _基础: resolvedBase,
+                额外: extra,
+              },
+            };
+          }
+
+          function createNewCharacterDefaults(): Record<string, any> {
+            return {
+              在场: true,
+              种族: '未知',
+              身份: [],
+              职业: [],
+              生命层级: '第一层级/普通层级',
+              等级: 1,
+              属性: { 力量: 0, 敏捷: 0, 体质: 0, 智力: 0, 精神: 0 },
+              生命值: createResourceState(),
+              法力值: createResourceState(),
+              体力值: createResourceState(),
+              状态效果: {},
+              背包: {},
+              装备: {},
+              技能: {},
+              资产: {},
+              登神长阶: {
+                是否开启: false,
+                要素: {},
+                权能: {},
+                法则: {},
+                神位: '',
+                神国: { 名称: '', 描述: '' },
+              },
+              性格: '',
+              喜爱: '',
+              外貌: '',
+              着装: '',
+              命定契约: false,
+              好感度: 0,
+              心里话: '',
+              背景故事: '',
+            };
+          }
+
+          function completeCharacterSchema(value: unknown): Record<string, any> {
+            const defaults = createNewCharacterDefaults();
+            if (!isRecord(value)) return defaults;
+
+            const divinityDefaults = defaults.登神长阶 as Record<string, any>;
+            const divinity = isRecord(value.登神长阶) ? value.登神长阶 : {};
+            const kingdomDefaults = divinityDefaults.神国 as Record<string, any>;
+            const kingdom = isRecord(divinity.神国) ? divinity.神国 : {};
+
+            return {
+              ...defaults,
+              ...value,
+              属性: {
+                ...defaults.属性,
+                ...(isRecord(value.属性) ? value.属性 : {}),
+              },
+              生命值: completeResourceState(value.生命值),
+              法力值: completeResourceState(value.法力值),
+              体力值: completeResourceState(value.体力值),
+              状态效果: isRecord(value.状态效果) ? { ...value.状态效果 } : {},
+              背包: isRecord(value.背包) ? { ...value.背包 } : {},
+              装备: isRecord(value.装备) ? { ...value.装备 } : {},
+              技能: isRecord(value.技能) ? { ...value.技能 } : {},
+              资产: isRecord(value.资产) ? { ...value.资产 } : {},
+              登神长阶: {
+                ...divinityDefaults,
+                ...divinity,
+                是否开启: divinity.是否开启 === true,
+                要素: isRecord(divinity.要素) ? { ...divinity.要素 } : {},
+                权能: isRecord(divinity.权能) ? { ...divinity.权能 } : {},
+                法则: isRecord(divinity.法则) ? { ...divinity.法则 } : {},
+                神国: {
+                  ...kingdomDefaults,
+                  ...kingdom,
+                },
+              },
+            };
+          }
+
+          function readMvuLikeResourceValue(value: unknown): number | null {
+            const direct = finiteResourceNumber(value);
+            if (direct !== null) return direct;
+            if (!isRecord(value)) return null;
+
+            const current = finiteResourceNumber(value.当前);
+            if (current !== null) return current;
+
+            const upper = isRecord(value.上限) ? value.上限 : {};
+            const base = finiteResourceNumber(upper._基础);
+            if (base === null) return null;
+            return base + (finiteResourceNumber(upper.额外) ?? 0);
+          }
+
+          function readCharInfoResourceValue(
+            data: CharacterData,
+            resourceKey: 'HP' | 'MP' | 'SP',
+            mvuKey: '生命值' | '法力值' | '体力值',
+          ): number | null {
+            const resources = isRecord(data.资源) ? data.资源 : {};
+            if (hasOwn(resources, resourceKey)) return finiteResourceNumber(resources[resourceKey]);
+            if (hasOwn(data, mvuKey)) return readMvuLikeResourceValue(data[mvuKey]);
+            return null;
+          }
+
+          function applyCharInfoResources(data: CharacterData, mvuData: Record<string, any>): void {
+            const mappings = [
+              ['HP', '生命值'],
+              ['MP', '法力值'],
+              ['SP', '体力值'],
+            ] as const;
+
+            mappings.forEach(([resourceKey, mvuKey]) => {
+              const value = readCharInfoResourceValue(data, resourceKey, mvuKey);
+              if (value !== null) mvuData[mvuKey] = createResourceState(value);
+            });
+          }
+
+          export function mergeCharacterIntoMvuData'''
+
+          pattern = re.compile(
+              r"function createNewCharacterDefaults\(\): Record<string, any> \{[\s\S]*?\n\}\n\nexport function mergeCharacterIntoMvuData"
+          )
+          source, count = pattern.subn(lambda _m: helpers, source, count=1)
+          if count != 1:
+              raise SystemExit(f'failed to replace defaults block: {count}')
+
+          old_init = '''  const currentCharacter = currentVars.stat_data.关系列表[charName];
+          const mvuData: Record<string, any> = isRecord(currentCharacter)
+            ? { ...currentCharacter }
+            : createNewCharacterDefaults();'''
+          new_init = '''  const currentCharacter = currentVars.stat_data.关系列表[charName];
+          const mvuData: Record<string, any> = completeCharacterSchema(currentCharacter);'''
+          if old_init not in source:
+              raise SystemExit('failed to find current character initialization')
+          source = source.replace(old_init, new_init, 1)
+
+          resource_anchor = "  if (hasOwn(normalizedData, '背景故事')) mvuData.背景故事 = normalizedData.背景故事 || '';"
+          if resource_anchor not in source:
+              raise SystemExit('failed to find resource insertion anchor')
+          source = source.replace(
+              resource_anchor,
+              resource_anchor + "\n\n  applyCharInfoResources(normalizedData, mvuData);",
+              1,
+          )
+
+          old_divinity = '''  const divinityInput = isRecord(normalizedData.登神长阶) ? normalizedData.登神长阶 : {};
+          const hasDivinityInput =
+            hasOwn(normalizedData, '登神长阶') ||
+            ['神位', '神国', '要素', '权能', '法则'].some(key => hasOwn(normalizedData, key));
+          if (hasDivinityInput) {
+            const divinity = isRecord(mvuData.登神长阶) ? { ...mvuData.登神长阶 } : {};
+            divinity.是否开启 = true;'''
+          new_divinity = '''  const divinityInput = isRecord(normalizedData.登神长阶) ? normalizedData.登神长阶 : {};
+          const hasDivinityDetails = ['神位', '神国', '要素', '权能', '法则'].some(
+            key => hasOwn(divinityInput, key) || hasOwn(normalizedData, key),
+          );
+          const hasDivinityInput = hasOwn(normalizedData, '登神长阶') || hasDivinityDetails;
+          mvuData.登神长阶.是否开启 = false;
+          if (hasDivinityInput) {
+            const divinity = isRecord(mvuData.登神长阶) ? { ...mvuData.登神长阶 } : createNewCharacterDefaults().登神长阶;
+            divinity.是否开启 = hasOwn(divinityInput, '是否开启')
+              ? divinityInput.是否开启 === true
+              : hasDivinityDetails;'''
+          if old_divinity not in source:
+              raise SystemExit('failed to find divinity block')
+          source = source.replace(old_divinity, new_divinity, 1)
+
+          path.write_text(source, encoding='utf-8')
+          PY
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Test and production build
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm test
+          pnpm build
+
+      - name: Commit verified fix and remove temporary workflow
+        run: |
+          git rm .github/workflows/fix-mvu-schema-complete-import.yml
+          git add src/char_info_viewer/services/importService.ts tests/char_info_viewer/import-service-divinity-laws.test.cjs
+          git commit -m "[skip ci] fix: complete MVU character schema imports"
+          git push origin HEAD:fix/mvu-schema-complete-import
