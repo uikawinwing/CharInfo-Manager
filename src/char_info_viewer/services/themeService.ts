@@ -3,7 +3,7 @@ import {
   normalizeProfileMetadata,
   type CharacterProfileMetadata,
 } from '../../char_info_shared/characterVisualProfile.ts';
-import { resolveGalleryExtension } from './galleryPackService.ts';
+import { resolveRemoteGalleryConfig } from './galleryPackService.ts';
 import { prioritizeImageSourceGroups } from './imageSourcePriority';
 
 const SPECIAL_NPC_VISUAL_BRAND = Symbol('char_info_special_npc_visual');
@@ -480,7 +480,7 @@ export async function resolveCharacterVisualConfigWithExtensions(
   const namedVisualResolution = resolveNamedVisualConfig(data, chatVariables);
   if (!namedVisualResolution) return hasLegacySyntax ? brandDeprecatedVisualSyntaxData(baseData) : baseData;
 
-  const extendedVisualConfig = await resolveGalleryExtension(namedVisualResolution.config);
+  const extendedVisualConfig = await resolveRemoteGalleryConfig(namedVisualResolution.config);
   return finalizeNamedVisualResolution(
     baseData,
     extendedVisualConfig,

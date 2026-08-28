@@ -1,4 +1,5 @@
 import type { CharInfoCardPart } from '../char_info_viewer/runtime/charInfoMessage';
+import { readRuntimeSettings } from './runtimeSettings.ts';
 
 export const BLOCKED_NATIVE_SCOPE_SELECTOR = [
   '.TH-render',
@@ -49,6 +50,12 @@ export type MountedNativeCardHost = {
 type CollapsedTextRangeMatch = TextRangeMatch & {
   collapsedStart: number;
   collapsedEnd: number;
+};
+
+type CharInfoContentParts = {
+  openingTag: string;
+  body: string;
+  closingTag: string;
 };
 
 function normalizeRenderedBoundary(text: string): string {
@@ -105,10 +112,63 @@ export function findCollapsedTextRange(chunks: readonly string[], needle: string
   };
 }
 
+function splitCharInfoContent(source: string): CharInfoContentParts | null {
+  const match = source.match(/^(<char_info\s*>)([\s\S]*?)(<\/char_info\s*>)$/i);
+  if (!match?.[2]?.trim()) return null;
+  return { openingTag: match[1], body: match[2], closingTag: match[3] };
+}
+
 export function getCharInfoBody(source: string): string | null {
-  const match = source.match(/^<char_info\s*>([\s\S]*?)<\/char_info\s*>$/i);
-  const body = match?.[1] ?? '';
-  return body.trim() ? body : null;
+  return splitCharInfoContent(source)?.body ?? null;
+}
+
+function getMessageId(root: HTMLElement): number | null {
+  const messageElement = root.closest<HTMLElement>('#chat > .mes[mesid]');
+  const messageId = Number(messageElement?.getAttribute('mesid'));
+  return Number.isInteger(messageId) && messageId >= 0 ? messageId : null;
+}
+
+function createLocatorMarker(card: CharInfoCardPart, edge: 'start' | 'end'): string {
+  const safeId = card.id.replace(/[^a-z0-9_-]/gi, '_');
+  return `\uE000CHARINFO_RUNTIME_${edge.toUpperCase()}_${safeId}\uE001`;
+}
+
+function getWholeMessageDisplayCandidate(root: HTMLElement, card: CharInfoCardPart): string | null {
+  const messageId = getMessageId(root);
+  const parts = splitCharInfoContent(card.content);
+  if (messageId === null || !parts || typeof formatAsDisplayedMessage !== 'function') return null;
+
+  try {
+    const message = getChatMessages(messageId)[0];
+    const rawMessage = typeof message?.message === 'string' ? message.message : '';
+    if (!rawMessage || rawMessage.slice(card.sourceStart, card.sourceEnd) !== card.content) return null;
+
+    const startMarker = createLocatorMarker(card, 'start');
+    const endMarker = createLocatorMarker(card, 'end');
+    const markedCard = `${parts.openingTag}${startMarker}${parts.body}${endMarker}${parts.closingTag}`;
+    const markedMessage = `${rawMessage.slice(0, card.sourceStart)}${markedCard}${rawMessage.slice(card.sourceEnd)}`;
+    const displayedHtml = formatAsDisplayedMessage(markedMessage, { message_id: messageId });
+    const container = root.ownerDocument.createElement('div');
+    container.innerHTML = displayedHtml;
+    const displayedText = container.textContent ?? '';
+    const start = displayedText.indexOf(startMarker);
+    if (start < 0) return null;
+    const bodyStart = start + startMarker.length;
+    const end = displayedText.indexOf(endMarker, bodyStart);
+    if (end < bodyStart) return null;
+    const displayedBody = displayedText.slice(bodyStart, end);
+    return displayedBody.trim() ? displayedBody : null;
+  } catch (error) {
+    console.warn('[CharInfo Runtime] 无法从整条酒馆显示消息生成 char_info 定位文本，将继续使用原始文本定位。', error);
+    return null;
+  }
+}
+
+function getDisplayLocatorCandidates(root: HTMLElement, card: CharInfoCardPart, rawBody: string): string[] {
+  const candidates = [rawBody];
+  const displayedBody = getWholeMessageDisplayCandidate(root, card);
+  if (displayedBody && displayedBody !== rawBody) candidates.push(displayedBody);
+  return candidates;
 }
 
 function isBlockedTextNode(node: Text): boolean {
@@ -128,6 +188,74 @@ function collectRenderableTextNodes(root: HTMLElement): Text[] {
     if (node.nodeType === 3 && !isBlockedTextNode(node as Text)) nodes.push(node as Text);
   }
   return nodes;
+}
+
+function isMountDiagnosticsEnabled(): boolean {
+  try {
+    return readRuntimeSettings(getVariables({ type: 'script' })).debugEnabled;
+  } catch {
+    return false;
+  }
+}
+
+function truncateDiagnosticText(text: string, maxLength = 6000): string {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength)}… [truncated ${text.length - maxLength} chars]`;
+}
+
+function collectBlockedScopeDiagnostics(root: HTMLElement) {
+  try {
+    return Array.from(root.querySelectorAll<HTMLElement>(BLOCKED_NATIVE_SCOPE_SELECTOR))
+      .slice(0, 20)
+      .map(element => ({
+        tag: element.tagName.toLowerCase(),
+        className: element.className,
+        text: truncateDiagnosticText(element.textContent ?? '', 800),
+        html: truncateDiagnosticText(element.outerHTML, 1600),
+      }));
+  } catch (error) {
+    return [{ error: error instanceof Error ? error.message : String(error) }];
+  }
+}
+
+function reportMountFailure(root: HTMLElement, card: CharInfoCardPart, reason: string): void {
+  if (!isMountDiagnosticsEnabled()) return;
+
+  const rawBody = getCharInfoBody(card.content) ?? '';
+  const finalDisplayCandidate = getWholeMessageDisplayCandidate(root, card) ?? '';
+  const renderableText = collectRenderableTextNodes(root)
+    .map(node => node.nodeValue ?? '')
+    .join('');
+  const mesTextActual = root.textContent ?? '';
+  let charInfoElements: string[] = [];
+  try {
+    charInfoElements = Array.from(root.querySelectorAll('char_info'))
+      .slice(0, 10)
+      .map(element => truncateDiagnosticText(element.outerHTML, 1800));
+  } catch {
+    // Diagnostic only; the primary mount failure is more important than selector support.
+  }
+
+  const label = `[CharInfo Runtime][mount-debug] ${reason} / card ${card.id}`;
+  console.groupCollapsed?.(label);
+  console.warn(label, {
+    reason,
+    messageId: getMessageId(root),
+    cardId: card.id,
+    sourceRange: [card.sourceStart, card.sourceEnd],
+    rawCandidate: truncateDiagnosticText(rawBody),
+    finalDisplayCandidate: truncateDiagnosticText(finalDisplayCandidate),
+    normalizedRawCandidate: truncateDiagnosticText(normalizeRenderedBoundary(rawBody)),
+    normalizedFinalDisplayCandidate: truncateDiagnosticText(normalizeRenderedBoundary(finalDisplayCandidate)),
+    mesTextActual: truncateDiagnosticText(mesTextActual),
+    normalizedMesTextActual: truncateDiagnosticText(normalizeRenderedBoundary(mesTextActual)),
+    renderableText: truncateDiagnosticText(renderableText),
+    normalizedRenderableText: truncateDiagnosticText(normalizeRenderedBoundary(renderableText)),
+    charInfoElements,
+    blockedScopes: collectBlockedScopeDiagnostics(root),
+    mesTextHtml: truncateDiagnosticText(root.innerHTML, 12000),
+  });
+  console.groupEnd?.();
 }
 
 function getTopLevelChild(root: HTMLElement, node: Text): Element | null {
@@ -159,20 +287,34 @@ function hasTextAfter(node: Text, offset: number, container: Element): boolean {
 
 function createSafeBoundaryRange(root: HTMLElement, card: CharInfoCardPart): Range | null {
   const body = getCharInfoBody(card.content);
-  if (!body) return null;
+  if (!body) {
+    reportMountFailure(root, card, 'empty-char-info-body');
+    return null;
+  }
 
   const nodes = collectRenderableTextNodes(root);
   const chunks = nodes.map(node => node.nodeValue ?? '');
-  const match = findCollapsedTextRange(chunks, body);
-  if (!match) return null;
+  const match = getDisplayLocatorCandidates(root, card, body)
+    .map(candidate => findCollapsedTextRange(chunks, candidate))
+    .find((candidate): candidate is TextRangeMatch => candidate !== null);
+  if (!match) {
+    reportMountFailure(root, card, 'locator-text-not-found');
+    return null;
+  }
 
   const startNode = nodes[match.startNodeIndex];
   const endNode = nodes[match.endNodeIndex];
-  if (!startNode || !endNode) return null;
+  if (!startNode || !endNode) {
+    reportMountFailure(root, card, 'matched-text-node-missing');
+    return null;
+  }
 
   const startTopLevel = getTopLevelChild(root, startNode);
   const endTopLevel = getTopLevelChild(root, endNode);
-  if (!startTopLevel || !endTopLevel) return null;
+  if (!startTopLevel || !endTopLevel) {
+    reportMountFailure(root, card, 'top-level-boundary-missing');
+    return null;
+  }
 
   const range = root.ownerDocument.createRange();
   if (startTopLevel === root || hasTextBefore(startNode, match.startOffset, startTopLevel)) {
@@ -187,6 +329,7 @@ function createSafeBoundaryRange(root: HTMLElement, card: CharInfoCardPart): Ran
   }
   if (range.cloneContents().querySelector(BLOCKED_NATIVE_SCOPE_SELECTOR)) {
     range.detach();
+    reportMountFailure(root, card, 'candidate-range-crosses-blocked-scope');
     return null;
   }
   return range;

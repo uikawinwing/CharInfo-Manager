@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - main
+      - pre-v0.2.9
     paths-ignore:
       - dist/**
   workflow_dispatch:
@@ -52,9 +53,11 @@ jobs:
           default_author: github_actions
           message: '[bot] bundle'
 
-      # 自动打版本 tag, 从而让 jsdelivr 基于版本号在 12h 内更新缓存而不是用非版本号的 7d 缓存
+      # 正式分支才自动打版本 tag。pre-v0.2.9 仅负责生成可测试 dist，测试 tag 由人工控制。
       - id: autotag
-        if: github.repository != 'StageDog/tavern_helper_template'
+        if: >-
+          github.repository != 'StageDog/tavern_helper_template' &&
+          (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
         uses: phish108/autotag-action@v1.1.64
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}

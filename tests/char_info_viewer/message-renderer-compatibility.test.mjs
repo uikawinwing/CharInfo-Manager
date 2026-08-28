@@ -21,7 +21,9 @@ test('cleanup removes only CharInfo-owned hosts and never restores a stale messa
   assert.doesNotMatch(nativeMountSource, /root\.replaceChildren\(/);
 });
 
-test('message mounting only reads rendered DOM and does not rewrite stored chat text', () => {
+test('message mounting may read the raw message for display-only location but never rewrites stored chat text', () => {
   assert.match(nativeMountSource, /createTreeWalker\(root, 4\)/);
-  assert.doesNotMatch(nativeMountSource, /getChatMessages|formatAsDisplayedMessage|setChatMessages|setChatMessage|createChatMessages|deleteChatMessages/);
+  assert.match(nativeMountSource, /getChatMessages\(messageId\)/);
+  assert.match(nativeMountSource, /formatAsDisplayedMessage\(markedMessage/);
+  assert.doesNotMatch(nativeMountSource, /setChatMessages|setChatMessage|createChatMessages|deleteChatMessages/);
 });

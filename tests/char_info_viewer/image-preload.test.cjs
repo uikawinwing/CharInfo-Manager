@@ -80,7 +80,7 @@ test('角色视觉预载沿用 source priority，并只选择每张图的首选�
 });
 
 test('当前角色库和立绘 Viewer 只做小窗口预热，不扫描完整图库', () => {
-  assert.match(runtimeSource, /characters\.slice\(0, 8\)/);
+  assert.match(runtimeSource, /baseCharacters\.slice\(0, 8\)/);
   assert.match(runtimeSource, /resolveCharacterVisualPreloadUrls\(character\.name, chatVariables, 1, sourcePriorities\)/);
   assert.match(runtimeSource, /resolveCharacterVisualPreloadUrls\(name, chatVariables, 3, sourcePriorities\)/);
   assert.match(illustratedSource, /activePortraitIndex\.value - 1/);

@@ -17,8 +17,10 @@ test('点击玩家角色库中的角色先打开 Viewer 详情', () => {
 });
 
 test('Viewer 详情展示图库并让视频按 hover 或触屏单实例播放', () => {
-  assert.match(librarySource, /\.\.\.character\.profile\.gallery/u);
-  assert.match(librarySource, /findGalleryPackEntry/u);
+  assert.match(librarySource, /const remote = remotePresentations\[character\.entry\.uid\]/u);
+  assert.match(librarySource, /if \(remote\) return remote\.gallery/u);
+  assert.match(librarySource, /return character\.profile\.gallery/u);
+  assert.match(librarySource, /resolveRemoteGalleryPresentation/u);
   assert.match(librarySource, /item\.media\?\.kind === 'video'/u);
   assert.doesNotMatch(librarySource, /\n\s+controls\s*\n/u);
   assert.match(librarySource, /preload="metadata"/u);

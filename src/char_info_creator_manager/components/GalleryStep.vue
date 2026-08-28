@@ -57,61 +57,23 @@
     </section>
 
     <section class="gallery-storage-panel">
-      <label class="gallery-storage-toggle">
-        <input :checked="useExtendedGallery" type="checkbox" @change="onExtendedGalleryToggle" />
-        <span>
-          <strong>使用独立扩展图库</strong>
-          <small>
-            {{
-              useExtendedGallery
-                ? `前 ${embeddedGalleryLimit} 张随角色条目保存，其余图片进入独立图库世界书`
-                : '默认：全部图片随角色资料保存'
-            }}
-          </small>
-        </span>
-      </label>
-
-      <div v-if="useExtendedGallery" class="gallery-storage-fields">
-        <label class="field field-full">
-          <span class="field-label">扩展图库世界书</span>
-          <input
-            :value="galleryPackWorldbookName"
-            type="text"
-            maxlength="128"
-            autocomplete="off"
-            placeholder="例如：命定之诗-CharInfo图库"
-            @input="emit('update:galleryPackWorldbookName', ($event.target as HTMLInputElement).value)"
-          />
-        </label>
-        <label class="field">
-          <span class="field-label">图库包 ID</span>
-          <input
-            :value="galleryPackId"
-            type="text"
-            maxlength="64"
-            spellcheck="false"
-            placeholder="creator-project"
-            @input="emit('update:galleryPackId', ($event.target as HTMLInputElement).value)"
-          />
-        </label>
-        <label class="field">
-          <span class="field-label">图库角色 ID</span>
-          <input
-            :value="galleryProfileId"
-            type="text"
-            maxlength="64"
-            spellcheck="false"
-            placeholder="character-id"
-            @input="emit('update:galleryProfileId', ($event.target as HTMLInputElement).value)"
-          />
-        </label>
+      <div class="panel-heading">
+        <h3>远程 Gallery Pack</h3>
+        <p>填写 ImgBed 的公开图库 API URL 后，远端 char-info-gallery-pack 会作为运行时图库；下方本地图片只作为断线 fallback。</p>
       </div>
-      <ul v-if="useExtendedGallery && validationErrors.length" class="gallery-storage-errors" aria-live="polite">
-        <li v-for="error in validationErrors" :key="error">{{ error }}</li>
-      </ul>
-      <p v-if="galleryExtensionMessage" class="gallery-storage-message" aria-live="polite">
-        {{ loadingGalleryExtension ? '读取中：' : '' }}{{ galleryExtensionMessage }}
-      </p>
+      <label class="field">
+        <span class="field-label">Gallery Pack URL <small>选填</small></span>
+        <input
+          :value="galleryPackUrl"
+          type="url"
+          inputmode="url"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="https://…/api/public/gallery/<owner>/<album>"
+          @input="emit('update:galleryPackUrl', ($event.target as HTMLInputElement).value)"
+        />
+        <small>只接受 HTTPS 的 char-info-gallery-pack v1。留空时使用本地图片；远端读取不会写回聊天变量或世界书。</small>
+      </label>
     </section>
 
     <div class="image-host-links">
@@ -189,8 +151,6 @@
           />
           <span v-else aria-hidden="true">▧</span>
           <span v-if="galleryPreviewMediaKind(image) === 'video'" class="gallery-media-kind">视频</span>
-          <span v-if="isExtendedGalleryImage(index)" class="storage-pill extension">扩展图库</span>
-          <span v-else-if="useExtendedGallery" class="storage-pill embedded">随角色保存</span>
         </div>
 
         <div class="gallery-content">
@@ -308,14 +268,7 @@ import {
 const props = defineProps<{
   avatarUrl: string;
   coverUrl: string;
-  useExtendedGallery: boolean;
-  galleryPackWorldbookName: string;
-  galleryPackId: string;
-  galleryProfileId: string;
-  validationErrors: string[];
-  galleryExtensionMessage: string;
-  loadingGalleryExtension: boolean;
-  embeddedGalleryLimit: number;
+  galleryPackUrl: string;
   characterName: string;
   debugEnabled: boolean;
 }>();
@@ -325,11 +278,7 @@ const gallery = defineModel<EditableGalleryImage[]>('gallery', { required: true 
 const emit = defineEmits<{
   'update:avatarUrl': [value: string];
   'update:coverUrl': [value: string];
-  'update:useExtendedGallery': [value: boolean];
-  'update:galleryPackWorldbookName': [value: string];
-  'update:galleryPackId': [value: string];
-  'update:galleryProfileId': [value: string];
-  'extended-gallery-change': [];
+  'update:galleryPackUrl': [value: string];
   previous: [];
   next: [];
 }>();
@@ -411,15 +360,6 @@ function syncRoleUrlsForImage(image: EditableGalleryImage) {
     emit('update:coverUrl', url);
     if (!url) coverSelection.value = '';
   }
-}
-
-function onExtendedGalleryToggle(event: Event) {
-  emit('update:useExtendedGallery', (event.target as HTMLInputElement).checked);
-  emit('extended-gallery-change');
-}
-
-function isExtendedGalleryImage(index: number): boolean {
-  return props.useExtendedGallery && index >= props.embeddedGalleryLimit;
 }
 
 function toggleBatchMode() {

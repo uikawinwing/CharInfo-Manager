@@ -484,23 +484,12 @@
                 v-model:gallery="profile.gallery"
                 :avatar-url="profile.avatarUrl"
                 :cover-url="profile.coverUrl"
-                :use-extended-gallery="useExtendedGallery"
-                :gallery-pack-worldbook-name="galleryPackWorldbookName"
-                :gallery-pack-id="galleryPackId"
-                :gallery-profile-id="galleryProfileId"
-                :validation-errors="validationErrors"
-                :gallery-extension-message="galleryExtensionMessage"
-                :loading-gallery-extension="loadingGalleryExtension"
-                :embedded-gallery-limit="DEFAULT_EMBEDDED_GALLERY_LIMIT"
+                :gallery-pack-url="profile.galleryPackUrl ?? ''"
                 :character-name="profile.characterName"
                 :debug-enabled="props.debugEnabled"
                 @update:avatar-url="profile.avatarUrl = $event"
                 @update:cover-url="profile.coverUrl = $event"
-                @update:use-extended-gallery="useExtendedGallery = $event"
-                @update:gallery-pack-worldbook-name="galleryPackWorldbookName = $event"
-                @update:gallery-pack-id="galleryPackId = $event"
-                @update:gallery-profile-id="galleryProfileId = $event"
-                @extended-gallery-change="onExtendedGalleryChange"
+                @update:gallery-pack-url="profile.galleryPackUrl = $event.trim() || undefined"
                 @previous="goToStep(3)"
                 @next="goToStep(5)"
               />
@@ -533,30 +522,6 @@
               <summary>查看写入内容</summary>
               <pre>{{ generatedCode || '尚未生成可写入内容。' }}</pre>
             </details>
-
-            <section v-if="useExtendedGallery" class="gallery-pack-download-panel">
-              <div>
-                <h3>独立扩展图库世界书包</h3>
-                <p>只包含第 {{ DEFAULT_EMBEDDED_GALLERY_LIMIT + 1 }} 张起的扩展图片，可单独发布、订阅或更新。</p>
-              </div>
-              <div class="gallery-pack-download-actions">
-                <button
-                  type="button"
-                  class="secondary-button"
-                  :disabled="!generatedGalleryPackJson"
-                  @click="downloadGalleryPackJson"
-                >
-                  下载独立图库世界书包
-                </button>
-              </div>
-              <p v-if="validationErrors.length" class="gallery-pack-download-status error" aria-live="polite">
-                暂时无法生成，请先修正：{{ validationErrors[0] }}
-              </p>
-              <p v-else class="gallery-pack-download-status">资料有效，可以下载独立扩展图库世界书包。</p>
-              <p v-if="galleryPackDownloadMessage" class="gallery-pack-download-message" aria-live="polite">
-                {{ galleryPackDownloadMessage }}
-              </p>
-            </section>
 
             <div class="wizard-step-actions wizard-step-actions-final">
               <button type="button" class="secondary-button" @click="goToStep(4)">上一步</button>
@@ -656,12 +621,6 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 
 import {
-  createStableGalleryId,
-  DEFAULT_EMBEDDED_GALLERY_LIMIT,
-  validateGalleryExtensionReference,
-  type GalleryExtensionReference,
-} from '../char_info_shared/galleryPack';
-import {
   parseWorldbookCharacterDisplayName,
   parseWorldbookCharacterEntryTitle,
 } from '../char_info_shared/characterEntryLibrary';
@@ -685,18 +644,11 @@ import {
   type CharacterProfileMetadata,
   type CharacterStorySection,
   type CharacterVisualProfile,
-  type GalleryImage,
 } from '../char_info_shared/characterVisualProfile';
 import {
   inspectLegacyVisualProfile,
   upsertManagedEjsBlockWithLegacyMigration,
 } from '../char_info_shared/legacyVisualProfile';
-import {
-  deleteGalleryPackProfile,
-  readGalleryPackProfile,
-  saveGalleryPackProfile,
-  serializeGalleryPackWorkshopSource,
-} from './galleryPackStorage';
 import { buildWorldbookList } from '../char_info_shared/worldbookList';
 import ViewerApp from '../char_info_viewer/App.vue';
 import { evaluateManagedEjs, writeStatusGallerySnapshotToCurrentChat } from './ejsRuntime';
@@ -772,18 +724,11 @@ let entriesLoadRevision = 0;
 const activeStep = ref<StepId>(1);
 const furthestStep = ref<StepId>(1);
 const customizeColors = ref(false);
-const useExtendedGallery = ref(false);
-const galleryPackWorldbookName = ref('');
-const galleryPackId = ref('');
-const galleryProfileId = ref('');
-const loadingGalleryExtension = ref(false);
-const galleryExtensionMessage = ref('');
 const saving = ref(false);
 const applyingSavedProfile = ref(false);
 const saveState = ref<'idle' | 'success' | 'error'>('idle');
 const saveMessage = ref('选择世界书条目后即可写入。');
 const applyMessage = ref('');
-const galleryPackDownloadMessage = ref('');
 let nextImageId = 1;
 let nextStorySectionId = 1;
 const loadError = ref('');
@@ -800,37 +745,6 @@ const viewerPreviewCanvasRef = ref<HTMLElement | null>(null);
 let viewerPreviewResizeObserver: ResizeObserver | null = null;
 
 const profile = reactive<EditableProfile>(toEditableProfile(createEmptyProfile()));
-
-function defaultGalleryReference(): GalleryExtensionReference {
-  return {
-    worldbookName: `${selectedWorldbookName.value || 'CharInfo'}-CharInfo图库`,
-    packId: createStableGalleryId(selectedWorldbookName.value, 'char-info-gallery'),
-    profileId: createStableGalleryId(profile.characterName, 'character'),
-  };
-}
-
-function currentGalleryReference(): GalleryExtensionReference | null {
-  if (!useExtendedGallery.value) return null;
-  return {
-    worldbookName: galleryPackWorldbookName.value.trim(),
-    packId: galleryPackId.value.trim().toLocaleLowerCase(),
-    profileId: galleryProfileId.value.trim().toLocaleLowerCase(),
-  };
-}
-
-function applyGalleryReference(reference?: GalleryExtensionReference) {
-  useExtendedGallery.value = !!reference;
-  if (reference) {
-    galleryPackWorldbookName.value = reference.worldbookName;
-    galleryPackId.value = reference.packId;
-    galleryProfileId.value = reference.profileId;
-  } else {
-    galleryPackWorldbookName.value = '';
-    galleryPackId.value = '';
-    galleryProfileId.value = '';
-  }
-  galleryExtensionMessage.value = '';
-}
 
 function toEditableProfile(value: CharacterVisualProfile): EditableProfile {
   return {
@@ -890,6 +804,7 @@ function toFullSerializableProfile(): CharacterVisualProfile {
     raceColor: profile.raceColor,
     tierColor: profile.tierColor,
     entranceQuote: profile.entranceQuote,
+    ...(profile.galleryPackUrl?.trim() ? { galleryPackUrl: profile.galleryPackUrl.trim() } : {}),
     gallery: profile.gallery.map(({ title, sources, viewerVisible }) => ({
       title,
       sources: [...sources],
@@ -900,14 +815,7 @@ function toFullSerializableProfile(): CharacterVisualProfile {
 }
 
 function toSerializableProfile(): CharacterVisualProfile {
-  const fullProfile = toFullSerializableProfile();
-  const reference = currentGalleryReference();
-  if (!reference) return fullProfile;
-  return {
-    ...fullProfile,
-    gallery: fullProfile.gallery.slice(0, DEFAULT_EMBEDDED_GALLERY_LIMIT),
-    galleryExtension: reference,
-  };
+  return toFullSerializableProfile();
 }
 
 function replaceProfile(value: CharacterVisualProfile) {
@@ -919,6 +827,7 @@ function replaceProfile(value: CharacterVisualProfile) {
   profile.tierColor = editable.tierColor;
   customizeColors.value = !!(editable.raceColor || editable.tierColor);
   profile.entranceQuote = editable.entranceQuote;
+  profile.galleryPackUrl = editable.galleryPackUrl;
   profile.gallery.splice(0, profile.gallery.length, ...editable.gallery);
   profile.metadata.author = editable.metadata.author;
   profile.metadata.version = editable.metadata.version;
@@ -926,7 +835,6 @@ function replaceProfile(value: CharacterVisualProfile) {
   profile.metadata.sex = editable.metadata.sex;
   profile.metadata.race = editable.metadata.race;
   profile.metadata.storySections.splice(0, profile.metadata.storySections.length, ...editable.metadata.storySections);
-  applyGalleryReference(value.galleryExtension);
 }
 
 const selectedEntry = computed(() => entries.value.find(entry => entry.uid === selectedEntryUid.value) ?? null);
@@ -958,18 +866,6 @@ const viewerPreviewCanvasStyle = computed(() =>
 );
 const configuredGalleryCount = computed(
   () => profile.gallery.filter(image => image.sources.some(source => isHttpsUrl(source))).length,
-);
-const embeddedGalleryCount = computed(() =>
-  useExtendedGallery.value ? Math.min(DEFAULT_EMBEDDED_GALLERY_LIMIT, profile.gallery.length) : profile.gallery.length,
-);
-const extendedGalleryImages = computed<GalleryImage[]>(() =>
-  useExtendedGallery.value
-    ? profile.gallery.slice(DEFAULT_EMBEDDED_GALLERY_LIMIT).map(({ title, sources, viewerVisible }) => ({
-        title,
-        sources: [...sources],
-        ...(viewerVisible === false ? { viewerVisible: false } : {}),
-      }))
-    : [],
 );
 const filteredWorldbooks = computed(() => {
   const query = worldbookSearch.value.trim().toLocaleLowerCase();
@@ -1046,32 +942,12 @@ const entryStateDescription = computed(() => {
   return '保存后不会改动角色原有设定。';
 });
 
-const validationErrors = computed(() => {
-  const errors = validateProfile(toFullSerializableProfile());
-  const reference = currentGalleryReference();
-  if (useExtendedGallery.value) {
-    if (reference) errors.push(...validateGalleryExtensionReference(reference));
-    if (extendedGalleryImages.value.length === 0) {
-      errors.push(`扩展图库模式至少需要 ${DEFAULT_EMBEDDED_GALLERY_LIMIT + 1} 张图片。`);
-    }
-  }
-  return [...new Set(errors)];
-});
+const validationErrors = computed(() => [...new Set(validateProfile(toFullSerializableProfile()))]);
 
 const generatedCode = computed(() => {
   if (validationErrors.value.length > 0) return '';
   try {
     return buildManagedEjsBlock(toSerializableProfile());
-  } catch {
-    return '';
-  }
-});
-
-const generatedGalleryPackJson = computed(() => {
-  const reference = currentGalleryReference();
-  if (!reference || validationErrors.value.length > 0 || extendedGalleryImages.value.length === 0) return '';
-  try {
-    return serializeGalleryPackWorkshopSource(reference, profile.characterName, extendedGalleryImages.value);
   } catch {
     return '';
   }
@@ -1199,15 +1075,6 @@ function onCustomizeColorsChange() {
   profile.tierColor = '';
 }
 
-function onExtendedGalleryChange() {
-  galleryExtensionMessage.value = '';
-  if (!useExtendedGallery.value) return;
-  const defaults = defaultGalleryReference();
-  galleryPackWorldbookName.value ||= defaults.worldbookName;
-  galleryPackId.value ||= defaults.packId;
-  galleryProfileId.value ||= defaults.profileId;
-}
-
 async function loadWorldbooks() {
   loadingWorldbooks.value = true;
   loadError.value = '';
@@ -1299,31 +1166,6 @@ async function loadSelectedEntryProfile() {
   if (inspection.state === 'valid') {
     replaceProfile(inspection.profile);
     saveMessage.value = '已读取该条目的现有视觉配置。';
-    const reference = inspection.profile.galleryExtension;
-    if (reference) {
-      const expectedWorldbook = selectedWorldbookName.value;
-      const expectedUid = entry.uid;
-      loadingGalleryExtension.value = true;
-      galleryExtensionMessage.value = '正在读取扩展图库…';
-      try {
-        const payload = await readGalleryPackProfile(reference);
-        if (selectedWorldbookName.value !== expectedWorldbook || selectedEntryUid.value !== expectedUid) return;
-        if (!payload) {
-          galleryExtensionMessage.value = '扩展图库尚未安装或对应条目不存在；基础图片仍可正常使用。';
-        } else {
-          profile.gallery.push(...toEditableProfile({ ...createEmptyProfile(), gallery: payload.gallery }).gallery);
-          galleryExtensionMessage.value = `已读取 ${payload.gallery.length} 张扩展图库图片。`;
-        }
-      } catch (error) {
-        if (selectedWorldbookName.value === expectedWorldbook && selectedEntryUid.value === expectedUid) {
-          galleryExtensionMessage.value = `扩展图库读取失败：${error instanceof Error ? error.message : String(error)}`;
-        }
-      } finally {
-        if (selectedWorldbookName.value === expectedWorldbook && selectedEntryUid.value === expectedUid) {
-          loadingGalleryExtension.value = false;
-        }
-      }
-    }
     return;
   }
 
@@ -1428,7 +1270,9 @@ function isStepComplete(step: StepId): boolean {
   if (step === 1) return !!selectedEntry.value;
   if (step === 2) return profile.characterName.trim().length > 0;
   if (step === 3) return furthestStep.value > 3;
-  if (step === 4) return configuredGalleryCount.value > 0 && furthestStep.value > 4;
+  if (step === 4) {
+    return (configuredGalleryCount.value > 0 || isHttpsUrl(profile.galleryPackUrl ?? '')) && furthestStep.value > 4;
+  }
   return saveState.value === 'success';
 }
 
@@ -1480,32 +1324,6 @@ async function copyEjs() {
   }
 }
 
-function galleryPackFileName(): string {
-  const replaceUnsafeFileNameCharacter = (character: string) => {
-    const codePoint = character.codePointAt(0) ?? 0;
-    return codePoint <= 0x1f || codePoint === 0x7f || '<>:"/\\|?*'.includes(character) ? '-' : character;
-  };
-  const safeName =
-    Array.from(profile.characterName.trim())
-      .map(replaceUnsafeFileNameCharacter)
-      .join('')
-      .replace(/\s+/g, '_')
-      .slice(0, 64) || 'character';
-  return `${safeName}.char-info-gallery-workshop.json`;
-}
-
-function downloadGalleryPackJson() {
-  if (!generatedGalleryPackJson.value) return;
-  const blob = new Blob([generatedGalleryPackJson.value], { type: 'application/json;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = galleryPackFileName();
-  anchor.click();
-  URL.revokeObjectURL(url);
-  galleryPackDownloadMessage.value = `已下载 ${anchor.download}；其中只有禁用的扩展图库条目，不会注入提示词。`;
-}
-
 function readStatusGallerySnapshotFromCurrentChat(characterName: string): unknown[] | null {
   const chatVariables = getVariables({ type: 'chat' });
   const chatRecord = chatVariables && typeof chatVariables === 'object' ? (chatVariables as Record<string, unknown>) : {};
@@ -1545,9 +1363,7 @@ async function saveToEntry() {
     ? `\n\n旧版 ${legacyMigrationSource} 写入将被精确移除，并升级为 char_info.profiles v2。`
     : '';
   const confirmed = window.confirm(
-    useExtendedGallery.value
-      ? `确定保存角色视觉资料和扩展图库？\n\n角色世界书：${worldbookName}\n角色条目：${entry.name || `#${entry.uid}`}\n图库世界书：${galleryPackWorldbookName.value}${migrationNotice}`
-      : `确定将角色视觉资料写入以下条目？\n\n世界书：${worldbookName}\n条目：${entry.name || `#${entry.uid}`}${migrationNotice}`,
+    `确定将角色视觉资料写入以下条目？\n\n世界书：${worldbookName}\n条目：${entry.name || `#${entry.uid}`}${migrationNotice}`,
   );
   if (!confirmed) return;
 
@@ -1557,56 +1373,25 @@ async function saveToEntry() {
 
   try {
     const normalizedProfile = normalizeProfile(toSerializableProfile());
-    const galleryReference = currentGalleryReference();
     const latestEntries = await getWorldbook(worldbookName);
     const latestEntry = latestEntries.find(item => item.uid === entry.uid);
     if (!latestEntry) throw new Error(`找不到世界书条目 #${entry.uid}。`);
     upsertManagedEjsBlockWithLegacyMigration(latestEntry.content, normalizedProfile);
 
-    const previousGallery = galleryReference ? await readGalleryPackProfile(galleryReference) : null;
-    let galleryWriteAttempted = false;
-    let updatedWorldbook: WorldbookEntry[];
-    try {
-      if (galleryReference) {
-        saveMessage.value = '正在保存独立扩展图库…';
-        galleryWriteAttempted = true;
-        await saveGalleryPackProfile(galleryReference, normalizedProfile.characterName, extendedGalleryImages.value);
-        galleryExtensionMessage.value = `扩展图库已保存到“${galleryReference.worldbookName}”。`;
-      }
-
-      saveMessage.value = '正在读取角色条目并安全写入…';
-      updatedWorldbook = await updateWorldbookWith(
-        worldbookName,
-        entries => {
-          const target = entries.find(item => item.uid === entry.uid);
-          if (!target) throw new Error(`找不到世界书条目 #${entry.uid}。`);
-          return entries.map(item =>
-            item.uid === entry.uid
-              ? { ...item, content: upsertManagedEjsBlockWithLegacyMigration(item.content, normalizedProfile) }
-              : item,
-          );
-        },
-        { render: 'immediate' },
-      );
-    } catch (error) {
-      if (galleryReference && galleryWriteAttempted) {
-        try {
-          if (previousGallery) {
-            await saveGalleryPackProfile(galleryReference, previousGallery.characterName, previousGallery.gallery);
-          } else {
-            await deleteGalleryPackProfile(galleryReference);
-          }
-        } catch (rollbackError) {
-          throw new Error(
-            `${error instanceof Error ? error.message : String(error)}；扩展图库恢复失败：${
-              rollbackError instanceof Error ? rollbackError.message : String(rollbackError)
-            }`,
-            { cause: rollbackError },
-          );
-        }
-      }
-      throw error;
-    }
+    saveMessage.value = '正在读取角色条目并安全写入…';
+    const updatedWorldbook = await updateWorldbookWith(
+      worldbookName,
+      entries => {
+        const target = entries.find(item => item.uid === entry.uid);
+        if (!target) throw new Error(`找不到世界书条目 #${entry.uid}。`);
+        return entries.map(item =>
+          item.uid === entry.uid
+            ? { ...item, content: upsertManagedEjsBlockWithLegacyMigration(item.content, normalizedProfile) }
+            : item,
+        );
+      },
+      { render: 'immediate' },
+    );
 
     entries.value = updatedWorldbook;
     const savedEntry = updatedWorldbook.find(item => item.uid === entry.uid);
@@ -1619,11 +1404,9 @@ async function saveToEntry() {
       ? `旧版 ${legacyMigrationSource} 已升级为 char_info.profiles v2；`
       : '';
     saveMessage.value = `${
-      galleryReference
-        ? `保存成功：${migrationSummary}角色条目保留 ${embeddedGalleryCount.value} 张基础图片，${extendedGalleryImages.value.length} 张图片已写入独立图库世界书。`
-        : legacyMigrationSource
-          ? `升级成功：${migrationSummary}原条目其余内容保持不变。`
-          : '保存成功：角色视觉资料已写入世界书条目，原条目其余内容保持不变。'
+      legacyMigrationSource
+        ? `升级成功：${migrationSummary}原条目其余内容保持不变。`
+        : '保存成功：角色视觉资料已写入世界书条目，原条目其余内容保持不变。'
     } 当前聊天变量未修改；如需立即生效，请点击「即时写入变量及状态栏」。`;
     console.info('[CharInfo Creator Manager] Managed EJS saved', {
       worldbook: worldbookName,

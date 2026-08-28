@@ -414,8 +414,11 @@ import {
   type CharacterVisualProfile,
   type GalleryImage,
 } from '../char_info_shared/characterVisualProfile';
-import { findGalleryPackEntry } from '../char_info_shared/galleryPack';
 import { buildWorldbookList } from '../char_info_shared/worldbookList';
+import {
+  resolveRemoteGalleryPresentation,
+  type RemoteGalleryPresentation,
+} from '../char_info_viewer/services/galleryPackService';
 import { normalizePortraitMediaUrlForBrowser } from '../char_info_viewer/services/imageUrl';
 
 type LibraryCharacter = WorldbookCharacterEntry<WorldbookEntry, CharacterVisualProfile> & {
@@ -462,12 +465,13 @@ const togglingUids = reactive(new Set<number>());
 const coverIndexes = reactive<Record<number, number>>({});
 const detailUid = ref<number | null>(null);
 const detailGalleryIndexes = reactive<Record<string, number>>({});
-const detailExtensionGallery = reactive<Record<number, GalleryImage[]>>({});
+const remotePresentations = reactive<Record<number, RemoteGalleryPresentation>>({});
 const detailVideoElements = new Map<number, HTMLVideoElement>();
 const activeDetailVideoIndex = ref<number | null>(null);
 let detailVideoHoverTimer: number | null = null;
 let detailVideoObserver: IntersectionObserver | null = null;
 let entriesLoadRevision = 0;
+const REMOTE_PREVIEW_CONCURRENCY = 6;
 
 const worldbookCharacters = computed<LibraryCharacter[]>(() => {
   const encountered = new Map(encounteredCharacters.value.map(character => [character.name, character]));
@@ -533,7 +537,10 @@ const detailEntryBody = computed(() => {
 });
 const detailGallery = computed(() => {
   const character = detailCharacter.value;
-  return character ? [...character.profile.gallery, ...(detailExtensionGallery[character.entry.uid] ?? [])] : [];
+  if (!character) return [];
+  const remote = remotePresentations[character.entry.uid];
+  if (remote) return remote.gallery;
+  return character.profile.gallery;
 });
 const detailGalleryItems = computed(() =>
   detailGallery.value.flatMap((image, index) => {
@@ -590,12 +597,26 @@ function sortCharacters(characters: LibraryCharacter[], order: SortOrder): Libra
 }
 
 function imageSources(character: LibraryCharacter): string[] {
-  return [character.profile.coverUrl, character.profile.avatarUrl, ...character.profile.gallery.flatMap(image => image.sources)].flatMap(
-    value => {
-      const media = normalizePortraitMediaUrlForBrowser(value);
-      return media?.kind === 'image' ? [media.url] : [];
-    },
-  );
+  const remote = remotePresentations[character.entry.uid];
+  const localSources = [
+    character.profile.coverUrl,
+    character.profile.avatarUrl,
+    ...character.profile.gallery.flatMap(image => image.sources),
+  ];
+  const remoteSources = !remote
+    ? []
+    : layout.value === 'cards'
+      ? [
+          remote.coverUrl,
+          remote.libraryThumbnailUrl,
+          remote.avatarUrl,
+          ...remote.gallery.flatMap(image => [image.thumbnail ?? '', ...image.sources]),
+        ]
+      : [remote.libraryThumbnailUrl, remote.avatarUrl];
+  return [...remoteSources, ...localSources].flatMap(value => {
+    const media = normalizePortraitMediaUrlForBrowser(value);
+    return media?.kind === 'image' ? [media.url] : [];
+  });
 }
 
 function coverUrl(character: LibraryCharacter): string {
@@ -604,6 +625,30 @@ function coverUrl(character: LibraryCharacter): string {
 
 function advanceCover(character: LibraryCharacter) {
   coverIndexes[character.entry.uid] = (coverIndexes[character.entry.uid] ?? 0) + 1;
+}
+
+async function loadRemotePresentations(loaded: readonly WorldbookEntry[], revision: number, worldbookName: string) {
+  let nextIndex = 0;
+  const worker = async () => {
+    while (revision === entriesLoadRevision && selectedWorldbookName.value === worldbookName) {
+      const index = nextIndex++;
+      if (index >= loaded.length) return;
+      const entry = loaded[index];
+      const inspection = inspectManagedBlock(entry.content);
+      if (inspection.state !== 'valid' || !inspection.profile.galleryPackUrl) continue;
+      try {
+        const presentation = await resolveRemoteGalleryPresentation(inspection.profile.galleryPackUrl);
+        if (presentation && revision === entriesLoadRevision && selectedWorldbookName.value === worldbookName) {
+          remotePresentations[entry.uid] = presentation;
+          coverIndexes[entry.uid] = 0;
+        }
+      } catch (caught) {
+        console.warn(`[CharInfo Manager] 远程角色预览读取失败：${inspection.profile.characterName}`, caught);
+      }
+    }
+  };
+  const workerCount = Math.min(REMOTE_PREVIEW_CONCURRENCY, loaded.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
 }
 
 function mediaSources(image: GalleryImage): Media[] {
@@ -765,7 +810,11 @@ async function loadEntries(worldbookName: string) {
   loadingEntries.value = true;
   try {
     const loaded = await getWorldbook(worldbookName);
-    if (revision === entriesLoadRevision && selectedWorldbookName.value === worldbookName) entries.value = loaded;
+    if (revision === entriesLoadRevision && selectedWorldbookName.value === worldbookName) {
+      entries.value = loaded;
+      Object.keys(remotePresentations).forEach(key => delete remotePresentations[Number(key)]);
+      void loadRemotePresentations(loaded, revision, worldbookName);
+    }
   } catch (caught) {
     if (revision === entriesLoadRevision) {
       entries.value = [];
@@ -802,14 +851,6 @@ function openDetails(character: LibraryCharacter) {
   pauseAllDetailVideos();
   detailUid.value = character.entry.uid;
   Object.keys(detailGalleryIndexes).forEach(key => delete detailGalleryIndexes[key]);
-  delete detailExtensionGallery[character.entry.uid];
-  const reference = character.profile.galleryExtension;
-  if (!reference) return;
-  void getWorldbook(reference.worldbookName).then(galleryEntries => {
-    if (detailUid.value !== character.entry.uid) return;
-    const payload = findGalleryPackEntry(galleryEntries, reference)?.payload;
-    if (payload) detailExtensionGallery[character.entry.uid] = payload.gallery;
-  });
 }
 
 function closeDetails() {
@@ -825,6 +866,9 @@ watch(selectedWorldbookName, worldbookName => {
   mobileFilterOpen.value = false;
   mobileMoreOpen.value = false;
   void loadEntries(worldbookName);
+});
+watch(layout, () => {
+  Object.keys(coverIndexes).forEach(key => delete coverIndexes[Number(key)]);
 });
 onMounted(() => {
   initializeDetailVideoObserver();
