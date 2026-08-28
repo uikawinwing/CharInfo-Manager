@@ -55,6 +55,7 @@ test('Creator Viewer 预览直接使用未保存 draft 的颜色、台词和完�
   const override = buildCreatorViewerVisualOverride(profile);
 
   assert.equal(override.characterName, '千爻');
+  assert.equal(override.config.__char_info_remote_gallery_scope, 'creator-viewer');
   assert.equal(override.config.custom_racecolor, '#11AABB');
   assert.equal(override.config.custom_tiercolor, '#CC22DD');
   assert.equal(override.config.登场台词, '这是尚未保存的草稿台词。');
