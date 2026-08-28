@@ -229,36 +229,148 @@ function hasOwn(value: unknown, key: string): boolean {
   return isRecord(value) && Object.prototype.hasOwnProperty.call(value, key);
 }
 
+function createResourceState(value = 0): Record<string, any> {
+  return {
+    当前: value,
+    上限: { _基础: value, 额外: 0 },
+  };
+}
+
+function finiteResourceNumber(value: unknown): number | null {
+  if (value === '' || value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function completeResourceState(value: unknown): Record<string, any> {
+  const resource = isRecord(value) ? value : {};
+  const upper = isRecord(resource.上限) ? resource.上限 : {};
+  const current = finiteResourceNumber(resource.当前);
+  const base = finiteResourceNumber(upper._基础);
+  const extra = finiteResourceNumber(upper.额外) ?? 0;
+  const resolvedBase = base ?? current ?? 0;
+  const resolvedCurrent = current ?? resolvedBase + extra;
+
+  return {
+    当前: resolvedCurrent,
+    上限: {
+      _基础: resolvedBase,
+      额外: extra,
+    },
+  };
+}
+
 function createNewCharacterDefaults(): Record<string, any> {
   return {
     在场: true,
-    生命层级: '第一层级/普通层级',
-    等级: 1,
     种族: '未知',
     身份: [],
     职业: [],
+    生命层级: '第一层级/普通层级',
+    等级: 1,
+    属性: { 力量: 0, 敏捷: 0, 体质: 0, 智力: 0, 精神: 0 },
+    生命值: createResourceState(),
+    法力值: createResourceState(),
+    体力值: createResourceState(),
+    状态效果: {},
+    背包: {},
+    装备: {},
+    技能: {},
+    资产: {},
+    登神长阶: {
+      是否开启: false,
+      要素: {},
+      权能: {},
+      法则: {},
+      神位: '',
+      神国: { 名称: '', 描述: '' },
+    },
     性格: '',
     喜爱: '',
     外貌: '',
     着装: '',
-    属性: { 力量: 0, 敏捷: 0, 体质: 0, 智力: 0, 精神: 0 },
-    状态效果: {},
-    背包: {},
-    技能: {},
-    装备: {},
-    登神长阶: {
-      是否开启: false,
-      神位: '',
-      神国: { 名称: '', 描述: '' },
-      要素: {},
-      权能: {},
-      法则: {},
-    },
     命定契约: false,
     好感度: 0,
     心里话: '',
     背景故事: '',
   };
+}
+
+function completeCharacterSchema(value: unknown): Record<string, any> {
+  const defaults = createNewCharacterDefaults();
+  if (!isRecord(value)) return defaults;
+
+  const divinityDefaults = defaults.登神长阶 as Record<string, any>;
+  const divinity = isRecord(value.登神长阶) ? value.登神长阶 : {};
+  const kingdomDefaults = divinityDefaults.神国 as Record<string, any>;
+  const kingdom = isRecord(divinity.神国) ? divinity.神国 : {};
+
+  return {
+    ...defaults,
+    ...value,
+    属性: {
+      ...defaults.属性,
+      ...(isRecord(value.属性) ? value.属性 : {}),
+    },
+    生命值: completeResourceState(value.生命值),
+    法力值: completeResourceState(value.法力值),
+    体力值: completeResourceState(value.体力值),
+    状态效果: isRecord(value.状态效果) ? { ...value.状态效果 } : {},
+    背包: isRecord(value.背包) ? { ...value.背包 } : {},
+    装备: isRecord(value.装备) ? { ...value.装备 } : {},
+    技能: isRecord(value.技能) ? { ...value.技能 } : {},
+    资产: isRecord(value.资产) ? { ...value.资产 } : {},
+    登神长阶: {
+      ...divinityDefaults,
+      ...divinity,
+      是否开启: divinity.是否开启 === true,
+      要素: isRecord(divinity.要素) ? { ...divinity.要素 } : {},
+      权能: isRecord(divinity.权能) ? { ...divinity.权能 } : {},
+      法则: isRecord(divinity.法则) ? { ...divinity.法则 } : {},
+      神国: {
+        ...kingdomDefaults,
+        ...kingdom,
+      },
+    },
+  };
+}
+
+function readMvuLikeResourceValue(value: unknown): number | null {
+  const direct = finiteResourceNumber(value);
+  if (direct !== null) return direct;
+  if (!isRecord(value)) return null;
+
+  const current = finiteResourceNumber(value.当前);
+  if (current !== null) return current;
+
+  const upper = isRecord(value.上限) ? value.上限 : {};
+  const base = finiteResourceNumber(upper._基础);
+  if (base === null) return null;
+  return base + (finiteResourceNumber(upper.额外) ?? 0);
+}
+
+function readCharInfoResourceValue(
+  data: CharacterData,
+  resourceKey: 'HP' | 'MP' | 'SP',
+  mvuKey: '生命值' | '法力值' | '体力值',
+): number | null {
+  const resources = isRecord(data.资源) ? data.资源 : {};
+  if (hasOwn(resources, resourceKey)) return finiteResourceNumber(resources[resourceKey]);
+  if (hasOwn(data, mvuKey)) return readMvuLikeResourceValue(data[mvuKey]);
+  return null;
+}
+
+function applyCharInfoResources(data: CharacterData, mvuData: Record<string, any>): void {
+  const mappings = [
+    ['HP', '生命值'],
+    ['MP', '法力值'],
+    ['SP', '体力值'],
+  ] as const;
+
+  mappings.forEach(([resourceKey, mvuKey]) => {
+    const value = readCharInfoResourceValue(data, resourceKey, mvuKey);
+    if (value !== null) mvuData[mvuKey] = createResourceState(value);
+  });
 }
 
 export function mergeCharacterIntoMvuData(data: CharacterData, currentVars: Mvu.MvuData): string {
@@ -268,9 +380,7 @@ export function mergeCharacterIntoMvuData(data: CharacterData, currentVars: Mvu.
   currentVars.stat_data ??= {};
   currentVars.stat_data.关系列表 ??= {};
   const currentCharacter = currentVars.stat_data.关系列表[charName];
-  const mvuData: Record<string, any> = isRecord(currentCharacter)
-    ? { ...currentCharacter }
-    : createNewCharacterDefaults();
+  const mvuData: Record<string, any> = completeCharacterSchema(currentCharacter);
 
   if (hasOwn(normalizedData, '生命层级')) {
     mvuData.生命层级 = normalizedData.生命层级 || '第一层级/普通层级';
@@ -284,6 +394,8 @@ export function mergeCharacterIntoMvuData(data: CharacterData, currentVars: Mvu.
   if (hasOwn(normalizedData, '外貌特质')) mvuData.外貌 = ensureString(normalizedData.外貌特质).trim();
   if (hasOwn(normalizedData, '衣物装饰')) mvuData.着装 = ensureString(normalizedData.衣物装饰).trim();
   if (hasOwn(normalizedData, '背景故事')) mvuData.背景故事 = normalizedData.背景故事 || '';
+
+  applyCharInfoResources(normalizedData, mvuData);
 
   if (isRecord(normalizedData.属性)) {
     const attributes = isRecord(mvuData.属性) ? { ...mvuData.属性 } : {};
@@ -307,12 +419,16 @@ export function mergeCharacterIntoMvuData(data: CharacterData, currentVars: Mvu.
   if (hasOwn(normalizedData, '装备')) mvuData.装备 = arrayToMap(normalizedData.装备, 'equip');
 
   const divinityInput = isRecord(normalizedData.登神长阶) ? normalizedData.登神长阶 : {};
-  const hasDivinityInput =
-    hasOwn(normalizedData, '登神长阶') ||
-    ['神位', '神国', '要素', '权能', '法则'].some(key => hasOwn(normalizedData, key));
+  const hasDivinityDetails = ['神位', '神国', '要素', '权能', '法则'].some(
+    key => hasOwn(divinityInput, key) || hasOwn(normalizedData, key),
+  );
+  const hasDivinityInput = hasOwn(normalizedData, '登神长阶') || hasDivinityDetails;
+  mvuData.登神长阶.是否开启 = false;
   if (hasDivinityInput) {
-    const divinity = isRecord(mvuData.登神长阶) ? { ...mvuData.登神长阶 } : {};
-    divinity.是否开启 = true;
+    const divinity = isRecord(mvuData.登神长阶) ? { ...mvuData.登神长阶 } : createNewCharacterDefaults().登神长阶;
+    divinity.是否开启 = hasOwn(divinityInput, '是否开启')
+      ? divinityInput.是否开启 === true
+      : hasDivinityDetails;
 
     if (hasOwn(divinityInput, '神位') || hasOwn(normalizedData, '神位')) {
       divinity.神位 = divinityInput.神位 || normalizedData.神位 || '';
