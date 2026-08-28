@@ -320,7 +320,7 @@
       />
 
       <div v-if="!readOnly" class="import-action-menu" :class="{ show: showImportMenu }">
-        <button type="button" :disabled="importing" @click="$emit('importMvu')">保存在聊天变量</button>
+        <button type="button" :disabled="importing" @click="$emit('importMvu')">导入至[最新消息楼层]变量</button>
         <button type="button" :disabled="importing" @click="$emit('importWorldbook')">导入到聊天世界书</button>
       </div>
     </main>
