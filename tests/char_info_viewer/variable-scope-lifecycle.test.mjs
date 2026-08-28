@@ -12,10 +12,10 @@ const creatorManagerControllerSource = await readFile(new URL('src/char_info_cre
 const viewerRuntimeSource = await readFile(new URL('src/char_info_viewer_runtime/runtime.ts', repoRoot), 'utf8');
 const previewBuilderSource = await readFile(new URL('docs/previews/char_info_ejs_builder.html', repoRoot), 'utf8');
 
-test('手动 MVU 导入写回卡片所属消息楼层而不是 latest', () => {
+test('手动 MVU 导入写回最新消息楼层', () => {
   assert.match(
     appSource,
-    /importToMvuVariables\([\s\S]{0,200}?message_id:\s*props\.messageId/,
+    /importToMvuVariables\([\s\S]{0,240}?message_id:\s*Math\.max\(0, getLastMessageId\(\)\)/,
   );
   assert.doesNotMatch(importServiceSource, /message_id:\s*'latest'/);
   assert.match(importServiceSource, /message_id:\s*number/);

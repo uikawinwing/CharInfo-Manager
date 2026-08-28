@@ -1,5 +1,5 @@
 import type { CharInfoCardPart } from '../char_info_viewer/runtime/charInfoMessage';
-import { readRuntimeSettings } from './runtimeSettings';
+import { readRuntimeSettings } from './runtimeSettings.ts';
 
 export const BLOCKED_NATIVE_SCOPE_SELECTOR = [
   '.TH-render',

@@ -20,7 +20,7 @@ test('viewer requires immutable YAML and message context from the script host', 
   assert.match(appSource, /defineProps<\{[\s\S]*?yamlText: string;[\s\S]*?messageId: number;[\s\S]*?\}>/);
   assert.match(appSource, /const yamlText = props\.yamlText\.trim\(\)/);
   assert.doesNotMatch(appSource, /data-source|\$1|props\.yamlText !== undefined/);
-  assert.match(appSource, /message_id: props\.messageId/);
+  assert.match(appSource, /message_id: Math\.max\(0, getLastMessageId\(\)\)/);
   assert.match(appSource, /'viewer-root-embedded': props\.embedded/);
 });
 
@@ -48,11 +48,13 @@ test('vNext runtime mounts cards through local displayed-text ranges', () => {
   assert.match(nativeMountSource, /\.abby-card-shell/);
   assert.match(nativeMountSource, /\[data-abby-foreign="1"\]/);
   assert.match(nativeMountSource, /createTreeWalker\(root, 4\)/);
-  assert.match(nativeMountSource, /findCollapsedTextRange\(chunks, body\)/);
+  assert.match(nativeMountSource, /getDisplayLocatorCandidates\(root, card, body\)/);
+  assert.match(nativeMountSource, /findCollapsedTextRange\(chunks, candidate\)/);
   assert.match(nativeMountSource, /range\.cloneContents\(\)\.querySelector\(BLOCKED_NATIVE_SCOPE_SELECTOR\)/);
   assert.match(nativeMountSource, /const originalContent = range\.extractContents\(\)/);
   assert.match(nativeMountSource, /host\.replaceWith\(originalContent\)/);
-  assert.doesNotMatch(nativeMountSource, /root\.replaceChildren\(|formatAsDisplayedMessage|buildRawMessageWithCardSlots|injectCardHostsIntoDisplayedHtml/);
+  assert.match(nativeMountSource, /formatAsDisplayedMessage\(markedMessage/);
+  assert.doesNotMatch(nativeMountSource, /root\.replaceChildren\(|buildRawMessageWithCardSlots|injectCardHostsIntoDisplayedHtml|setChatMessages|setChatMessage/);
 });
 
 test('runtime replaces an older loaded instance without refreshing native messages', () => {

@@ -14,6 +14,8 @@ function pack(title, source) {
     packId: 'creator-preview-test',
     profileId: '3f06921a-a41d-41a3-a849-c096ac69743b',
     characterName: '预览角色',
+    avatarThumbnail: null,
+    libraryThumbnail: null,
     gallery: [{ title, sources: [source] }],
   };
 }
