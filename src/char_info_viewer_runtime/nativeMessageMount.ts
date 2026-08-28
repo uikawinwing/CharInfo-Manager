@@ -111,6 +111,42 @@ export function getCharInfoBody(source: string): string | null {
   return body.trim() ? body : null;
 }
 
+function getMessageId(root: HTMLElement): number | null {
+  const messageElement = root.closest<HTMLElement>('#chat > .mes[mesid]');
+  const messageId = Number(messageElement?.getAttribute('mesid'));
+  return Number.isInteger(messageId) && messageId >= 0 ? messageId : null;
+}
+
+function getDisplayLocatorCandidates(root: HTMLElement, rawBody: string): string[] {
+  const candidates = [rawBody];
+  const messageId = getMessageId(root);
+  if (messageId === null) return candidates;
+
+  try {
+    if (typeof formatAsTavernRegexedString === 'function') {
+      const depth = Math.max(0, getLastMessageId() - messageId);
+      const regexedBody = formatAsTavernRegexedString(rawBody, 'ai_output', 'display', { depth });
+      if (regexedBody && regexedBody !== rawBody) candidates.push(regexedBody);
+    }
+  } catch (error) {
+    console.warn('[CharInfo Runtime] 无法生成酒馆显示正则定位文本，将继续使用原始文本定位。', error);
+  }
+
+  try {
+    if (typeof formatAsDisplayedMessage === 'function') {
+      const displayedHtml = formatAsDisplayedMessage(rawBody, { message_id: messageId });
+      const container = root.ownerDocument.createElement('div');
+      container.innerHTML = displayedHtml;
+      const displayedText = container.textContent ?? '';
+      if (displayedText && !candidates.includes(displayedText)) candidates.push(displayedText);
+    }
+  } catch (error) {
+    console.warn('[CharInfo Runtime] 无法生成酒馆最终显示定位文本，将继续使用已有候选文本定位。', error);
+  }
+
+  return candidates;
+}
+
 function isBlockedTextNode(node: Text): boolean {
   const parent = node.parentElement;
   if (!parent) return true;
@@ -163,7 +199,9 @@ function createSafeBoundaryRange(root: HTMLElement, card: CharInfoCardPart): Ran
 
   const nodes = collectRenderableTextNodes(root);
   const chunks = nodes.map(node => node.nodeValue ?? '');
-  const match = findCollapsedTextRange(chunks, body);
+  const match = getDisplayLocatorCandidates(root, body)
+    .map(candidate => findCollapsedTextRange(chunks, candidate))
+    .find((candidate): candidate is TextRangeMatch => candidate !== null);
   if (!match) return null;
 
   const startNode = nodes[match.startNodeIndex];
