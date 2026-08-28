@@ -522,6 +522,7 @@ import {
   statusEffectType,
   type TabKey,
 } from './services/characterViewModel';
+import { resolveRemoteGalleryConfig } from './services/galleryPackService';
 import { importToMvuVariables, saveToChatWorldbook } from './services/importService';
 import { createParticleEngine, type ParticleEngine } from './services/particleEngine';
 import {
@@ -803,11 +804,14 @@ async function applyParsedCharacterData(
   mode: 'strict' | 'loose',
   warnings: string[] = [],
 ) {
+  const previewVisualConfig = props.previewMode
+    ? await resolveRemoteGalleryConfig(props.visualConfigOverride?.config)
+    : undefined;
   const resolvedData = props.previewMode
     ? resolveCharacterVisualPreview(
         data,
         props.visualConfigOverride?.characterName ?? '',
-        props.visualConfigOverride?.config,
+        previewVisualConfig,
       )
     : await resolveCharacterVisualConfigWithExtensions(data, getVariables({ type: 'chat' }));
   const legacyVisualProfileSource = getLegacyVisualProfileSource(resolvedData);

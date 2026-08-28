@@ -152,6 +152,7 @@ export function buildCreatorViewerVisualOverride(profile: CharacterVisualProfile
       ...(normalized.raceColor ? { custom_racecolor: normalized.raceColor } : {}),
       ...(normalized.tierColor ? { custom_tiercolor: normalized.tierColor } : {}),
       ...(normalized.entranceQuote ? { 登场台词: normalized.entranceQuote } : {}),
+      ...(normalized.galleryPackUrl ? { gallery_pack_url: normalized.galleryPackUrl } : {}),
       gallery: normalized.gallery.map(image => ({
         title: image.title,
         sources: [...image.sources],
