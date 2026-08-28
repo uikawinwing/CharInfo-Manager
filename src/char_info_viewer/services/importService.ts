@@ -260,6 +260,35 @@ function completeResourceState(value: unknown): Record<string, any> {
   };
 }
 
+const MVU_PARTNER_KEY_ORDER = [
+  '在场',
+  '种族',
+  '身份',
+  '职业',
+  '生命层级',
+  '性格',
+  '喜爱',
+  '外貌',
+  '着装',
+  '等级',
+  '属性',
+  '生命值',
+  '法力值',
+  '体力值',
+  '状态效果',
+  '背包',
+  '装备',
+  '技能',
+  '资产',
+  '登神长阶',
+  '命定契约',
+  '好感度',
+  '心里话',
+  '背景故事',
+] as const;
+
+const MVU_PARTNER_KEY_SET = new Set<string>(MVU_PARTNER_KEY_ORDER);
+
 function createNewCharacterDefaults(): Record<string, any> {
   return {
     在场: true,
@@ -267,6 +296,10 @@ function createNewCharacterDefaults(): Record<string, any> {
     身份: [],
     职业: [],
     生命层级: '第一层级/普通层级',
+    性格: '',
+    喜爱: '',
+    外貌: '',
+    着装: '',
     等级: 1,
     属性: { 力量: 0, 敏捷: 0, 体质: 0, 智力: 0, 精神: 0 },
     生命值: createResourceState(),
@@ -285,15 +318,25 @@ function createNewCharacterDefaults(): Record<string, any> {
       神位: '',
       神国: { 名称: '', 描述: '' },
     },
-    性格: '',
-    喜爱: '',
-    外貌: '',
-    着装: '',
     命定契约: false,
     好感度: 0,
     心里话: '',
     背景故事: '',
   };
+}
+
+function orderCharacterSchema(value: Record<string, any>): Record<string, any> {
+  const ordered: Record<string, any> = {};
+
+  MVU_PARTNER_KEY_ORDER.forEach(key => {
+    ordered[key] = value[key];
+  });
+
+  Object.entries(value).forEach(([key, item]) => {
+    if (!MVU_PARTNER_KEY_SET.has(key)) ordered[key] = item;
+  });
+
+  return ordered;
 }
 
 function completeCharacterSchema(value: unknown): Record<string, any> {
@@ -455,7 +498,7 @@ export function mergeCharacterIntoMvuData(data: CharacterData, currentVars: Mvu.
     mvuData.登神长阶 = divinity;
   }
 
-  currentVars.stat_data.关系列表[charName] = mvuData;
+  currentVars.stat_data.关系列表[charName] = orderCharacterSchema(mvuData);
 
   return charName;
 }
