@@ -64,9 +64,11 @@
 - 最终回复前检查 diff，确认没有无关改动、症状补丁、重复逻辑、未清理资源或未说明的行为变化。
 - 未实际验证的内容必须明确说明，不得假装成功。
 
-## 发布与 tag
+## Branch、发布与 tag
 
-- `.github/workflows/bundle.yaml` 会在 `main` / `master` 收到非 `dist/**` 的 push 后自动重建 `dist`、提交 `[bot] bundle` 并创建下一个 `vX.Y.Z` tag。
-- 除非用户明确要求，不要手动创建或推送 tag。
-- 通常只 push 主分支，等待 GitHub Actions 创建 tag 后再 fetch tags 验证。
-- 用户要求手动 tag 时，先提醒自动 workflow 可能继续生成下一个版本。
+- `dev` 是唯一日常开发与上游同步分支；其他 feature branch 先进入 `dev`，不得直接进入 `main`。
+- `main` 是稳定发布分支，应由 GitHub Branch Protection 强制必须 PR、禁止 direct/force push 与删除，并要求 `verify` + `only-dev`；只有本仓库 `dev -> main` 可以 merge。
+- `dev` push / PR 只运行 test、lint、build 验证，不 commit、不 tag、不修改仓库。
+- `main` 更新后 `.github/workflows/bundle.yaml` 会 fresh install、test、lint、build，并把当次 `dist` 冻结进 release-only commit 后创建下一个 `vX.Y.Z` tag；release commit 不回写 `main`。
+- `dist` 是生成物，不是源码真相；正常开发、branch 切换和 PR 不要因本地 `dist` 缺失、旧或 dirty 而阻止操作。
+- 已发布 tag 永不移动、覆盖或删除；除非 Master 明确要求，不要手动创建或推送 tag。
