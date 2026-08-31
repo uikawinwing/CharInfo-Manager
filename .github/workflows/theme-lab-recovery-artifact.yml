@@ -6,23 +6,55 @@ on:
       - rescue/theme-lab-artifact
 
 jobs:
-  package:
+  rebuild:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout exact rescue tree
         uses: actions/checkout@v4
-      - name: Verify recovered Theme Lab bundle
+
+      - name: Preserve original recovered bundle
+        shell: bash
+        run: |
+          cp dist/char_info_v2_theme_lab/index.html /tmp/theme-lab-original.html
+          echo "original-bytes=$(wc -c < /tmp/theme-lab-original.html)"
+          echo "original-blob=$(git hash-object /tmp/theme-lab-original.html)"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install exact locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Rebuild development bundles from recovered source
+        run: pnpm build:dev
+
+      - name: Verify rebuilt Theme Lab against recovered original
         shell: bash
         run: |
           test -f dist/char_info_v2_theme_lab/index.html
-          printf 'bytes: '
-          wc -c < dist/char_info_v2_theme_lab/index.html
-          printf 'git-blob: '
-          printf 'blob %s\0' "$(wc -c < dist/char_info_v2_theme_lab/index.html)" | cat - dist/char_info_v2_theme_lab/index.html | sha1sum
-      - name: Upload exact recovered HTML
+          echo "rebuilt-bytes=$(wc -c < dist/char_info_v2_theme_lab/index.html)"
+          echo "rebuilt-blob=$(git hash-object dist/char_info_v2_theme_lab/index.html)"
+          if cmp -s /tmp/theme-lab-original.html dist/char_info_v2_theme_lab/index.html; then
+            echo "BYTE_FOR_BYTE_MATCH=true"
+          else
+            echo "BYTE_FOR_BYTE_MATCH=false"
+            exit 1
+          fi
+
+      - name: Upload rebuilt HTML and exact source
         uses: actions/upload-artifact@v4
         with:
-          name: char-info-v2-theme-lab-exact
-          path: dist/char_info_v2_theme_lab/index.html
+          name: char-info-v2-theme-lab-rebuilt
+          path: |
+            dist/char_info_v2_theme_lab/index.html
+            src/char_info_v2_theme_lab/
           if-no-files-found: error
           retention-days: 7
