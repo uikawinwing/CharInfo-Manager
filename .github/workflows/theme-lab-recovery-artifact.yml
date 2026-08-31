@@ -1,0 +1,28 @@
+name: Theme Lab Recovery Artifact
+
+on:
+  push:
+    branches:
+      - rescue/theme-lab-artifact
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact rescue tree
+        uses: actions/checkout@v4
+      - name: Verify recovered Theme Lab bundle
+        shell: bash
+        run: |
+          test -f dist/char_info_v2_theme_lab/index.html
+          printf 'bytes: '
+          wc -c < dist/char_info_v2_theme_lab/index.html
+          printf 'git-blob: '
+          printf 'blob %s\0' "$(wc -c < dist/char_info_v2_theme_lab/index.html)" | cat - dist/char_info_v2_theme_lab/index.html | sha1sum
+      - name: Upload exact recovered HTML
+        uses: actions/upload-artifact@v4
+        with:
+          name: char-info-v2-theme-lab-exact
+          path: dist/char_info_v2_theme_lab/index.html
+          if-no-files-found: error
+          retention-days: 7
