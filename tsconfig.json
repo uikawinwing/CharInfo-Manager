@@ -13,7 +13,10 @@
     "module": "ESNext",
     "rootDir": ".",
     "outDir": "dist",
+<<<<<<< HEAD
     "baseUrl": ".",
+=======
+>>>>>>> 457044c57ea6141e665c88603ea84d7542da64a4
     "paths": {
       "@util/*": [
         "./util/*"
@@ -24,7 +27,10 @@
     },
     "moduleDetection": "auto",
     "moduleResolution": "bundler",
+<<<<<<< HEAD
     "ignoreDeprecations": "6.0",
+=======
+>>>>>>> 457044c57ea6141e665c88603ea84d7542da64a4
     "allowUmdGlobalAccess": true,
     "allowSyntheticDefaultImports": true,
     "strictBindCallApply": true,

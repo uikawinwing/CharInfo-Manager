@@ -6,7 +6,10 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,css,scss,html,vue}\" --no-error-on-unmatched-pattern",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
+<<<<<<< HEAD
     "test": "node --require ./tests/register-ts-node.cjs --test",
+=======
+>>>>>>> 457044c57ea6141e665c88603ea84d7542da64a4
     "dump": "node dump_schema.ts",
     "sync": "node tavern_sync.mjs"
   },
@@ -18,7 +21,10 @@
     "@tailwindcss/postcss": "^4.3.3",
     "@types/jquery": "^4.0.1",
     "@types/jqueryui": "^1.12.24",
+<<<<<<< HEAD
     "@types/js-yaml": "^4.0.9",
+=======
+>>>>>>> 457044c57ea6141e665c88603ea84d7542da64a4
     "@types/lodash": "^4.17.25",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
@@ -85,12 +91,19 @@
     "@vueuse/integrations": "^14.4.0",
     "@vueuse/shared": "^14.4.0",
     "async-wait-until": "^2.0.31",
+<<<<<<< HEAD
+=======
+    "axios": "1.18.1",
+>>>>>>> 457044c57ea6141e665c88603ea84d7542da64a4
     "compare-versions": "^6.1.1",
     "dedent": "^1.7.2",
     "gsap": "^3.15.0",
     "jquery": "^4.0.0",
     "jqueryui": "^1.11.1",
+<<<<<<< HEAD
     "js-yaml": "^4.3.2",
+=======
+>>>>>>> 457044c57ea6141e665c88603ea84d7542da64a4
     "json5": "^2.2.3",
     "jsonrepair": "^3.15.0",
     "klona": "^2.0.6",

@@ -1,5 +1,8 @@
 node_modules
+<<<<<<< HEAD
 .pnpm-store/
+=======
+>>>>>>> 457044c57ea6141e665c88603ea84d7542da64a4
 
 .DS_Store
 Thumbs.db
@@ -12,8 +15,11 @@ pnpm-debug.log*
 
 auto-imports.d.ts
 components.d.ts
+<<<<<<< HEAD
 dist/tsconfig.tsbuildinfo
 screenshots/
 .kilocode/
 .ai-bridge/
 charinfo_source/
+=======
+>>>>>>> 457044c57ea6141e665c88603ea84d7542da64a4
