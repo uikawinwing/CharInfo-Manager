@@ -28,8 +28,11 @@ export default [
       ...eslintPluginBetterTailwindcss.configs['recommended-error'].rules,
       'better-tailwindcss/enforce-consistent-line-wrapping': ['off', { preferSingleLine: true, printWidth: 120 }],
       'better-tailwindcss/no-unregistered-classes': ['off', { ignore: ['fa-*'] }],
+<<<<<<< HEAD
       'better-tailwindcss/no-unknown-classes': 'off',
       'better-tailwindcss/no-concatenated-classes': 'off',
+=======
+>>>>>>> 874db47f3fb8ed8544a74e33a59f780f2c95aa38
     },
     settings: {
       'better-tailwindcss': {
@@ -78,6 +81,7 @@ export default [
       '@typescript-eslint/no-unused-vars': 'off',
     },
   },
+<<<<<<< HEAD
   {
     files: ['util/common.ts'],
     rules: {
@@ -100,4 +104,8 @@ export default [
     'webpack.config.ts',
     'tavern_sync.mjs',
   ]),
+=======
+  eslintConfigPrettier,
+  globalIgnores(['dist/**', 'node_modules/**', 'eslint.config.mjs', 'postcss.config.js', 'webpack.config.ts']),
+>>>>>>> 874db47f3fb8ed8544a74e33a59f780f2c95aa38
 ];
