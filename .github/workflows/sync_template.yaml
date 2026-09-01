@@ -19,7 +19,33 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: AndreasAugustin/actions-template-sync@v2
+
+      - name: Pull template changes
+        uses: AndreasAugustin/actions-template-sync@v2
+        with:
+          source_repo_path: StageDog/tavern_helper_template
+          template_sync_ignore_file_path: .github/.templatesyncignore
+          is_force_deletion: true
+          git_remote_pull_params: --allow-unrelated-histories --strategy=recursive --no-edit -X diff-algorithm=minimal -X ignore-all-space -X patience -X renormalize
+          steps: prechecks,pull
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Verify synced template before creating PR
+        run: |-
+          pnpm install --frozen-lockfile
+          pnpm release:check
+          git restore --source=HEAD --staged --worktree dist
+          git clean -fd -- dist
+
+      - name: Create template sync PR
+        uses: AndreasAugustin/actions-template-sync@v2
         with:
           source_repo_path: StageDog/tavern_helper_template
           pr_title: '[bot] 同步模板仓库的更新'
@@ -28,3 +54,4 @@ jobs:
           template_sync_ignore_file_path: .github/.templatesyncignore
           is_force_deletion: true
           git_remote_pull_params: --allow-unrelated-histories --strategy=recursive --no-edit -X diff-algorithm=minimal -X ignore-all-space -X patience -X renormalize
+          steps: commit,push,pr,cleanup

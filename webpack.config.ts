@@ -22,7 +22,6 @@ const HTMLInlineCSSWebpackPlugin = require('html-inline-css-webpack-plugin').def
 
 interface Config {
   port: number;
-  entries: Entry[];
 }
 interface Entry {
   script: string;
@@ -48,15 +47,18 @@ function common_path(lhs: string, rhs: string) {
   return lhs_parts.join(path.sep);
 }
 
-function glob_script_files() {
+function glob_script_files(includeDevOnly: boolean) {
   const results: string[] = [];
   const internalModuleEntries = new Set(['src/char_info_creator_manager/index.ts']);
 
-  fs.globSync(`{示例,src}/**/index.{ts,tsx,js,jsx}`)
+  fs.globSync(`{示例,src}/**/index.{ts,tsx,js,jsx}`, { cwd: import.meta.dirname })
     .filter(file => !internalModuleEntries.has(file.replaceAll('\\', '/')))
-    .filter(
-      file => process.env.CI !== 'true' || !fs.readFileSync(path.join(import.meta.dirname, file)).includes('@no-ci'),
-    )
+    .filter(file => {
+      const source = fs.readFileSync(path.join(import.meta.dirname, file), 'utf8');
+      if (process.env.CI === 'true' && source.includes('@no-ci')) return false;
+      if (!includeDevOnly && source.includes('@dev-only')) return false;
+      return true;
+    })
     .forEach(file => {
       const file_dirname = path.dirname(file);
       for (const [index, result] of results.entries()) {
@@ -78,7 +80,6 @@ function glob_script_files() {
 
 const config: Config = {
   port: 6621,
-  entries: glob_script_files().map(parse_entry),
 };
 
 let io: Server;
@@ -143,11 +144,13 @@ function tavern_sync(compiler: webpack.Compiler) {
   }
   compiler.hooks.watchRun.tap('watch_tavern_sync', () => {
     if (!child_process) {
-      child_process = spawn('pnpm', ['sync', 'watch', 'all', '-f'], {
+      const syncEnv: NodeJS.ProcessEnv = { ...process.env, FORCE_COLOR: '1' };
+      delete syncEnv.NO_COLOR;
+      child_process = spawn('pnpm sync watch all -f', {
         shell: true,
         stdio: ['ignore', 'pipe', 'pipe'],
         cwd: import.meta.dirname,
-        env: { ...process.env, FORCE_COLOR: '1' },
+        env: syncEnv,
       });
       child_process.stdout?.on('data', (data: Buffer) => {
         console.info(
@@ -192,6 +195,7 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
   const standaloneBrowserPreview = entry.script.replaceAll('\\', '/') === 'src/char_info_v2_theme_lab/index.ts';
 
   return (_env, argv) => ({
+    context: import.meta.dirname,
     experiments: {
       outputModule: true,
     },
@@ -574,4 +578,7 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
   });
 }
 
-export default config.entries.map(parse_configuration);
+export default (_env: any, argv: any) => {
+  const includeDevOnly = argv.mode !== 'production';
+  return glob_script_files(includeDevOnly).map(entry => parse_configuration(parse_entry(entry))(_env, argv));
+};

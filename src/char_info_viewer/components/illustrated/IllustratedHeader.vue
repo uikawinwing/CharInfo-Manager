@@ -139,7 +139,7 @@ watch(() => props.vm.nameText, updateNameLayout, { flush: 'post' });
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.1em;
-  text-shadow: 0 0 8px rgba(var(--illustrated-tier-accent-rgb), 0.4);
+  text-shadow: var(--illustrated-tier-shadow);
 }
 
 .illustrated-level {
@@ -164,12 +164,12 @@ watch(() => props.vm.nameText, updateNameLayout, { flush: 'post' });
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  color: #ffffff;
+  color: var(--illustrated-fg);
   font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Noto Sans SC', serif;
   font-size: clamp(30px, 4.2cqw, 38px);
   font-weight: 700;
   line-height: 1.12;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  text-shadow: var(--illustrated-name-shadow);
 }
 
 .illustrated-header.has-wrapped-name .illustrated-name {
@@ -187,11 +187,11 @@ watch(() => props.vm.nameText, updateNameLayout, { flush: 'post' });
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: #e2e8f0;
+  color: var(--illustrated-fg-soft);
   font-size: 14px;
   line-height: 1.5;
   overflow: hidden;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  text-shadow: var(--illustrated-heading-shadow);
 }
 
 .illustrated-meta-item {

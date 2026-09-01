@@ -103,8 +103,8 @@ function tabIcon(key: IllustratedTabKey): string {
   min-height: var(--illustrated-tabs-height);
   margin: 0 auto;
   overflow: hidden;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(20, 22, 30, 0.2) 0%, rgba(20, 22, 30, 0.96) 35%);
+  border-top: 1px solid var(--illustrated-border-soft);
+  background: var(--illustrated-nav-background);
 }
 
 .illustrated-tab-scroll {
@@ -131,7 +131,7 @@ function tabIcon(key: IllustratedTabKey): string {
   padding: 6px 8px;
   border: none;
   background: none;
-  color: #a0a5b5;
+  color: var(--illustrated-fg-dim);
   cursor: pointer;
   font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
   font-size: 15px;
@@ -190,7 +190,7 @@ function tabIcon(key: IllustratedTabKey): string {
   padding: 6px 12px;
   border: none;
   background: none;
-  color: #a0a5b5;
+  color: var(--illustrated-fg-dim);
   cursor: pointer;
   font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
   font-size: 15px;
@@ -238,9 +238,9 @@ function tabIcon(key: IllustratedTabKey): string {
     justify-content: flex-start;
     margin: 0;
     border-top: 0;
-    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 1px solid var(--illustrated-border-soft);
     padding: 14px 6px;
-    background: rgba(4, 5, 9, 0.82);
+    background: var(--illustrated-side-rail-background);
   }
 
   .illustrated-tabs.is-side-rail .illustrated-tab-navigation-group {
@@ -345,8 +345,8 @@ function tabIcon(key: IllustratedTabKey): string {
     padding: 0;
     border-top: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.2);
     border-left: 0;
-    background: color-mix(in srgb, var(--illustrated-bg) 94%, transparent);
-    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.22);
+    background: var(--illustrated-mobile-nav-background);
+    box-shadow: var(--illustrated-nav-shadow);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }

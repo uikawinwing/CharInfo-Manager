@@ -114,7 +114,7 @@ const radarValuePoints = computed(() =>
 .illustrated-radar-card {
   padding: 18px;
   border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.22);
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--illustrated-surface-subtle);
 }
 
 .illustrated-radar {
@@ -138,7 +138,7 @@ const radarValuePoints = computed(() =>
 }
 
 .illustrated-radar-label {
-  fill: var(--illustrated-fg, #e8edf3);
+  fill: var(--illustrated-fg);
   font-size: 11px;
   text-anchor: middle;
 }
@@ -197,7 +197,7 @@ const radarValuePoints = computed(() =>
   .illustrated-radar-card {
     padding: 8px 10px 2px;
     border-color: rgba(var(--illustrated-race-accent-rgb), 0.16);
-    background: rgba(0, 0, 0, 0.1);
+    background: color-mix(in srgb, var(--illustrated-surface-subtle) 55%, transparent);
   }
 
   .illustrated-radar {
@@ -210,7 +210,7 @@ const radarValuePoints = computed(() =>
     padding: 12px 16px;
     border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.22);
     border-radius: 8px;
-    background: rgba(5, 7, 10, 0.28);
+    background: var(--illustrated-mobile-summary-background);
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
   }
@@ -224,7 +224,7 @@ const radarValuePoints = computed(() =>
   }
 
   .illustrated-mobile-character-summary > div + div {
-    border-top: 1px dashed rgba(255, 255, 255, 0.09);
+    border-top: 1px dashed var(--illustrated-divider);
   }
 
   .illustrated-mobile-character-summary dt,
@@ -239,7 +239,7 @@ const radarValuePoints = computed(() =>
   }
 
   .illustrated-mobile-character-summary dd {
-    color: var(--illustrated-fg, #eef3f7);
+    color: var(--illustrated-fg);
     font-size: 13px;
     font-weight: 600;
     line-height: 1.45;

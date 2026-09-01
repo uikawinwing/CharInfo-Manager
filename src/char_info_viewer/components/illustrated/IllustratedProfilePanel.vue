@@ -80,7 +80,7 @@ const blocks = computed(() =>
   padding: 18px 22px;
   border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.16);
   border-radius: 6px;
-  background: rgba(5, 9, 14, 0.3);
+  background: var(--illustrated-surface-muted);
 }
 
 .illustrated-creator-meta-line {
@@ -93,7 +93,7 @@ const blocks = computed(() =>
   display: inline-flex;
   align-items: baseline;
   gap: 7px;
-  color: #e2e8f0;
+  color: var(--illustrated-fg-soft);
   font-size: 13px;
 }
 
@@ -106,7 +106,7 @@ const blocks = computed(() =>
 
 .illustrated-creator-metadata p {
   margin: 0;
-  color: #cbd5e1;
+  color: var(--illustrated-fg-muted);
   font-size: 13px;
   line-height: 1.75;
   white-space: pre-line;
@@ -116,7 +116,7 @@ const blocks = computed(() =>
   --corner: rgba(var(--illustrated-race-accent-rgb), 0.6);
   position: relative;
   padding: 28px 36px;
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--illustrated-border-faint);
   background:
     linear-gradient(var(--corner), var(--corner)),
     linear-gradient(var(--corner), var(--corner)),
@@ -126,7 +126,7 @@ const blocks = computed(() =>
     linear-gradient(var(--corner), var(--corner)),
     linear-gradient(var(--corner), var(--corner)),
     linear-gradient(var(--corner), var(--corner)),
-    radial-gradient(ellipse at center, rgba(30, 34, 42, 0.4) 0%, rgba(10, 12, 16, 0.8) 100%);
+    var(--illustrated-text-block-background);
   background-repeat: no-repeat;
   background-position:
     0 0,
@@ -148,7 +148,7 @@ const blocks = computed(() =>
     12px 1px,
     1px 12px,
     auto;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--illustrated-panel-shadow);
 }
 
 .illustrated-text-block::before,
@@ -193,11 +193,11 @@ const blocks = computed(() =>
 
 .illustrated-text-block p {
   margin: 0;
-  color: #e2e8f0;
+  color: var(--illustrated-fg-soft);
   font-size: 15px;
   line-height: 1.8;
   white-space: pre-line;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  text-shadow: var(--illustrated-text-shadow);
 }
 
 @media (max-width: 900px) {
@@ -213,7 +213,7 @@ const blocks = computed(() =>
     gap: 8px;
     padding: 11px 0 12px;
     border: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--illustrated-divider);
     border-radius: 0;
     background: transparent;
   }
@@ -226,7 +226,7 @@ const blocks = computed(() =>
   .illustrated-info-grid.is-compact-profile .illustrated-text-block {
     padding: 11px 0 12px;
     border: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--illustrated-divider);
     background: transparent;
     box-shadow: none;
   }
@@ -255,7 +255,7 @@ const blocks = computed(() =>
   }
 
   .illustrated-info-grid.is-compact-profile .illustrated-text-block p {
-    color: #c9cdd4;
+    color: var(--illustrated-fg-soft);
     font-size: 11px !important;
     line-height: 1.65 !important;
     text-shadow: none;

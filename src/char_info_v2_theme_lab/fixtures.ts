@@ -143,7 +143,7 @@ export const fixtures: ThemeLabFixture[] = [
     id: 'anastasia',
     shortName: 'Anastasia',
     name: '安娜斯塔西娅·佛罗伦丝·瓦雷利乌斯',
-    theme: 'default',
+    theme: 'anastasia',
     imageUrl: 'https://files.catbox.moe/hrfym1.png',
     data: {
       姓名: '安娜斯塔西娅·佛罗伦丝·瓦雷利乌斯',

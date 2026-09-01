@@ -18,8 +18,9 @@ const appPath = new URL('../../src/char_info_viewer/App.vue', import.meta.url);
 
 test('Special NPC 沿用有立绘页面，并将导航作为桌面右侧栏和移动底栏', async () => {
   const [sheet, navigation] = await Promise.all([readFile(shellPath, 'utf8'), readFile(navigationPath, 'utf8')]);
-  assert.match(sheet, /<IllustratedTabNav[\s\S]*?v-if="specialNpc"[\s\S]*?side-rail/);
-  assert.match(sheet, /v-if="specialNpc"[\s\S]*?:show-import-action="!readOnly"/);
+  assert.match(sheet, /const useSideRailNavigation = computed\(\(\) => props\.specialNpc \|\| props\.sideRailNavigation === true\);/);
+  assert.match(sheet, /<IllustratedTabNav\s+[\s\S]*?v-if="useSideRailNavigation"\s+[\s\S]*?side-rail/);
+  assert.match(sheet, /v-if="useSideRailNavigation"[\s\S]*?:show-import-action="!readOnly"/);
   assert.match(sheet, /'is-special-npc': specialNpc/);
   assert.match(navigation, /\.illustrated-tabs\.is-side-rail/);
   assert.match(navigation, /@media \(min-width: 901px\)/);
@@ -70,7 +71,7 @@ test('Special NPC 手机卡片使用 2:3 固定比例，技能沿用紧凑但可
   );
   assert.match(
     itemCard,
-    /\.illustrated-list-item\.is-compact-skill \.illustrated-description\s*\{[\s\S]*?color:\s*#9ca4ad;[\s\S]*?font-size:\s*10\.5px !important/,
+    /\.illustrated-list-item\.is-compact-skill \.illustrated-description\s*\{[\s\S]*?color:\s*var\(--illustrated-fg-muted\);[\s\S]*?font-size:\s*10\.5px !important/,
   );
   assert.match(sheet, /\.illustrated-shell\.is-special-npc\.is-skills-tab \.illustrated-data-pane\s*\{[\s\S]*?66%/);
 });
@@ -97,7 +98,7 @@ test('Special NPC 档案隐藏属性与资源，持有沿用技能的紧凑行�
   assert.match(sheet, /class="illustrated-group-icon" aria-hidden="true">◈<\/span>/);
   assert.match(sheet, /:aria-expanded="!isGroupCollapsed\('holding:equipment'\)"/);
   assert.match(sheet, /v-show="!isGroupCollapsed\('holding:equipment'\)" class="illustrated-group-body"/);
-  assert.match(sheet, /\.illustrated-detail-title-spacer\s*\{[\s\S]*?border-bottom:\s*1px solid rgba\(255, 255, 255, 0\.08\)/);
+  assert.match(sheet, /\.illustrated-detail-title-spacer\s*\{[\s\S]*?border-bottom:\s*1px solid var\(--illustrated-divider\)/);
   assert.match(sheet, /\.illustrated-group-panel\s*\{[\s\S]*?overflow:\s*hidden;[\s\S]*?margin-inline:\s*10px 14px;[\s\S]*?border:\s*1px solid rgba\(var\(--illustrated-tier-accent-rgb\), 0\.2\)/);
   assert.match(sheet, /\.illustrated-group-body\s*\{[\s\S]*?padding:\s*2px 10px 8px/);
   assert.match(sheet, /\.illustrated-group-toggle\s*\{[\s\S]*?grid-template-columns:\s*13px minmax\(0, 1fr\) 18px;[\s\S]*?padding:\s*8px 14px 8px 10px;[\s\S]*?font-size:\s*14px/);
@@ -132,7 +133,7 @@ test('Special NPC 手机首页将台词与资料直接叠在立绘渐变上，�
   const sheet = await readFile(shellPath, 'utf8');
   assert.match(
     sheet,
-    /\.illustrated-shell\.is-special-npc\.is-overview-tab \.illustrated-portrait-pane::after\s*\{[\s\S]*?linear-gradient/,
+    /\.illustrated-shell\.is-special-npc\.is-overview-tab \.illustrated-portrait-pane::after\s*\{[\s\S]*?background:\s*var\(--illustrated-mobile-portrait-overlay\)/,
   );
   assert.match(
     sheet,
@@ -140,12 +141,15 @@ test('Special NPC 手机首页将台词与资料直接叠在立绘渐变上，�
   );
   assert.match(
     sheet,
-    /\.illustrated-shell\.is-special-npc\.is-overview-tab \.illustrated-mobile-header-overlay\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none/,
+    /@mixin illustrated-v2-mobile-header[\s\S]*?\.illustrated-shell\.is-overview-tab \.illustrated-mobile-header-overlay\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none/,
   );
-  assert.match(sheet, /:deep\(\.illustrated-name:not\(\.illustrated-name-measure\)\)\s*\{[\s\S]*?order:\s*1/);
   assert.match(
     sheet,
-    /\.illustrated-shell\.is-special-npc\.is-overview-tab[\s\S]*?:deep\(\.illustrated-subtitle\),[\s\S]*?:deep\(\.illustrated-level-tier\)\s*\{[\s\S]*?display:\s*none/,
+    /@mixin illustrated-v2-mobile-header[\s\S]*?:deep\(\.illustrated-name:not\(\.illustrated-name-measure\)\)\s*\{[\s\S]*?order:\s*1/,
+  );
+  assert.match(
+    sheet,
+    /@mixin illustrated-v2-mobile-header[\s\S]*?:deep\(\.illustrated-subtitle\),[\s\S]*?:deep\(\.illustrated-level-tier\)\s*\{[\s\S]*?display:\s*none/,
   );
 });
 
@@ -216,4 +220,39 @@ test('App 在 Special NPC 分支复用有立绘页面，而不是挂载独立空
   assert.match(source, /vm\.value\?\.layoutKind === 'special_npc' && !illustratedFallbackActive\.value/);
   assert.match(source, /'special-npc-viewer-root': shouldShowSpecialNpcLayout/);
   assert.match(source, /\.viewer-root\.special-npc-viewer-root\s*\{\s*min-height:\s*0;/);
+});
+
+test('共享 Illustrated 叶组件不写死中性明暗色，DX 主题只需覆盖语义 token', async () => {
+  const sharedLeafPaths = [
+    'IllustratedHeader.vue',
+    'IllustratedPageTitle.vue',
+    'IllustratedOverviewPanel.vue',
+    'IllustratedCharacterPanel.vue',
+    'IllustratedProfilePanel.vue',
+    'IllustratedItemCard.vue',
+    'IllustratedTabNav.vue',
+    'IllustratedDefaultDivinityPanel.vue',
+  ];
+  const colorLiteralPattern = /#[0-9a-f]{6}\b|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*[\d.]+)?\s*\)/gi;
+
+  for (const filename of sharedLeafPaths) {
+    const source = await readFile(
+      new URL(`../../src/char_info_viewer/components/illustrated/${filename}`, import.meta.url),
+      'utf8',
+    );
+    const neutralLiterals = [...source.matchAll(colorLiteralPattern)]
+      .map(match => match[0])
+      .filter(literal => {
+        const channels = literal.startsWith('#')
+          ? [literal.slice(1, 3), literal.slice(3, 5), literal.slice(5, 7)].map(value => Number.parseInt(value, 16))
+          : [...literal.matchAll(/\d+(?:\.\d+)?/g)].slice(0, 3).map(match => Number(match[0]));
+        return Math.max(...channels) - Math.min(...channels) <= 24;
+      });
+
+    assert.deepEqual(
+      neutralLiterals,
+      [],
+      `${filename} 不应写死中性明暗色；请在 IllustratedCharacterSheet 的默认 theme token 或具体 DX theme adapter 中定义`,
+    );
+  }
 });

@@ -155,6 +155,16 @@ Viewer 与 Creator 在源码中仍保持独立模块和职责：玩家浏览、�
 
 管理器只更新角色视觉资料，不会修改条目原有设定、启用状态或其他世界书参数。发现资料格式异常时会暂停自动写入，避免误删原有内容。
 
+## 开发与分发
+
+- `pnpm watch`：日常开发入口，会先清理旧 `dist`，然后持续编译所有开发入口；包含标记为 `@dev-only` 的 DX / Theme Lab。
+- `pnpm build:dev`：一次性生成完整开发预览，适合确认 `dist/char_info_v2_theme_lab/index.html` 等独立页面；若 watcher 已运行则拒绝启动，避免两个编译器同时写 `dist`。
+- `pnpm release:check`：公开分发前的唯一检查入口；依次执行 lint、完整测试、production build 和 DX 防泄漏扫描。
+- `pnpm build`：production build。若检测到 `pnpm watch` 仍占用开发监听端口，会直接拒绝执行，避免 dev-only 文件与公开 `dist` 互相覆盖。
+- production build 会从干净 `dist` 开始，并物理排除 `@dev-only` entry；不要手工编辑 `dist` 作为源码。
+- Webpack 的 entry 列表在 watcher 启动时确定。如果切换 Git 分支时新增或删除了 `src/**/index.ts` 入口，需要重启一次 `pnpm watch`；普通 `.vue` / `.ts` / `.css` 修改不需要重启。
+- GitHub 的 `bundle` workflow 使用同一个 `pnpm release:check`，通过后才提交公开 `dist` 并进入自动 tag 流程。
+
 ## 使用与发布提醒
 
 本项目开源供学习、参考和个人自用。若需要基于本项目进行使用、复刻、DIY 改版并公开发布，请在发布前先告知我，避免版本来源、维护责任和衍生内容说明产生误会。

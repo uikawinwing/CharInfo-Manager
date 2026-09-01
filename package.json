@@ -1,8 +1,16 @@
 {
+  "private": true,
+  "packageManager": "pnpm@11.24.0",
   "scripts": {
-    "build:dev": "webpack --mode development",
-    "build": "webpack --mode production",
-    "watch": "webpack --mode development --watch --progress",
+    "clean:dist": "ts-node --transpile-only --project scripts/tsconfig.json scripts/clean-dist.ts",
+    "check:no-watch": "ts-node --transpile-only --project scripts/tsconfig.json scripts/assert-no-dev-watch.ts",
+    "build:dev": "pnpm check:no-watch && pnpm clean:dist && webpack --mode development",
+    "build": "pnpm check:no-watch && pnpm clean:dist && webpack --mode production",
+    "watch": "pnpm check:no-watch && pnpm clean:dist && webpack --mode development --watch --progress",
+    "dev": "ts-node --transpile-only --project scripts/tsconfig.json scripts/dev.ts",
+    "check:dev-preview": "ts-node --transpile-only --project scripts/tsconfig.json scripts/check-dev-preview.ts",
+    "check:public-dist": "ts-node --transpile-only --project scripts/tsconfig.json scripts/check-public-dist.ts",
+    "release:check": "pnpm lint && pnpm test && pnpm build && pnpm check:public-dist",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,css,scss,html,vue}\" --no-error-on-unmatched-pattern",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
@@ -107,16 +115,5 @@
     "vue3-pixi": "1.0.0-beta.3",
     "yaml": "^2.9.0",
     "zod": "^4.4.3"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@parcel/watcher",
-      "@tailwindcss/oxide",
-      "electron",
-      "esbuild",
-      "javascript-obfuscator",
-      "unrs-resolver",
-      "vue-demi"
-    ]
   }
 }

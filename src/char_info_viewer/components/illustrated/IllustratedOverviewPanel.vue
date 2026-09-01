@@ -117,11 +117,11 @@ const emit = defineEmits<{
   max-width: var(--flag-width);
   min-height: var(--flag-min-height);
   padding: 15px 5px 36px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--illustrated-border-faint);
   border-top: 2px solid var(--illustrated-race-accent);
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--illustrated-surface-muted);
   clip-path: polygon(0% 0%, 100% 0%, 100% 85%, 50% 100%, 0% 85%);
-  color: #ffffff;
+  color: var(--illustrated-fg);
   cursor: default;
   text-align: center;
   transition:
@@ -160,7 +160,7 @@ const emit = defineEmits<{
   font-size: 2rem;
   font-weight: 700;
   line-height: 1;
-  text-shadow: 0 2px 15px rgba(var(--illustrated-race-accent-rgb), 0.45);
+  text-shadow: var(--illustrated-attribute-value-shadow);
 }
 
 .illustrated-attribute-total.warning,
@@ -251,11 +251,11 @@ const emit = defineEmits<{
 }
 
 .illustrated-resource-value {
-  color: #ffffff;
+  color: var(--illustrated-fg);
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
   font-size: 22px;
   font-weight: 700;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+  text-shadow: var(--illustrated-heading-shadow);
 }
 
 .illustrated-entrance-quote {
@@ -275,7 +275,7 @@ const emit = defineEmits<{
   border: 0;
   background: none;
   box-shadow: none;
-  color: rgba(255, 255, 255, 0.96);
+  color: var(--illustrated-fg);
   cursor: pointer;
   font-family: 'LXGW WenKai Mono', 'Kaiti SC', STKaiti, serif;
   font-size: clamp(17px, 1.7cqw, 20px);
@@ -342,7 +342,7 @@ const emit = defineEmits<{
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 5;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.64);
+  text-shadow: var(--illustrated-quote-shadow);
 }
 
 .illustrated-entrance-quote-text::before,

@@ -17,6 +17,6 @@ test('the illustrated character mobile overview keeps the entrance quote above i
     /<button\s+[\s\S]*?v-if="vm\.entranceQuoteText"[\s\S]*?class="illustrated-mobile-entrance-quote"[\s\S]*?@click="openEntranceQuoteDialog"/,
   );
   assert.match(source, /\.illustrated-mobile-overview-overlay\s*\{[\s\S]*?display:\s*flex;/);
-  assert.match(source, /\.illustrated-mobile-entrance-quote\s*\{[\s\S]*?background:\s*rgba\([^;]+\);/);
+  assert.match(source, /\.illustrated-mobile-entrance-quote\s*\{[\s\S]*?background:\s*var\(--illustrated-overlay-background\);/);
   assert.match(source, /font-size:\s*clamp\(12px,[^;]+14px\)/);
 });

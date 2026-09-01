@@ -83,6 +83,12 @@ export default [
       'import-x/no-nodejs-modules': 'off',
     },
   },
+  {
+    files: ['scripts/**/*.ts'],
+    rules: {
+      'import-x/no-nodejs-modules': 'off',
+    },
+  },
   eslintConfigPrettier,
   globalIgnores([
     'dist/**',

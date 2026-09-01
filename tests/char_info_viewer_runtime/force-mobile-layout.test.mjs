@@ -117,7 +117,7 @@ test('强制移动布局复用 Viewer 与 Special NPC 的同一套移动版式�
   assert.match(viewerAppSource, /:force-mobile-layout="props\.forceMobileLayout"[\s\S]*?:special-npc="shouldShowSpecialNpcLayout"/u);
   assert.match(
     illustratedSheetSource,
-    /'is-special-npc': specialNpc, 'force-mobile-layout': forceMobileLayout/u,
+    /'is-special-npc': specialNpc,[\s\S]*?'force-mobile-layout': forceMobileLayout/u,
   );
   assert.match(illustratedSheetSource, /@mixin illustrated-mobile-content\s*\{/u);
   assert.match(illustratedSheetSource, /@mixin illustrated-compact-mobile-content\s*\{/u);

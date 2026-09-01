@@ -27,7 +27,7 @@
 
     <section class="theme-lab-status">
       <span>{{ selectedFixture.name }}</span>
-      <span>{{ selectedFixture.theme === 'iris' ? 'Iris theme migrated' : 'V2 baseline — theme pending' }}</span>
+      <span>{{ selectedFixture.theme === 'iris' ? 'Iris theme migrated' : selectedFixture.theme === 'anastasia' ? 'Anastasia theme migrated' : 'V2 baseline — theme pending' }}</span>
       <span>{{ mode === 'mobile' ? 'forceMobileLayout' : 'desktop layout' }}</span>
     </section>
 

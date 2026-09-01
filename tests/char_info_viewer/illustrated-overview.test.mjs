@@ -143,7 +143,10 @@ test('long overview copy uses whole-block limits instead of shrinking a single w
     /\.illustrated-header \.illustrated-name\.illustrated-name-measure\s*\{[^}]*width:\s*max-content;[^}]*max-width:\s*none;[^}]*overflow:\s*visible;[^}]*white-space:\s*nowrap;[^}]*text-wrap:\s*nowrap;/,
   );
   assert.doesNotMatch(headerSource, /offsetHeight > lineHeight/);
-  assert.match(headerSource, /\.illustrated-subtitle\s*\{[^}]*max-height:\s*3em;[^}]*overflow:\s*hidden;/);
+  assert.match(
+    headerSource,
+    /\.illustrated-subtitle\s*\{[^}]*max-height:\s*calc\(3em \+ 8px\);[^}]*overflow:\s*hidden;/,
+  );
   assert.match(headerSource, /class="illustrated-meta-item"[\s\S]*?class="illustrated-meta-sep"[\s\S]*?class="illustrated-meta-text"/);
   assert.match(headerSource, /\.illustrated-meta-item\s*\{[^}]*display:\s*inline-flex;[^}]*gap:\s*8px;/);
   assert.match(

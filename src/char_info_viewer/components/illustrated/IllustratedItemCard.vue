@@ -129,12 +129,10 @@ const statusLines = computed(() => {
   position: relative;
   margin-bottom: 24px;
   padding: 24px 32px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--illustrated-border-faint);
   border-radius: 2px;
-  background: rgba(12, 14, 18, 0.85);
-  box-shadow:
-    inset 0 0 40px rgba(0, 0, 0, 0.8),
-    0 10px 20px rgba(0, 0, 0, 0.5);
+  background: var(--illustrated-surface-card);
+  box-shadow: var(--illustrated-item-shadow);
   --item-color: var(--illustrated-race-accent);
 }
 
@@ -165,17 +163,17 @@ const statusLines = computed(() => {
   gap: 12px;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--illustrated-divider);
 }
 
 .illustrated-list-item h3 {
   display: flex;
   align-items: center;
   margin: 0;
-  color: #ffffff;
+  color: var(--illustrated-fg);
   font-size: 20px;
   font-weight: 700;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  text-shadow: var(--illustrated-heading-shadow);
 }
 
 .illustrated-list-item h3::before {
@@ -230,10 +228,10 @@ const statusLines = computed(() => {
 
 .illustrated-tag {
   padding: 4px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--illustrated-border-soft);
   border-radius: 2px;
-  background: rgba(0, 0, 0, 0.4);
-  color: #a0a5b5;
+  background: var(--illustrated-surface-tag);
+  color: var(--illustrated-fg-dim);
   font-size: 12px;
 }
 
@@ -247,7 +245,7 @@ const statusLines = computed(() => {
 }
 
 .illustrated-effect-item {
-  color: #e2e8f0;
+  color: var(--illustrated-fg-soft);
   line-height: 1.7;
 }
 
@@ -262,7 +260,7 @@ const statusLines = computed(() => {
 .illustrated-effect-text,
 .illustrated-description,
 .illustrated-line {
-  color: #e2e8f0;
+  color: var(--illustrated-fg-soft);
   white-space: pre-line;
 }
 
@@ -280,7 +278,7 @@ const statusLines = computed(() => {
   margin: 0;
   padding: 13px 0 14px;
   border: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--illustrated-divider);
   border-radius: 0;
   background: transparent;
   box-shadow: none;
@@ -329,7 +327,7 @@ const statusLines = computed(() => {
 
 .illustrated-skill-cost {
   max-width: 130px;
-  color: #a4a09a;
+  color: var(--illustrated-fg-dim);
   font-size: 9px;
   line-height: 1.35;
   text-align: right;
@@ -337,7 +335,7 @@ const statusLines = computed(() => {
 
 .illustrated-skill-cost small {
   display: block;
-  color: #c3beb6;
+  color: var(--illustrated-fg-muted);
   font-size: inherit;
   font-weight: 700;
 }
@@ -391,7 +389,7 @@ const statusLines = computed(() => {
 
 .illustrated-list-item.is-compact-row .illustrated-description {
   margin: 8px 0 0 !important;
-  color: #747980;
+  color: var(--illustrated-fg-dim);
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
   font-size: 9.3px !important;
   font-style: italic;
@@ -422,8 +420,8 @@ const statusLines = computed(() => {
   .illustrated-list-item.is-compact-skill {
     margin: 0 8px;
     padding: 14px 14px 15px;
-    border-bottom-color: rgba(255, 255, 255, 0.11);
-    background: linear-gradient(90deg, rgba(4, 7, 11, 0.5), rgba(4, 7, 11, 0.26));
+    border-bottom-color: var(--illustrated-divider);
+    background: var(--illustrated-compact-row-background);
   }
 
   .illustrated-list-item.is-compact-skill h3 {
@@ -443,14 +441,14 @@ const statusLines = computed(() => {
   .illustrated-list-item.is-compact-skill .illustrated-skill-cost {
     max-width: 112px;
     padding-top: 1px;
-    color: #c7c3bd;
+    color: var(--illustrated-fg-muted);
     font-size: 10px;
     line-height: 1.35;
   }
 
   .illustrated-list-item.is-compact-skill .illustrated-skill-cost small {
     margin-bottom: 1px;
-    color: #e4dfd7;
+    color: var(--illustrated-fg-soft);
   }
 
   .illustrated-list-item.is-compact-skill .illustrated-tags {
@@ -460,9 +458,9 @@ const statusLines = computed(() => {
 
   .illustrated-list-item.is-compact-skill .illustrated-tag {
     padding: 2px 6px;
-    border-color: rgba(255, 255, 255, 0.08);
-    background: rgba(3, 5, 8, 0.32);
-    color: #aeb5bf;
+    border-color: var(--illustrated-border-soft);
+    background: var(--illustrated-surface-tag);
+    color: var(--illustrated-fg-dim);
     font-size: 9.5px;
     line-height: 1.35 !important;
   }
@@ -472,24 +470,24 @@ const statusLines = computed(() => {
   }
 
   .illustrated-list-item.is-compact-skill .illustrated-effect-item {
-    color: #f0f3f7;
+    color: var(--illustrated-fg);
     font-size: 12.5px !important;
     line-height: 1.58 !important;
   }
 
   .illustrated-list-item.is-compact-skill .illustrated-effect-name {
     margin-right: 6px;
-    color: color-mix(in srgb, var(--item-color) 84%, #ffffff);
+    color: color-mix(in srgb, var(--item-color) 84%, var(--illustrated-fg));
     font-weight: 750;
   }
 
   .illustrated-list-item.is-compact-skill .illustrated-effect-text {
-    color: #edf1f5;
+    color: var(--illustrated-fg-soft);
   }
 
   .illustrated-list-item.is-compact-skill .illustrated-description {
     margin: 9px 0 0 !important;
-    color: #9ca4ad;
+    color: var(--illustrated-fg-muted);
     font-size: 10.5px !important;
     font-style: normal;
     line-height: 1.58 !important;
@@ -499,8 +497,8 @@ const statusLines = computed(() => {
   .illustrated-list-item.is-compact-holding {
     margin: 0 8px;
     padding: 14px 14px 15px;
-    border-bottom-color: rgba(255, 255, 255, 0.11);
-    background: linear-gradient(90deg, rgba(4, 7, 11, 0.48), rgba(4, 7, 11, 0.24));
+    border-bottom-color: var(--illustrated-divider);
+    background: var(--illustrated-compact-row-background);
   }
 
   .illustrated-list-item.is-compact-holding .illustrated-list-item-header {
@@ -522,7 +520,7 @@ const statusLines = computed(() => {
     justify-self: end;
     align-self: start;
     padding: 2px 0 0;
-    color: color-mix(in srgb, var(--item-color) 86%, #ffffff);
+    color: color-mix(in srgb, var(--item-color) 86%, var(--illustrated-fg));
     font-size: 10px;
     line-height: 1.35;
     letter-spacing: 0.04em;
@@ -536,9 +534,9 @@ const statusLines = computed(() => {
 
   .illustrated-list-item.is-compact-holding .illustrated-tag {
     padding: 2px 6px;
-    border-color: rgba(255, 255, 255, 0.08);
-    background: rgba(3, 5, 8, 0.32);
-    color: #aeb5bf;
+    border-color: var(--illustrated-border-soft);
+    background: var(--illustrated-surface-tag);
+    color: var(--illustrated-fg-dim);
     font-size: 9.5px;
     line-height: 1.35 !important;
   }
@@ -548,24 +546,24 @@ const statusLines = computed(() => {
   }
 
   .illustrated-list-item.is-compact-holding .illustrated-effect-item {
-    color: #f0f3f7;
+    color: var(--illustrated-fg);
     font-size: 12.5px !important;
     line-height: 1.58 !important;
   }
 
   .illustrated-list-item.is-compact-holding .illustrated-effect-name {
     margin-right: 6px;
-    color: color-mix(in srgb, var(--item-color) 84%, #ffffff);
+    color: color-mix(in srgb, var(--item-color) 84%, var(--illustrated-fg));
     font-weight: 750;
   }
 
   .illustrated-list-item.is-compact-holding .illustrated-effect-text {
-    color: #edf1f5;
+    color: var(--illustrated-fg-soft);
   }
 
   .illustrated-list-item.is-compact-holding .illustrated-description {
     margin: 9px 0 0 !important;
-    color: #9ca4ad;
+    color: var(--illustrated-fg-muted);
     font-size: 10.5px !important;
     font-style: normal;
     line-height: 1.58 !important;
