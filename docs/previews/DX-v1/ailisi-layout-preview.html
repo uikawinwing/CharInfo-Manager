@@ -1,0 +1,1390 @@
+<!doctype html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>艾璃丝·赛瑞利亚角色布局预览</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: 'Noto Serif SC', 'Microsoft YaHei', system-ui, sans-serif;
+        background: #dce9e7;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-width: 320px;
+        margin: 0;
+        background: #dce9e7 !important;
+        color: #17324a !important;
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .ailisi-preview {
+        --navy: #17324a;
+        --navy-soft: #31536d;
+        --mint: #83dccb;
+        --mint-deep: #42a996;
+        --mint-pale: #dcefeb;
+        --purple: #a98ce8;
+        --purple-deep: #7258ba;
+        --pink: #f078a6;
+        --pink-deep: #be4f79;
+        --pearl: #edf5f3;
+        --paper: #f7fbfa;
+        --line: #9bbdb9;
+        --shadow: rgba(23, 50, 74, 0.18);
+        width: min(1280px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 22px 0 34px;
+        isolation: isolate;
+        color-scheme: light;
+        color: var(--navy) !important;
+        background: transparent !important;
+        line-height: 1.55;
+      }
+
+      .ailisi-preview button,
+      .ailisi-preview h1,
+      .ailisi-preview h2,
+      .ailisi-preview h3,
+      .ailisi-preview p,
+      .ailisi-preview span,
+      .ailisi-preview strong {
+        color: inherit;
+      }
+
+      .preview-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 46px;
+        padding: 0 4px 10px;
+      }
+
+      .preview-label {
+        margin: 0;
+        color: var(--navy-soft) !important;
+        font:
+          700 12px/1.2 system-ui,
+          sans-serif;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .layout-toggle {
+        display: inline-flex;
+        flex: 0 0 auto;
+        gap: 4px;
+        padding: 4px;
+        border: 1px solid #b9cbc8;
+        border-radius: 7px;
+        background: #f7fbfa !important;
+        box-shadow: 0 5px 14px rgba(23, 50, 74, 0.1);
+      }
+
+      .layout-button {
+        min-width: 76px;
+        min-height: 32px;
+        padding: 6px 12px;
+        border: 1px solid transparent;
+        border-radius: 5px;
+        background: transparent !important;
+        color: var(--navy-soft) !important;
+        font:
+          800 12px/1 system-ui,
+          sans-serif;
+        letter-spacing: 0;
+        cursor: pointer;
+      }
+
+      .layout-button[aria-pressed='true'] {
+        border-color: #6abfae;
+        background: #dff4ef !important;
+        color: var(--navy) !important;
+        box-shadow: inset 0 0 0 1px #ffffff;
+      }
+
+      .preview-stage {
+        width: 100%;
+        margin: 0 auto;
+        transition: width 220ms ease;
+      }
+
+      .character-shell {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(340px, 41.5%) minmax(0, 1fr);
+        width: 100%;
+        aspect-ratio: 1.36 / 1;
+        overflow: hidden;
+        border: 2px solid #31536d;
+        border-radius: 8px;
+        background: var(--pearl) !important;
+        box-shadow:
+          0 22px 46px rgba(23, 50, 74, 0.2),
+          0 0 0 4px rgba(247, 251, 250, 0.82),
+          0 0 0 5px #8cb5b0;
+      }
+
+      .character-shell::after {
+        position: absolute;
+        inset: 8px;
+        z-index: 20;
+        border: 1px solid rgba(49, 83, 109, 0.32);
+        border-radius: 5px;
+        pointer-events: none;
+        content: '';
+      }
+
+      .portrait-pane {
+        position: relative;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+        border-right: 1px solid #8cb5b0;
+        background: #a8c8c7 !important;
+      }
+
+      .portrait-image {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: 50% 48%;
+        filter: saturate(0.98) contrast(1.02);
+      }
+
+      .portrait-pane::before {
+        position: absolute;
+        inset: 15px;
+        z-index: 3;
+        border: 1px solid rgba(231, 255, 251, 0.88);
+        border-radius: 6px;
+        box-shadow:
+          inset 0 0 0 1px rgba(23, 50, 74, 0.22),
+          0 0 0 4px rgba(131, 220, 203, 0.1);
+        pointer-events: none;
+        content: '';
+      }
+
+      .portrait-pane::after {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        background:
+          linear-gradient(
+            180deg,
+            rgba(23, 50, 74, 0.05) 0%,
+            transparent 32%,
+            transparent 62%,
+            rgba(23, 50, 74, 0.2) 100%
+          ),
+          linear-gradient(90deg, rgba(131, 220, 203, 0.12), transparent 22%, transparent 78%, rgba(169, 140, 232, 0.12));
+        pointer-events: none;
+        content: '';
+      }
+
+      .portrait-bubbles {
+        position: absolute;
+        inset: 0;
+        z-index: 4;
+        overflow: hidden;
+        pointer-events: none;
+      }
+
+      .portrait-bubble {
+        position: absolute;
+        width: var(--size);
+        aspect-ratio: 1;
+        left: var(--x);
+        top: var(--y);
+        border: 1px solid rgba(226, 255, 250, 0.82);
+        border-radius: 50%;
+        background: rgba(247, 251, 250, 0.09) !important;
+        box-shadow: inset -2px -3px 7px rgba(131, 220, 203, 0.24);
+      }
+
+      .portrait-bubble::after {
+        position: absolute;
+        top: 20%;
+        left: 22%;
+        width: 22%;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.72) !important;
+        content: '';
+      }
+
+      .toy-node {
+        position: absolute;
+        z-index: 5;
+        width: 13px;
+        aspect-ratio: 1;
+        border: 2px solid #f7fbfa;
+        border-radius: 4px;
+        background: var(--pink) !important;
+        box-shadow: 0 2px 5px rgba(23, 50, 74, 0.22);
+        pointer-events: none;
+      }
+
+      .toy-node.one {
+        top: 27px;
+        left: 27px;
+        transform: rotate(15deg);
+      }
+
+      .toy-node.two {
+        right: 27px;
+        bottom: 27px;
+        background: var(--purple) !important;
+        transform: rotate(34deg);
+      }
+
+      .mobile-nameplate {
+        display: none;
+      }
+
+      .data-pane {
+        position: relative;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+        background: var(--mint-pale) !important;
+      }
+
+      .data-pane::before {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        background-color: var(--mint-pale) !important;
+        background-image:
+          radial-gradient(circle at 15% 16%, rgba(240, 120, 166, 0.14) 0 3px, transparent 4px),
+          radial-gradient(circle at 82% 23%, rgba(169, 140, 232, 0.15) 0 4px, transparent 5px),
+          radial-gradient(circle at 62% 78%, rgba(66, 169, 150, 0.12) 0 5px, transparent 6px),
+          radial-gradient(circle at 34% 55%, transparent 0 19px, rgba(114, 88, 186, 0.08) 20px 21px, transparent 22px);
+        background-size:
+          88px 88px,
+          126px 126px,
+          148px 148px,
+          180px 180px;
+        content: '';
+      }
+
+      .data-pane::after {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        background: linear-gradient(
+          135deg,
+          rgba(247, 251, 250, 0.76),
+          rgba(220, 239, 235, 0.42) 48%,
+          rgba(235, 226, 250, 0.4)
+        );
+        content: '';
+      }
+
+      .profile-header,
+      .panel-viewport,
+      .tab-nav {
+        position: relative;
+        z-index: 2;
+      }
+
+      .profile-header {
+        display: grid;
+        grid-template-columns: 84px minmax(0, 1fr) 84px;
+        align-items: center;
+        gap: 18px;
+        padding: 34px 46px 18px;
+        color: var(--navy) !important;
+        text-align: center;
+      }
+
+      .jellyfish-mark {
+        position: relative;
+        width: 66px;
+        height: 72px;
+        justify-self: center;
+        color: var(--purple-deep) !important;
+      }
+
+      .jellyfish-dome {
+        position: absolute;
+        top: 5px;
+        left: 8px;
+        width: 50px;
+        height: 33px;
+        border: 2px solid currentColor;
+        border-bottom: 0;
+        border-radius: 28px 28px 10px 10px;
+        background: rgba(169, 140, 232, 0.18) !important;
+        box-shadow: inset 7px 5px 0 rgba(255, 255, 255, 0.42);
+      }
+
+      .jellyfish-dome::after {
+        position: absolute;
+        right: 10px;
+        top: 8px;
+        width: 8px;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: var(--pink) !important;
+        content: '';
+      }
+
+      .jellyfish-tentacles {
+        position: absolute;
+        top: 34px;
+        left: 13px;
+        display: flex;
+        gap: 7px;
+      }
+
+      .jellyfish-tentacles i {
+        display: block;
+        width: 7px;
+        height: 24px;
+        border-left: 2px solid currentColor;
+        border-radius: 50%;
+        transform: rotate(var(--turn));
+      }
+
+      .header-copy {
+        min-width: 0;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-bottom: 5px;
+        color: var(--purple-deep) !important;
+        font:
+          800 12px/1.2 system-ui,
+          sans-serif;
+      }
+
+      .eyebrow::before,
+      .eyebrow::after {
+        width: 22px;
+        height: 2px;
+        border-radius: 2px;
+        background: var(--pink) !important;
+        content: '';
+      }
+
+      .character-name {
+        margin: 0;
+        color: var(--navy) !important;
+        font-size: clamp(24px, 2.35vw, 36px);
+        line-height: 1.28;
+        font-weight: 900;
+        letter-spacing: 0;
+        text-wrap: balance;
+      }
+
+      .character-subtitle {
+        margin: 6px 0 0;
+        color: var(--navy-soft) !important;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .subtitle-dot {
+        display: inline-block;
+        width: 7px;
+        aspect-ratio: 1;
+        margin: 0 7px;
+        border-radius: 50%;
+        background: var(--pink) !important;
+        vertical-align: 1px;
+      }
+
+      .dream-dice {
+        display: grid;
+        grid-template-columns: repeat(2, 18px);
+        gap: 6px;
+        justify-self: center;
+        transform: rotate(8deg);
+      }
+
+      .dream-dice i {
+        width: 18px;
+        aspect-ratio: 1;
+        border: 2px solid var(--mint-deep);
+        border-radius: 5px;
+        background: var(--paper) !important;
+        box-shadow: 2px 2px 0 rgba(169, 140, 232, 0.28);
+      }
+
+      .dream-dice i:nth-child(2),
+      .dream-dice i:nth-child(3) {
+        border-color: var(--pink-deep);
+        background: #fbe7ef !important;
+      }
+
+      .panel-viewport {
+        min-height: 0;
+        overflow: auto;
+        scrollbar-color: #8dc9be transparent;
+        scrollbar-width: thin;
+      }
+
+      .panel-viewport::-webkit-scrollbar {
+        width: 7px;
+      }
+
+      .panel-viewport::-webkit-scrollbar-thumb {
+        border-radius: 7px;
+        background: #8dc9be !important;
+      }
+
+      .panel {
+        display: none;
+        min-height: 100%;
+        padding: 16px 48px 28px;
+        color: var(--navy) !important;
+      }
+
+      .panel.active {
+        display: block;
+      }
+
+      .overview-panel.active {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .section-chip {
+        display: table;
+        margin: 0 auto 16px;
+        padding: 7px 22px;
+        border: 1px solid #9bbdb9;
+        border-radius: 999px;
+        background: #f7fbfa !important;
+        color: var(--navy) !important;
+        box-shadow: 0 5px 12px rgba(23, 50, 74, 0.09);
+        font-size: 15px;
+        font-weight: 900;
+      }
+
+      .section-chip::before,
+      .section-chip::after {
+        color: var(--pink) !important;
+        content: '✦';
+        margin: 0 9px;
+        font-size: 10px;
+      }
+
+      .attributes-grid {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 12px;
+        width: min(610px, 100%);
+        margin: 0 auto;
+      }
+
+      .attribute-card {
+        position: relative;
+        grid-column: span 2;
+        min-height: 136px;
+        overflow: hidden;
+        border: 1px solid #85b7b0;
+        border-radius: 18px 18px 46% 46% / 18px 18px 24% 24%;
+        background: linear-gradient(180deg, #f9fcfb 0%, #e6f4f1 58%, #bfe8df 100%) !important;
+        box-shadow:
+          0 8px 14px rgba(23, 50, 74, 0.1),
+          inset 0 0 0 4px rgba(255, 255, 255, 0.52);
+        text-align: center;
+      }
+
+      .attribute-card:nth-child(4) {
+        grid-column: 2 / span 2;
+      }
+
+      .attribute-card:nth-child(5) {
+        grid-column: 4 / span 2;
+      }
+
+      .attribute-card::before {
+        display: block;
+        height: 9px;
+        border-bottom: 2px solid var(--purple-deep);
+        background: var(--mint) !important;
+        content: '';
+      }
+
+      .attribute-card::after {
+        position: absolute;
+        right: 12px;
+        bottom: 10px;
+        width: 20px;
+        aspect-ratio: 1;
+        border: 1px solid rgba(114, 88, 186, 0.26);
+        border-radius: 50%;
+        content: '';
+      }
+
+      .attribute-label {
+        display: block;
+        margin-top: 20px;
+        color: var(--navy) !important;
+        font-size: 17px;
+        font-weight: 900;
+      }
+
+      .attribute-value {
+        display: block;
+        margin-top: 2px;
+        color: var(--pink-deep) !important;
+        font:
+          900 34px/1.1 Georgia,
+          serif;
+      }
+
+      .resource-bubbles {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        width: min(570px, 100%);
+        margin: 24px auto 0;
+      }
+
+      .resource-bubbles::before {
+        position: absolute;
+        top: 50%;
+        left: 11%;
+        right: 11%;
+        z-index: -1;
+        height: 3px;
+        border-radius: 3px;
+        background: var(--purple) !important;
+        content: '';
+      }
+
+      .resource-bubble {
+        display: grid;
+        place-content: center;
+        min-height: 90px;
+        border: 1px solid #88b8b1;
+        border-radius: 46% 54% 51% 49% / 51% 44% 56% 49%;
+        background: rgba(247, 251, 250, 0.93) !important;
+        box-shadow:
+          inset -8px -7px 0 rgba(131, 220, 203, 0.18),
+          0 7px 12px rgba(23, 50, 74, 0.1);
+        text-align: center;
+      }
+
+      .resource-label {
+        color: var(--purple-deep) !important;
+        font:
+          900 11px/1.2 system-ui,
+          sans-serif;
+      }
+
+      .resource-value {
+        margin-top: 4px;
+        color: var(--navy) !important;
+        font:
+          900 22px/1.2 Georgia,
+          serif;
+      }
+
+      .dream-note {
+        width: min(610px, 100%);
+        margin: 22px auto 0;
+        padding: 13px 18px;
+        border-left: 4px solid var(--pink);
+        border-radius: 7px;
+        background: rgba(247, 251, 250, 0.78) !important;
+        color: var(--navy-soft) !important;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .content-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .info-card,
+      .item-card {
+        border: 1px solid #a6c3c0;
+        border-radius: 8px;
+        background: rgba(247, 251, 250, 0.94) !important;
+        box-shadow: 0 8px 18px rgba(23, 50, 74, 0.1);
+        color: var(--navy) !important;
+      }
+
+      .info-card {
+        padding: 18px 20px;
+      }
+
+      .info-card h3,
+      .item-card h3 {
+        margin: 0;
+        color: var(--navy) !important;
+        font-size: 17px;
+        font-weight: 900;
+      }
+
+      .info-card h3::before,
+      .item-card h3::before {
+        color: var(--pink) !important;
+        content: '◆';
+        margin-right: 9px;
+        font-size: 10px;
+      }
+
+      .info-card p,
+      .item-card p {
+        margin: 10px 0 0;
+        color: var(--navy-soft) !important;
+        font-size: 14px;
+        font-weight: 650;
+      }
+
+      .item-list {
+        display: grid;
+        gap: 14px;
+      }
+
+      .item-card {
+        overflow: hidden;
+      }
+
+      .item-card-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 15px 18px 12px;
+        border-bottom: 1px solid #bfd3d0;
+        background: #e9f5f2 !important;
+      }
+
+      .item-card-body {
+        padding: 14px 18px 17px;
+      }
+
+      .rarity {
+        flex: 0 0 auto;
+        padding: 4px 9px;
+        border-radius: 999px;
+        background: #eadffb !important;
+        color: #60459e !important;
+        font:
+          900 11px/1.2 system-ui,
+          sans-serif;
+      }
+
+      .tag-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-top: 10px;
+      }
+
+      .tag {
+        padding: 4px 8px;
+        border: 1px solid #a7c5c1;
+        border-radius: 5px;
+        background: #ffffff !important;
+        color: var(--navy-soft) !important;
+        font:
+          800 11px/1.2 system-ui,
+          sans-serif;
+      }
+
+      .effect-name {
+        color: var(--purple-deep) !important;
+        font-weight: 900;
+      }
+
+      .tab-nav {
+        display: flex;
+        align-items: stretch;
+        gap: 2px;
+        min-width: 0;
+        margin: 0 34px 20px;
+        overflow-x: auto;
+        border: 1px solid #9abbb7;
+        border-radius: 7px;
+        background: rgba(247, 251, 250, 0.94) !important;
+        box-shadow: 0 7px 16px rgba(23, 50, 74, 0.1);
+        scrollbar-width: none;
+      }
+
+      .tab-nav::-webkit-scrollbar {
+        display: none;
+      }
+
+      .tab-button {
+        position: relative;
+        flex: 1 0 auto;
+        min-width: 68px;
+        min-height: 46px;
+        padding: 9px 10px;
+        border: 0;
+        background: transparent !important;
+        color: var(--navy-soft) !important;
+        font-size: 13px;
+        font-weight: 900;
+        white-space: nowrap;
+        cursor: pointer;
+      }
+
+      .tab-button:hover {
+        background: #e4f3ef !important;
+      }
+
+      .tab-button[aria-selected='true'] {
+        background: #d9f0ea !important;
+        color: var(--navy) !important;
+      }
+
+      .tab-button[aria-selected='true']::after {
+        position: absolute;
+        right: 18px;
+        bottom: 3px;
+        left: 18px;
+        height: 3px;
+        border-radius: 3px;
+        background: var(--pink) !important;
+        content: '';
+      }
+
+      .tab-button.save-button {
+        color: var(--pink-deep) !important;
+      }
+
+      .preview-stage.is-mobile {
+        width: min(412px, 100%);
+      }
+
+      .preview-stage.is-mobile .character-shell {
+        display: block;
+        aspect-ratio: 412 / 860;
+        border-radius: 8px;
+      }
+
+      .preview-stage.is-mobile .portrait-pane,
+      .preview-stage.is-mobile .data-pane {
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+
+      .preview-stage.is-mobile .portrait-image {
+        object-position: 50% 48%;
+      }
+
+      .preview-stage.is-mobile .portrait-pane::before {
+        inset: 11px;
+      }
+
+      .preview-stage.is-mobile .portrait-pane:not(.active-mobile-pane),
+      .preview-stage.is-mobile .data-pane:not(.active-mobile-pane) {
+        display: none;
+      }
+
+      .preview-stage.is-mobile .mobile-nameplate {
+        position: absolute;
+        right: 18px;
+        bottom: 62px;
+        left: 18px;
+        z-index: 8;
+        display: block;
+        max-height: 22%;
+        padding: 12px 14px 13px;
+        overflow: hidden;
+        border: 1px solid rgba(131, 220, 203, 0.9);
+        border-radius: 8px;
+        background: rgba(237, 245, 243, 0.94) !important;
+        box-shadow: 0 9px 22px rgba(23, 50, 74, 0.22);
+        text-align: center;
+      }
+
+      .preview-stage.is-mobile .mobile-nameplate .eyebrow {
+        margin-bottom: 3px;
+        font-size: 10px;
+      }
+
+      .preview-stage.is-mobile .mobile-nameplate h1 {
+        margin: 0;
+        color: var(--navy) !important;
+        font-size: clamp(19px, 6.2vw, 25px);
+        line-height: 1.25;
+        font-weight: 900;
+        letter-spacing: 0;
+        white-space: nowrap;
+      }
+
+      .preview-stage.is-mobile .mobile-nameplate p {
+        margin: 4px 0 0;
+        color: var(--navy-soft) !important;
+        font-size: 10px;
+        font-weight: 800;
+      }
+
+      .preview-stage.is-mobile .mobile-home-nav {
+        position: absolute;
+        right: 14px;
+        bottom: 14px;
+        left: 14px;
+        z-index: 9;
+        display: flex;
+        min-width: 0;
+        overflow-x: auto;
+        border: 1px solid #8cb5b0;
+        border-radius: 6px;
+        background: rgba(247, 251, 250, 0.96) !important;
+        scrollbar-width: none;
+      }
+
+      .mobile-home-nav {
+        display: none;
+      }
+
+      .preview-stage.is-mobile .mobile-home-nav::-webkit-scrollbar {
+        display: none;
+      }
+
+      .preview-stage.is-mobile .mobile-home-nav .tab-button {
+        min-height: 42px;
+      }
+
+      .preview-stage.is-mobile .profile-header {
+        grid-template-columns: 54px minmax(0, 1fr) 54px;
+        gap: 8px;
+        padding: 20px 18px 8px;
+      }
+
+      .preview-stage.is-mobile .jellyfish-mark {
+        width: 50px;
+        height: 54px;
+        transform: scale(0.78);
+      }
+
+      .preview-stage.is-mobile .dream-dice {
+        transform: scale(0.8) rotate(8deg);
+      }
+
+      .preview-stage.is-mobile .character-name {
+        font-size: 20px;
+      }
+
+      .preview-stage.is-mobile .character-subtitle {
+        font-size: 10px;
+      }
+
+      .preview-stage.is-mobile .panel {
+        padding: 8px 16px 18px;
+      }
+
+      .preview-stage.is-mobile .section-chip {
+        margin-bottom: 11px;
+        padding: 5px 14px;
+        font-size: 13px;
+      }
+
+      .preview-stage.is-mobile .attributes-grid {
+        gap: 8px;
+      }
+
+      .preview-stage.is-mobile .attribute-card {
+        min-height: 105px;
+        border-radius: 12px 12px 44% 44% / 12px 12px 22% 22%;
+      }
+
+      .preview-stage.is-mobile .attribute-card::before {
+        height: 7px;
+      }
+
+      .preview-stage.is-mobile .attribute-label {
+        margin-top: 12px;
+        font-size: 14px;
+      }
+
+      .preview-stage.is-mobile .attribute-value {
+        font-size: 28px;
+      }
+
+      .preview-stage.is-mobile .resource-bubbles {
+        gap: 7px;
+        margin-top: 14px;
+      }
+
+      .preview-stage.is-mobile .resource-bubble {
+        min-height: 72px;
+      }
+
+      .preview-stage.is-mobile .resource-value {
+        font-size: 17px;
+      }
+
+      .preview-stage.is-mobile .dream-note {
+        margin-top: 13px;
+        padding: 9px 12px;
+        font-size: 11px;
+      }
+
+      .preview-stage.is-mobile .content-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .preview-stage.is-mobile .info-card {
+        padding: 13px 15px;
+      }
+
+      .preview-stage.is-mobile .info-card h3,
+      .preview-stage.is-mobile .item-card h3 {
+        font-size: 15px;
+      }
+
+      .preview-stage.is-mobile .info-card p,
+      .preview-stage.is-mobile .item-card p {
+        margin-top: 7px;
+        font-size: 12px;
+        line-height: 1.65;
+      }
+
+      .preview-stage.is-mobile .item-list {
+        gap: 10px;
+      }
+
+      .preview-stage.is-mobile .item-card-header {
+        padding: 11px 13px 9px;
+      }
+
+      .preview-stage.is-mobile .item-card-body {
+        padding: 10px 13px 12px;
+      }
+
+      .preview-stage.is-mobile .tab-nav {
+        flex: 0 0 auto;
+        margin: 0 10px 10px;
+      }
+
+      .preview-stage.is-mobile .tab-button {
+        min-width: 64px;
+        min-height: 42px;
+        padding: 8px 9px;
+        font-size: 12px;
+      }
+
+      @media (max-width: 900px) {
+        .ailisi-preview {
+          width: min(760px, calc(100% - 24px));
+        }
+
+        .preview-stage:not(.is-mobile) .character-shell {
+          grid-template-columns: 40% minmax(0, 1fr);
+        }
+
+        .preview-stage:not(.is-mobile) .profile-header {
+          grid-template-columns: 54px minmax(0, 1fr) 54px;
+          padding: 22px 22px 10px;
+        }
+
+        .preview-stage:not(.is-mobile) .panel {
+          padding-right: 24px;
+          padding-left: 24px;
+        }
+      }
+
+      @media (max-width: 520px) {
+        .ailisi-preview {
+          width: calc(100% - 16px);
+          padding-top: 10px;
+        }
+
+        .preview-toolbar {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .layout-toggle {
+          align-self: flex-end;
+        }
+
+        .preview-stage {
+          width: 100%;
+        }
+
+        .preview-stage:not(.is-mobile) {
+          width: 100%;
+        }
+
+        .preview-stage:not(.is-mobile) .character-shell {
+          display: block;
+          aspect-ratio: 412 / 860;
+        }
+
+        .preview-stage:not(.is-mobile) .portrait-pane {
+          width: 100%;
+          height: 100%;
+        }
+
+        .preview-stage:not(.is-mobile) .data-pane {
+          display: none;
+        }
+
+        .preview-stage:not(.is-mobile) .mobile-nameplate,
+        .preview-stage:not(.is-mobile) .mobile-home-nav {
+          display: block;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .preview-stage {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="ailisi-preview">
+      <header class="preview-toolbar">
+        <p class="preview-label">AILISI RESPONSIVE PROTOTYPE</p>
+        <div class="layout-toggle" role="group" aria-label="切换预览布局">
+          <button class="layout-button" type="button" data-layout="desktop" aria-pressed="true">DESKTOP</button>
+          <button class="layout-button" type="button" data-layout="mobile" aria-pressed="false">MOBILE</button>
+        </div>
+      </header>
+
+      <section class="preview-stage" data-preview-stage>
+        <article class="character-shell" data-character-shell>
+          <aside class="portrait-pane active-mobile-pane" data-pane="portrait">
+            <img
+              class="portrait-image"
+              src="../../../assets/char_info_viewer/portraits/alice.png"
+              alt="艾璃丝·赛瑞利亚"
+            />
+            <div class="portrait-bubbles" aria-hidden="true">
+              <span class="portrait-bubble" style="--size: 42px; --x: 7%; --y: 10%"></span>
+              <span class="portrait-bubble" style="--size: 21px; --x: 15%; --y: 6%"></span>
+              <span class="portrait-bubble" style="--size: 30px; --x: 84%; --y: 18%"></span>
+              <span class="portrait-bubble" style="--size: 49px; --x: 77%; --y: 72%"></span>
+              <span class="portrait-bubble" style="--size: 24px; --x: 12%; --y: 81%"></span>
+            </div>
+            <span class="toy-node one" aria-hidden="true"></span>
+            <span class="toy-node two" aria-hidden="true"></span>
+
+            <div class="mobile-nameplate">
+              <div class="eyebrow">LV. 17 · 第五层级</div>
+              <h1>艾璃丝·赛瑞利亚</h1>
+              <p>汐海妖精 · 天穹维护者 · 梦境编织</p>
+            </div>
+
+            <nav class="mobile-home-nav" aria-label="移动端角色资料分页">
+              <button class="tab-button" type="button" data-tab="overview" aria-selected="true">首页</button>
+              <button class="tab-button" type="button" data-tab="profile" aria-selected="false">档案</button>
+              <button class="tab-button" type="button" data-tab="skills" aria-selected="false">技能</button>
+              <button class="tab-button" type="button" data-tab="equipment" aria-selected="false">装备</button>
+              <button class="tab-button" type="button" data-tab="bag" aria-selected="false">背包</button>
+              <button class="tab-button" type="button" data-tab="divinity" aria-selected="false">登神长阶</button>
+              <button class="tab-button" type="button" data-tab="story" aria-selected="false">角色故事</button>
+              <button class="tab-button save-button" type="button" data-tab="save" aria-selected="false">保存</button>
+            </nav>
+          </aside>
+
+          <section class="data-pane" data-pane="data">
+            <header class="profile-header">
+              <div class="jellyfish-mark" aria-hidden="true">
+                <span class="jellyfish-dome"></span>
+                <span class="jellyfish-tentacles">
+                  <i style="--turn: 8deg"></i><i style="--turn: -9deg"></i><i style="--turn: 11deg"></i
+                  ><i style="--turn: -7deg"></i>
+                </span>
+              </div>
+              <div class="header-copy">
+                <div class="eyebrow">LV. 17 · 第五层级</div>
+                <h1 class="character-name">艾璃丝·赛瑞利亚</h1>
+                <p class="character-subtitle">
+                  汐海妖精<span class="subtitle-dot"></span>天穹维护者<span class="subtitle-dot"></span>梦境编织
+                </p>
+              </div>
+              <div class="dream-dice" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+            </header>
+
+            <div class="panel-viewport">
+              <section class="panel overview-panel active" data-panel="overview">
+                <div>
+                  <h2 class="section-chip">梦游档案</h2>
+                  <div class="attributes-grid" aria-label="角色属性">
+                    <div class="attribute-card">
+                      <span class="attribute-label">力</span><strong class="attribute-value">7</strong>
+                    </div>
+                    <div class="attribute-card">
+                      <span class="attribute-label">敏</span><strong class="attribute-value">16</strong>
+                    </div>
+                    <div class="attribute-card">
+                      <span class="attribute-label">体</span><strong class="attribute-value">8</strong>
+                    </div>
+                    <div class="attribute-card">
+                      <span class="attribute-label">智</span><strong class="attribute-value">15</strong>
+                    </div>
+                    <div class="attribute-card">
+                      <span class="attribute-label">精</span><strong class="attribute-value">14</strong>
+                    </div>
+                  </div>
+                  <div class="resource-bubbles" aria-label="角色资源">
+                    <div class="resource-bubble">
+                      <span class="resource-label">HP</span><strong class="resource-value">12600</strong>
+                    </div>
+                    <div class="resource-bubble">
+                      <span class="resource-label">SP</span><strong class="resource-value">34000</strong>
+                    </div>
+                    <div class="resource-bubble">
+                      <span class="resource-label">MP</span><strong class="resource-value">52000</strong>
+                    </div>
+                  </div>
+                </div>
+                <p class="dream-note">她把天穹维护当成飞行游戏，也会认真修好每一只“妈妈的大水母”。</p>
+              </section>
+
+              <section class="panel" data-panel="profile">
+                <h2 class="section-chip">档案</h2>
+                <div class="content-grid">
+                  <article class="info-card">
+                    <h3>性格</h3>
+                    <p>
+                      清脆活跃，语速快得像连珠炮。只遵循“好玩”和“妈妈喜欢”两个原则，是一个纯真、热情又危险的孩子王。
+                    </p>
+                  </article>
+                  <article class="info-card">
+                    <h3>外貌特质</h3>
+                    <p>娇小身躯，半透明碧蓝触须如双马尾垂落，金色眼睛总在寻找下一件有趣的事。</p>
+                  </article>
+                  <article class="info-card">
+                    <h3>喜爱</h3>
+                    <p>糖果、彩色泡泡、极速飞行、会发出奇怪声音的机器，以及把稀有材料拼成谁也看不懂的新玩具。</p>
+                  </article>
+                  <article class="info-card">
+                    <h3>随身玩具</h3>
+                    <p>一把远比她本人高大的秘银扳手。既是维修工具、法杖，也是她邀请别人参加“新游戏”时使用的道具。</p>
+                  </article>
+                </div>
+              </section>
+
+              <section class="panel" data-panel="skills">
+                <h2 class="section-chip">技能</h2>
+                <div class="item-list">
+                  <article class="item-card">
+                    <header class="item-card-header">
+                      <h3>咕噜咕噜梦泡</h3>
+                      <span class="rarity">史诗</span>
+                    </header>
+                    <div class="item-card-body">
+                      <div class="tag-row">
+                        <span class="tag">梦境</span><span class="tag">控制</span><span class="tag">范围</span>
+                      </div>
+                      <p>
+                        <span class="effect-name">梦泡剧场：</span
+                        >编织出漂浮的彩色梦泡，将触碰者拉入规则完全由艾璃丝决定的儿童游戏。
+                      </p>
+                    </div>
+                  </article>
+                  <article class="item-card">
+                    <header class="item-card-header">
+                      <h3>大水母修补时间</h3>
+                      <span class="rarity">史诗</span>
+                    </header>
+                    <div class="item-card-body">
+                      <div class="tag-row">
+                        <span class="tag">天穹</span><span class="tag">修复</span><span class="tag">飞行</span>
+                      </div>
+                      <p>
+                        <span class="effect-name">玩具工程：</span
+                        >挥舞秘银扳手修补魔力回路，并将多余能量拼成会唱歌、喷泡泡的临时机关。
+                      </p>
+                    </div>
+                  </article>
+                  <article class="item-card">
+                    <header class="item-card-header">
+                      <h3>抓紧咯——飞高高！</h3>
+                      <span class="rarity">优良</span>
+                    </header>
+                    <div class="item-card-body">
+                      <p>
+                        <span class="effect-name">极速巡航：</span
+                        >沿天穹回路高速移动。她通常会忘记同行者并没有妖精一样结实。
+                      </p>
+                    </div>
+                  </article>
+                </div>
+              </section>
+
+              <section class="panel" data-panel="equipment">
+                <h2 class="section-chip">装备</h2>
+                <div class="item-list">
+                  <article class="item-card">
+                    <header class="item-card-header">
+                      <h3>巨型秘银扳手“咔哒”</h3>
+                      <span class="rarity">史诗</span>
+                    </header>
+                    <div class="item-card-body">
+                      <div class="tag-row">
+                        <span class="tag">法杖</span><span class="tag">工具</span><span class="tag">玩具</span>
+                      </div>
+                      <p>能够直接拧动天穹魔力节点。艾璃丝坚持认为它只是“大一点点”的积木工具。</p>
+                    </div>
+                  </article>
+                  <article class="item-card">
+                    <header class="item-card-header">
+                      <h3>泡泡零件袋</h3>
+                      <span class="rarity">稀有</span>
+                    </header>
+                    <div class="item-card-body">
+                      <p>装满会发光的螺帽、贝壳按钮和彩色软管；每次打开时，里面的排列都与上次不同。</p>
+                    </div>
+                  </article>
+                </div>
+              </section>
+
+              <section class="panel" data-panel="bag">
+                <h2 class="section-chip">背包</h2>
+                <div class="content-grid">
+                  <article class="info-card">
+                    <h3>彩虹硬糖</h3>
+                    <p>确认访客无害后才会拿出来分享。数量永远比她声称的少一颗。</p>
+                  </article>
+                  <article class="info-card">
+                    <h3>会抗议的粉色贝壳</h3>
+                    <p>装在玩具船左边时会唱副歌，装错位置则会整晚发出咕噜声。</p>
+                  </article>
+                  <article class="info-card">
+                    <h3>梦泡贴纸</h3>
+                    <p>贴在损坏的魔力回路上作为维修标记，也常被贴在不知情客人的背后。</p>
+                  </article>
+                  <article class="info-card">
+                    <h3>积木式机关</h3>
+                    <p>用途不明，但按下紫色按钮通常会喷出大量泡泡。</p>
+                  </article>
+                </div>
+              </section>
+
+              <section class="panel" data-panel="divinity">
+                <h2 class="section-chip">登神长阶</h2>
+                <article class="item-card">
+                  <header class="item-card-header">
+                    <h3>权能：梦境编织</h3>
+                    <span class="rarity">第五层级</span>
+                  </header>
+                  <div class="item-card-body">
+                    <p>
+                      她能把梦的规则编入现实，让天穹化为承载居民安眠与希望的巨大水母。对艾璃丝而言，这仍是一场必须认真完成的游戏。
+                    </p>
+                  </div>
+                </article>
+              </section>
+
+              <section class="panel" data-panel="story">
+                <h2 class="section-chip">角色故事</h2>
+                <div class="content-grid">
+                  <article class="info-card">
+                    <h3>源种恶梦幸存者</h3>
+                    <p>她因瑟涟的庇护而存活，也因此把守护母亲与赛瑞利亚视作最自然、最重要的事情。</p>
+                  </article>
+                  <article class="info-card">
+                    <h3>永不长大的孩子王</h3>
+                    <p>
+                      比普通妖精多了一份责任感，却仍凭直觉判断世界。她会修好天穹，也会在后台布置等待客人踩中的整蛊陷阱。
+                    </p>
+                  </article>
+                </div>
+              </section>
+
+              <section class="panel" data-panel="save">
+                <h2 class="section-chip">保存</h2>
+                <article class="info-card">
+                  <h3>梦境资料盒</h3>
+                  <p>
+                    预览中的保存按钮保持在导航文档流内；在移动端横向滚动导航时，它会与其他分页一起移动，不遮挡任何按钮。
+                  </p>
+                </article>
+              </section>
+            </div>
+
+            <nav class="tab-nav" aria-label="角色资料分页">
+              <button class="tab-button" type="button" data-tab="overview" aria-selected="true">首页</button>
+              <button class="tab-button" type="button" data-tab="profile" aria-selected="false">档案</button>
+              <button class="tab-button" type="button" data-tab="skills" aria-selected="false">技能</button>
+              <button class="tab-button" type="button" data-tab="equipment" aria-selected="false">装备</button>
+              <button class="tab-button" type="button" data-tab="bag" aria-selected="false">背包</button>
+              <button class="tab-button" type="button" data-tab="divinity" aria-selected="false">登神长阶</button>
+              <button class="tab-button" type="button" data-tab="story" aria-selected="false">角色故事</button>
+              <button class="tab-button save-button" type="button" data-tab="save" aria-selected="false">保存</button>
+            </nav>
+          </section>
+        </article>
+      </section>
+    </main>
+
+    <script>
+      (() => {
+        const stage = document.querySelector('[data-preview-stage]');
+        const shell = document.querySelector('[data-character-shell]');
+        const layoutButtons = [...document.querySelectorAll('[data-layout]')];
+        const tabButtons = [...document.querySelectorAll('[data-tab]')];
+        const panels = [...document.querySelectorAll('[data-panel]')];
+        const portraitPane = document.querySelector('[data-pane="portrait"]');
+        const dataPane = document.querySelector('[data-pane="data"]');
+
+        let activeTab = 'overview';
+
+        function setLayout(layout) {
+          const isMobile = layout === 'mobile';
+          stage.classList.toggle('is-mobile', isMobile);
+          layoutButtons.forEach(button => {
+            button.setAttribute('aria-pressed', String(button.dataset.layout === layout));
+          });
+          syncMobilePane();
+        }
+
+        function syncMobilePane() {
+          const isMobile = stage.classList.contains('is-mobile');
+          const showPortrait = !isMobile || activeTab === 'overview';
+          portraitPane.classList.toggle('active-mobile-pane', showPortrait);
+          dataPane.classList.toggle('active-mobile-pane', !isMobile || !showPortrait);
+        }
+
+        function setTab(tab) {
+          activeTab = tab;
+          panels.forEach(panel => panel.classList.toggle('active', panel.dataset.panel === tab));
+          tabButtons.forEach(button => {
+            button.setAttribute('aria-selected', String(button.dataset.tab === tab));
+          });
+          shell.dataset.activeTab = tab;
+          syncMobilePane();
+        }
+
+        layoutButtons.forEach(button => button.addEventListener('click', () => setLayout(button.dataset.layout)));
+        tabButtons.forEach(button => button.addEventListener('click', () => setTab(button.dataset.tab)));
+
+        setLayout('desktop');
+        setTab('overview');
+      })();
+    </script>
+  </body>
+</html>
