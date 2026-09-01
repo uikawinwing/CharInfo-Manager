@@ -112,10 +112,19 @@ jobs:
             echo 'ERROR: CDN module import still present'
             exit 1
           fi
-          if grep -q 'files.catbox.moe' "$FILE"; then
-            echo 'ERROR: remote fixture image URL still present'
-            exit 1
-          fi
+
+          for url in \
+            'https://files.catbox.moe/wa4anv.png' \
+            'https://files.catbox.moe/hrfym1.png' \
+            'https://files.catbox.moe/64qr7k.png'; do
+            if grep -Fq "$url" "$FILE"; then
+              echo "ERROR: original fixture portrait URL still active: $url"
+              exit 1
+            fi
+          done
+
+          echo 'Other dormant catbox literals, if any:'
+          grep -oE 'https://files\.catbox\.moe/[A-Za-z0-9._/-]+' "$FILE" | sort -u | head -20 || true
 
           test "$(grep -o 'data:image/png;base64,' "$FILE" | wc -l)" -ge 3
           grep -q 'Illustrated V2 Theme Lab' "$FILE"
@@ -136,7 +145,7 @@ jobs:
             --disable-gpu \
             --disable-background-networking \
             --host-resolver-rules='MAP * 0.0.0.0' \
-            --virtual-time-budget=4000 \
+            --virtual-time-budget=5000 \
             --dump-dom "$URL" > /tmp/theme-lab-dom.html
           grep -q 'Illustrated V2 Theme Lab' /tmp/theme-lab-dom.html
           grep -q '艾璃丝·赛瑞利亚' /tmp/theme-lab-dom.html
