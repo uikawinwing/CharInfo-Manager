@@ -1,0 +1,156 @@
+name: Theme Lab Offline HTML
+
+on:
+  push:
+    branches:
+      - rescue/theme-lab-offline-build
+
+jobs:
+  build-offline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout recovered Theme Lab source
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install exact locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download the three recovered fixture portraits
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --retry-delay 2 'https://files.catbox.moe/wa4anv.png' -o /tmp/iris.png
+          curl -fL --retry 3 --retry-delay 2 'https://files.catbox.moe/hrfym1.png' -o /tmp/anastasia.png
+          curl -fL --retry 3 --retry-delay 2 'https://files.catbox.moe/64qr7k.png' -o /tmp/venus.png
+          file /tmp/iris.png /tmp/anastasia.png /tmp/venus.png
+
+      - name: Prepare a self-contained offline-only build
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64
+
+          fixtures = Path('src/char_info_v2_theme_lab/fixtures.ts')
+          text = fixtures.read_text(encoding='utf-8')
+          images = {
+              'https://files.catbox.moe/wa4anv.png': Path('/tmp/iris.png'),
+              'https://files.catbox.moe/hrfym1.png': Path('/tmp/anastasia.png'),
+              'https://files.catbox.moe/64qr7k.png': Path('/tmp/venus.png'),
+          }
+          for url, path in images.items():
+              if url not in text:
+                  raise SystemExit(f'missing fixture URL: {url}')
+              uri = 'data:image/png;base64,' + base64.b64encode(path.read_bytes()).decode('ascii')
+              text = text.replace(url, uri)
+          fixtures.write_text(text, encoding='utf-8')
+
+          config = Path('webpack.config.ts')
+          source = config.read_text(encoding='utf-8')
+          replacements = [
+              (
+                  "entries: glob_script_files().map(parse_entry),",
+                  "entries: [parse_entry('src/char_info_v2_theme_lab/index.ts')],",
+              ),
+              (
+                  "experiments: {\n      outputModule: true,\n    },",
+                  "experiments: {\n      outputModule: !standaloneBrowserPreview,\n    },",
+              ),
+              (
+                  "      asyncChunks: true,",
+                  "      asyncChunks: !standaloneBrowserPreview,",
+              ),
+              (
+                  "      library: {\n        type: 'module',\n      },",
+                  "      ...(standaloneBrowserPreview ? {} : { library: { type: 'module' } }),",
+              ),
+              (
+                  "            scriptLoading: 'module',\n            cache: false,",
+                  "            scriptLoading: standaloneBrowserPreview ? 'blocking' : 'module',\n            inject: standaloneBrowserPreview ? 'body' : true,\n            cache: false,",
+              ),
+              (
+                  "      if (standaloneBrowserPreview && request === 'vue') {\n        return callback();\n      }",
+                  "      if (standaloneBrowserPreview) {\n        return callback();\n      }",
+              ),
+          ]
+          for old, new in replacements:
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f'expected exactly one webpack patch match, got {count}: {old[:80]!r}')
+              source = source.replace(old, new)
+          config.write_text(source, encoding='utf-8')
+          PY
+
+      - name: Really rebuild Theme Lab from source
+        env:
+          CI: 'false'
+        run: pnpm build:dev
+
+      - name: Verify the output is one offline HTML file
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE='dist/char_info_v2_theme_lab/index.html'
+          test -f "$FILE"
+
+          echo 'Output files:'
+          find dist/char_info_v2_theme_lab -maxdepth 1 -type f -printf '%f %s bytes\n'
+          test "$(find dist/char_info_v2_theme_lab -maxdepth 1 -type f | wc -l)" -eq 1
+
+          if grep -q 'type="module"' "$FILE"; then
+            echo 'ERROR: module script still present'
+            exit 1
+          fi
+          if grep -q 'testingcf.jsdelivr.net' "$FILE"; then
+            echo 'ERROR: CDN module import still present'
+            exit 1
+          fi
+          if grep -q 'files.catbox.moe' "$FILE"; then
+            echo 'ERROR: remote fixture image URL still present'
+            exit 1
+          fi
+
+          test "$(grep -o 'data:image/png;base64,' "$FILE" | wc -l)" -ge 3
+          grep -q 'Illustrated V2 Theme Lab' "$FILE"
+          cp "$FILE" char_info_v2_theme_lab_OFFLINE.html
+          echo "offline-bytes=$(wc -c < char_info_v2_theme_lab_OFFLINE.html)"
+          sha256sum char_info_v2_theme_lab_OFFLINE.html
+
+      - name: Prove it works through file:// with networking blocked
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          test -n "$CHROME"
+          URL="file://$PWD/char_info_v2_theme_lab_OFFLINE.html"
+          "$CHROME" \
+            --headless \
+            --no-sandbox \
+            --disable-gpu \
+            --disable-background-networking \
+            --host-resolver-rules='MAP * 0.0.0.0' \
+            --virtual-time-budget=4000 \
+            --dump-dom "$URL" > /tmp/theme-lab-dom.html
+          grep -q 'Illustrated V2 Theme Lab' /tmp/theme-lab-dom.html
+          grep -q '艾璃丝·赛瑞利亚' /tmp/theme-lab-dom.html
+          grep -q 'data:image/png;base64,' /tmp/theme-lab-dom.html
+          echo 'FILE_URL_OFFLINE_TEST=PASS'
+
+      - name: Upload the single distributable HTML
+        uses: actions/upload-artifact@v4
+        with:
+          name: char-info-v2-theme-lab-offline
+          path: char_info_v2_theme_lab_OFFLINE.html
+          if-no-files-found: error
+          retention-days: 7
