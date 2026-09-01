@@ -60,10 +60,6 @@ jobs:
           source = config.read_text(encoding='utf-8')
           replacements = [
               (
-                  "entries: glob_script_files().map(parse_entry),",
-                  "entries: [parse_entry('src/char_info_v2_theme_lab/index.ts')],",
-              ),
-              (
                   "experiments: {\n      outputModule: true,\n    },",
                   "experiments: {\n      outputModule: !standaloneBrowserPreview,\n    },",
               ),
