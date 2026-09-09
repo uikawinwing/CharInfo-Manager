@@ -95,6 +95,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   const overflowWarnings = new Map<number, string>();
   const activeFloorIds = new Set<number>();
   const dirtyMessageIds = new Set<number>();
+  const lifecycleDrivenMessageIds = new Set<number>();
   const eventStops: Array<() => void> = [];
 
   let app: App<Element> | null = null;
@@ -401,6 +402,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     overflowWarnings.clear();
     activeFloorIds.clear();
     dirtyMessageIds.clear();
+    lifecycleDrivenMessageIds.clear();
   };
 
   const restoreNativeMessageDisplays = (messageIds: readonly number[]) => {
@@ -424,7 +426,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     }
   };
 
-  const renderMessage = (messageId: number) => {
+  const renderMessage = (messageId: number, lifecycleDriven = false) => {
     if (!activeFloorIds.has(messageId)) {
       removeMessage(messageId);
       return;
@@ -482,14 +484,20 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
     const sourceSignature = `${source.swipeId}:${source.message.message}`;
     if (current) {
-      const previousAttempt = remountAttempts.get(messageId);
-      const now = Date.now();
-      if (previousAttempt?.signature === sourceSignature && now - previousAttempt.attemptedAt < REMOUNT_LOOP_GUARD_MS) {
-        console.warn(`[CharInfo Runtime] 第 ${messageId} 楼在短时间内重复失去挂载点，已停止自动重挂载以避免渲染循环。`);
-        removeMessage(messageId);
-        return;
+      if (!lifecycleDriven) {
+        const previousAttempt = remountAttempts.get(messageId);
+        const now = Date.now();
+        if (previousAttempt?.signature === sourceSignature && now - previousAttempt.attemptedAt < REMOUNT_LOOP_GUARD_MS) {
+          console.warn(
+            `[CharInfo Runtime] 第 ${messageId} 楼在没有新的 SillyTavern 渲染事件时连续失去挂载点，已停止 DOM 观察器自动重挂载以避免渲染循环。`,
+          );
+          removeMessage(messageId);
+          return;
+        }
+        remountAttempts.set(messageId, { signature: sourceSignature, attemptedAt: now });
+      } else {
+        remountAttempts.delete(messageId);
       }
-      remountAttempts.set(messageId, { signature: sourceSignature, attemptedAt: now });
       removeMessage(messageId);
     } else {
       remountAttempts.delete(messageId);
@@ -561,7 +569,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     batch.forEach(messageId => dirtyMessageIds.delete(messageId));
     batch.forEach(messageId => {
       try {
-        renderMessage(messageId);
+        const lifecycleDriven = lifecycleDrivenMessageIds.delete(messageId);
+        renderMessage(messageId, lifecycleDriven);
       } catch (error) {
         console.error(`[CharInfo Runtime] 第 ${messageId} 楼渲染失败：`, error);
         removeMessage(messageId);
@@ -573,9 +582,10 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     }
   };
 
-  const enqueueMessage = (messageId: number) => {
+  const enqueueMessage = (messageId: number, options: { lifecycleDriven?: boolean } = {}) => {
     if (!Number.isInteger(messageId) || messageId < 0) return;
     dirtyMessageIds.add(messageId);
+    if (options.lifecycleDriven) lifecycleDrivenMessageIds.add(messageId);
     if (!dirtyFlushTimer) {
       dirtyFlushTimer = setTimeout(flushDirtyMessages, DIRTY_FLUSH_DELAY_MS);
     }
@@ -649,24 +659,24 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     });
     listen(tavern_events.CHARACTER_MESSAGE_RENDERED, messageId => {
       advanceRecentFloor(messageId);
-      enqueueMessage(messageId);
+      enqueueMessage(messageId, { lifecycleDriven: true });
     });
     listen(tavern_events.MESSAGE_RECEIVED, messageId => {
       advanceRecentFloor(messageId);
-      enqueueMessage(messageId);
+      enqueueMessage(messageId, { lifecycleDriven: true });
     });
     listen(tavern_events.GENERATION_ENDED, messageId => {
-      enqueueMessage(messageId);
+      enqueueMessage(messageId, { lifecycleDriven: true });
       void refreshLibrary();
     });
     listen(tavern_events.MESSAGE_EDITED, messageId => {
-      enqueueMessage(messageId);
+      enqueueMessage(messageId, { lifecycleDriven: true });
     });
     listen(tavern_events.MESSAGE_UPDATED, messageId => {
-      enqueueMessage(messageId);
+      enqueueMessage(messageId, { lifecycleDriven: true });
     });
     listen(tavern_events.MESSAGE_SWIPED, messageId => {
-      enqueueMessage(messageId);
+      enqueueMessage(messageId, { lifecycleDriven: true });
       void refreshLibrary();
     });
     listen(tavern_events.MESSAGE_DELETED, messageId => {
