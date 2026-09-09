@@ -79,12 +79,15 @@ test('runtime mutation observer skips all mutation traversal until a card is mou
   );
 });
 
-test('runtime stops repeated remounts and detects editing at the message boundary', () => {
+test('runtime guards repeated observer remounts while trusting SillyTavern lifecycle rerenders', () => {
   assert.match(runtimeSource, /const REMOUNT_LOOP_GUARD_MS = 3000/);
   assert.match(runtimeSource, /messageElement\.querySelector\('#curEditTextarea'\)/);
+  assert.match(runtimeSource, /if \(!lifecycleDriven\) \{/);
   assert.match(runtimeSource, /previousAttempt\?\.signature === sourceSignature/);
   assert.match(runtimeSource, /now - previousAttempt\.attemptedAt < REMOUNT_LOOP_GUARD_MS/);
-  assert.match(runtimeSource, /已停止自动重挂载以避免渲染循环/);
+  assert.match(runtimeSource, /已停止 DOM 观察器自动重挂载以避免渲染循环/);
+  assert.match(runtimeSource, /else \{\s*remountAttempts\.delete\(messageId\);\s*\}/);
+  assert.match(runtimeSource, /CHARACTER_MESSAGE_RENDERED[\s\S]*?enqueueMessage\(messageId, \{ lifecycleDriven: true \}\)/);
 });
 
 test('runtime restores native message display only after a real script stop', () => {
