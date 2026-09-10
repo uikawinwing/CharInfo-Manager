@@ -41,7 +41,7 @@ test('vNext runtime mounts cards through local displayed-text ranges', () => {
   assert.match(runtimeSource, /destroyTeleportedStyle = teleportStyle\(\)\.destroy/);
   assert.match(runtimeSource, /window\.parent\.document\.querySelector/);
   assert.doesNotMatch(runtimeSource, /mutation\.target instanceof Element/);
-  assert.match(runtimeSource, /mountCharInfoCardHosts\(sourceElement, projection\.cards\)/);
+  assert.match(runtimeSource, /mountCharInfoCardHosts\(sourceElement, projection\.cards, \{/);
   assert.doesNotMatch(runtimeRootSource, /\bv-html\b|char-info-runtime-text|char-info-runtime-source-hidden/);
 
   assert.match(nativeMountSource, /export const BLOCKED_NATIVE_SCOPE_SELECTOR/);
@@ -85,6 +85,15 @@ test('runtime stops repeated remounts and detects editing at the message boundar
   assert.match(runtimeSource, /previousAttempt\?\.signature === sourceSignature/);
   assert.match(runtimeSource, /now - previousAttempt\.attemptedAt < REMOUNT_LOOP_GUARD_MS/);
   assert.match(runtimeSource, /已停止自动重挂载以避免渲染循环/);
+});
+
+test('runtime emits structured CharInfo mount diagnostics for race-condition reports', () => {
+  assert.match(runtimeSource, /const MOUNT_LOG_PREFIX = '\[CharInfo Mount\]'/);
+  assert.match(runtimeSource, /traceMount\('warn', messageId, 'HOST_DISCONNECTED'/);
+  assert.match(runtimeSource, /traceMount\('warn', messageId, 'REMOUNT_LOOP_GUARD'/);
+  assert.match(runtimeSource, /dirtyReasons = new Map<number, Set<string>>\(\)/);
+  assert.match(nativeMountSource, /code: 'CARD_MOUNT_FAILED'/);
+  assert.match(nativeMountSource, /code: 'MOUNT_SUCCESS'/);
 });
 
 test('runtime restores native message display only after a real script stop', () => {

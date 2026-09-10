@@ -28,6 +28,10 @@ test('管理器 WebM 默认暂停，只在 hover 或触屏操作时播放，并�
   assert.match(galleryStepSource, /normalizePortraitMediaUrlForBrowser\(value\)/);
   assert.match(galleryStepSource, /resolveGalleryPreviewMedia\(image\)/);
   assert.match(galleryStepSource, /<video[\s\S]*v-if="galleryPreviewMediaKind\(image\) === 'video'"[\s\S]*muted[\s\S]*loop[\s\S]*playsinline[\s\S]*preload="metadata"/u);
+  assert.match(galleryStepSource, /video::-webkit-media-controls-overlay-play-button[\s\S]*?display: none !important/u);
+  assert.match(galleryStepSource, /video::-webkit-media-controls-start-playback-button[\s\S]*?display: none !important/u);
+  assert.match(galleryStepSource, /class="gallery-media-kind" aria-hidden="true">▶<\/span>/u);
+  assert.match(galleryStepSource, /\.gallery-media-kind \{[^}]*top: 6px;[^}]*right: 6px;[^}]*width: 20px;[^}]*height: 20px;/u);
   assert.doesNotMatch(galleryStepSource, /\n\s+autoplay\s*\n/u);
   assert.match(galleryStepSource, /@pointerenter="onGalleryVideoPointerEnter\(image, \$event\)"/u);
   assert.match(galleryStepSource, /@pointerup="onGalleryVideoPointerUp\(image, \$event\)"/u);

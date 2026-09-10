@@ -1,5 +1,5 @@
 <template>
-  <div class="manager-root" @keydown.esc="onEscape">
+  <div class="manager-root" :class="managerThemeClass(props.themeMode)" @keydown.esc="onEscape">
     <button class="backdrop" type="button" aria-label="关闭管理器" @click="emit('close')"></button>
 
     <main class="manager-dialog" role="dialog" aria-modal="true" aria-labelledby="manager-title">
@@ -624,6 +624,7 @@ import {
   parseWorldbookCharacterDisplayName,
   parseWorldbookCharacterEntryTitle,
 } from '../char_info_shared/characterEntryLibrary';
+import { DEFAULT_CHAR_INFO_THEME_MODE, managerThemeClass, type CharInfoThemeMode } from '../char_info_shared/managerTheme';
 import { copyTextWithDocumentSelection, copyTextWithFallback } from './clipboard';
 import GalleryStep from './components/GalleryStep.vue';
 import type { EditableGalleryImage } from './galleryEditor';
@@ -685,6 +686,7 @@ const props = withDefaults(
   defineProps<{
     initialWorldbookName?: string;
     initialEntryUid?: number;
+    themeMode?: CharInfoThemeMode;
     debugEnabled?: boolean;
     onForceRefresh?: () => void | Promise<void>;
     onReturnToWorldbookLibrary?: () => void;
@@ -692,6 +694,7 @@ const props = withDefaults(
   {
     initialWorldbookName: '',
     initialEntryUid: undefined,
+    themeMode: DEFAULT_CHAR_INFO_THEME_MODE,
     debugEnabled: false,
     onForceRefresh: undefined,
     onReturnToWorldbookLibrary: undefined,
@@ -1557,22 +1560,22 @@ button {
 }
 
 .manager-root {
-  --bg: #0b0e13;
-  --surface: #131720;
-  --surface-raised: #1a202b;
-  --surface-soft: #202735;
-  --border: #30394a;
-  --border-strong: #445169;
-  --text: #f4f7fb;
-  --text-secondary: #b8c1d0;
-  --text-muted: #7f8ba0;
-  --primary: #77d6c7;
-  --primary-strong: #4fb8a8;
-  --primary-soft: rgb(119 214 199 / 12%);
-  --danger: #ff8491;
-  --danger-soft: rgb(255 132 145 / 12%);
-  --warning: #f4c36a;
-  --success: #78d59c;
+  --bg: var(--ci-bg);
+  --surface: var(--ci-surface);
+  --surface-raised: var(--ci-surface-raised);
+  --surface-soft: var(--ci-surface-soft);
+  --border: var(--ci-border);
+  --border-strong: var(--ci-border-strong);
+  --text: var(--ci-text);
+  --text-secondary: var(--ci-text-secondary);
+  --text-muted: var(--ci-text-muted);
+  --primary: var(--ci-primary);
+  --primary-strong: var(--ci-primary-strong);
+  --primary-soft: var(--ci-primary-soft);
+  --danger: var(--ci-danger);
+  --danger-soft: rgb(199 125 130 / 12%);
+  --warning: var(--ci-warning);
+  --success: var(--ci-success);
 
   position: relative;
   display: grid;
@@ -1600,7 +1603,7 @@ button {
   width: 100%;
   height: 100%;
   padding: 0;
-  background: rgb(3 5 8 / 78%);
+  background: var(--ci-overlay);
   border: 0;
   backdrop-filter: blur(9px);
   cursor: default;
@@ -1614,7 +1617,7 @@ button {
   max-height: calc(100% - 8px);
   overflow: hidden;
   flex-direction: column;
-  background: radial-gradient(circle at 0 0, rgb(119 214 199 / 8%), transparent 28rem), var(--bg);
+  background: radial-gradient(circle at 0 0, rgb(var(--ci-primary-rgb) / 8%), transparent 28rem), var(--bg);
   border: 1px solid var(--border-strong);
   border-radius: 20px;
   box-shadow: 0 28px 90px rgb(0 0 0 / 55%);
@@ -1627,7 +1630,7 @@ button {
   justify-content: space-between;
   gap: 24px;
   padding: 22px 26px;
-  background: rgb(19 23 32 / 94%);
+  background: var(--ci-header);
   border-bottom: 1px solid var(--border);
 }
 
@@ -1776,7 +1779,7 @@ button {
   padding: 5px 8px;
   color: var(--primary);
   background: var(--primary-soft);
-  border: 1px solid rgb(119 214 199 / 25%);
+  border: 1px solid rgb(var(--ci-primary-rgb) / 25%);
   border-radius: 999px;
   font-size: 11px;
   font-weight: 800;
@@ -1819,7 +1822,7 @@ button {
   overflow-y: auto;
   flex-direction: column;
   gap: 8px;
-  background: rgb(19 23 32 / 78%);
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
   border-right: 1px solid var(--border);
 }
 
@@ -1863,8 +1866,8 @@ button {
 
 .wizard-step-nav button.active {
   color: var(--text);
-  background: linear-gradient(110deg, var(--primary-soft), rgb(119 214 199 / 4%));
-  border-color: rgb(119 214 199 / 35%);
+  background: linear-gradient(110deg, var(--primary-soft), rgb(var(--ci-primary-rgb) / 4%));
+  border-color: rgb(var(--ci-primary-rgb) / 35%);
   box-shadow: inset 3px 0 0 var(--primary);
 }
 
@@ -1882,7 +1885,7 @@ button {
 }
 
 .wizard-step-nav button.active .wizard-step-index {
-  color: #071310;
+  color: var(--ci-on-primary);
   background: var(--primary);
   border-color: var(--primary);
 }
@@ -2316,7 +2319,7 @@ textarea:focus {
   padding: 6px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  background: #151a23;
+  background: var(--surface-raised);
   border: 1px solid var(--border-strong);
   border-radius: 11px;
   box-shadow: 0 18px 44px rgb(0 0 0 / 48%);
@@ -2416,15 +2419,15 @@ select:disabled {
 
 .status-dot.legacy-importable {
   background: var(--primary);
-  box-shadow: 0 0 10px rgb(119 214 199 / 45%);
+  box-shadow: 0 0 10px rgb(var(--ci-primary-rgb) / 45%);
 }
 
 .migration-banner {
   margin-top: 14px;
   padding: 12px 14px;
-  border: 1px solid rgb(119 214 199 / 24%);
+  border: 1px solid rgb(var(--ci-primary-rgb) / 24%);
   border-radius: 10px;
-  background: rgb(119 214 199 / 7%);
+  background: rgb(var(--ci-primary-rgb) / 7%);
 }
 
 .migration-banner strong {
@@ -2446,7 +2449,7 @@ select:disabled {
 
 .safety-note {
   margin-top: 16px;
-  border-color: rgb(119 214 199 / 22%);
+  border-color: rgb(var(--ci-primary-rgb) / 22%);
 }
 
 .safety-note strong {
@@ -2479,7 +2482,7 @@ select:disabled {
   width: 30px;
   height: 30px;
   place-items: center;
-  color: #071310;
+  color: var(--ci-on-primary);
   background: var(--primary);
   border-radius: 9px;
   font-size: 12px;
@@ -2722,7 +2725,7 @@ code {
   bottom: 6px;
   padding: 3px 6px;
   color: var(--text);
-  background: rgba(8, 12, 18, 0.78);
+  background: var(--ci-header);
   border-radius: 999px;
   font-size: 9px;
   font-weight: 700;
@@ -2733,7 +2736,7 @@ code {
   top: 6px;
   left: 6px;
   padding: 3px 6px;
-  color: #071310;
+  color: var(--ci-on-primary);
   background: var(--primary);
   border-radius: 999px;
   font-size: 9px;
@@ -2741,11 +2744,11 @@ code {
 
 .image-preview .gallery-location-badge {
   color: var(--text);
-  background: rgba(15, 23, 42, 0.82);
+  background: var(--ci-header);
 }
 
 .image-preview .gallery-location-badge.is-extension {
-  color: #071310;
+  color: var(--ci-on-primary);
   background: var(--primary);
 }
 
@@ -2847,7 +2850,7 @@ code {
 }
 
 .primary-button {
-  color: #071310;
+  color: var(--ci-on-primary);
   background: var(--primary);
   border: 1px solid var(--primary);
 }
@@ -2868,7 +2871,7 @@ code {
 details {
   margin-top: 12px;
   overflow: hidden;
-  background: #080a0f;
+  background: var(--ci-input);
   border: 1px solid var(--border);
   border-radius: 11px;
 }
@@ -2886,7 +2889,7 @@ pre {
   margin: 0;
   padding: 14px;
   overflow: auto;
-  color: #cfe8e2;
+  color: var(--text-secondary);
   border-top: 1px solid var(--border);
   font:
     11px/1.65 ui-monospace,
@@ -2962,7 +2965,7 @@ pre {
   bottom: 0;
   margin: 28px -40px 0;
   padding: 15px 40px;
-  background: rgb(11 14 19 / 96%);
+  background: var(--ci-header);
   border-top: 1px solid var(--border);
   backdrop-filter: blur(14px);
 }
@@ -3079,7 +3082,7 @@ pre {
     top: 0;
     display: grid;
     padding: 8px 10px;
-    background: rgb(11 14 19 / 96%);
+    background: var(--ci-header);
     border-bottom: 1px solid var(--border);
     box-shadow: 0 8px 24px rgb(0 0 0 / 24%);
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -3135,7 +3138,7 @@ pre {
   }
 
   .wizard-step-nav button.active .wizard-step-index {
-    color: #07110f;
+    color: var(--ci-on-primary);
     background: var(--primary);
     border-color: var(--primary);
   }
@@ -3166,7 +3169,7 @@ pre {
     align-items: center;
     gap: 12px;
     text-align: left;
-    background: linear-gradient(180deg, rgb(119 214 199 / 8%), transparent);
+    background: linear-gradient(180deg, rgb(var(--ci-primary-rgb) / 8%), transparent);
     border-bottom: 1px solid var(--border);
   }
 

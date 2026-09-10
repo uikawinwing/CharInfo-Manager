@@ -49,5 +49,12 @@
   "[vue]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
+  "remote.autoForwardPorts": true,
+  "remote.portsAttributes": {
+    "13000": {
+      "label": "CharInfo Theme Lab",
+      "onAutoForward": "openBrowser"
+    }
+  },
   "typescript.tsdk": "node_modules/typescript/lib"
 }

@@ -63,10 +63,10 @@ test('MVU 更新会刷新角色库与聊天视觉卡，资料始终重新读取�
   );
   assert.match(
     viewerRuntimeSource,
-    /tavern_events\.GENERATION_ENDED,\s*messageId\s*=>\s*\{[\s\S]*?enqueueMessage\(messageId\);[\s\S]*?void refreshLibrary\(\);/,
+    /tavern_events\.GENERATION_ENDED,\s*messageId\s*=>\s*\{[\s\S]*?enqueueMessage\(messageId, 'GENERATION_ENDED'\);[\s\S]*?void refreshLibrary\(\);/,
   );
   assert.match(viewerRuntimeSource, /const scheduleVisualCardRefresh = \(\) => \{[\s\S]*?refreshMountedCharInfoCards\(\)/);
-  assert.match(viewerRuntimeSource, /const refreshMountedCharInfoCards = \(\) => \{[\s\S]*?removeMessage\(messageId\)[\s\S]*?renderMessage\(messageId\)/);
+  assert.match(viewerRuntimeSource, /const refreshMountedCharInfoCards = \(\) => \{[\s\S]*?removeMessage\(messageId\)[\s\S]*?renderMessage\(messageId, 'force-refresh'\)/);
   assert.match(viewerRuntimeSource, /if \(visualRefreshTimer\) clearTimeout\(visualRefreshTimer\)/);
   assert.match(viewerRuntimeSource, /const startRevision = \+\+lifecycleRevision/);
   assert.match(viewerRuntimeSource, /!started \|\| lifecycleRevision !== startRevision/);

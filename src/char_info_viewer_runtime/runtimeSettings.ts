@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { CHAR_INFO_THEME_MODES, DEFAULT_CHAR_INFO_THEME_MODE, type CharInfoThemeMode } from '../char_info_shared/managerTheme.ts';
 import { normalizeImageSourcePriority } from '../char_info_viewer/services/imageSourcePriority.ts';
 
 export const DEFAULT_ACTIVE_FLOOR_LIMIT = 6;
@@ -16,6 +17,7 @@ export type CharInfoUiSettings = {
   unlimitedCardsPerMessage: boolean;
   effectsEnabled: boolean;
   forceMobileLayout: boolean;
+  themeMode: CharInfoThemeMode;
   debugEnabled: boolean;
   imageSourcePriorityEnabled: boolean;
   imageSourcePriority: string[];
@@ -32,6 +34,7 @@ const DEFAULT_SETTINGS: CharInfoUiSettings = {
   unlimitedCardsPerMessage: false,
   effectsEnabled: true,
   forceMobileLayout: false,
+  themeMode: DEFAULT_CHAR_INFO_THEME_MODE,
   debugEnabled: false,
   imageSourcePriorityEnabled: false,
   imageSourcePriority: [...DEFAULT_IMAGE_SOURCE_PRIORITY],
@@ -54,6 +57,7 @@ const SettingsSchema = z
     unlimitedCardsPerMessage: z.boolean().catch(DEFAULT_SETTINGS.unlimitedCardsPerMessage),
     effectsEnabled: z.boolean().catch(DEFAULT_SETTINGS.effectsEnabled),
     forceMobileLayout: z.boolean().catch(DEFAULT_SETTINGS.forceMobileLayout),
+    themeMode: z.enum(CHAR_INFO_THEME_MODES).catch(DEFAULT_SETTINGS.themeMode),
     debugEnabled: z.boolean().catch(DEFAULT_SETTINGS.debugEnabled),
     imageSourcePriorityEnabled: z.boolean().catch(DEFAULT_SETTINGS.imageSourcePriorityEnabled),
     imageSourcePriority: z

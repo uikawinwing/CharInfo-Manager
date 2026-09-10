@@ -150,7 +150,9 @@
             @error="onGalleryPreviewError(image)"
           />
           <span v-else aria-hidden="true">▧</span>
-          <span v-if="galleryPreviewMediaKind(image) === 'video'" class="gallery-media-kind">视频</span>
+          <span v-if="galleryPreviewMediaKind(image) === 'video'" class="gallery-media-kind" aria-hidden="true">▶</span>
+          <span v-if="isExtendedGalleryImage(index)" class="storage-pill extension">扩展图库</span>
+          <span v-else-if="useExtendedGallery" class="storage-pill embedded">随角色保存</span>
         </div>
 
         <div class="gallery-content">
@@ -937,6 +939,16 @@ select:focus {
   pointer-events: auto;
 }
 
+.image-preview video::-webkit-media-controls-overlay-play-button {
+  display: none !important;
+  -webkit-appearance: none;
+}
+
+.image-preview video::-webkit-media-controls-start-playback-button {
+  display: none !important;
+  -webkit-appearance: none;
+}
+
 .image-preview video:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: -2px;
@@ -955,8 +967,17 @@ select:focus {
 }
 
 .gallery-media-kind {
+  top: 6px;
   right: 6px;
-  bottom: 6px;
+  bottom: auto;
+  display: grid;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  font-size: 9px;
+  line-height: 1;
 }
 
 .storage-pill {

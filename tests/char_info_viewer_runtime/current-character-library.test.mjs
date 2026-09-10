@@ -132,6 +132,22 @@ test('资料库列表优先使用 avatarUrl 图片，并保留无头像时的姓
 
   assert.match(source, /<img[\s\S]*v-if="character\.avatarUrl[^"]*"[\s\S]*:src="character\.avatarUrl"/);
   assert.match(source, /v-else[\s\S]*character\.name\.slice\(0,\s*1\)/);
+  assert.match(source, /\.char-info-library-list-copy strong \{[^}]*font-size: 0\.94rem;[^}]*font-weight: 800;/u);
+  assert.match(source, /\.char-info-library-list-copy small \{[^}]*font-size: 0\.8rem;[^}]*font-weight: 600;/u);
+  assert.match(source, /\.char-info-library-presence \{[^}]*font-size: 0\.75rem;[^}]*font-weight: 750;/u);
+});
+
+test('手机当前角色列表的少量卡片保持内容高度并贴顶部排列', async () => {
+  const source = await readFile(new URL('../../src/char_info_viewer_runtime/RuntimeRoot.vue', import.meta.url), 'utf8');
+
+  assert.match(
+    source,
+    /@media \(max-width: 720px\)[\s\S]*?\.char-info-library-list \{[^}]*grid-auto-rows: max-content;[^}]*align-content: start;/u,
+  );
+  assert.match(
+    source,
+    /\.char-info-library-list-dialog\.force-mobile-layout \.char-info-library-list \{[^}]*grid-auto-rows: max-content;[^}]*align-content: start;/u,
+  );
 });
 
 test('当前角色库先显示基础资料，再异步逐个补远程 avatarThumbnail', async () => {
@@ -154,7 +170,7 @@ test('手动刷新会重读变量并强制重挂当前 CharInfo floors', async (
   assert.match(source, /await refreshLibrary\(\)/);
   assert.match(source, /const messageIds = Array\.from\(activeFloorIds\)/);
   assert.match(source, /removeMessage\(messageId\)/);
-  assert.match(source, /renderMessage\(messageId\)/);
+  assert.match(source, /renderMessage\(messageId, 'force-refresh'\)/);
   assert.match(source, /onRefreshLibrary: \(\) => void forceRefreshCharInfo\(\)/);
 });
 
