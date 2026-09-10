@@ -985,8 +985,10 @@ function onKeydown(ev: KeyboardEvent) {
 }
 
 onMounted(() => {
-  void initFromYaml().finally(() => {
+  void initFromYaml().finally(async () => {
     initializingViewer.value = false;
+    await nextTick();
+    setupParticleEngine();
   });
   listenerDocument = viewerRootRef.value?.ownerDocument ?? null;
   listenerDocument?.addEventListener('click', onDocumentClick);

@@ -11,11 +11,14 @@ const [appSource, sheetSource, runtimeRootSource] = await Promise.all([
   readSource('src/char_info_viewer_runtime/RuntimeRoot.vue'),
 ]);
 
-test('viewer renders a stable local shell while character data is initializing', () => {
+test('viewer renders a stable local shell and starts particles only after the card mounts', () => {
   assert.match(appSource, /const initializingViewer = ref\(true\)/);
   assert.match(appSource, /v-else-if="initializingViewer"/);
   assert.match(appSource, /class="viewer-loading-shell"/);
-  assert.match(appSource, /initFromYaml\(\)\.finally\(\(\) =>/);
+  assert.match(
+    appSource,
+    /initFromYaml\(\)\.finally\(async \(\) => \{[\s\S]*?initializingViewer\.value = false;[\s\S]*?await nextTick\(\);[\s\S]*?setupParticleEngine\(\);/u,
+  );
 });
 
 test('illustrated character portraits decode progressively without blocking the card frame', () => {
