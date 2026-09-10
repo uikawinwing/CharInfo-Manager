@@ -26,6 +26,14 @@ test('桌面角色库保留来源、世界书、搜索、筛选、排序与显�
   assert.match(librarySource, /\.character-library-toolbar \{ position: sticky;/u);
 });
 
+test('桌面角色库使用可读字号，并且禁用角色不会把整张卡片文字降透明度', () => {
+  assert.match(librarySource, /\.character-library-card-copy strong \{[^}]*font-size: 15px;[^}]*font-weight: 800;/u);
+  assert.match(librarySource, /\.character-library-card-copy small \{[^}]*font-size: 13px;[^}]*font-weight: 600;/u);
+  assert.match(librarySource, /\.character-library-card-meta i \{[^}]*font-size: 12px;[^}]*font-weight: 700;/u);
+  assert.match(librarySource, /\.character-library-card\.disabled \.character-cover-button \{ opacity: \.72; \}/u);
+  assert.doesNotMatch(librarySource, /\.character-library-card\.disabled \{[^}]*opacity:/u);
+});
+
 test('玩家可以在角色库中打开详情并独立启用或禁用世界书角色条目', () => {
   assert.match(librarySource, /class="character-library-card"[\s\S]*?@click="openDetails\(character\)"/u);
   assert.match(librarySource, /@click\.stop="toggleCharacter\(character\)"/u);
@@ -45,7 +53,10 @@ test('世界书角色库优先使用受管理 metadata，正文与条目名只�
   assert.match(librarySource, /<small>\{\{ character\.description \|\| '资料待补全' \}\}<\/small>/u);
   assert.match(librarySource, /<i>\{\{ character\.race \|\| '种族未知' \}\}<\/i>/u);
   assert.match(librarySource, /class="character-library-card-author">\{\{ character\.author \}\}<\/span>/u);
-  assert.match(librarySource, /\.character-library-card-author \{[^}]*background: rgb\(119 214 199 \/ 10%\);[^}]*border-radius: 999px;[^}]*font-size: 11px;/u);
+  assert.match(
+    librarySource,
+    /\.character-library-card-author \{[^}]*background: rgb\(var\(--ci-primary-rgb\) \/ 10%\);[^}]*border-radius: 999px;[^}]*font-size: 12px;/u,
+  );
   assert.doesNotMatch(librarySource, /<i v-if="character\.(?:sex|author|version)"/u);
   assert.match(librarySource, /class="character-detail-profile-meta"[\s\S]*?作者 · \{\{ detailCharacter\.author \}\}[\s\S]*?版本 · \{\{ detailCharacter\.version \}\}/u);
 });
@@ -68,6 +79,13 @@ test('手机角色库使用固定宿主坐标系、安全区底栏，并保留�
   assert.match(librarySource, /\.library-header, \.force-mobile-layout \.library-header \{ display: block; width: 100%; min-width: 0;/u);
   assert.match(librarySource, /\.mobile-library-worldbook select \{ width: 100%; min-width: 0; max-width: 100%;/u);
   assert.match(librarySource, /class="mobile-library-dock" aria-label="角色库操作"/u);
+  assert.match(librarySource, /ref="libraryPage" class="library-page" @scroll\.passive="onLibraryPageScroll"/u);
+  assert.match(librarySource, /v-if="showBackToTop && !detailCharacter"[\s\S]*class="mobile-library-back-to-top"[\s\S]*aria-label="返回角色库顶部"[\s\S]*@click="scrollLibraryToTop"/u);
+  assert.match(librarySource, /showBackToTop\.value = \(libraryPage\.value\?\.scrollTop \?\? 0\) > 320/u);
+  assert.match(librarySource, /libraryPage\.value\?\.scrollTo\(\{ top: 0, behavior: 'smooth' \}\)/u);
+  assert.match(librarySource, /\.mobile-library-back-to-top \{[^}]*bottom: calc\(92px \+ env\(safe-area-inset-bottom\)\);[^}]*width: 44px;[^}]*height: 44px;/u);
+  assert.match(librarySource, /@media \(max-width: 720px\)[\s\S]*?\.mobile-library-back-to-top \{ display: grid; \}/u);
+  assert.match(librarySource, /\.force-mobile-layout \.mobile-library-back-to-top \{ display: grid; \}/u);
   assert.match(librarySource, /aria-label="搜索角色" @click="focusSearch"/u);
   assert.match(librarySource, /aria-label="筛选角色"[\s\S]*?<span>筛选<\/span>/u);
   assert.match(librarySource, /aria-label="返回游戏"[^>]*@click="emit\('close'\)"/u);

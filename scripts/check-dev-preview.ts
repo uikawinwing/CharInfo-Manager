@@ -11,6 +11,11 @@ async function main(): Promise<void> {
     throw new Error(`Preview response is cacheable: cache-control=${cacheControl || '(missing)'}`);
   }
 
+  const allowedOrigin = response.headers.get('access-control-allow-origin') ?? '';
+  if (allowedOrigin !== '*') {
+    throw new Error(`Preview is not cross-origin importable: access-control-allow-origin=${allowedOrigin || '(missing)'}`);
+  }
+
   const html = await response.text();
   const requiredPatterns = [
     /--illustrated-mobile-name-shadow\s*:\s*none/,

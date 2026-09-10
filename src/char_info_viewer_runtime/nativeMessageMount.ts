@@ -20,6 +20,25 @@ export type MountedNativeCardHost = {
   restore(): void;
 };
 
+export type NativeMessageMountDiagnosticCode =
+  | 'MESSAGE_ID_UNRESOLVED'
+  | 'RAW_MESSAGE_UNAVAILABLE'
+  | 'CARD_SLOT_BUILD_FAILED'
+  | 'TOKEN_INJECTION_FAILED'
+  | 'TH_RENDER_COUNT_MISMATCH'
+  | 'ROOT_REPLACE_FAILED'
+  | 'HOST_COLLECTION_FAILED'
+  | 'MOUNT_SUCCESS';
+
+export type NativeMessageMountDiagnostic = {
+  code: NativeMessageMountDiagnosticCode;
+  details?: Record<string, unknown>;
+};
+
+export type NativeMessageMountOptions = {
+  onDiagnostic?: (diagnostic: NativeMessageMountDiagnostic) => void;
+};
+
 type PreservedTavernHelperRender = {
   element: HTMLElement;
   originalMarker: Comment;
@@ -104,13 +123,26 @@ function collectPreservableTavernHelperRenders(root: HTMLElement): HTMLElement[]
   );
 }
 
-function prepareMountedContent(root: HTMLElement, mountedHtml: string): PreparedMountedContent | null {
+function prepareMountedContent(
+  root: HTMLElement,
+  mountedHtml: string,
+  onDiagnostic?: NativeMessageMountOptions['onDiagnostic'],
+): PreparedMountedContent | null {
   const stagedRoot = root.ownerDocument.createElement('div');
   stagedRoot.innerHTML = mountedHtml;
 
   const frontendMountPoints = collectTavernHelperFrontendMountPoints(stagedRoot);
   const existingRenders = collectPreservableTavernHelperRenders(root);
-  if (existingRenders.length > 0 && existingRenders.length !== frontendMountPoints.length) return null;
+  if (existingRenders.length > 0 && existingRenders.length !== frontendMountPoints.length) {
+    onDiagnostic?.({
+      code: 'TH_RENDER_COUNT_MISMATCH',
+      details: {
+        existingTavernHelperRenders: existingRenders.length,
+        formattedFrontendMountPoints: frontendMountPoints.length,
+      },
+    });
+    return null;
+  }
 
   const preservedRenders = existingRenders.map(element => {
     const originalMarker = root.ownerDocument.createComment('char-info-preserved-th-render');
@@ -165,34 +197,64 @@ function collectMountedHosts(root: HTMLElement, cards: readonly CharInfoCardPart
 export function mountCharInfoCardHosts(
   root: HTMLElement,
   cards: readonly CharInfoCardPart[],
+  options: NativeMessageMountOptions = {},
 ): MountedNativeCardHost[] | null {
   if (cards.length === 0) return [];
 
   const messageId = resolveMessageId(root, cards);
-  if (messageId === null) return null;
+  if (messageId === null) {
+    options.onDiagnostic?.({ code: 'MESSAGE_ID_UNRESOLVED' });
+    return null;
+  }
 
   const rawMessage = readRawMessage(messageId);
-  if (rawMessage === null) return null;
+  if (rawMessage === null) {
+    options.onDiagnostic?.({ code: 'RAW_MESSAGE_UNAVAILABLE' });
+    return null;
+  }
 
   const prepared = buildRawMessageWithCardSlots(rawMessage, cards);
-  if (!prepared) return null;
+  if (!prepared) {
+    options.onDiagnostic?.({
+      code: 'CARD_SLOT_BUILD_FAILED',
+      details: { cardCount: cards.length, rawLength: rawMessage.length },
+    });
+    return null;
+  }
 
   const displayedHtml = formatAsDisplayedMessage(prepared.source, { message_id: messageId });
   const mountedHtml = injectCardHostsIntoDisplayedHtml(displayedHtml, prepared.slots);
-  if (mountedHtml === null) return null;
+  if (mountedHtml === null) {
+    options.onDiagnostic?.({
+      code: 'TOKEN_INJECTION_FAILED',
+      details: { slotCount: prepared.slots.length, displayedHtmlLength: displayedHtml.length },
+    });
+    return null;
+  }
 
-  const preparedContent = prepareMountedContent(root, mountedHtml);
+  const preparedContent = prepareMountedContent(root, mountedHtml, options.onDiagnostic);
   if (!preparedContent) return null;
 
   try {
     root.replaceChildren(preparedContent.mountedContent);
   } catch (error) {
+    options.onDiagnostic?.({
+      code: 'ROOT_REPLACE_FAILED',
+      details: { error: error instanceof Error ? error.message : String(error) },
+    });
     rollbackMountedContent(root, preparedContent);
     throw error;
   }
 
   const hosts = collectMountedHosts(root, cards);
   if (!hosts) {
+    options.onDiagnostic?.({
+      code: 'HOST_COLLECTION_FAILED',
+      details: {
+        expectedHosts: cards.length,
+        actualHosts: root.querySelectorAll<HTMLElement>(RUNTIME_HOST_SELECTOR).length,
+      },
+    });
     rollbackMountedContent(root, preparedContent);
     return null;
   }
@@ -204,5 +266,9 @@ export function mountCharInfoCardHosts(
     hosts.forEach(host => host.remove());
   };
 
+  options.onDiagnostic?.({
+    code: 'MOUNT_SUCCESS',
+    details: { hostCount: hosts.length },
+  });
   return hosts.map(host => ({ host, restore }));
 }

@@ -1,6 +1,7 @@
 import { createApp, type App as VueApp } from 'vue';
 
 import { createScriptIdIframe, teleportStyle } from '../../util/script';
+import { DEFAULT_CHAR_INFO_THEME_MODE, type CharInfoThemeMode } from '../char_info_shared/managerTheme';
 import App from './App.vue';
 
 const MANAGER_IFRAME_SRCDOC =
@@ -15,6 +16,7 @@ export type CreatorManagerOverlay = {
 
 export type CreatorManagerOverlayOptions = {
   forceMobileLayout?: boolean;
+  themeMode?: CharInfoThemeMode;
   debugEnabled?: boolean;
   worldbookName?: string;
   entryUid?: number;
@@ -138,6 +140,7 @@ export function createCreatorManagerOverlay(
           initialView: 'editor',
           initialWorldbookName: options.worldbookName,
           initialEntryUid: options.entryUid,
+          themeMode: options.themeMode ?? DEFAULT_CHAR_INFO_THEME_MODE,
           debugEnabled: options.debugEnabled ?? false,
           onForceRefresh: options.onForceRefresh,
           onReturnToWorldbookLibrary: options.onReturnToWorldbookLibrary,

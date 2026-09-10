@@ -9,7 +9,11 @@ import { preloadPortraitImages } from '../char_info_viewer/services/imagePreload
 import { resolveCharacterVisualPreloadUrls } from '../char_info_viewer/services/themeService';
 import RuntimeRoot from './RuntimeRoot.vue';
 import { collectChangedAffinityNames, collectCurrentCharacterSnapshots } from './currentCharacterLibrary';
-import { mountCharInfoCardHosts, type MountedNativeCardHost } from './nativeMessageMount';
+import {
+  mountCharInfoCardHosts,
+  type MountedNativeCardHost,
+  type NativeMessageMountDiagnostic,
+} from './nativeMessageMount';
 import {
   defaultRuntimeSettings,
   mergeRuntimeFloatingButtonPosition,
@@ -32,6 +36,7 @@ const CREATOR_BUTTON_NAME = '角色视觉编辑器';
 const LEGACY_CREATOR_BUTTON_NAME = '角色视觉编辑';
 const SETTINGS_HOST_CLASS = 'char-info-settings-host';
 const SETTINGS_BUTTON_NAME = 'CharInfo 设置';
+const MOUNT_LOG_PREFIX = '[CharInfo Mount]';
 
 type MountedMessage = {
   messageId: number;
@@ -49,6 +54,8 @@ type RemountAttempt = {
 type CharInfoRuntimeStopOptions = {
   restoreNativeMessages?: boolean;
 };
+
+type MountTraceLevel = 'info' | 'warn' | 'error';
 
 export type CharInfoRuntime = {
   start(): void;
@@ -68,6 +75,20 @@ function readMessage(messageId: number): { message: ChatMessage; swipeId: number
   return { message, swipeId };
 }
 
+function traceMount(
+  level: MountTraceLevel,
+  messageId: number,
+  code: string,
+  details: Record<string, unknown> = {},
+): void {
+  console[level](`${MOUNT_LOG_PREFIX} #${messageId} ${code}`, {
+    time: new Date().toISOString(),
+    messageId,
+    code,
+    ...details,
+  });
+}
+
 export function createCharInfoRuntime(): CharInfoRuntime {
   const state = reactive<RuntimeViewState>({
     messages: [],
@@ -81,6 +102,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   const overflowWarnings = new Map<number, string>();
   const activeFloorIds = new Set<number>();
   const dirtyMessageIds = new Set<number>();
+  const dirtyReasons = new Map<number, Set<string>>();
   const eventStops: Array<() => void> = [];
 
   let app: App<Element> | null = null;
@@ -289,6 +311,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     state.settings.unlimitedCardsPerMessage = nextSettings.unlimitedCardsPerMessage;
     state.settings.effectsEnabled = nextSettings.effectsEnabled;
     state.settings.forceMobileLayout = nextSettings.forceMobileLayout;
+    state.settings.themeMode = nextSettings.themeMode;
     state.settings.debugEnabled = nextSettings.debugEnabled;
     state.settings.imageSourcePriorityEnabled = nextSettings.imageSourcePriorityEnabled;
     state.settings.imageSourcePriority = nextSettings.imageSourcePriority;
@@ -301,17 +324,18 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
   const openWorldbookLibrary = () => {
     if (!started) return;
-    closeLibrary();
+    closeCreatorEditor();
     closeSettings();
-    if (state.library) state.library.worldbookOpen = true;
+    if (!state.library) return;
+    state.library.listOpen = true;
+    state.library.worldbookOpen = true;
   };
 
   const closeWorldbookLibrary = () => {
-    if (state.library) state.library.worldbookOpen = false;
+    closeLibrary();
   };
 
   const openCurrentChatLibrary = () => {
-    closeWorldbookLibrary();
     openLibraryList();
   };
 
@@ -321,6 +345,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         worldbookName,
         entryUid,
         forceMobileLayout: state.settings.forceMobileLayout,
+        themeMode: state.settings.themeMode,
         debugEnabled: state.settings.debugEnabled,
         onForceRefresh: forceRefreshCharInfo,
         onReturnToWorldbookLibrary: () => {
@@ -368,6 +393,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     overflowWarnings.clear();
     activeFloorIds.clear();
     dirtyMessageIds.clear();
+    dirtyReasons.clear();
   };
 
   const restoreNativeMessageDisplays = (messageIds: readonly number[]) => {
@@ -391,7 +417,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     }
   };
 
-  const renderMessage = (messageId: number) => {
+  const renderMessage = (messageId: number, trigger = 'unknown') => {
     if (!activeFloorIds.has(messageId)) {
       removeMessage(messageId);
       return;
@@ -401,10 +427,20 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     const messageElement = getMessageElement(messageId);
     const sourceElement = messageElement?.querySelector<HTMLElement>('.mes_text') ?? null;
     if (!source || !sourceElement) {
+      if (source?.message.message.includes('<char_info')) {
+        traceMount('warn', messageId, 'MESSAGE_DOM_UNAVAILABLE', {
+          trigger,
+          hasMessageElement: Boolean(messageElement),
+          hasMessageTextElement: Boolean(sourceElement),
+        });
+      }
       removeMessage(messageId);
       return;
     }
     if (messageElement.querySelector('#curEditTextarea')) {
+      if (source.message.message.includes('<char_info')) {
+        traceMount('info', messageId, 'SKIP_EDITING', { trigger });
+      }
       removeMessage(messageId);
       return;
     }
@@ -448,10 +484,23 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     }
 
     const sourceSignature = `${source.swipeId}:${source.message.message}`;
+    traceMount('info', messageId, 'MOUNT_ATTEMPT', {
+      trigger,
+      cardCount: projection.cards.length,
+      hadPreviousMount: Boolean(current),
+      sourceElementConnected: sourceElement.isConnected,
+      previousHostsConnected: current ? current.cardMounts.filter(cardMount => cardMount.host.isConnected).length : 0,
+      previousHostCount: current?.cardMounts.length ?? 0,
+    });
     if (current) {
       const previousAttempt = remountAttempts.get(messageId);
       const now = Date.now();
       if (previousAttempt?.signature === sourceSignature && now - previousAttempt.attemptedAt < REMOUNT_LOOP_GUARD_MS) {
+        traceMount('warn', messageId, 'REMOUNT_LOOP_GUARD', {
+          trigger,
+          elapsedMs: now - previousAttempt.attemptedAt,
+          guardMs: REMOUNT_LOOP_GUARD_MS,
+        });
         console.warn(`[CharInfo Runtime] 第 ${messageId} 楼在短时间内重复失去挂载点，已停止自动重挂载以避免渲染循环。`);
         removeMessage(messageId);
         return;
@@ -462,7 +511,14 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       remountAttempts.delete(messageId);
     }
 
-    const cardMounts = mountCharInfoCardHosts(sourceElement, projection.cards);
+    const cardMounts = mountCharInfoCardHosts(sourceElement, projection.cards, {
+      onDiagnostic: (diagnostic: NativeMessageMountDiagnostic) => {
+        traceMount(diagnostic.code === 'MOUNT_SUCCESS' ? 'info' : 'warn', messageId, diagnostic.code, {
+          trigger,
+          ...diagnostic.details,
+        });
+      },
+    });
     if (!cardMounts) {
       console.warn(`[CharInfo Runtime] 第 ${messageId} 楼无法安全定位 char_info，已保留原生消息。`);
       removeMessage(messageId);
@@ -500,7 +556,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     });
     messageIds.forEach(messageId => {
       try {
-        renderMessage(messageId);
+        renderMessage(messageId, 'force-refresh');
       } catch (error) {
         console.error(`[CharInfo Runtime] 第 ${messageId} 楼强制刷新失败：`, error);
       }
@@ -527,9 +583,15 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     const batch = Array.from(dirtyMessageIds).slice(0, DIRTY_BATCH_SIZE);
     batch.forEach(messageId => dirtyMessageIds.delete(messageId));
     batch.forEach(messageId => {
+      const trigger = Array.from(dirtyReasons.get(messageId) ?? ['unknown']).join(',');
+      dirtyReasons.delete(messageId);
       try {
-        renderMessage(messageId);
+        renderMessage(messageId, trigger);
       } catch (error) {
+        traceMount('error', messageId, 'RENDER_THROWN', {
+          trigger,
+          error: error instanceof Error ? error.message : String(error),
+        });
         console.error(`[CharInfo Runtime] 第 ${messageId} 楼渲染失败：`, error);
         removeMessage(messageId);
       }
@@ -540,9 +602,12 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     }
   };
 
-  const enqueueMessage = (messageId: number) => {
+  const enqueueMessage = (messageId: number, reason = 'unspecified') => {
     if (!Number.isInteger(messageId) || messageId < 0) return;
     dirtyMessageIds.add(messageId);
+    const reasons = dirtyReasons.get(messageId) ?? new Set<string>();
+    reasons.add(reason);
+    dirtyReasons.set(messageId, reasons);
     if (!dirtyFlushTimer) {
       dirtyFlushTimer = setTimeout(flushDirtyMessages, DIRTY_FLUSH_DELAY_MS);
     }
@@ -555,7 +620,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     Array.from(mountedMessages.keys()).forEach(messageId => {
       if (!activeFloorIds.has(messageId)) removeMessage(messageId);
     });
-    recentIds.forEach(enqueueMessage);
+    recentIds.forEach(messageId => enqueueMessage(messageId, 'recent-scan'));
   };
 
   const scanRecentFloors = () => {
@@ -603,7 +668,12 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         const mounted = mountedMessages.get(messageId);
         if (!mounted) return;
         if (!mounted.sourceElement.isConnected || mounted.cardMounts.some(cardMount => !cardMount.host.isConnected)) {
-          enqueueMessage(messageId);
+          traceMount('warn', messageId, 'HOST_DISCONNECTED', {
+            sourceElementConnected: mounted.sourceElement.isConnected,
+            connectedHosts: mounted.cardMounts.filter(cardMount => cardMount.host.isConnected).length,
+            hostCount: mounted.cardMounts.length,
+          });
+          enqueueMessage(messageId, 'dom-host-disconnected');
         }
       });
     });
@@ -616,24 +686,24 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     });
     listen(tavern_events.CHARACTER_MESSAGE_RENDERED, messageId => {
       advanceRecentFloor(messageId);
-      enqueueMessage(messageId);
+      enqueueMessage(messageId, 'CHARACTER_MESSAGE_RENDERED');
     });
     listen(tavern_events.MESSAGE_RECEIVED, messageId => {
       advanceRecentFloor(messageId);
-      enqueueMessage(messageId);
+      enqueueMessage(messageId, 'MESSAGE_RECEIVED');
     });
     listen(tavern_events.GENERATION_ENDED, messageId => {
-      enqueueMessage(messageId);
+      enqueueMessage(messageId, 'GENERATION_ENDED');
       void refreshLibrary();
     });
     listen(tavern_events.MESSAGE_EDITED, messageId => {
-      enqueueMessage(messageId);
+      enqueueMessage(messageId, 'MESSAGE_EDITED');
     });
     listen(tavern_events.MESSAGE_UPDATED, messageId => {
-      enqueueMessage(messageId);
+      enqueueMessage(messageId, 'MESSAGE_UPDATED');
     });
     listen(tavern_events.MESSAGE_SWIPED, messageId => {
-      enqueueMessage(messageId);
+      enqueueMessage(messageId, 'MESSAGE_SWIPED');
       void refreshLibrary();
     });
     listen(tavern_events.MESSAGE_DELETED, messageId => {
@@ -663,7 +733,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       destroyTeleportedStyle = teleportStyle().destroy;
       app = createApp(RuntimeRoot, {
         state,
-        onCloseLibraryList: closeLibraryList,
+        onCloseLibrary: closeLibrary,
         onCloseLibraryViewer: closeLibraryViewer,
         onRefreshLibrary: () => void forceRefreshCharInfo(),
         onOpenLibraryList: openLibraryList,

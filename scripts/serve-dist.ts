@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 
-export const PREVIEW_HOST = '127.0.0.1';
+export const PREVIEW_HOST = '0.0.0.0';
 export const DEFAULT_PREVIEW_PORT = 13000;
 export const THEME_LAB_PATH = '/char_info_v2_theme_lab/index.html';
 
@@ -25,6 +25,7 @@ const mimeTypes: Record<string, string> = {
 
 function sendText(response: http.ServerResponse, statusCode: number, text: string): void {
   response.writeHead(statusCode, {
+    'Access-Control-Allow-Origin': '*',
     'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
     'Content-Type': 'text/plain; charset=utf-8',
     Expires: '0',
@@ -42,6 +43,7 @@ export async function startDistPreview(port = resolvePreviewPort()): Promise<htt
     const requestUrl = new URL(request.url ?? '/', `http://${PREVIEW_HOST}:${port}`);
     if (requestUrl.pathname === '/') {
       response.writeHead(302, {
+        'Access-Control-Allow-Origin': '*',
         'Cache-Control': 'no-store',
         Location: THEME_LAB_PATH,
       });
@@ -80,6 +82,7 @@ export async function startDistPreview(port = resolvePreviewPort()): Promise<htt
     }
 
     response.writeHead(200, {
+      'Access-Control-Allow-Origin': '*',
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
       'Content-Type': mimeTypes[path.extname(filePath).toLowerCase()] ?? 'application/octet-stream',
       Expires: '0',

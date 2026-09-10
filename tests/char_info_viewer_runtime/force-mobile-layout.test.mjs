@@ -54,7 +54,7 @@ test('设置开关和角色库强制移动布局沿用 720px 布局契约', () =
   );
   assert.match(
     runtimeRootSource,
-    /class="char-info-library-overlay"[\s\S]*?'force-mobile-layout': state\.settings\.forceMobileLayout/u,
+    /class="char-info-library-overlay char-info-library-workspace"[\s\S]*?'force-mobile-layout': state\.settings\.forceMobileLayout/u,
   );
   assert.equal(
     (runtimeRootSource.match(/:force-mobile-layout="state\.settings\.forceMobileLayout"/gu) ?? []).length,
@@ -67,7 +67,7 @@ test('设置开关和角色库强制移动布局沿用 720px 布局契约', () =
   );
   assert.match(
     runtimeRootSource,
-    /class="char-info-library-mobile-dock"[\s\S]*?搜索[\s\S]*?筛选[\s\S]*?返回游戏[\s\S]*?刷新[\s\S]*?设置/u,
+    /class="char-info-library-mobile-dock"[\s\S]*?搜索[\s\S]*?筛选[\s\S]*?返回游戏[\s\S]*?刷新[\s\S]*?更多/u,
   );
   assert.match(
     runtimeRootSource,
@@ -170,7 +170,11 @@ test('手机角色详情顶部只展示信息，操作移至底部安全区', ()
   );
   assert.match(
     runtimeRootSource,
-    /function closeLibraryWindows\(\): void \{\s*closeViewerWindow\(\);\s*closeListWindow\(\);/u,
+    /function closeLibraryWorkspace\(\): void \{[\s\S]*?props\.onCloseLibrary\(\);/u,
+  );
+  assert.match(
+    runtimeRootSource,
+    /class="char-info-library-viewer-mobile-dock"[\s\S]*?@click="closeLibraryWorkspace"/u,
   );
 });
 

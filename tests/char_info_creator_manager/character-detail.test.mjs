@@ -20,6 +20,8 @@ test('Viewer 详情展示图库并让视频按 hover 或触屏单实例播放', 
   assert.match(librarySource, /\.\.\.character\.profile\.gallery/u);
   assert.match(librarySource, /findGalleryPackEntry/u);
   assert.match(librarySource, /item\.media\?\.kind === 'video'/u);
+  assert.match(librarySource, /class="character-detail-media-kind" aria-hidden="true">▶<\/span>/u);
+  assert.match(librarySource, /\.character-detail-media-kind \{[^}]*top: 7px;[^}]*right: 7px;[^}]*width: 22px;[^}]*height: 22px;/u);
   assert.doesNotMatch(librarySource, /\n\s+controls\s*\n/u);
   assert.match(librarySource, /preload="metadata"/u);
   assert.match(librarySource, /@pointerenter="onDetailVideoPointerEnter\(item\.sourceIndex, \$event\)"/u);
