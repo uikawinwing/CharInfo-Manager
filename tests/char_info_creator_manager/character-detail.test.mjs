@@ -26,9 +26,16 @@ test('Viewer 详情展示图库并让视频按 hover 或触屏单实例播放', 
   assert.match(librarySource, /v-else[\s\S]*?class="character-detail-video-preview"/u);
   assert.match(librarySource, /:poster="item\.poster \|\| undefined"/u);
   assert.match(librarySource, /function videoPoster\(image: GalleryImage\): string[\s\S]*?image\.thumbnail \?\? ''[\s\S]*?media\?\.kind === 'image'/u);
+  assert.match(librarySource, /setDetailVideoPreviewCanvas\(item\.sourceIndex, item\.media\.url, element\)/u);
+  assert.match(librarySource, /document\.createElement\('video'\)/u);
+  assert.match(librarySource, /video\.addEventListener\(\s*'loadeddata'/u);
+  assert.match(librarySource, /video\.addEventListener\('seeked'/u);
+  assert.match(librarySource, /context\.drawImage\(video,/u);
+  assert.match(librarySource, /detailVideoPreviewReady\.add\(index\)/u);
   assert.match(librarySource, /class="character-detail-media-kind" aria-hidden="true">▶<\/span>/u);
   assert.match(librarySource, /\.character-detail-media-kind \{[^}]*top: 7px;[^}]*right: 7px;[^}]*width: 22px;[^}]*height: 22px;/u);
   assert.match(librarySource, /\.character-detail-video-preview \{[^}]*width: 100%;[^}]*height: 100%;/u);
+  assert.match(librarySource, /\.character-detail-video-canvas\.ready \{ opacity: 1; \}/u);
   assert.doesNotMatch(librarySource, /<video\s+v-if="item\.media\?\.kind === 'video'"/u);
   assert.doesNotMatch(librarySource, /\n\s+controls\s*\n/u);
   assert.match(librarySource, /preload="metadata"/u);

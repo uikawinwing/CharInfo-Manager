@@ -394,7 +394,20 @@
                         loading="lazy"
                         referrerpolicy="no-referrer"
                       />
-                      <span v-else class="character-detail-video-empty">视频</span>
+                      <canvas
+                        v-else
+                        :key="item.media.url"
+                        :ref="element => setDetailVideoPreviewCanvas(item.sourceIndex, item.media.url, element)"
+                        class="character-detail-video-canvas"
+                        :class="{ ready: detailVideoPreviewReady.has(item.sourceIndex) }"
+                        aria-hidden="true"
+                      ></canvas>
+                      <span
+                        v-if="!item.poster && !detailVideoPreviewReady.has(item.sourceIndex)"
+                        class="character-detail-video-empty"
+                      >
+                        正在读取视频…
+                      </span>
                     </button>
                     <span class="character-detail-media-kind" aria-hidden="true">▶</span>
                   </template>
@@ -521,6 +534,9 @@ const detailGalleryIndexes = reactive<Record<string, number>>({});
 const remotePresentations = reactive<Record<string, RemoteGalleryPresentation>>({});
 const detailVideoElements = new Map<number, HTMLVideoElement>();
 const activeDetailVideoIndex = ref<number | null>(null);
+const detailVideoPreviewReady = reactive(new Set<number>());
+const detailVideoPreviewSources = new Map<number, string>();
+const detailVideoPreviewLoads = new Map<number, { video: HTMLVideoElement; timeoutId: number }>();
 let detailVideoHoverTimer: number | null = null;
 let detailVideoObserver: IntersectionObserver | null = null;
 let entriesLoadRevision = 0;
@@ -747,6 +763,108 @@ function mediaSources(image: GalleryImage): Media[] {
   });
 }
 
+function stopDetailVideoPreviewLoad(index: number) {
+  const load = detailVideoPreviewLoads.get(index);
+  if (!load) return;
+  window.clearTimeout(load.timeoutId);
+  load.video.pause();
+  load.video.removeAttribute('src');
+  load.video.load();
+  detailVideoPreviewLoads.delete(index);
+}
+
+function stopAllDetailVideoPreviewLoads() {
+  Array.from(detailVideoPreviewLoads.keys()).forEach(stopDetailVideoPreviewLoad);
+}
+
+function drawVideoPreviewFrame(index: number, canvas: HTMLCanvasElement, video: HTMLVideoElement) {
+  const load = detailVideoPreviewLoads.get(index);
+  if (!load || load.video !== video || !video.videoWidth || !video.videoHeight) return;
+
+  const context = canvas.getContext('2d');
+  if (!context) {
+    stopDetailVideoPreviewLoad(index);
+    return;
+  }
+
+  const targetWidth = 360;
+  const targetHeight = 480;
+  const targetAspect = targetWidth / targetHeight;
+  const sourceAspect = video.videoWidth / video.videoHeight;
+  let sx = 0;
+  let sy = 0;
+  let sw = video.videoWidth;
+  let sh = video.videoHeight;
+
+  if (sourceAspect > targetAspect) {
+    sw = video.videoHeight * targetAspect;
+    sx = (video.videoWidth - sw) / 2;
+  } else {
+    sh = video.videoWidth / targetAspect;
+    sy = (video.videoHeight - sh) / 2;
+  }
+
+  try {
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    context.clearRect(0, 0, targetWidth, targetHeight);
+    context.drawImage(video, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
+    detailVideoPreviewReady.add(index);
+  } catch (_) {
+    detailVideoPreviewReady.delete(index);
+  } finally {
+    stopDetailVideoPreviewLoad(index);
+  }
+}
+
+function setDetailVideoPreviewCanvas(index: number, sourceUrl: string, element: unknown) {
+  if (!(element instanceof HTMLCanvasElement)) return;
+  if (detailVideoPreviewReady.has(index) && detailVideoPreviewSources.get(index) === sourceUrl) return;
+
+  detailVideoPreviewReady.delete(index);
+  detailVideoPreviewSources.set(index, sourceUrl);
+  stopDetailVideoPreviewLoad(index);
+
+  const video = document.createElement('video');
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+
+  const timeoutId = window.setTimeout(() => {
+    detailVideoPreviewReady.delete(index);
+    stopDetailVideoPreviewLoad(index);
+  }, 8000);
+  detailVideoPreviewLoads.set(index, { video, timeoutId });
+
+  video.addEventListener(
+    'loadeddata',
+    () => {
+      const duration = video.duration;
+      if (Number.isFinite(duration) && duration > 0.25 && video.currentTime < 0.01) {
+        try {
+          video.currentTime = Math.min(0.2, duration * 0.05);
+          return;
+        } catch (_) {
+          // Some WebViews cannot seek before the first decoded frame. Draw that frame instead.
+        }
+      }
+      drawVideoPreviewFrame(index, element, video);
+    },
+    { once: true },
+  );
+  video.addEventListener('seeked', () => drawVideoPreviewFrame(index, element, video), { once: true });
+  video.addEventListener(
+    'error',
+    () => {
+      detailVideoPreviewReady.delete(index);
+      stopDetailVideoPreviewLoad(index);
+    },
+    { once: true },
+  );
+  video.src = sourceUrl;
+  video.load();
+}
+
 function pauseDetailVideo(index: number) {
   detailVideoElements.get(index)?.pause();
   if (activeDetailVideoIndex.value === index) activeDetailVideoIndex.value = null;
@@ -772,6 +890,7 @@ function pauseAllDetailVideos() {
 }
 
 async function playDetailVideo(index: number) {
+  stopDetailVideoPreviewLoad(index);
   pauseOtherDetailVideos(index);
   activeDetailVideoIndex.value = index;
   await nextTick();
@@ -844,6 +963,9 @@ function initializeDetailVideoObserver() {
 
 function advanceDetailMedia(index: number) {
   pauseDetailVideo(index);
+  stopDetailVideoPreviewLoad(index);
+  detailVideoPreviewReady.delete(index);
+  detailVideoPreviewSources.delete(index);
   const key = `${detailKey.value}:${index}`;
   detailGalleryIndexes[key] = (detailGalleryIndexes[key] ?? 0) + 1;
 }
@@ -952,12 +1074,18 @@ async function toggleCharacter(character: LibraryCharacter) {
 
 function openDetails(character: LibraryCharacter) {
   pauseAllDetailVideos();
+  stopAllDetailVideoPreviewLoads();
+  detailVideoPreviewReady.clear();
+  detailVideoPreviewSources.clear();
   detailKey.value = character.key;
   Object.keys(detailGalleryIndexes).forEach(key => delete detailGalleryIndexes[key]);
 }
 
 function closeDetails() {
   pauseAllDetailVideos();
+  stopAllDetailVideoPreviewLoads();
+  detailVideoPreviewReady.clear();
+  detailVideoPreviewSources.clear();
   detailKey.value = null;
 }
 
@@ -981,7 +1109,10 @@ onBeforeUnmount(() => {
   detailVideoObserver?.disconnect();
   detailVideoObserver = null;
   pauseAllDetailVideos();
+  stopAllDetailVideoPreviewLoads();
   detailVideoElements.clear();
+  detailVideoPreviewReady.clear();
+  detailVideoPreviewSources.clear();
 });
 </script>
 
@@ -1123,9 +1254,11 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
 .character-detail-gallery-grid figure { min-width: 0; margin: 0; overflow: hidden; background: var(--surface-raised); border: 1px solid var(--border); border-radius: 12px; }
 .character-detail-media { position: relative; display: grid; aspect-ratio: 3 / 4; overflow: hidden; place-items: center; color: var(--text-muted); background: var(--surface-soft); font-size: 12px; font-weight: 550; }
 .character-detail-media img, .character-detail-media video { width: 100%; height: 100%; object-fit: cover; }
-.character-detail-video-preview { display: grid; width: 100%; height: 100%; padding: 0; place-items: center; overflow: hidden; color: var(--text-muted); background: var(--surface-soft); border: 0; cursor: pointer; }
+.character-detail-video-preview { position: relative; display: grid; width: 100%; height: 100%; padding: 0; place-items: center; overflow: hidden; color: var(--text-muted); background: var(--surface-soft); border: 0; cursor: pointer; }
 .character-detail-video-preview img { pointer-events: none; }
-.character-detail-video-empty { font-size: 12px; font-weight: 750; letter-spacing: .08em; }
+.character-detail-video-canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; transition: opacity 120ms ease; }
+.character-detail-video-canvas.ready { opacity: 1; }
+.character-detail-video-empty { position: relative; z-index: 1; font-size: 12px; font-weight: 750; letter-spacing: .08em; }
 .character-detail-media-kind { position: absolute; z-index: 2; top: 7px; right: 7px; display: grid; width: 22px; height: 22px; place-items: center; color: #fff; background: rgb(0 0 0 / 68%); border: 1px solid rgb(255 255 255 / 28%); border-radius: 50%; font-size: 10px; line-height: 1; pointer-events: none; }
 .character-detail-media video { cursor: pointer; }
 .character-detail-media video:focus-visible,
