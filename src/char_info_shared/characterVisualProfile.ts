@@ -482,6 +482,19 @@ export function buildManagedEjsBlock(input: CharacterVisualProfile): string {
     lines.push(`  ${line}${index === remainingLines.length - 1 ? ';' : ''}`);
   });
   lines.push('', '  const npcName = profile.characterName;', '');
+  lines.push(`  const statusGalleryExtensions = ${JSON.stringify(STATUS_GALLERY_IMAGE_EXTENSIONS)};`);
+  lines.push('  const statusGalleryImages = profile.gallery.flatMap(image => {');
+  lines.push('    const candidates = [...image.sources, ...(image.thumbnail ? [image.thumbnail] : [])];');
+  lines.push('    const url = candidates.find(value => {');
+  lines.push('      try {');
+  lines.push('        const pathname = new URL(value).pathname.toLowerCase();');
+  lines.push('        return statusGalleryExtensions.some(extension => pathname.endsWith(extension));');
+  lines.push('      } catch {');
+  lines.push('        return false;');
+  lines.push('      }');
+  lines.push("    }) ?? '';");
+  lines.push('    return url ? [{ title: image.title, url }] : [];');
+  lines.push('  });', '');
   lines.push('  setLocalVar(`char_info.profiles[${JSON.stringify(npcName)}]`, {');
   lines.push(`    schema_version: ${CHAR_INFO_PROFILE_SCHEMA_VERSION},`);
   lines.push('    ...(profile.galleryPackUrl ? { gallery_pack_url: profile.galleryPackUrl } : {}),');
@@ -503,6 +516,11 @@ export function buildManagedEjsBlock(input: CharacterVisualProfile): string {
   lines.push('      profile.avatarUrl,');
   lines.push('    );');
   lines.push('  }');
+  lines.push('');
+  lines.push('  setLocalVar(');
+  lines.push('    `status.externalGalleries.partners[${JSON.stringify(npcName)}].images`,');
+  lines.push('    statusGalleryImages,');
+  lines.push('  );');
 
   lines.push('}');
   lines.push('_%>');

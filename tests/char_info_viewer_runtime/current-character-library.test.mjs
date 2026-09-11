@@ -185,7 +185,7 @@ test('Creator 即时写入当前 draft 时强校验 CharInfo、状态栏相簿�
   assert.match(appSource, /applyCurrentProfileToCurrentChat/u);
   assert.match(appSource, /normalizeProfile\(toFullSerializableProfile\(\)\)/u);
   assert.match(appSource, /buildManagedEjsBlock\(currentProfile\)/u);
-  assert.match(appSource, /syncStatusGallerySnapshotToCurrentChat\(currentProfile\.characterName, expectedStatusGalleryImages\)/u);
+  assert.match(appSource, /const appliedStatusGalleryImages = readStatusGallerySnapshotFromCurrentChat\(currentProfile\.characterName\)/u);
   assert.match(appSource, /JSON\.stringify\(appliedRecord\.gallery \?\? null\) !== JSON\.stringify\(expectedGallery\)/u);
   assert.match(appSource, /status\.externalGalleries 中的状态栏相簿没有正确写入/u);
   assert.match(appSource, /status\.externalAvatars 中的状态栏头像没有正确写入/u);

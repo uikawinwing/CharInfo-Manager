@@ -17,7 +17,7 @@ test('点击玩家角色库中的角色先打开 Viewer 详情', () => {
 });
 
 test('Viewer 详情展示图库并让视频按 hover 或触屏单实例播放', () => {
-  assert.match(librarySource, /const remote = remotePresentations\[character\.entry\.uid\]/u);
+  assert.match(librarySource, /const remote = remotePresentations\[character\.key\]/u);
   assert.match(librarySource, /if \(remote\) return remote\.gallery/u);
   assert.match(librarySource, /return character\.profile\.gallery/u);
   assert.match(librarySource, /resolveRemoteGalleryPresentation/u);
@@ -38,7 +38,7 @@ test('Viewer 详情展示图库并让视频按 hover 或触屏单实例播放', 
 test('只有编辑角色资料才从 Viewer 调用 Creator controller', () => {
   assert.match(
     librarySource,
-    /@click="emit\('edit', selectedWorldbookName, detailCharacter\.entry\.uid\)"/u,
+    /@click="emit\('edit', detailCharacter\.worldbookName, detailCharacter\.entry\.uid\)"/u,
   );
   assert.match(runtimeSource, /openCreatorManager\(\{[\s\S]*?worldbookName,[\s\S]*?entryUid,[\s\S]*?forceMobileLayout:/u);
   assert.doesNotMatch(runtimeSource, /getCreatorManagerHostBridge|creatorManager\.open/u);

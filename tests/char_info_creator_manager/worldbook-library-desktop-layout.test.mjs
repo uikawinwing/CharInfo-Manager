@@ -11,7 +11,7 @@ test('玩家角色库与角色详情都由 Viewer 提供，详情关闭后仍返
   assert.match(librarySource, /v-if="detailCharacter"[\s\S]*?class="character-detail-layer"/u);
   assert.match(librarySource, /@click="closeDetails">返回角色库/u);
   assert.match(librarySource, /<h3[^>]*>角色图库<\/h3>/u);
-  assert.match(librarySource, /emit\('edit', selectedWorldbookName, detailCharacter\.entry\.uid\)/u);
+  assert.match(librarySource, /emit\('edit', detailCharacter\.worldbookName, detailCharacter\.entry\.uid\)/u);
 });
 
 test('桌面角色库保留来源、世界书、搜索、筛选、排序与显示方式', () => {
@@ -89,7 +89,7 @@ test('手机角色库使用固定宿主坐标系、安全区底栏，并保留�
   assert.match(librarySource, /aria-label="搜索角色" @click="focusSearch"/u);
   assert.match(librarySource, /aria-label="筛选角色"[\s\S]*?<span>筛选<\/span>/u);
   assert.match(librarySource, /aria-label="返回游戏"[^>]*@click="emit\('close'\)"/u);
-  assert.match(librarySource, /mobileMoreOpen = false; emit\('editLibrary', selectedWorldbookName\)[\s\S]*?视觉编辑/u);
+  assert.match(librarySource, /mobileMoreOpen = false; emit\('editLibrary', selectedEditableWorldbookName\)[\s\S]*?视觉编辑/u);
   assert.match(librarySource, /@click="loadWorldbooks">重新读取角色库/u);
   assert.match(librarySource, /\.mobile-library-dock \{ position: absolute;[\s\S]*?env\(safe-area-inset-bottom\)/u);
   assert.match(librarySource, /\.manager-dialog, \.force-mobile-layout \.manager-dialog \{[^}]*height: 100dvh;/u);

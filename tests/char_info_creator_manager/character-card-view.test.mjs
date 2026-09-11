@@ -24,7 +24,7 @@ test('图片卡片自动适应桌面宽度，并在手机收束为单列', () =>
 test('角色封面保留懒加载、备用地址回退与无图占位', () => {
   assert.match(librarySource, /loading="lazy"/u);
   assert.match(librarySource, /@error="advanceCover\(character\)"/u);
-  assert.match(librarySource, /coverIndexes\[character\.entry\.uid\] = \(coverIndexes\[character\.entry\.uid\] \?\? 0\) \+ 1/u);
+  assert.match(librarySource, /coverIndexes\[character\.key\] = \(coverIndexes\[character\.key\] \?\? 0\) \+ 1/u);
   assert.match(librarySource, /v-else class="character-cover-placeholder" aria-hidden="true"/u);
 });
 

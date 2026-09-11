@@ -650,9 +650,9 @@ import {
   inspectLegacyVisualProfile,
   upsertManagedEjsBlockWithLegacyMigration,
 } from '../char_info_shared/legacyVisualProfile';
-import { buildWorldbookList } from '../char_info_shared/worldbookList';
+import { buildCurrentWorldbookList, buildWorldbookList } from '../char_info_shared/worldbookList';
 import ViewerApp from '../char_info_viewer/App.vue';
-import { evaluateManagedEjs, writeStatusGallerySnapshotToCurrentChat } from './ejsRuntime';
+import { evaluateManagedEjs } from './ejsRuntime';
 import {
   buildCreatorViewerPreviewData,
   buildCreatorViewerVisualOverride,
@@ -1089,7 +1089,9 @@ async function loadWorldbooks() {
 
     const binding = getCharWorldbookNames('current');
     characterWorldbooks.value = buildWorldbookList([binding.primary, ...binding.additional], []);
-    worldbooks.value = buildWorldbookList(characterWorldbooks.value, getWorldbookNames());
+    const globalWorldbooks = getGlobalWorldbookNames();
+    const chatWorldbook = getChatWorldbookName('current');
+    worldbooks.value = buildCurrentWorldbookList(binding, globalWorldbooks, chatWorldbook);
     if (worldbooks.value.length === 0) throw new Error('酒馆中没有可用的世界书。');
 
     const requestedWorldbook = props.initialWorldbookName.trim();
@@ -1344,17 +1346,6 @@ function readStatusGallerySnapshotFromCurrentChat(characterName: string): unknow
     : null;
 }
 
-async function syncStatusGallerySnapshotToCurrentChat(
-  characterName: string,
-  images: ReturnType<typeof buildStatusGalleryImages>,
-): Promise<void> {
-  await writeStatusGallerySnapshotToCurrentChat(characterName, images, props.debugEnabled);
-  const appliedImages = readStatusGallerySnapshotFromCurrentChat(characterName);
-  if (JSON.stringify(appliedImages) !== JSON.stringify(images)) {
-    throw new Error('status.externalGalleries 中的状态栏相簿没有正确写入。');
-  }
-}
-
 async function saveToEntry() {
   const worldbookName = selectedWorldbookName.value;
   const entry = selectedEntry.value;
@@ -1437,7 +1428,10 @@ async function applyCurrentProfileToCurrentChat() {
     const unsupportedStatusGalleryItems = countUnsupportedStatusGalleryItems(currentProfile.gallery);
 
     await evaluateManagedEjs(managedCode, props.debugEnabled);
-    await syncStatusGallerySnapshotToCurrentChat(currentProfile.characterName, expectedStatusGalleryImages);
+    const appliedStatusGalleryImages = readStatusGallerySnapshotFromCurrentChat(currentProfile.characterName);
+    if (JSON.stringify(appliedStatusGalleryImages) !== JSON.stringify(expectedStatusGalleryImages)) {
+      throw new Error('status.externalGalleries 中的状态栏相簿没有正确写入。');
+    }
 
     const chatVariables = getVariables({ type: 'chat' });
     const chatRecord = chatVariables && typeof chatVariables === 'object' ? (chatVariables as Record<string, unknown>) : {};

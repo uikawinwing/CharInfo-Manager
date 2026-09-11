@@ -101,8 +101,8 @@ test('Viewer 玩家角色封面依次尝试备用图床，全部失败后显示�
 
   assert.match(librarySource, /:src="coverUrl\(character\)"/u);
   assert.match(librarySource, /@error="advanceCover\(character\)"/u);
-  assert.match(librarySource, /coverIndexes\[character\.entry\.uid\] = \(coverIndexes\[character\.entry\.uid\] \?\? 0\) \+ 1/u);
-  assert.match(librarySource, /return imageSources\(character\)\[coverIndexes\[character\.entry\.uid\] \?\? 0\] \?\? ''/u);
+  assert.match(librarySource, /coverIndexes\[character\.key\] = \(coverIndexes\[character\.key\] \?\? 0\) \+ 1/u);
+  assert.match(librarySource, /return imageSources\(character\)\[coverIndexes\[character\.key\] \?\? 0\] \?\? ''/u);
 });
 
 test('世界书紧凑列表使用 libraryThumbnail，图片卡片才使用 720px gallery thumbnail', () => {
@@ -127,7 +127,7 @@ test('世界书远程 Gallery Pack 预览限制为六并发，不再一次打出
   assert.match(librarySource, /const REMOTE_PREVIEW_CONCURRENCY = 6/u);
   assert.match(librarySource, /Math\.min\(REMOTE_PREVIEW_CONCURRENCY, loaded\.length\)/u);
   assert.match(librarySource, /Array\.from\(\{ length: workerCount \}, \(\) => worker\(\)\)/u);
-  assert.match(librarySource, /void loadRemotePresentations\(loaded, revision, worldbookName\)/u);
+  assert.match(librarySource, /loadedSources\.map\(source => loadRemotePresentations\(source\.entries, revision, source\.worldbookName\)\)/u);
 });
 
 test('Viewer 玩家角色库保留紧凑列表与自适应图片卡片', () => {

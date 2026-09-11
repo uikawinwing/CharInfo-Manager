@@ -159,7 +159,7 @@ test('v2 生成区块只保留一份可读 profile 配置', () => {
   assert.match(block, /image\.thumbnail \? \{ thumbnail: image\.thumbnail \} : \{\}/);
   assert.match(block, /image\.viewerVisible === false \? \{ viewer_visible: false \} : \{\}/);
   assert.match(block, /status\.externalAvatars\.partners/);
-  assert.doesNotMatch(block, /status\.externalGalleries\.partners/);
+  assert.match(block, /status\.externalGalleries\.partners/);
   assert.doesNotMatch(block, /char-info-ejs-builder:data:v1:/);
   assert.doesNotMatch(block, /dryRun|merge:/);
   assert.equal(block.split(profile.characterName).length - 1, 1);
@@ -177,6 +177,43 @@ test('v2 生成区块只保留一份可读 profile 配置', () => {
   const inspection = inspectManagedBlock(block);
   assert.equal(inspection.state, 'valid');
   assert.deepEqual(inspection.profile, profile);
+});
+
+test('首次保存生成的 managed EJS 同步状态栏头像与相簿，后续保存会一起更新', () => {
+  const initial = buildManagedEjsBlock(profile);
+  const firstAssignments = [];
+  const firstBody = initial.slice(initial.indexOf('<%_') + 3, initial.indexOf('_%>'));
+  new Function('setLocalVar', firstBody)((path, value) => firstAssignments.push([path, value]));
+
+  assert.deepEqual(
+    firstAssignments.find(([path]) => path === 'status.externalGalleries.partners["傲雪"].images')?.[1],
+    [
+      { title: '霜原剑影', url: 'https://files.catbox.moe/main.webp' },
+      { title: '雪林巡行', url: 'https://files.catbox.moe/alternate.avif' },
+    ],
+  );
+  assert.equal(
+    firstAssignments.find(([path]) => path === 'status.externalAvatars.partners["傲雪"].url')?.[1],
+    'https://files.catbox.moe/avatar.webp',
+  );
+
+  const updated = upsertManagedEjsBlock(initial, {
+    ...profile,
+    avatarUrl: 'https://files.catbox.moe/avatar-v2.webp',
+    gallery: [{ title: '新相簿', sources: ['https://files.catbox.moe/new.webp'] }],
+  });
+  const updatedAssignments = [];
+  const updatedBody = updated.slice(updated.indexOf('<%_') + 3, updated.indexOf('_%>'));
+  new Function('setLocalVar', updatedBody)((path, value) => updatedAssignments.push([path, value]));
+
+  assert.equal(
+    updatedAssignments.find(([path]) => path === 'status.externalAvatars.partners["傲雪"].url')?.[1],
+    'https://files.catbox.moe/avatar-v2.webp',
+  );
+  assert.deepEqual(
+    updatedAssignments.find(([path]) => path === 'status.externalGalleries.partners["傲雪"].images')?.[1],
+    [{ title: '新相簿', url: 'https://files.catbox.moe/new.webp' }],
+  );
 });
 
 test('状态栏相簿单向投影只使用受支持静态格式，并允许视频使用静态 fallback', () => {

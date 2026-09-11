@@ -23,6 +23,7 @@
           <label>
             <span>世界书</span>
             <select v-model="selectedWorldbookName" :disabled="loadingWorldbooks || worldbooks.length === 0">
+              <option :value="ALL_CURRENT_WORLDBOOKS">全部当前世界书</option>
               <option v-for="worldbook in worldbooks" :key="worldbook" :value="worldbook">
                 {{ worldbook }}{{ characterWorldbooks.includes(worldbook) ? '（当前角色）' : '' }}
               </option>
@@ -47,7 +48,7 @@
               </svg>
               <span>角色库</span>
             </button>
-            <button type="button" aria-pressed="false" @click="emit('editLibrary', selectedWorldbookName)">
+            <button type="button" aria-pressed="false" @click="emit('editLibrary', selectedEditableWorldbookName)">
               <svg aria-hidden="true" viewBox="0 0 24 24">
                 <path d="m4 16 9.8-9.8 4 4L8 20H4v-4Zm11.2-11.2 1.4-1.4a1.4 1.4 0 0 1 2 0l2 2a1.4 1.4 0 0 1 0 2l-1.4 1.4-4-4Z" />
               </svg>
@@ -67,6 +68,7 @@
           <label class="mobile-library-worldbook">
             <span>世界书</span>
             <select v-model="selectedWorldbookName" :disabled="loadingWorldbooks || worldbooks.length === 0">
+              <option :value="ALL_CURRENT_WORLDBOOKS">全部当前世界书</option>
               <option v-for="worldbook in worldbooks" :key="worldbook" :value="worldbook">
                 {{ worldbook }}{{ characterWorldbooks.includes(worldbook) ? '（当前角色）' : '' }}
               </option>
@@ -192,7 +194,7 @@
           >
             <article
               v-for="character in filteredCharacters"
-              :key="character.entry.uid"
+              :key="character.key"
               class="character-library-card"
               :class="{
                 disabled: !character.entry.enabled,
@@ -249,7 +251,7 @@
                 role="switch"
                 :aria-checked="character.entry.enabled"
                 :aria-label="`${character.entry.enabled ? '禁用' : '启用'} ${characterName(character)}`"
-                :disabled="togglingUids.has(character.entry.uid)"
+                :disabled="togglingKeys.has(character.key)"
                 @click.stop="toggleCharacter(character)"
               >
                 <span></span>
@@ -305,7 +307,7 @@
               <button
                 type="button"
                 role="menuitem"
-                @click="mobileMoreOpen = false; emit('editLibrary', selectedWorldbookName)"
+                @click="mobileMoreOpen = false; emit('editLibrary', selectedEditableWorldbookName)"
               >
                 视觉编辑
               </button>
@@ -331,7 +333,7 @@
               {{ detailCharacter.entry.enabled ? '已启用' : '已禁用' }}
             </span>
             <h2 id="character-detail-title">{{ characterName(detailCharacter) }}</h2>
-            <p>世界书：{{ selectedWorldbookName }} · 条目：{{ detailCharacter.entry.name }}</p>
+            <p>世界书：{{ detailCharacter.worldbookName }} · 条目：{{ detailCharacter.entry.name }}</p>
             <p
               v-if="detailCharacter.race || detailCharacter.author || detailCharacter.version"
               class="character-detail-profile-meta"
@@ -401,7 +403,7 @@
 
         <footer class="character-detail-footer">
           <button class="secondary-button" type="button" @click="closeDetails">返回角色库</button>
-          <button class="primary-button" type="button" @click="emit('edit', selectedWorldbookName, detailCharacter.entry.uid)">
+          <button class="primary-button" type="button" @click="emit('edit', detailCharacter.worldbookName, detailCharacter.entry.uid)">
             编辑视觉资料
           </button>
         </footer>
@@ -429,7 +431,12 @@ import {
   type GalleryImage,
 } from '../char_info_shared/characterVisualProfile';
 import { DEFAULT_CHAR_INFO_THEME_MODE, managerThemeClass, type CharInfoThemeMode } from '../char_info_shared/managerTheme';
-import { buildWorldbookList } from '../char_info_shared/worldbookList';
+import {
+  buildCurrentWorldbookList,
+  buildWorldbookList,
+  loadWorldbookEntrySources,
+  type WorldbookEntrySource,
+} from '../char_info_shared/worldbookList';
 import {
   resolveRemoteGalleryPresentation,
   type RemoteGalleryPresentation,
@@ -437,6 +444,8 @@ import {
 import { normalizePortraitMediaUrlForBrowser } from '../char_info_viewer/services/imageUrl';
 
 type LibraryCharacter = WorldbookCharacterEntry<WorldbookEntry, CharacterVisualProfile> & {
+  worldbookName: string;
+  key: string;
   encountered: boolean;
   race: string;
   author: string;
@@ -459,10 +468,12 @@ const emit = defineEmits<{
   edit: [worldbookName: string, entryUid: number];
 }>();
 
+const ALL_CURRENT_WORLDBOOKS = '__charinfo_all_current_worldbooks__';
+
 const worldbooks = ref<string[]>([]);
 const characterWorldbooks = ref<string[]>([]);
-const entries = ref<WorldbookEntry[]>([]);
-const selectedWorldbookName = ref('');
+const entrySources = ref<WorldbookEntrySource<WorldbookEntry>[]>([]);
+const selectedWorldbookName = ref(ALL_CURRENT_WORLDBOOKS);
 const loadingWorldbooks = ref(false);
 const loadingEntries = ref(false);
 const error = ref('');
@@ -480,11 +491,11 @@ const cardColumnOptions = [2, 3, 4, 5, 6];
 const mobileFilterOpen = ref(false);
 const mobileMoreOpen = ref(false);
 const encounteredCharacters = ref<EncounteredCharacterRecord[]>([]);
-const togglingUids = reactive(new Set<number>());
-const coverIndexes = reactive<Record<number, number>>({});
-const detailUid = ref<number | null>(null);
+const togglingKeys = reactive(new Set<string>());
+const coverIndexes = reactive<Record<string, number>>({});
+const detailKey = ref<string | null>(null);
 const detailGalleryIndexes = reactive<Record<string, number>>({});
-const remotePresentations = reactive<Record<number, RemoteGalleryPresentation>>({});
+const remotePresentations = reactive<Record<string, RemoteGalleryPresentation>>({});
 const detailVideoElements = new Map<number, HTMLVideoElement>();
 const activeDetailVideoIndex = ref<number | null>(null);
 let detailVideoHoverTimer: number | null = null;
@@ -492,32 +503,57 @@ let detailVideoObserver: IntersectionObserver | null = null;
 let entriesLoadRevision = 0;
 const REMOTE_PREVIEW_CONCURRENCY = 6;
 
+function worldbookEntryKey(worldbookName: string, uid: number): string {
+  return `${worldbookName}:${uid}`;
+}
+
+const selectedEntrySources = computed(() =>
+  selectedWorldbookName.value === ALL_CURRENT_WORLDBOOKS
+    ? entrySources.value
+    : entrySources.value.filter(source => source.worldbookName === selectedWorldbookName.value),
+);
+
+const selectedEditableWorldbookName = computed(() =>
+  selectedWorldbookName.value === ALL_CURRENT_WORLDBOOKS
+    ? (characterWorldbooks.value[0] ?? worldbooks.value[0] ?? '')
+    : selectedWorldbookName.value,
+);
+
 const worldbookCharacters = computed<LibraryCharacter[]>(() => {
   const encountered = new Map(encounteredCharacters.value.map(character => [character.name, character]));
-  return collectWorldbookCharacterEntries(
-    entries.value,
-    content => {
-      const inspection = inspectManagedBlock(content);
-      return inspection.state === 'valid' ? inspection.profile : null;
-    },
-    (_entry, title) => createEmptyProfile(title.displayName ?? ''),
-  ).map(character => {
-    const match = encountered.get(character.profile.characterName);
-    const inspection = inspectManagedBlock(character.entry.content);
-    const body = readCharacterEntryBody(
-      character.entry.content,
-      inspection.state === 'valid' ? { start: inspection.start, end: inspection.end } : null,
-    );
-    const metadata = character.profile.metadata;
-    return {
-      ...character,
-      encountered: !!match,
-      race: metadata?.race || match?.race || inferCharacterRace(body, character.profile.characterName) || character.title.raceText || '',
-      author: metadata?.author || character.title.authorText || '',
-      version: metadata?.version || '',
-      description: metadata?.author_note || character.title.descriptionText || '',
-    };
-  });
+  return selectedEntrySources.value.flatMap(source =>
+    collectWorldbookCharacterEntries(
+      source.entries,
+      content => {
+        const inspection = inspectManagedBlock(content);
+        return inspection.state === 'valid' ? inspection.profile : null;
+      },
+      (_entry, title) => createEmptyProfile(title.displayName ?? ''),
+    ).map(character => {
+      const match = encountered.get(character.profile.characterName);
+      const inspection = inspectManagedBlock(character.entry.content);
+      const body = readCharacterEntryBody(
+        character.entry.content,
+        inspection.state === 'valid' ? { start: inspection.start, end: inspection.end } : null,
+      );
+      const metadata = character.profile.metadata;
+      return {
+        ...character,
+        worldbookName: source.worldbookName,
+        key: worldbookEntryKey(source.worldbookName, character.entry.uid),
+        encountered: !!match,
+        race:
+          metadata?.race ||
+          match?.race ||
+          inferCharacterRace(body, character.profile.characterName) ||
+          character.title.raceText ||
+          '',
+        author: metadata?.author || character.title.authorText || '',
+        version: metadata?.version || '',
+        description: metadata?.author_note || character.title.descriptionText || '',
+      };
+    }),
+  );
 });
 
 const filteredCharacters = computed(() => {
@@ -544,7 +580,7 @@ const availableRaces = computed(() =>
     left.localeCompare(right, 'zh-CN'),
   ),
 );
-const detailCharacter = computed(() => worldbookCharacters.value.find(character => character.entry.uid === detailUid.value) ?? null);
+const detailCharacter = computed(() => worldbookCharacters.value.find(character => character.key === detailKey.value) ?? null);
 const detailEntryBody = computed(() => {
   const character = detailCharacter.value;
   if (!character) return '';
@@ -557,7 +593,7 @@ const detailEntryBody = computed(() => {
 const detailGallery = computed(() => {
   const character = detailCharacter.value;
   if (!character) return [];
-  const remote = remotePresentations[character.entry.uid];
+  const remote = remotePresentations[character.key];
   if (remote) return remote.gallery;
   return character.profile.gallery;
 });
@@ -569,7 +605,7 @@ const detailGalleryItems = computed(() =>
       {
         title: image.title,
         sourceIndex: index,
-        media: sources[detailGalleryIndexes[`${detailUid.value}:${index}`] ?? 0] ?? null,
+        media: sources[detailGalleryIndexes[`${detailKey.value}:${index}`] ?? 0] ?? null,
       },
     ];
   }),
@@ -616,7 +652,7 @@ function sortCharacters(characters: LibraryCharacter[], order: SortOrder): Libra
 }
 
 function imageSources(character: LibraryCharacter): string[] {
-  const remote = remotePresentations[character.entry.uid];
+  const remote = remotePresentations[character.key];
   const localSources = [
     character.profile.coverUrl,
     character.profile.avatarUrl,
@@ -639,17 +675,17 @@ function imageSources(character: LibraryCharacter): string[] {
 }
 
 function coverUrl(character: LibraryCharacter): string {
-  return imageSources(character)[coverIndexes[character.entry.uid] ?? 0] ?? '';
+  return imageSources(character)[coverIndexes[character.key] ?? 0] ?? '';
 }
 
 function advanceCover(character: LibraryCharacter) {
-  coverIndexes[character.entry.uid] = (coverIndexes[character.entry.uid] ?? 0) + 1;
+  coverIndexes[character.key] = (coverIndexes[character.key] ?? 0) + 1;
 }
 
 async function loadRemotePresentations(loaded: readonly WorldbookEntry[], revision: number, worldbookName: string) {
   let nextIndex = 0;
   const worker = async () => {
-    while (revision === entriesLoadRevision && selectedWorldbookName.value === worldbookName) {
+    while (revision === entriesLoadRevision) {
       const index = nextIndex++;
       if (index >= loaded.length) return;
       const entry = loaded[index];
@@ -657,9 +693,10 @@ async function loadRemotePresentations(loaded: readonly WorldbookEntry[], revisi
       if (inspection.state !== 'valid' || !inspection.profile.galleryPackUrl) continue;
       try {
         const presentation = await resolveRemoteGalleryPresentation(inspection.profile.galleryPackUrl);
-        if (presentation && revision === entriesLoadRevision && selectedWorldbookName.value === worldbookName) {
-          remotePresentations[entry.uid] = presentation;
-          coverIndexes[entry.uid] = 0;
+        if (presentation && revision === entriesLoadRevision) {
+          const key = worldbookEntryKey(worldbookName, entry.uid);
+          remotePresentations[key] = presentation;
+          coverIndexes[key] = 0;
         }
       } catch (caught) {
         console.warn(`[CharInfo Manager] 远程角色预览读取失败：${inspection.profile.characterName}`, caught);
@@ -770,7 +807,7 @@ function initializeDetailVideoObserver() {
 
 function advanceDetailMedia(index: number) {
   pauseDetailVideo(index);
-  const key = `${detailUid.value}:${index}`;
+  const key = `${detailKey.value}:${index}`;
   detailGalleryIndexes[key] = (detailGalleryIndexes[key] ?? 0) + 1;
 }
 
@@ -806,96 +843,98 @@ async function loadEncounteredCharacters() {
 }
 
 async function loadWorldbooks() {
+  const revision = ++entriesLoadRevision;
   loadingWorldbooks.value = true;
+  loadingEntries.value = true;
   error.value = '';
+  toggleMessage.value = '';
+  pauseAllDetailVideos();
+  detailKey.value = null;
+  Object.keys(remotePresentations).forEach(key => delete remotePresentations[key]);
+  Object.keys(coverIndexes).forEach(key => delete coverIndexes[key]);
+
   try {
     if (!getCurrentCharacterName()) throw new Error('请先在 SillyTavern 打开一张角色卡。');
     const binding = getCharWorldbookNames('current');
     characterWorldbooks.value = buildWorldbookList([binding.primary, ...binding.additional], []);
-    worldbooks.value = buildWorldbookList(characterWorldbooks.value, getWorldbookNames());
-    if (!worldbooks.value.length) throw new Error('酒馆中没有可用的世界书。');
-    if (!worldbooks.value.includes(selectedWorldbookName.value)) selectedWorldbookName.value = worldbooks.value[0];
-    await loadEntries(selectedWorldbookName.value);
+    const globalWorldbooks = getGlobalWorldbookNames();
+    const chatWorldbook = getChatWorldbookName('current');
+    worldbooks.value = buildCurrentWorldbookList(binding, globalWorldbooks, chatWorldbook);
+    if (!worldbooks.value.length) throw new Error('当前角色、全局与聊天中没有可用的世界书。');
+    if (
+      selectedWorldbookName.value !== ALL_CURRENT_WORLDBOOKS &&
+      !worldbooks.value.includes(selectedWorldbookName.value)
+    ) {
+      selectedWorldbookName.value = ALL_CURRENT_WORLDBOOKS;
+    }
+
+    const loadedSources = await loadWorldbookEntrySources(worldbooks.value, getWorldbook);
+    if (revision !== entriesLoadRevision) return;
+    entrySources.value = loadedSources;
+    void Promise.all(
+      loadedSources.map(source => loadRemotePresentations(source.entries, revision, source.worldbookName)),
+    );
     void loadEncounteredCharacters();
   } catch (caught) {
-    entries.value = [];
-    error.value = caught instanceof Error ? caught.message : String(caught);
-  } finally {
-    loadingWorldbooks.value = false;
-  }
-}
-
-async function loadEntries(worldbookName: string) {
-  const revision = ++entriesLoadRevision;
-  pauseAllDetailVideos();
-  detailUid.value = null;
-  toggleMessage.value = '';
-  if (!worldbookName) {
-    entries.value = [];
-    return;
-  }
-  loadingEntries.value = true;
-  try {
-    const loaded = await getWorldbook(worldbookName);
-    if (revision === entriesLoadRevision && selectedWorldbookName.value === worldbookName) {
-      entries.value = loaded;
-      Object.keys(remotePresentations).forEach(key => delete remotePresentations[Number(key)]);
-      void loadRemotePresentations(loaded, revision, worldbookName);
-    }
-  } catch (caught) {
     if (revision === entriesLoadRevision) {
-      entries.value = [];
-      error.value = `无法读取世界书：${caught instanceof Error ? caught.message : String(caught)}`;
+      entrySources.value = [];
+      error.value = caught instanceof Error ? caught.message : String(caught);
     }
   } finally {
-    if (revision === entriesLoadRevision) loadingEntries.value = false;
+    if (revision === entriesLoadRevision) {
+      loadingWorldbooks.value = false;
+      loadingEntries.value = false;
+    }
   }
 }
 
 async function toggleCharacter(character: LibraryCharacter) {
   const uid = character.entry.uid;
-  if (togglingUids.has(uid)) return;
+  const key = character.key;
+  if (togglingKeys.has(key)) return;
   const enabled = !character.entry.enabled;
-  togglingUids.add(uid);
+  togglingKeys.add(key);
   try {
     const updated = await updateWorldbookWith(
-      selectedWorldbookName.value,
+      character.worldbookName,
       latest => setCharacterEntryEnabled(latest, uid, enabled),
       { render: 'immediate' },
     );
     const saved = updated.find(entry => entry.uid === uid);
     if (!saved || saved.enabled !== enabled) throw new Error('条目开关后的读回验证失败。');
-    entries.value = updated;
+    entrySources.value = entrySources.value.map(source =>
+      source.worldbookName === character.worldbookName ? { ...source, entries: updated } : source,
+    );
     toggleMessage.value = `${characterName(character)} 已${enabled ? '启用' : '禁用'}。`;
   } catch (caught) {
     toggleMessage.value = `切换失败：${caught instanceof Error ? caught.message : String(caught)}`;
   } finally {
-    togglingUids.delete(uid);
+    togglingKeys.delete(key);
   }
 }
 
 function openDetails(character: LibraryCharacter) {
   pauseAllDetailVideos();
-  detailUid.value = character.entry.uid;
+  detailKey.value = character.key;
   Object.keys(detailGalleryIndexes).forEach(key => delete detailGalleryIndexes[key]);
 }
 
 function closeDetails() {
   pauseAllDetailVideos();
-  detailUid.value = null;
+  detailKey.value = null;
 }
 
-watch(selectedWorldbookName, worldbookName => {
+watch(selectedWorldbookName, () => {
   searchText.value = '';
   filter.value = 'all';
   raceFilter.value = 'all';
   sortOrder.value = 'original';
   mobileFilterOpen.value = false;
   mobileMoreOpen.value = false;
-  void loadEntries(worldbookName);
+  closeDetails();
 });
 watch(layout, () => {
-  Object.keys(coverIndexes).forEach(key => delete coverIndexes[Number(key)]);
+  Object.keys(coverIndexes).forEach(key => delete coverIndexes[key]);
 });
 onMounted(() => {
   initializeDetailVideoObserver();

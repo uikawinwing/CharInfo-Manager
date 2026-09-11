@@ -50,13 +50,3 @@ async function evaluateCreatorEjs(code: string, debugEnabled: boolean, when: str
 export async function evaluateManagedEjs(code: string, debugEnabled = false): Promise<void> {
   await evaluateCreatorEjs(code, debugEnabled, 'char-info-creator-apply');
 }
-
-export async function writeStatusGallerySnapshotToCurrentChat(
-  characterName: string,
-  images: ReadonlyArray<{ title: string; url: string }>,
-  debugEnabled = false,
-): Promise<void> {
-  const path = `status.externalGalleries.partners[${JSON.stringify(characterName)}].images`;
-  const code = `<%_\nsetLocalVar(${JSON.stringify(path)}, ${JSON.stringify(images)});\n_%>`;
-  await evaluateCreatorEjs(code, debugEnabled, 'char-info-creator-status-gallery-save');
-}

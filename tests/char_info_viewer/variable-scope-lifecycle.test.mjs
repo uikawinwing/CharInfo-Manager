@@ -27,10 +27,12 @@ test('Viewer 只读取 CharInfo 视觉资料，状态栏只接收单向相簿与
   assert.doesNotMatch(themeSource, /externalGalleries/);
   assert.match(ejsProfileSource, /char_info\.profiles/);
   assert.match(ejsProfileSource, /status\.externalAvatars\.partners/);
-  assert.doesNotMatch(ejsProfileSource, /setLocalVar\(`status\.externalGalleries/);
-  assert.match(creatorManagerSource, /syncStatusGallerySnapshotToCurrentChat/);
+  assert.match(ejsProfileSource, /status\.externalGalleries\.partners/);
+  assert.doesNotMatch(creatorManagerSource, /syncStatusGallerySnapshotToCurrentChat/);
+  assert.match(creatorManagerSource, /readStatusGallerySnapshotFromCurrentChat/);
   assert.match(previewBuilderSource, /char_info\.profiles/);
-  assert.doesNotMatch(previewBuilderSource, /externalGalleries|char_info_visuals|dryRun|merge:/);
+  assert.match(previewBuilderSource, /status\.externalGalleries\.partners/);
+  assert.doesNotMatch(previewBuilderSource, /char_info_visuals|dryRun|merge:/);
 });
 
 test('MVU 更新会刷新角色库与聊天视觉卡，资料始终重新读取最新作用域', () => {
