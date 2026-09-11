@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const webpackSource = await readFile(new URL('../../webpack.config.ts', import.meta.url), 'utf8');
 const runtimeSource = await readFile(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
 const creatorIndexSource = await readFile(new URL('../../src/char_info_creator_manager/index.ts', import.meta.url), 'utf8');
+const sharedWebpackSource = await readFile(new URL('../../../../Toolchain/webpack.config.ts', import.meta.url), 'utf8');
 const creatorControllerSource = await readFile(
   new URL('../../src/char_info_creator_manager/controller.ts', import.meta.url),
   'utf8',
@@ -15,8 +15,8 @@ const legacyBridgeSource = await readFile(
 );
 
 test('Viewer 与 Creator 合并为一个脚本 entry，但内部模块仍保持分离', () => {
-  assert.match(webpackSource, /'src\/char_info_creator_manager\/index\.ts'/u);
-  assert.doesNotMatch(webpackSource, /src\/char_info_viewer\/dx\/index\.ts/u);
+  assert.match(creatorIndexSource, /@no-entry/u);
+  assert.match(sharedWebpackSource, /includes\('@no-entry'\)/u);
   assert.match(runtimeSource, /from '\.\.\/char_info_creator_manager\/controller'/u);
   assert.match(creatorControllerSource, /createCreatorManagerOverlay/u);
   assert.match(creatorIndexSource, /export \{ closeCreatorManager, openCreatorManager \} from '\.\/controller';/u);

@@ -1,6 +1,6 @@
 import { createApp, type App as VueApp } from 'vue';
 
-import { createScriptIdIframe, teleportStyle } from '../../util/script';
+import { createScriptIdIframe, teleportStyle } from '@util/script';
 import { DEFAULT_CHAR_INFO_THEME_MODE, type CharInfoThemeMode } from '../char_info_shared/managerTheme';
 import App from './App.vue';
 

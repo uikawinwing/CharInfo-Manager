@@ -20,9 +20,21 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    env:
+      PROJECT_DIR: TavernDev/Scripts/project
+      TOOLCHAIN_DIR: TavernDev/Toolchain
     steps:
-      - name: Checkout
+      - name: Checkout CharInfo source
         uses: actions/checkout@v4
+        with:
+          path: ${{ env.PROJECT_DIR }}
+
+      - name: Checkout shared TavernHelper Toolchain
+        uses: actions/checkout@v4
+        with:
+          repository: uikawinwing/tavern_helper_toolchain
+          ref: main
+          path: ${{ env.TOOLCHAIN_DIR }}
 
       - name: Use Node.js
         uses: actions/setup-node@v6
@@ -34,14 +46,18 @@ jobs:
         with:
           version: 10
 
-      - name: Install dependencies
+      - name: Install shared Toolchain dependencies
         run: pnpm install --frozen-lockfile
+        working-directory: ${{ env.TOOLCHAIN_DIR }}
 
       - name: Test
-        run: pnpm test
+        run: npm run test
+        working-directory: ${{ env.PROJECT_DIR }}
 
       - name: Lint
-        run: pnpm lint
+        run: npm run lint
+        working-directory: ${{ env.PROJECT_DIR }}
 
       - name: Build
-        run: pnpm build
+        run: npm run build
+        working-directory: ${{ env.PROJECT_DIR }}
