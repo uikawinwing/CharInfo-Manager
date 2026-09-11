@@ -271,6 +271,7 @@
         <button
           v-if="showBackToTop && !detailCharacter"
           class="mobile-library-back-to-top"
+          :class="{ 'menu-open': mobileMoreOpen }"
           type="button"
           aria-label="返回角色库顶部"
           @click="scrollLibraryToTop"
@@ -1176,7 +1177,9 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
   border: 1px solid var(--border-strong);
   border-radius: 50%;
   box-shadow: 0 8px 24px rgb(0 0 0 / 28%);
+  transition: bottom 120ms ease;
 }
+.mobile-library-back-to-top.menu-open { bottom: calc(198px + env(safe-area-inset-bottom)); }
 .mobile-library-back-to-top svg { width: 21px; height: 21px; fill: none; stroke: currentcolor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
 .character-library-toolbar { position: sticky; z-index: 2; top: 0; display: flex; margin: -12px 0 18px; padding: 12px 0 18px; flex-direction: column; gap: 18px; background: var(--bg); }
 .library-search-field { display: flex; min-height: 48px; padding: 0 13px; align-items: center; gap: 10px; background: linear-gradient(90deg, var(--surface-raised), var(--surface)); border: 1px solid var(--border-strong); border-radius: 10px; }

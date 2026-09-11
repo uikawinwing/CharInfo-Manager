@@ -80,10 +80,11 @@ test('手机角色库使用固定宿主坐标系、安全区底栏，并保留�
   assert.match(librarySource, /\.mobile-library-worldbook select \{ width: 100%; min-width: 0; max-width: 100%;/u);
   assert.match(librarySource, /class="mobile-library-dock" aria-label="角色库操作"/u);
   assert.match(librarySource, /ref="libraryPage" class="library-page" @scroll\.passive="onLibraryPageScroll"/u);
-  assert.match(librarySource, /v-if="showBackToTop && !detailCharacter"[\s\S]*class="mobile-library-back-to-top"[\s\S]*aria-label="返回角色库顶部"[\s\S]*@click="scrollLibraryToTop"/u);
+  assert.match(librarySource, /v-if="showBackToTop && !detailCharacter"[\s\S]*class="mobile-library-back-to-top"[\s\S]*:class="\{ 'menu-open': mobileMoreOpen \}"[\s\S]*aria-label="返回角色库顶部"[\s\S]*@click="scrollLibraryToTop"/u);
   assert.match(librarySource, /showBackToTop\.value = \(libraryPage\.value\?\.scrollTop \?\? 0\) > 320/u);
   assert.match(librarySource, /libraryPage\.value\?\.scrollTo\(\{ top: 0, behavior: 'smooth' \}\)/u);
   assert.match(librarySource, /\.mobile-library-back-to-top \{[^}]*bottom: calc\(92px \+ env\(safe-area-inset-bottom\)\);[^}]*width: 44px;[^}]*height: 44px;/u);
+  assert.match(librarySource, /\.mobile-library-back-to-top\.menu-open \{ bottom: calc\(198px \+ env\(safe-area-inset-bottom\)\); \}/u);
   assert.match(librarySource, /@media \(max-width: 720px\)[\s\S]*?\.mobile-library-back-to-top \{ display: grid; \}/u);
   assert.match(librarySource, /\.force-mobile-layout \.mobile-library-back-to-top \{ display: grid; \}/u);
   assert.match(librarySource, /aria-label="搜索角色" @click="focusSearch"/u);
