@@ -355,27 +355,49 @@
             <div class="character-detail-gallery-grid">
               <figure v-for="(item, index) in detailGalleryItems" :key="`${item.title}:${index}`">
                 <div class="character-detail-media">
-                  <video
-                    v-if="item.media?.kind === 'video'"
-                    :ref="element => setDetailVideoElement(item.sourceIndex, element)"
-                    :src="item.media.url"
-                    :poster="item.poster || undefined"
-                    :aria-label="`预览视频：${item.title || `角色图片 ${index + 1}`}；鼠标悬停播放，触屏点击播放或暂停`"
-                    muted
-                    loop
-                    playsinline
-                    preload="metadata"
-                    role="button"
-                    tabindex="0"
-                    title="鼠标悬停播放；触屏点击播放或暂停"
-                    @pointerenter="onDetailVideoPointerEnter(item.sourceIndex, $event)"
-                    @pointerleave="onDetailVideoPointerLeave(item.sourceIndex, $event)"
-                    @pointerup="onDetailVideoPointerUp(item.sourceIndex, $event)"
-                    @keydown.enter.prevent="toggleDetailVideo(item.sourceIndex)"
-                    @keydown.space.prevent="toggleDetailVideo(item.sourceIndex)"
-                    @error="advanceDetailMedia(item.sourceIndex)"
-                  ></video>
-                  <span v-if="item.media?.kind === 'video'" class="character-detail-media-kind" aria-hidden="true">▶</span>
+                  <template v-if="item.media?.kind === 'video'">
+                    <video
+                      v-if="activeDetailVideoIndex === item.sourceIndex"
+                      :ref="element => setDetailVideoElement(item.sourceIndex, element)"
+                      :src="item.media.url"
+                      :poster="item.poster || undefined"
+                      :aria-label="`正在播放视频：${item.title || `角色图片 ${index + 1}`}；鼠标移开暂停，触屏点击暂停`"
+                      autoplay
+                      muted
+                      loop
+                      playsinline
+                      preload="metadata"
+                      role="button"
+                      tabindex="0"
+                      title="鼠标移开暂停；触屏点击暂停"
+                      @pointerleave="onDetailVideoPointerLeave(item.sourceIndex, $event)"
+                      @pointerup="onDetailVideoPointerUp(item.sourceIndex, $event)"
+                      @keydown.enter.prevent="toggleDetailVideo(item.sourceIndex)"
+                      @keydown.space.prevent="toggleDetailVideo(item.sourceIndex)"
+                      @error="advanceDetailMedia(item.sourceIndex)"
+                    ></video>
+                    <button
+                      v-else
+                      class="character-detail-video-preview"
+                      type="button"
+                      :aria-label="`预览视频：${item.title || `角色图片 ${index + 1}`}；鼠标悬停播放，触屏点击播放`"
+                      title="鼠标悬停播放；触屏点击播放"
+                      @pointerenter="onDetailVideoPointerEnter(item.sourceIndex, $event)"
+                      @pointerup="onDetailVideoPointerUp(item.sourceIndex, $event)"
+                      @keydown.enter.prevent="toggleDetailVideo(item.sourceIndex)"
+                      @keydown.space.prevent="toggleDetailVideo(item.sourceIndex)"
+                    >
+                      <img
+                        v-if="item.poster"
+                        :src="item.poster"
+                        :alt="item.title || `第 ${index + 1} 张视频预览`"
+                        loading="lazy"
+                        referrerpolicy="no-referrer"
+                      />
+                      <span v-else class="character-detail-video-empty">视频</span>
+                    </button>
+                    <span class="character-detail-media-kind" aria-hidden="true">▶</span>
+                  </template>
                   <img
                     v-else-if="item.media"
                     :src="item.media.url"
@@ -414,7 +436,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 
 import {
   collectEncounteredCharacters,
@@ -749,21 +771,25 @@ function pauseAllDetailVideos() {
   activeDetailVideoIndex.value = null;
 }
 
-function playDetailVideo(index: number) {
-  const video = detailVideoElements.get(index);
-  if (!video) return;
+async function playDetailVideo(index: number) {
   pauseOtherDetailVideos(index);
   activeDetailVideoIndex.value = index;
+  await nextTick();
+
+  const video = detailVideoElements.get(index);
+  if (!video) {
+    if (activeDetailVideoIndex.value === index) activeDetailVideoIndex.value = null;
+    return;
+  }
+
   void video.play().catch(() => {
     if (activeDetailVideoIndex.value === index) activeDetailVideoIndex.value = null;
   });
 }
 
 function toggleDetailVideo(index: number) {
-  const video = detailVideoElements.get(index);
-  if (!video) return;
-  if (!video.paused && activeDetailVideoIndex.value === index) pauseDetailVideo(index);
-  else playDetailVideo(index);
+  if (activeDetailVideoIndex.value === index) pauseDetailVideo(index);
+  else void playDetailVideo(index);
 }
 
 function onDetailVideoPointerEnter(index: number, event: PointerEvent) {
@@ -771,7 +797,7 @@ function onDetailVideoPointerEnter(index: number, event: PointerEvent) {
   clearDetailVideoHoverTimer();
   detailVideoHoverTimer = window.setTimeout(() => {
     detailVideoHoverTimer = null;
-    playDetailVideo(index);
+    void playDetailVideo(index);
   }, 150);
 }
 
@@ -1097,11 +1123,13 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
 .character-detail-gallery-grid figure { min-width: 0; margin: 0; overflow: hidden; background: var(--surface-raised); border: 1px solid var(--border); border-radius: 12px; }
 .character-detail-media { position: relative; display: grid; aspect-ratio: 3 / 4; overflow: hidden; place-items: center; color: var(--text-muted); background: var(--surface-soft); font-size: 12px; font-weight: 550; }
 .character-detail-media img, .character-detail-media video { width: 100%; height: 100%; object-fit: cover; }
+.character-detail-video-preview { display: grid; width: 100%; height: 100%; padding: 0; place-items: center; overflow: hidden; color: var(--text-muted); background: var(--surface-soft); border: 0; cursor: pointer; }
+.character-detail-video-preview img { pointer-events: none; }
+.character-detail-video-empty { font-size: 12px; font-weight: 750; letter-spacing: .08em; }
 .character-detail-media-kind { position: absolute; z-index: 2; top: 7px; right: 7px; display: grid; width: 22px; height: 22px; place-items: center; color: #fff; background: rgb(0 0 0 / 68%); border: 1px solid rgb(255 255 255 / 28%); border-radius: 50%; font-size: 10px; line-height: 1; pointer-events: none; }
 .character-detail-media video { cursor: pointer; }
-.character-detail-media video::-webkit-media-controls-overlay-play-button { display: none !important; -webkit-appearance: none; }
-.character-detail-media video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none; }
-.character-detail-media video:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.character-detail-media video:focus-visible,
+.character-detail-video-preview:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
 .character-detail-gallery-grid figcaption { padding: 9px 10px; }
 .character-detail-gallery-empty { padding: 18px; color: var(--text-muted); text-align: center; background: var(--surface-raised); border: 1px dashed var(--border); border-radius: 10px; }
 .character-detail-content-note { margin: 0 0 12px; color: var(--text-muted); font-size: 12px; font-weight: 550; }
