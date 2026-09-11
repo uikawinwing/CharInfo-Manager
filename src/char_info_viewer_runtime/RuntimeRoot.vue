@@ -647,7 +647,7 @@ function closeLibraryWorkspace(): void {
 
 function openSettingsFromCurrentMobileMore(): void {
   currentMobileMoreOpen.value = false;
-  onOpenSettings();
+  props.onOpenSettings();
 }
 
 function focusLibrarySearch(): void {
