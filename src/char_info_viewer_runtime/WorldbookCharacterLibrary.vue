@@ -359,6 +359,7 @@
                     v-if="item.media?.kind === 'video'"
                     :ref="element => setDetailVideoElement(item.sourceIndex, element)"
                     :src="item.media.url"
+                    :poster="item.poster || undefined"
                     :aria-label="`预览视频：${item.title || `角色图片 ${index + 1}`}；鼠标悬停播放，触屏点击播放或暂停`"
                     muted
                     loop
@@ -606,6 +607,7 @@ const detailGalleryItems = computed(() =>
         title: image.title,
         sourceIndex: index,
         media: sources[detailGalleryIndexes[`${detailKey.value}:${index}`] ?? 0] ?? null,
+        poster: videoPoster(image),
       },
     ];
   }),
@@ -705,6 +707,15 @@ async function loadRemotePresentations(loaded: readonly WorldbookEntry[], revisi
   };
   const workerCount = Math.min(REMOTE_PREVIEW_CONCURRENCY, loaded.length);
   await Promise.all(Array.from({ length: workerCount }, () => worker()));
+}
+
+function videoPoster(image: GalleryImage): string {
+  const candidates = [image.thumbnail ?? '', ...image.sources];
+  for (const value of candidates) {
+    const media = normalizePortraitMediaUrlForBrowser(value);
+    if (media?.kind === 'image') return media.url;
+  }
+  return '';
 }
 
 function mediaSources(image: GalleryImage): Media[] {
@@ -1088,6 +1099,8 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
 .character-detail-media img, .character-detail-media video { width: 100%; height: 100%; object-fit: cover; }
 .character-detail-media-kind { position: absolute; z-index: 2; top: 7px; right: 7px; display: grid; width: 22px; height: 22px; place-items: center; color: #fff; background: rgb(0 0 0 / 68%); border: 1px solid rgb(255 255 255 / 28%); border-radius: 50%; font-size: 10px; line-height: 1; pointer-events: none; }
 .character-detail-media video { cursor: pointer; }
+.character-detail-media video::-webkit-media-controls-overlay-play-button { display: none !important; -webkit-appearance: none; }
+.character-detail-media video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none; }
 .character-detail-media video:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
 .character-detail-gallery-grid figcaption { padding: 9px 10px; }
 .character-detail-gallery-empty { padding: 18px; color: var(--text-muted); text-align: center; background: var(--surface-raised); border: 1px dashed var(--border); border-radius: 10px; }
