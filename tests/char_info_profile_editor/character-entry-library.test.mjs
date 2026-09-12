@@ -350,6 +350,10 @@ test('尚未进入变量的角色只从受控 YAML 路径提取静态种族', ()
   assert.equal(inferCharacterRace('基本信息:\n  种族: 精灵'), '精灵');
   assert.equal(inferCharacterRace('澪:\n  种族: 神造人', '澪'), '神造人');
   assert.equal(inferCharacterRace('澪:\n  基本信息:\n    种族: 神造人', '澪'), '神造人');
+  assert.equal(
+    inferCharacterRace('千爻:\n  基本信息:\n    性别: 女性\n    种族: 东方龙裔\n    年龄: 外表16岁\n<%_ const unrelated = true; _%>', '千爻'),
+    '东方龙裔',
+  );
   assert.equal(inferCharacterRace('设定:\n  种族: 人类'), '');
   assert.equal(inferCharacterRace('正文没有结构化种族'), '');
   assert.equal(inferCharacterRace('设定:\n  身份:\n    种族: 人类'), '');
@@ -357,6 +361,8 @@ test('尚未进入变量的角色只从受控 YAML 路径提取静态种族', ()
   assert.equal(inferCharacterRace('种族: 人类\n<%_ const flag = true; _%>\n正文: :'), '人类');
   assert.equal(inferCharacterRace('种族: 人类\n无效 YAML: ['), '人类');
   assert.equal(inferCharacterRace('<%_\n种族: EJS 种族\n_%>'), '');
+  assert.equal(inferCharacterRace('千爻:\n  基本信息:\n    种族: <%= npc.race %>\n<%_ const unrelated = true; _%>', '千爻'), '');
+  assert.equal(inferCharacterRace('背景故事: |\n  种族: 只是故事里的文字\n<%_ const unrelated = true; _%>', '千爻'), '');
   assert.equal(inferCharacterRace('种族: <%= npc.race %>'), '');
   assert.equal(inferCharacterRace('种族: ${npc.race}'), '');
   assert.equal(inferCharacterRace('种族: [人类]'), '');
