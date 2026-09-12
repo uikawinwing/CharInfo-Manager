@@ -382,7 +382,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         themeMode: state.settings.themeMode,
         debugEnabled: state.settings.debugEnabled,
         onForceRefresh: forceRefreshCharInfo,
-        onReturnToWorldbookLibrary: () => {
+        onReturnToLibrary: () => {
           closeProfileEditor();
           openWorldbookLibrary();
         },
@@ -399,20 +399,20 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     if (!name) return;
     try {
       openProfileEditor({
-        flashCharacterName: name,
+        initialCharacterName: name,
         forceMobileLayout: state.settings.forceMobileLayout,
         themeMode: state.settings.themeMode,
         debugEnabled: state.settings.debugEnabled,
         onForceRefresh: forceRefreshCharInfo,
-        onReturnToCurrentLibrary: () => {
+        onReturnToLibrary: () => {
           closeProfileEditor();
           openLibraryCharacter(name);
         },
       });
       closeLibrary();
     } catch (error) {
-      console.error('[CharInfo Runtime] 角色档案编辑器（快速模式）打开失败：', error);
-      toastr.warning('角色档案编辑器（快速模式）暂时无法打开。');
+      console.error('[CharInfo Runtime] 角色档案编辑器打开失败：', error);
+      toastr.warning('角色档案编辑器暂时无法打开。');
     }
   };
 

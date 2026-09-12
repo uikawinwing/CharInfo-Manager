@@ -7,39 +7,46 @@ const runtimeSource = readFileSync(new URL('../../src/char_info_viewer_runtime/r
 const overlaySource = readFileSync(new URL('../../src/char_info_profile_editor/overlay.ts', import.meta.url), 'utf8');
 const profileEditorSource = readFileSync(new URL('../../src/char_info_profile_editor/App.vue', import.meta.url), 'utf8');
 
-test('当前聊天角色详情直接提供添加或编辑档案入口', () => {
+test('两个角色资料库入口都进入同一个角色档案编辑器模式选择页', () => {
   assert.match(runtimeRootSource, /selectedCharacter\.hasProfileRecord \? '编辑档案' : '添加档案'/u);
   assert.match(runtimeRootSource, /props\.onEditCurrentChatCharacterProfile\(selectedCharacter\.name\)/u);
-  assert.match(runtimeSource, /flashCharacterName: name/u);
-  assert.match(overlaySource, /flashCharacterName: options\.flashCharacterName/u);
+  assert.match(runtimeSource, /editWorldbookCharacter[\s\S]*?openProfileEditor\(\{[\s\S]*?worldbookName,[\s\S]*?entryUid,/u);
+  assert.match(runtimeSource, /editCurrentChatCharacterProfile[\s\S]*?openProfileEditor\(\{[\s\S]*?initialCharacterName: name/u);
+  assert.match(overlaySource, /initialCharacterName: options\.initialCharacterName/u);
+  assert.match(profileEditorSource, /const editorMode = ref<EditorMode \| null>\(null\)/u);
+  assert.match(profileEditorSource, /const modeSelection = computed\(\(\) => editorMode\.value === null\)/u);
+  assert.match(profileEditorSource, /要怎样建立这个角色档案？/u);
+  assert.match(profileEditorSource, /@click="selectEditorMode\('flash'\)"/u);
+  assert.match(profileEditorSource, /@click="selectEditorMode\('pro'\)"/u);
 });
 
-test('Flash Mode 只展示图片编辑并用一个保存并应用动作完成世界书与当前聊天同步', () => {
-  assert.match(profileEditorSource, /const flashMode = computed\(\(\) => !!props\.flashCharacterName\.trim\(\)\)/u);
-  assert.match(profileEditorSource, /flashProfileExists\.value = !!existingProfile/u);
-  assert.match(profileEditorSource, /flashMode\.value \|\| !!selectedEntry\.value/u);
-  assert.match(profileEditorSource, /v-if="flashMode" class="flash-mode-editor"/u);
-  assert.match(profileEditorSource, /角色设定继续读取当前聊天变量；这里只保存立绘、头像与相册到当前聊天世界书/u);
-  assert.match(profileEditorSource, /class="flash-mode-url-field"[\s\S]*?type="url"[\s\S]*?placeholder="https:\/\/…\/portrait\.webp"/u);
-  assert.match(profileEditorSource, /@input="updateFlashImageUrl\(image, \(\$event\.target as HTMLInputElement\)\.value\)"/u);
-  assert.match(profileEditorSource, /function ensureFlashRows\(\)[\s\S]*?sources: \[''\]/u);
-  assert.match(profileEditorSource, /function addFlashImage\(\)/u);
-  assert.match(profileEditorSource, /function removeFlashImage\(index: number\)/u);
-  assert.match(profileEditorSource, /\.dialog-body\.flash-mode\s*\{[\s\S]*?display: flex;[\s\S]*?overflow: hidden;/u);
-  assert.match(profileEditorSource, /\.flash-mode-gallery\s*\{[\s\S]*?overflow-y: auto;[\s\S]*?flex: 1 1 auto;/u);
-  assert.match(profileEditorSource, /--ci-mobile-safe-top: max\(env\(safe-area-inset-top, 0px\), 28px\);/u);
-  assert.match(profileEditorSource, /--ci-mobile-safe-bottom: max\(env\(safe-area-inset-bottom, 0px\), 18px\);/u);
-  assert.match(profileEditorSource, /\.flash-mode-save-bar\s*\{[\s\S]*?var\(--ci-mobile-safe-bottom\)/u);
-  assert.match(profileEditorSource, /@mixin mobile-manager-layout[\s\S]*?\.dialog-header \{[\s\S]*?var\(--ci-mobile-safe-top\)/u);
+test('快速模式只要求角色全名和一个图片 URL', () => {
+  assert.match(profileEditorSource, /v-else-if="flashMode" class="flash-mode-editor"/u);
+  assert.match(profileEditorSource, /<span>角色全名<\/span>[\s\S]*?v-model="profile\.characterName"/u);
+  assert.match(profileEditorSource, /<span>图片 URL<\/span>[\s\S]*?:value="primaryFlashImageUrl"/u);
+  assert.match(profileEditorSource, /@input="updatePrimaryFlashImageUrl\(\(\$event\.target as HTMLInputElement\)\.value\)"/u);
+  assert.match(profileEditorSource, /function updatePrimaryFlashImageUrl\(value: string\)/u);
+  assert.doesNotMatch(profileEditorSource, /添加另一张图片/u);
+  assert.doesNotMatch(profileEditorSource, /function addFlashImage\(/u);
+  assert.doesNotMatch(profileEditorSource, /function removeFlashImage\(/u);
+});
+
+test('快速模式按来源写回正确世界书，专业模式继续使用完整 EJS 写入流程', () => {
+  assert.match(profileEditorSource, /if \(hasInitialWorldbookTarget\.value\)[\s\S]*?updateWorldbookWith\([\s\S]*?upsertManagedEjsBlockWithLegacyMigration/u);
   assert.match(profileEditorSource, /saveFlashProfileToCurrentChatWorldbook\(normalizedProfile\)/u);
   assert.match(profileEditorSource, /const applied = await applyCurrentProfileToCurrentChat\(\)/u);
-  assert.match(profileEditorSource, /<h1 id="manager-title">角色档案编辑器<\/h1>/u);
-  assert.match(profileEditorSource, /flashMode \? '快速模式'/u);
-  assert.match(profileEditorSource, /专业模式 · \$\{activeStep\}\/\$\{steps\.length\}/u);
-  assert.match(profileEditorSource, /'save-success': flashSaveCelebrating/u);
-  assert.match(profileEditorSource, /flashSaveCelebrating\s*\? '✓ 已保存'/u);
-  assert.match(profileEditorSource, /flashProfileExists[\s\S]*?\? '保存并应用'[\s\S]*?: '添加并应用'/u);
-  assert.match(profileEditorSource, /function scheduleFlashReturn\(\)[\s\S]*?window\.setTimeout\([\s\S]*?props\.onReturnToCurrentLibrary\(\)[\s\S]*?700\);/u);
-  assert.match(profileEditorSource, /saveMessage\.value = `✓ 已\$\{result\.created \? '添加' : '更新'\}[\s\S]*?scheduleFlashReturn\(\);/u);
-  assert.match(profileEditorSource, /\.flash-save-button\.save-success[\s\S]*?background: var\(--success\);[\s\S]*?animation: flash-save-success-pop/u);
+  assert.match(profileEditorSource, /async function selectEditorMode\(mode: EditorMode\)[\s\S]*?if \(mode === 'flash'\)[\s\S]*?initializeFlashMode/u);
+  assert.match(profileEditorSource, /v-else-if="proMode" class="wizard-step-nav"/u);
+  assert.match(profileEditorSource, /<form v-if="proMode" v-show="activeStep !== 1"/u);
+  assert.match(profileEditorSource, /async function saveToEntry\(\)[\s\S]*?upsertManagedEjsBlockWithLegacyMigration/u);
+});
+
+test('新入口保持移动安全区与清晰的模式卡布局', () => {
+  assert.match(profileEditorSource, /--ci-mobile-safe-top: max\(env\(safe-area-inset-top, 0px\), 28px\);/u);
+  assert.match(profileEditorSource, /--ci-mobile-safe-bottom: max\(env\(safe-area-inset-bottom, 0px\), 18px\);/u);
+  assert.match(profileEditorSource, /\.mode-choice-grid\s*\{[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/u);
+  assert.match(profileEditorSource, /@mixin mobile-manager-layout[\s\S]*?\.mode-choice-grid \{[\s\S]*?grid-template-columns: 1fr;/u);
+  assert.match(profileEditorSource, /@mixin mobile-manager-layout[\s\S]*?\.return-library-button \{[\s\S]*?width: 42px;/u);
+  assert.match(profileEditorSource, /\.dialog-header h1 \{[\s\S]*?white-space: nowrap;/u);
+  assert.match(profileEditorSource, /function scheduleFlashReturn\(\)[\s\S]*?props\.onReturnToLibrary\(\)[\s\S]*?700\);/u);
 });

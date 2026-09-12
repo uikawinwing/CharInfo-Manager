@@ -196,13 +196,15 @@ test('角色档案编辑器即时写入当前 draft 时强校验 CharInfo、状�
   assert.match(appSource, /当前聊天变量未修改/u);
 });
 
-test('从世界书角色库进入角色档案编辑器时提供直接返回角色库的回调', async () => {
+test('世界书角色库与当前聊天角色库共用角色档案编辑器入口与返回回调', async () => {
   const runtimeSource = await readFile(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
   const overlaySource = await readFile(new URL('../../src/char_info_profile_editor/overlay.ts', import.meta.url), 'utf8');
   const appSource = await readFile(new URL('../../src/char_info_profile_editor/App.vue', import.meta.url), 'utf8');
 
-  assert.match(runtimeSource, /onReturnToWorldbookLibrary: \(\) => \{[\s\S]*?closeProfileEditor\(\);[\s\S]*?openWorldbookLibrary\(\);/u);
-  assert.match(overlaySource, /onReturnToWorldbookLibrary: options\.onReturnToWorldbookLibrary/u);
-  assert.match(appSource, /v-if="!flashMode && props\.onReturnToWorldbookLibrary"/u);
-  assert.match(appSource, /← 返回世界书角色库/u);
+  assert.match(runtimeSource, /onReturnToLibrary: \(\) => \{[\s\S]*?closeProfileEditor\(\);[\s\S]*?openWorldbookLibrary\(\);/u);
+  assert.match(runtimeSource, /initialCharacterName: name[\s\S]*?onReturnToLibrary: \(\) => \{[\s\S]*?openLibraryCharacter\(name\);/u);
+  assert.match(overlaySource, /initialCharacterName: options\.initialCharacterName/u);
+  assert.match(overlaySource, /onReturnToLibrary: options\.onReturnToLibrary/u);
+  assert.match(appSource, /v-if="modeSelection && props\.onReturnToLibrary"/u);
+  assert.match(appSource, /← 返回角色资料库/u);
 });

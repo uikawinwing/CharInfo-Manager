@@ -20,10 +20,9 @@ export type ProfileEditorOverlayOptions = {
   debugEnabled?: boolean;
   worldbookName?: string;
   entryUid?: number;
-  flashCharacterName?: string;
+  initialCharacterName?: string;
   onForceRefresh?: () => void | Promise<void>;
-  onReturnToWorldbookLibrary?: () => void;
-  onReturnToCurrentLibrary?: () => void;
+  onReturnToLibrary?: () => void;
 };
 
 type ProfileEditorController = {
@@ -142,12 +141,11 @@ export function createProfileEditorOverlay(
           initialView: 'editor',
           initialWorldbookName: options.worldbookName,
           initialEntryUid: options.entryUid,
-          flashCharacterName: options.flashCharacterName,
+          initialCharacterName: options.initialCharacterName,
           themeMode: options.themeMode ?? DEFAULT_CHAR_INFO_THEME_MODE,
           debugEnabled: options.debugEnabled ?? false,
           onForceRefresh: options.onForceRefresh,
-          onReturnToWorldbookLibrary: options.onReturnToWorldbookLibrary,
-          onReturnToCurrentLibrary: options.onReturnToCurrentLibrary,
+          onReturnToLibrary: options.onReturnToLibrary,
           onClose: close,
         });
         managerController = mountedApp.mount(mountPoint) as ProfileEditorController;

@@ -5,29 +5,34 @@
     <main class="manager-dialog" role="dialog" aria-modal="true" aria-labelledby="manager-title">
       <header class="dialog-header">
         <div class="header-title">
-          <h1 id="manager-title">角色档案编辑器</h1>
-          <span class="phase-badge">{{ flashMode ? '快速模式' : `专业模式 · ${activeStep}/${steps.length}` }}</span>
+          <button
+            v-if="editorMode"
+            class="header-back-button"
+            type="button"
+            aria-label="返回模式选择"
+            @click="returnToModeSelection"
+          >
+            ←
+          </button>
+          <div class="header-title-copy">
+            <h1 id="manager-title">角色档案编辑器</h1>
+            <span v-if="editorMode" class="phase-badge">
+              {{ flashMode ? '快速模式' : `专业模式 · ${activeStep}/${steps.length}` }}
+            </span>
+          </div>
         </div>
 
         <div class="header-actions">
           <button
-            v-if="flashMode && props.onReturnToCurrentLibrary"
+            v-if="modeSelection && props.onReturnToLibrary"
             class="secondary-button return-library-button"
             type="button"
-            @click="props.onReturnToCurrentLibrary"
+            @click="props.onReturnToLibrary"
           >
-            ← 返回角色卡
+            ← 返回角色资料库
           </button>
           <button
-            v-if="!flashMode && props.onReturnToWorldbookLibrary"
-            class="secondary-button return-library-button"
-            type="button"
-            @click="props.onReturnToWorldbookLibrary"
-          >
-            ← 返回世界书角色库
-          </button>
-          <button
-            v-if="!flashMode"
+            v-if="proMode"
             class="secondary-button viewer-preview-trigger"
             type="button"
             :disabled="!canPreviewViewer"
@@ -39,48 +44,82 @@
         </div>
       </header>
 
-      <div class="dialog-body" :class="{ 'flash-mode': flashMode }">
-        <form v-if="flashMode" class="flash-mode-editor" novalidate @submit.prevent="saveFlashProfile">
-          <section class="flash-mode-intro">
-            <div>
-              <span>当前聊天角色</span>
-              <strong>{{ profile.characterName }}</strong>
-            </div>
-            <p>角色设定继续读取当前聊天变量；这里只保存立绘、头像与相册到当前聊天世界书。</p>
-          </section>
+      <div
+        class="dialog-body"
+        :class="{ 'mode-selection-body': modeSelection, 'flash-mode': flashMode, 'pro-mode': proMode }"
+      >
+        <section v-if="modeSelection" class="mode-selection">
+          <div class="mode-selection-hero">
+            <span class="mode-eyebrow">{{ editorContextSource }}</span>
+            <h2>要怎样建立这个角色档案？</h2>
+            <strong>{{ editorContextName }}</strong>
+            <p>{{ editorContextDescription }}</p>
+          </div>
 
+          <div class="mode-choice-grid">
+            <button
+              class="mode-choice-card flash"
+              type="button"
+              :disabled="hasInitialWorldbookTarget && loadingWorldbooks"
+              @click="selectEditorMode('flash')"
+            >
+              <span class="mode-choice-icon" aria-hidden="true">⚡</span>
+              <span class="mode-choice-copy">
+                <strong>快速模式</strong>
+                <small>角色全名 + 一张图片，就可以完成。</small>
+                <span class="mode-choice-fields">角色全名 · 图片 URL</span>
+              </span>
+              <span class="mode-choice-action">快速建立 →</span>
+            </button>
+
+            <button
+              class="mode-choice-card pro"
+              type="button"
+              :disabled="hasInitialWorldbookTarget && loadingWorldbooks"
+              @click="selectEditorMode('pro')"
+            >
+              <span class="mode-choice-icon" aria-hidden="true">✦</span>
+              <span class="mode-choice-copy">
+                <strong>专业模式</strong>
+                <small>完整编辑角色档案，并把 CharInfo 管理 EJS 写入目标世界书。</small>
+                <span class="mode-choice-fields">档案 · 配色 · 相册 · Metadata · 远程图库</span>
+              </span>
+              <span class="mode-choice-action">打开完整编辑器 →</span>
+            </button>
+          </div>
+        </section>
+
+        <form v-else-if="flashMode" class="flash-mode-editor" novalidate @submit.prevent="saveFlashProfile">
           <div class="flash-mode-gallery">
-            <p class="flash-mode-guidance">粘贴 HTTPS 图片直链即可。第一张静态图会自动作为头像和角色库封面。</p>
-
-            <div class="flash-mode-list">
-              <article v-for="(image, index) in profile.gallery" :key="image.id" class="flash-mode-card">
-                <div class="flash-mode-card-heading">
-                  <strong>{{ index === 0 ? '主立绘' : `图片 ${index + 1}` }}</strong>
-                  <button
-                    v-if="profile.gallery.length > 1"
-                    type="button"
-                    class="flash-mode-remove"
-                    :aria-label="`删除第 ${index + 1} 张图片`"
-                    @click="removeFlashImage(index)"
-                  >
-                    删除
-                  </button>
-                </div>
-                <label class="flash-mode-url-field">
-                  <span>图片 URL</span>
-                  <input
-                    :value="image.sources[0] ?? ''"
-                    type="url"
-                    inputmode="url"
-                    autocomplete="off"
-                    placeholder="https://…/portrait.webp"
-                    @input="updateFlashImageUrl(image, ($event.target as HTMLInputElement).value)"
-                  />
-                </label>
-              </article>
+            <div class="flash-mode-heading">
+              <span class="mode-eyebrow">{{ editorContextSource }}</span>
+              <h2>两项就够了</h2>
+              <p>填写角色完整姓名和一张 HTTPS 图片直链。第一张静态图会自动作为主立绘、头像与角色库封面。</p>
             </div>
 
-            <button class="flash-mode-add" type="button" @click="addFlashImage">＋ 添加另一张图片</button>
+            <div class="flash-mode-form">
+              <label class="flash-mode-url-field">
+                <span>角色全名</span>
+                <input v-model="profile.characterName" type="text" maxlength="80" autocomplete="off" placeholder="例如：傲雪" />
+              </label>
+
+              <label class="flash-mode-url-field">
+                <span>图片 URL</span>
+                <input
+                  :value="primaryFlashImageUrl"
+                  type="url"
+                  inputmode="url"
+                  autocomplete="off"
+                  placeholder="https://…/portrait.webp"
+                  @input="updatePrimaryFlashImageUrl(($event.target as HTMLInputElement).value)"
+                />
+              </label>
+
+              <div class="flash-target-note">
+                <span>写入位置</span>
+                <strong>{{ flashTargetLabel }}</strong>
+              </div>
+            </div>
           </div>
 
           <footer class="flash-mode-save-bar">
@@ -101,14 +140,14 @@
                   : saving || applyingSavedProfile
                     ? '正在保存…'
                     : flashProfileExists
-                      ? '保存并应用'
-                      : '添加并应用'
+                      ? '保存角色档案'
+                      : '建立角色档案'
               }}
             </button>
           </footer>
         </form>
 
-        <nav v-if="!flashMode" class="wizard-step-nav" aria-label="角色档案编辑步骤">
+        <nav v-else-if="proMode" class="wizard-step-nav" aria-label="角色档案编辑步骤">
           <div class="wizard-nav-header">
             <span>配置流程</span>
             <strong>{{ activeStep }} / {{ steps.length }}</strong>
@@ -136,7 +175,7 @@
         </nav>
 
         <aside
-          v-if="!flashMode"
+          v-if="proMode"
           id="manager-step-1"
           class="target-panel wizard-step-section"
           :class="{ 'is-collapsed': activeStep !== 1 }"
@@ -307,7 +346,7 @@
           </div>
         </aside>
 
-        <form v-if="!flashMode" v-show="activeStep !== 1" class="editor-panel" novalidate @submit.prevent="saveToEntry">
+        <form v-if="proMode" v-show="activeStep !== 1" class="editor-panel" novalidate @submit.prevent="saveToEntry">
           <section
             id="manager-step-2"
             class="form-section wizard-step-section"
@@ -768,27 +807,26 @@ interface EditableProfile extends Omit<CharacterProfile, 'gallery' | 'metadata'>
 }
 
 type StepId = 1 | 2 | 3 | 4 | 5;
+type EditorMode = 'flash' | 'pro';
 
 const props = withDefaults(
   defineProps<{
     initialWorldbookName?: string;
     initialEntryUid?: number;
-    flashCharacterName?: string;
+    initialCharacterName?: string;
     themeMode?: CharInfoThemeMode;
     debugEnabled?: boolean;
     onForceRefresh?: () => void | Promise<void>;
-    onReturnToWorldbookLibrary?: () => void;
-    onReturnToCurrentLibrary?: () => void;
+    onReturnToLibrary?: () => void;
   }>(),
   {
     initialWorldbookName: '',
     initialEntryUid: undefined,
-    flashCharacterName: '',
+    initialCharacterName: '',
     themeMode: DEFAULT_CHAR_INFO_THEME_MODE,
     debugEnabled: false,
     onForceRefresh: undefined,
-    onReturnToWorldbookLibrary: undefined,
-    onReturnToCurrentLibrary: undefined,
+    onReturnToLibrary: undefined,
   },
 );
 const emit = defineEmits<{ close: [] }>();
@@ -799,7 +837,10 @@ const steps: { id: StepId; shortLabel: string; title: string }[] = [
   { id: 4, shortLabel: '相册', title: '整理相册与头像' },
   { id: 5, shortLabel: '生成', title: '生成并写入' },
 ];
-const flashMode = computed(() => !!props.flashCharacterName.trim());
+const editorMode = ref<EditorMode | null>(null);
+const modeSelection = computed(() => editorMode.value === null);
+const flashMode = computed(() => editorMode.value === 'flash');
+const proMode = computed(() => editorMode.value === 'pro');
 const flashProfileExists = ref(false);
 const currentCharacterName = ref('');
 const worldbooks = ref<string[]>([]);
@@ -936,17 +977,54 @@ function replaceProfile(value: CharacterProfile) {
 }
 
 const selectedEntry = computed(() => entries.value.find(entry => entry.uid === selectedEntryUid.value) ?? null);
+const hasInitialWorldbookTarget = computed(
+  () => !!props.initialWorldbookName.trim() && props.initialEntryUid !== undefined,
+);
+const editorContextSource = computed(() => {
+  if (hasInitialWorldbookTarget.value) return '来自世界书角色库';
+  if (props.initialCharacterName.trim()) return '来自当前聊天角色库';
+  return '角色资料库';
+});
+const editorContextName = computed(() => {
+  const profileName = profile.characterName.trim();
+  if (profileName) return profileName;
+  const initialName = props.initialCharacterName.trim();
+  if (initialName) return initialName;
+  const entry = selectedEntry.value;
+  if (entry) return parseWorldbookCharacterDisplayName(entry.name) || entry.name || `条目 #${entry.uid}`;
+  return '尚未选择角色';
+});
+const editorContextDescription = computed(() =>
+  hasInitialWorldbookTarget.value
+    ? selectedEntry.value
+      ? `目标已锁定到「${selectedWorldbookName.value}」中的「${selectedEntry.value.name || `#${selectedEntry.value.uid}`}」。选择模式后直接编辑。`
+      : '正在读取所选世界书角色条目…'
+    : props.initialCharacterName.trim()
+      ? '角色姓名已从当前聊天带入；选择模式后再决定用最少字段快速建立，还是进入完整编辑。'
+      : '选择模式后再指定世界书与角色条目。',
+);
+const primaryFlashImageUrl = computed(() => profile.gallery[0]?.sources[0] ?? '');
+const flashTargetLabel = computed(() => {
+  if (hasInitialWorldbookTarget.value) {
+    const entry = selectedEntry.value;
+    return entry
+      ? `${selectedWorldbookName.value} · ${entry.name || `#${entry.uid}`}`
+      : `${props.initialWorldbookName.trim()} · 正在读取条目`;
+  }
+  return '当前聊天世界书 · 自动建立或更新 CharInfo 档案条目';
+});
 const canApplyCurrentProfile = computed(() => validationErrors.value.length === 0 && !applyingSavedProfile.value);
 const canFlashSave = computed(
   () =>
     flashMode.value &&
+    (!hasInitialWorldbookTarget.value || !!selectedEntry.value) &&
     validationErrors.value.length === 0 &&
     !saving.value &&
     !applyingSavedProfile.value &&
     !flashSaveCelebrating.value,
 );
 const canPreviewViewer = computed(
-  () => profile.characterName.trim().length > 0 && (flashMode.value || !!selectedEntry.value),
+  () => proMode.value && profile.characterName.trim().length > 0 && !!selectedEntry.value,
 );
 const viewerPreviewProfile = computed(() => toFullSerializableProfile());
 const viewerPreviewSampleData = computed(() => buildProfileEditorViewerPreviewData(viewerPreviewProfile.value));
@@ -1207,44 +1285,72 @@ function syncFlashRoleUrls(previousUrl = '') {
   if (!profile.coverUrl.trim() || (previous && profile.coverUrl.trim() === previous)) profile.coverUrl = fallbackUrl;
 }
 
-function updateFlashImageUrl(image: EditableGalleryImage, value: string) {
+function updatePrimaryFlashImageUrl(value: string) {
+  ensureFlashRows();
+  const image = profile.gallery[0];
   const previousUrl = image.sources[0] ?? '';
   if (image.sources.length === 0) image.sources.push(value);
   else image.sources[0] = value;
   syncFlashRoleUrls(previousUrl);
 }
 
-function addFlashImage() {
-  profile.gallery.push({
-    id: nextImageId++,
-    title: `备用立绘 ${profile.gallery.length + 1}`,
-    sources: [''],
-    previewSourceIndex: 0,
-  });
-}
+async function initializeFlashMode() {
+  saveState.value = 'idle';
+  applyMessage.value = '';
 
-function removeFlashImage(index: number) {
-  if (profile.gallery.length <= 1) return;
-  const [removed] = profile.gallery.splice(index, 1);
-  syncFlashRoleUrls(removed?.sources[0] ?? '');
-}
+  if (hasInitialWorldbookTarget.value) {
+    if (!selectedEntry.value) await loadWorldbooks();
+    if (!selectedEntry.value) {
+      saveState.value = 'error';
+      saveMessage.value = '无法读取从世界书角色库带入的目标条目。';
+      return;
+    }
+    await loadSelectedEntryProfile();
+    flashProfileExists.value = entryInspection.value.state === 'valid';
+    ensureFlashRows();
+    syncFlashRoleUrls();
+    saveMessage.value = flashProfileExists.value
+      ? `已读取「${profile.characterName || editorContextName.value}」现有角色档案。`
+      : '目标条目已锁定；填写角色全名和图片 URL 即可建立档案。';
+    return;
+  }
 
-function initializeFlashMode() {
-  const characterName = props.flashCharacterName.trim();
-  if (!characterName) return;
-
-  const existingProfile = readFlashProfileFromChatVariables(characterName, getVariables({ type: 'chat' }));
+  const characterName = props.initialCharacterName.trim();
+  const existingProfile = characterName
+    ? readFlashProfileFromChatVariables(characterName, getVariables({ type: 'chat' }))
+    : null;
   flashProfileExists.value = !!existingProfile;
   replaceProfile(existingProfile ?? createEmptyProfile(characterName));
   ensureFlashRows();
   syncFlashRoleUrls();
   profile.characterName = characterName;
-  activeStep.value = 4;
-  furthestStep.value = 5;
-  saveState.value = 'idle';
   saveMessage.value = existingProfile
-    ? `已读取「${characterName}」角色档案；快速模式只修改图片相关字段。`
-    : `正在为「${characterName}」建立角色档案的视觉部分；角色设定继续使用当前聊天变量。`;
+    ? `已读取「${characterName}」现有角色档案。`
+    : '填写角色全名和图片 URL 即可建立档案。';
+}
+
+async function selectEditorMode(mode: EditorMode) {
+  editorMode.value = mode;
+  if (mode === 'flash') {
+    await initializeFlashMode();
+    return;
+  }
+
+  if (worldbooks.value.length === 0) await loadWorldbooks();
+  if (hasInitialWorldbookTarget.value && selectedEntry.value) {
+    await loadSelectedEntryProfile();
+    furthestStep.value = Math.max(furthestStep.value, 2) as StepId;
+    goToStep(2);
+    return;
+  }
+  goToStep(1);
+}
+
+function returnToModeSelection() {
+  closeViewerPreview();
+  editorMode.value = null;
+  saveState.value = 'idle';
+  applyMessage.value = '';
 }
 
 async function loadWorldbooks() {
@@ -1430,6 +1536,10 @@ function onEscape() {
     closeViewerPreview();
     return;
   }
+  if (editorMode.value) {
+    returnToModeSelection();
+    return;
+  }
   emit('close');
 }
 
@@ -1520,8 +1630,8 @@ function scheduleFlashReturn() {
   if (flashSaveSuccessTimer !== null) window.clearTimeout(flashSaveSuccessTimer);
   flashSaveSuccessTimer = window.setTimeout(() => {
     flashSaveSuccessTimer = null;
-    if (props.onReturnToCurrentLibrary) {
-      props.onReturnToCurrentLibrary();
+    if (props.onReturnToLibrary) {
+      props.onReturnToLibrary();
       return;
     }
     emit('close');
@@ -1533,18 +1643,56 @@ async function saveFlashProfile() {
 
   saving.value = true;
   saveState.value = 'idle';
-  saveMessage.value = '正在保存角色档案到当前聊天世界书…';
+  saveMessage.value = hasInitialWorldbookTarget.value
+    ? '正在把角色档案写入目标世界书条目…'
+    : '正在保存角色档案到当前聊天世界书…';
   applyMessage.value = '';
 
   try {
     ensureFlashRows();
     syncFlashRoleUrls();
     const normalizedProfile = normalizeProfile(toFullSerializableProfile());
+
+    if (hasInitialWorldbookTarget.value) {
+      const worldbookName = selectedWorldbookName.value;
+      const entry = selectedEntry.value;
+      if (!worldbookName || !entry) throw new Error('目标世界书角色条目尚未读取完成。');
+
+      const latestEntries = await getWorldbook(worldbookName);
+      const latestEntry = latestEntries.find(item => item.uid === entry.uid);
+      if (!latestEntry) throw new Error(`找不到世界书条目 #${entry.uid}。`);
+      upsertManagedEjsBlockWithLegacyMigration(latestEntry.content, normalizedProfile);
+
+      const updatedWorldbook = await updateWorldbookWith(
+        worldbookName,
+        entries =>
+          entries.map(item =>
+            item.uid === entry.uid
+              ? { ...item, content: upsertManagedEjsBlockWithLegacyMigration(item.content, normalizedProfile) }
+              : item,
+          ),
+        { render: 'immediate' },
+      );
+      entries.value = updatedWorldbook;
+      const savedEntry = updatedWorldbook.find(item => item.uid === entry.uid);
+      const inspection = savedEntry ? inspectManagedBlock(savedEntry.content) : { state: 'absent' as const };
+      if (inspection.state !== 'valid' || inspection.profile.characterName !== normalizedProfile.characterName) {
+        throw new Error('角色档案写入后的 CharInfo EJS 读回验证失败。');
+      }
+
+      await props.onForceRefresh?.();
+      flashProfileExists.value = true;
+      saveState.value = 'success';
+      saveMessage.value = `✓ 已更新「${normalizedProfile.characterName}」角色档案；原世界书条目其他内容保持不变。`;
+      scheduleFlashReturn();
+      return;
+    }
+
     const result = await saveFlashProfileToCurrentChatWorldbook(normalizedProfile);
-    saveMessage.value = '世界书已保存，正在同步当前聊天视觉…';
+    saveMessage.value = '世界书已保存，正在同步当前聊天角色档案…';
     const applied = await applyCurrentProfileToCurrentChat();
     if (!applied) {
-      throw new Error(applyMessage.value.replace(/^即时写入失败：\s*/u, '') || '当前聊天视觉同步失败。');
+      throw new Error(applyMessage.value.replace(/^即时写入失败：\s*/u, '') || '当前聊天角色档案同步失败。');
     }
 
     flashProfileExists.value = true;
@@ -1724,13 +1872,13 @@ watch(selectedEntryUid, uid => {
   if (uid === null) {
     void loadSelectedEntryProfile();
     furthestStep.value = 1;
-    goToStep(1);
+    if (proMode.value) goToStep(1);
     return;
   }
 
   void loadSelectedEntryProfile();
   furthestStep.value = 2;
-  goToStep(2);
+  if (proMode.value) goToStep(2);
 });
 watch(viewerPreviewSource, () => {
   if (!viewerPreviewOpen.value) return;
@@ -1738,11 +1886,9 @@ watch(viewerPreviewSource, () => {
 });
 
 onMounted(() => {
-  if (flashMode.value) {
-    initializeFlashMode();
-    return;
-  }
-  void loadWorldbooks();
+  const initialCharacterName = props.initialCharacterName.trim();
+  if (initialCharacterName) profile.characterName = initialCharacterName;
+  if (hasInitialWorldbookTarget.value) void loadWorldbooks();
 });
 
 onBeforeUnmount(() => {
@@ -1863,19 +2009,51 @@ button {
 .header-title {
   display: flex;
   min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-title-copy {
+  display: flex;
+  min-width: 0;
   align-items: center;
   gap: 10px;
 }
 
 .dialog-header h1 {
+  overflow: hidden;
   font-size: clamp(22px, 3vw, 31px);
   line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .header-actions {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 10px;
+}
+
+.header-back-button {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.header-back-button:hover {
+  color: var(--text);
+  background: var(--surface-soft);
 }
 
 .viewer-preview-trigger,
@@ -2032,80 +2210,174 @@ button {
   grid-template-columns: 272px minmax(0, 1fr);
 }
 
+.dialog-body.mode-selection-body,
+.dialog-body.flash-mode {
+  display: flex;
+  overflow: hidden;
+}
+
+.mode-selection {
+  display: grid;
+  width: min(960px, 100%);
+  min-height: 0;
+  margin: auto;
+  padding: clamp(28px, 5vw, 58px);
+  overflow-y: auto;
+  gap: 28px;
+}
+
+.mode-selection-hero {
+  display: grid;
+  max-width: 720px;
+  gap: 8px;
+}
+
+.mode-eyebrow {
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.mode-selection-hero h2,
+.flash-mode-heading h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(24px, 4vw, 36px);
+  line-height: 1.18;
+}
+
+.mode-selection-hero > strong {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mode-selection-hero p,
+.flash-mode-heading p {
+  max-width: 700px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.mode-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.mode-choice-card {
+  display: grid;
+  min-width: 0;
+  min-height: 230px;
+  padding: 24px;
+  align-content: start;
+  gap: 18px;
+  color: var(--text);
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.mode-choice-card.flash {
+  background: linear-gradient(145deg, var(--primary-soft), var(--surface) 58%);
+  border-color: rgb(var(--ci-primary-rgb) / 38%);
+}
+
+.mode-choice-card:hover:not(:disabled),
+.mode-choice-card:focus-visible:not(:disabled) {
+  border-color: rgb(var(--ci-primary-rgb) / 58%);
+  box-shadow: 0 14px 34px rgb(0 0 0 / 20%);
+  transform: translateY(-2px);
+  outline: none;
+}
+
+.mode-choice-card:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.mode-choice-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px solid rgb(var(--ci-primary-rgb) / 26%);
+  border-radius: 13px;
+  font-size: 21px;
+}
+
+.mode-choice-copy {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.mode-choice-copy > strong {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.mode-choice-copy > small {
+  min-height: 3.2em;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.mode-choice-fields {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.mode-choice-action {
+  margin-top: auto;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .flash-mode-editor {
   display: flex;
   min-width: 0;
   min-height: 0;
   flex: 1 1 auto;
-  grid-column: 1 / -1;
   flex-direction: column;
 }
 
-.flash-mode-intro {
-  display: flex;
-  padding: 16px 22px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
-
-.flash-mode-intro div {
-  display: grid;
-  gap: 3px;
-}
-
-.flash-mode-intro span,
-.flash-mode-intro p {
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.flash-mode-intro strong {
-  font-size: 18px;
-}
-
-.flash-mode-intro p {
-  max-width: 620px;
-  margin: 0;
-  text-align: right;
-}
-
 .flash-mode-gallery {
+  display: grid;
+  width: min(760px, 100%);
   min-height: 0;
-  padding: 18px 22px 26px;
+  margin: auto;
+  padding: clamp(28px, 5vw, 54px);
   overflow-y: auto;
-  flex: 1 1 auto;
+  align-content: center;
+  gap: 24px;
 }
 
-.flash-mode-guidance {
-  margin: 0 0 12px;
-  color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.flash-mode-list {
+.flash-mode-heading {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
-.flash-mode-card {
+.flash-mode-form {
   display: grid;
-  gap: 10px;
-  padding: 14px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-}
-
-.flash-mode-card-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
 }
 
 .flash-mode-url-field {
@@ -2113,7 +2385,8 @@ button {
   gap: 7px;
 }
 
-.flash-mode-url-field > span {
+.flash-mode-url-field > span,
+.flash-target-note > span {
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 800;
@@ -2121,35 +2394,34 @@ button {
 
 .flash-mode-url-field input {
   width: 100%;
-  min-height: 46px;
-  padding: 10px 12px;
+  min-height: 50px;
+  padding: 11px 13px;
   color: var(--text);
-  background: var(--surface-soft);
+  background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: 10px;
+  border-radius: 12px;
+  outline: none;
 }
 
-.flash-mode-remove,
-.flash-mode-add {
-  min-height: 40px;
-  padding: 8px 12px;
-  color: var(--text-secondary);
+.flash-mode-url-field input:focus {
+  border-color: rgb(var(--ci-primary-rgb) / 68%);
+  box-shadow: 0 0 0 3px rgb(var(--ci-primary-rgb) / 10%);
+}
+
+.flash-target-note {
+  display: grid;
+  padding: 13px 14px;
+  gap: 4px;
   background: var(--surface-soft);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  cursor: pointer;
+  border-radius: 12px;
 }
 
-.flash-mode-remove {
-  min-height: 34px;
-  color: var(--danger);
-}
-
-.flash-mode-add {
-  width: 100%;
-  margin-top: 12px;
-  color: var(--primary);
-  border-style: dashed;
+.flash-target-note strong {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .flash-mode-save-bar {
@@ -3466,9 +3738,34 @@ pre {
     -webkit-overflow-scrolling: touch;
   }
 
+  .dialog-body.mode-selection-body,
   .dialog-body.flash-mode {
     display: flex;
     overflow: hidden;
+  }
+
+  .mode-selection {
+    width: 100%;
+    margin: 0;
+    padding: 24px 18px calc(28px + var(--ci-mobile-safe-bottom));
+    align-content: start;
+    gap: 22px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mode-choice-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .mode-choice-card {
+    min-height: 0;
+    padding: 18px;
+    gap: 14px;
+  }
+
+  .mode-choice-copy > small {
+    min-height: 0;
   }
 
   .flash-mode-editor {
@@ -3477,22 +3774,13 @@ pre {
     flex: 1 1 auto;
   }
 
-  .flash-mode-intro {
-    padding: 12px 14px;
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .flash-mode-intro p {
-    max-width: none;
-    text-align: left;
-  }
-
   .flash-mode-gallery {
+    width: 100%;
     min-height: 0;
-    padding: 12px 14px 18px;
+    margin: 0;
+    padding: 24px 18px 20px;
     overflow-y: auto;
+    align-content: start;
     flex: 1 1 auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -3739,11 +4027,82 @@ pre {
     z-index: 3;
     top: 0;
     align-items: center;
+    gap: 8px;
     padding: calc(12px + var(--ci-mobile-safe-top)) calc(14px + var(--ci-mobile-safe-right)) 12px calc(14px + var(--ci-mobile-safe-left));
+  }
+
+  .header-title {
+    flex: 1 1 auto;
+    gap: 8px;
+  }
+
+  .header-title-copy {
+    display: block;
+    min-width: 0;
   }
 
   .dialog-header h1 {
     font-size: 19px;
+  }
+
+  .header-actions {
+    gap: 8px;
+  }
+
+  .header-back-button,
+  .close-button {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+  }
+
+  .return-library-button {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    padding: 0;
+    overflow: hidden;
+    font-size: 0;
+  }
+
+  .return-library-button::before {
+    content: '←';
+    font-size: 20px;
+  }
+
+  .viewer-preview-trigger {
+    min-height: 42px;
+    padding: 0 10px;
+  }
+
+  .mode-selection {
+    width: 100%;
+    margin: 0;
+    padding: 24px 18px calc(28px + var(--ci-mobile-safe-bottom));
+    align-content: start;
+    gap: 22px;
+  }
+
+  .mode-choice-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .mode-choice-card {
+    min-height: 0;
+    padding: 18px;
+    gap: 14px;
+  }
+
+  .mode-choice-copy > small {
+    min-height: 0;
+  }
+
+  .flash-mode-gallery {
+    width: 100%;
+    margin: 0;
+    padding: 24px 18px 20px;
+    align-content: start;
   }
   .field-grid,
   .metadata-field-grid,
