@@ -203,6 +203,6 @@ test('从世界书角色库进入 Creator 时提供直接返回角色库的回�
 
   assert.match(runtimeSource, /onReturnToWorldbookLibrary: \(\) => \{[\s\S]*?closeCreatorEditor\(\);[\s\S]*?openWorldbookLibrary\(\);/u);
   assert.match(overlaySource, /onReturnToWorldbookLibrary: options\.onReturnToWorldbookLibrary/u);
-  assert.match(appSource, /v-if="props\.onReturnToWorldbookLibrary"/u);
+  assert.match(appSource, /v-if="!quickVisualMode && props\.onReturnToWorldbookLibrary"/u);
   assert.match(appSource, /← 返回角色库/u);
 });

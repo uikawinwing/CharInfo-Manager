@@ -5,7 +5,7 @@ import test from 'node:test';
 const appSource = readFileSync(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
 
 test('Creator Step 5 separates worldbook save from immediate chat/status write', () => {
-  assert.match(appSource, /<form\s+v-show="activeStep !== 1"[\s\S]*@submit\.prevent="saveToEntry"/u);
+  assert.match(appSource, /<form\s+v-if="!quickVisualMode"\s+v-show="activeStep !== 1"[\s\S]*@submit\.prevent="saveToEntry"/u);
   assert.match(appSource, /id="manager-step-5"[\s\S]*class="save-bar"[\s\S]*type="submit"/u);
   assert.match(appSource, /保存到世界书/u);
   assert.match(appSource, /即时写入变量及状态栏/u);

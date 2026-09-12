@@ -5,20 +5,34 @@
     <main class="manager-dialog" role="dialog" aria-modal="true" aria-labelledby="manager-title">
       <header class="dialog-header">
         <div class="header-title">
-          <h1 id="manager-title">角色视觉编辑器</h1>
-          <span class="phase-badge">{{ activeStep }}/{{ steps.length }}</span>
+          <h1 id="manager-title">{{ quickVisualMode ? `视觉资料 · ${profile.characterName || props.quickCharacterName}` : '角色视觉编辑器' }}</h1>
+          <span v-if="!quickVisualMode" class="phase-badge">{{ activeStep }}/{{ steps.length }}</span>
         </div>
 
         <div class="header-actions">
           <button
-            v-if="props.onReturnToWorldbookLibrary"
+            v-if="quickVisualMode && props.onReturnToCurrentLibrary"
+            class="secondary-button return-library-button"
+            type="button"
+            @click="props.onReturnToCurrentLibrary"
+          >
+            ← 返回角色资料
+          </button>
+          <button
+            v-if="!quickVisualMode && props.onReturnToWorldbookLibrary"
             class="secondary-button return-library-button"
             type="button"
             @click="props.onReturnToWorldbookLibrary"
           >
             ← 返回角色库
           </button>
-          <button class="secondary-button viewer-preview-trigger" type="button" :disabled="!canPreviewViewer" @click="openViewerPreview">
+          <button
+            v-if="!quickVisualMode"
+            class="secondary-button viewer-preview-trigger"
+            type="button"
+            :disabled="!canPreviewViewer"
+            @click="openViewerPreview"
+          >
             预览
           </button>
           <button class="close-button" type="button" aria-label="关闭" @click="emit('close')">×</button>
@@ -26,7 +40,43 @@
       </header>
 
       <div class="dialog-body">
-        <nav class="wizard-step-nav" aria-label="角色视觉配置步骤">
+        <form v-if="quickVisualMode" class="quick-visual-editor" novalidate @submit.prevent="saveQuickVisualProfile">
+          <section class="quick-visual-intro">
+            <div>
+              <span>当前聊天角色</span>
+              <strong>{{ profile.characterName }}</strong>
+            </div>
+            <p>角色设定继续读取当前聊天变量；这里只保存立绘、头像与相册到当前聊天世界书。</p>
+          </section>
+
+          <div class="quick-visual-gallery">
+            <GalleryStep
+              v-model:gallery="profile.gallery"
+              :avatar-url="profile.avatarUrl"
+              :cover-url="profile.coverUrl"
+              :gallery-pack-url="profile.galleryPackUrl ?? ''"
+              :character-name="profile.characterName"
+              :debug-enabled="props.debugEnabled"
+              quick-mode
+              @update:avatar-url="profile.avatarUrl = $event"
+              @update:cover-url="profile.coverUrl = $event"
+              @update:gallery-pack-url="profile.galleryPackUrl = $event.trim() || undefined"
+            />
+          </div>
+
+          <footer class="quick-visual-save-bar">
+            <div class="save-feedback" aria-live="polite">
+              <strong :class="{ success: saveState === 'success', error: saveState === 'error' }">{{ saveMessage }}</strong>
+              <span v-if="validationErrors.length">{{ validationErrors[0] }}</span>
+              <span v-else-if="applyMessage && saveState !== 'success'">{{ applyMessage }}</span>
+            </div>
+            <button class="primary-button" type="submit" :disabled="!canQuickSave">
+              {{ saving || applyingSavedProfile ? '正在保存…' : quickProfileExists ? '保存并应用' : '添加并应用' }}
+            </button>
+          </footer>
+        </form>
+
+        <nav v-if="!quickVisualMode" class="wizard-step-nav" aria-label="角色视觉配置步骤">
           <div class="wizard-nav-header">
             <span>配置流程</span>
             <strong>{{ activeStep }} / {{ steps.length }}</strong>
@@ -54,6 +104,7 @@
         </nav>
 
         <aside
+          v-if="!quickVisualMode"
           id="manager-step-1"
           class="target-panel wizard-step-section"
           :class="{ 'is-collapsed': activeStep !== 1 }"
@@ -224,7 +275,7 @@
           </div>
         </aside>
 
-        <form v-show="activeStep !== 1" class="editor-panel" novalidate @submit.prevent="saveToEntry">
+        <form v-if="!quickVisualMode" v-show="activeStep !== 1" class="editor-panel" novalidate @submit.prevent="saveToEntry">
           <section
             id="manager-step-2"
             class="form-section wizard-step-section"
@@ -654,6 +705,10 @@ import { buildCurrentWorldbookList, buildWorldbookList } from '../char_info_shar
 import ViewerApp from '../char_info_viewer/App.vue';
 import { evaluateManagedEjs } from './ejsRuntime';
 import {
+  readQuickVisualProfileFromChatVariables,
+  saveQuickVisualProfileToCurrentChatWorldbook,
+} from './quickVisualProfile';
+import {
   buildCreatorViewerPreviewData,
   buildCreatorViewerVisualOverride,
   resolveCreatorViewerPreviewYaml,
@@ -686,18 +741,22 @@ const props = withDefaults(
   defineProps<{
     initialWorldbookName?: string;
     initialEntryUid?: number;
+    quickCharacterName?: string;
     themeMode?: CharInfoThemeMode;
     debugEnabled?: boolean;
     onForceRefresh?: () => void | Promise<void>;
     onReturnToWorldbookLibrary?: () => void;
+    onReturnToCurrentLibrary?: () => void;
   }>(),
   {
     initialWorldbookName: '',
     initialEntryUid: undefined,
+    quickCharacterName: '',
     themeMode: DEFAULT_CHAR_INFO_THEME_MODE,
     debugEnabled: false,
     onForceRefresh: undefined,
     onReturnToWorldbookLibrary: undefined,
+    onReturnToCurrentLibrary: undefined,
   },
 );
 const emit = defineEmits<{ close: [] }>();
@@ -708,6 +767,8 @@ const steps: { id: StepId; shortLabel: string; title: string }[] = [
   { id: 4, shortLabel: '相册', title: '整理相册与头像' },
   { id: 5, shortLabel: '生成', title: '生成并写入' },
 ];
+const quickVisualMode = computed(() => !!props.quickCharacterName.trim());
+const quickProfileExists = ref(false);
 const currentCharacterName = ref('');
 const worldbooks = ref<string[]>([]);
 const characterWorldbooks = ref<string[]>([]);
@@ -842,7 +903,12 @@ function replaceProfile(value: CharacterVisualProfile) {
 
 const selectedEntry = computed(() => entries.value.find(entry => entry.uid === selectedEntryUid.value) ?? null);
 const canApplyCurrentProfile = computed(() => validationErrors.value.length === 0 && !applyingSavedProfile.value);
-const canPreviewViewer = computed(() => !!selectedEntry.value && profile.characterName.trim().length > 0);
+const canQuickSave = computed(
+  () => quickVisualMode.value && validationErrors.value.length === 0 && !saving.value && !applyingSavedProfile.value,
+);
+const canPreviewViewer = computed(
+  () => profile.characterName.trim().length > 0 && (quickVisualMode.value || !!selectedEntry.value),
+);
 const viewerPreviewProfile = computed(() => toFullSerializableProfile());
 const viewerPreviewSampleData = computed(() => buildCreatorViewerPreviewData(viewerPreviewProfile.value));
 const viewerPreviewYaml = computed(() =>
@@ -1076,6 +1142,22 @@ function onCustomizeColorsChange() {
   }
   profile.raceColor = '';
   profile.tierColor = '';
+}
+
+function initializeQuickVisualMode() {
+  const characterName = props.quickCharacterName.trim();
+  if (!characterName) return;
+
+  const existingProfile = readQuickVisualProfileFromChatVariables(characterName, getVariables({ type: 'chat' }));
+  quickProfileExists.value = !!existingProfile;
+  replaceProfile(existingProfile ?? createEmptyProfile(characterName));
+  profile.characterName = characterName;
+  activeStep.value = 4;
+  furthestStep.value = 5;
+  saveState.value = 'idle';
+  saveMessage.value = existingProfile
+    ? `已读取「${characterName}」当前视觉资料；修改图片后直接保存即可。`
+    : `正在为「${characterName}」添加视觉资料；角色设定继续使用当前聊天变量。`;
 }
 
 async function loadWorldbooks() {
@@ -1346,6 +1428,35 @@ function readStatusGallerySnapshotFromCurrentChat(characterName: string): unknow
     : null;
 }
 
+async function saveQuickVisualProfile() {
+  if (!canQuickSave.value) return;
+
+  saving.value = true;
+  saveState.value = 'idle';
+  saveMessage.value = '正在保存视觉资料到当前聊天世界书…';
+  applyMessage.value = '';
+
+  try {
+    const normalizedProfile = normalizeProfile(toFullSerializableProfile());
+    const result = await saveQuickVisualProfileToCurrentChatWorldbook(normalizedProfile);
+    saveMessage.value = '世界书已保存，正在同步当前聊天视觉…';
+    const applied = await applyCurrentProfileToCurrentChat();
+    if (!applied) {
+      throw new Error(applyMessage.value.replace(/^即时写入失败：\s*/u, '') || '当前聊天视觉同步失败。');
+    }
+
+    quickProfileExists.value = true;
+    saveState.value = 'success';
+    saveMessage.value = `✓ 已${result.created ? '添加' : '更新'}「${normalizedProfile.characterName}」视觉资料，并同步到当前聊天。`;
+  } catch (error) {
+    console.error('[CharInfo Creator Manager] Failed to save quick visual profile:', error);
+    saveState.value = 'error';
+    saveMessage.value = `保存失败：${error instanceof Error ? error.message : String(error)}`;
+  } finally {
+    saving.value = false;
+  }
+}
+
 async function saveToEntry() {
   const worldbookName = selectedWorldbookName.value;
   const entry = selectedEntry.value;
@@ -1416,8 +1527,8 @@ async function saveToEntry() {
   }
 }
 
-async function applyCurrentProfileToCurrentChat() {
-  if (!canApplyCurrentProfile.value || applyingSavedProfile.value) return;
+async function applyCurrentProfileToCurrentChat(): Promise<boolean> {
+  if (!canApplyCurrentProfile.value || applyingSavedProfile.value) return false;
 
   applyingSavedProfile.value = true;
   applyMessage.value = '正在即时写入当前编辑资料、状态栏头像与状态栏相簿…';
@@ -1491,9 +1602,11 @@ async function applyCurrentProfileToCurrentChat() {
       character: currentProfile.characterName,
       statusGalleryImages: expectedStatusGalleryImages.length,
     });
+    return true;
   } catch (error) {
     console.error('[CharInfo Creator Manager] Failed to apply current profile:', error);
     applyMessage.value = `即时写入失败：${error instanceof Error ? error.message : String(error)}`;
+    return false;
   } finally {
     applyingSavedProfile.value = false;
   }
@@ -1522,6 +1635,10 @@ watch(viewerPreviewSource, () => {
 });
 
 onMounted(() => {
+  if (quickVisualMode.value) {
+    initializeQuickVisualMode();
+    return;
+  }
   void loadWorldbooks();
 });
 
@@ -1803,6 +1920,68 @@ button {
   flex: 1 1 auto;
   grid-template-columns: 272px minmax(0, 1fr);
 }
+
+.quick-visual-editor {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  grid-column: 1 / -1;
+  flex-direction: column;
+}
+
+.quick-visual-intro {
+  display: flex;
+  padding: 16px 22px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.quick-visual-intro div {
+  display: grid;
+  gap: 3px;
+}
+
+.quick-visual-intro span,
+.quick-visual-intro p {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.quick-visual-intro strong {
+  font-size: 18px;
+}
+
+.quick-visual-intro p {
+  max-width: 620px;
+  margin: 0;
+  text-align: right;
+}
+
+.quick-visual-gallery {
+  min-height: 0;
+  padding: 18px 22px 26px;
+  overflow-y: auto;
+}
+
+.quick-visual-save-bar {
+  display: flex;
+  padding: 14px 22px max(14px, env(safe-area-inset-bottom, 0px));
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  background: var(--ci-header);
+  border-top: 1px solid var(--border);
+}
+
+.quick-visual-save-bar .primary-button {
+  min-width: 180px;
+}
+
 .target-panel,
 .editor-panel {
   min-height: 0;
@@ -3070,6 +3249,43 @@ pre {
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
   }
+
+  .quick-visual-editor {
+    min-height: 100%;
+  }
+
+  .quick-visual-intro {
+    padding: 12px 14px;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .quick-visual-intro p {
+    max-width: none;
+    text-align: left;
+  }
+
+  .quick-visual-gallery {
+    padding: 12px 14px 18px;
+    overflow: visible;
+  }
+
+  .quick-visual-save-bar {
+    position: sticky;
+    z-index: 6;
+    bottom: 0;
+    padding: 10px 14px max(10px, env(safe-area-inset-bottom, 0px));
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .quick-visual-save-bar .primary-button {
+    width: 100%;
+    min-height: 48px;
+  }
+
   .wizard-step-nav {
     position: sticky;
     z-index: 5;

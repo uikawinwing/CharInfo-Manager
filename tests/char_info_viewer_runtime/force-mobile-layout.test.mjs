@@ -150,11 +150,11 @@ test('强制移动布局复用 Viewer 与 Special NPC 的同一套移动版式�
 test('手机角色详情顶部只展示信息，操作移至底部安全区', () => {
   assert.match(
     runtimeRootSource,
-    /class="char-info-library-viewer-mobile-dock"[\s\S]*?角色列表[\s\S]*?返回游戏[\s\S]*?刷新/u,
+    /class="char-info-library-viewer-mobile-dock"[\s\S]*?角色列表[\s\S]*?添加角色视觉资料[\s\S]*?返回游戏[\s\S]*?刷新/u,
   );
   assert.match(
     runtimeRootSource,
-    /\.char-info-library-viewer-mobile-dock\s*\{[\s\S]*?grid-template-columns:\s*1fr 1\.18fr 1fr;[\s\S]*?safe-area-inset-bottom/u,
+    /\.char-info-library-viewer-mobile-dock\s*\{[\s\S]*?grid-template-columns:\s*1fr 1fr 1\.18fr 1fr;[\s\S]*?safe-area-inset-bottom/u,
   );
   assert.match(
     runtimeRootSource,

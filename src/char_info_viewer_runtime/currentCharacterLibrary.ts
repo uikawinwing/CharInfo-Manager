@@ -7,6 +7,7 @@ export type CurrentCharacterSnapshot = {
   affinity: number | null;
   innerThought: string;
   avatarUrl: string;
+  hasVisualProfile: boolean;
   data: Record<string, unknown>;
 };
 
@@ -59,6 +60,12 @@ function resolveAvatarUrl(chatVariables: unknown, name: string): string {
   }
 }
 
+function hasVisualProfile(chatVariables: unknown, name: string): boolean {
+  if (!isRecord(chatVariables) || !isRecord(chatVariables.char_info)) return false;
+  const profiles = chatVariables.char_info.profiles;
+  return isRecord(profiles) && isRecord(profiles[name]);
+}
+
 export function collectCurrentCharacterSnapshots(
   mvuData: unknown,
   chatVariables: unknown = null,
@@ -81,6 +88,7 @@ export function collectCurrentCharacterSnapshots(
           affinity: normalizeAffinity(value.好感度),
           innerThought: formatListValue(value.心里话),
           avatarUrl: resolveAvatarUrl(chatVariables, name),
+          hasVisualProfile: hasVisualProfile(chatVariables, name),
           data: value,
         },
       ];

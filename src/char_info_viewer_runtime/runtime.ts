@@ -394,6 +394,28 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     }
   };
 
+  const editCurrentChatCharacterVisual = (characterName: string) => {
+    const name = characterName.trim();
+    if (!name) return;
+    try {
+      openCreatorManager({
+        quickCharacterName: name,
+        forceMobileLayout: state.settings.forceMobileLayout,
+        themeMode: state.settings.themeMode,
+        debugEnabled: state.settings.debugEnabled,
+        onForceRefresh: forceRefreshCharInfo,
+        onReturnToCurrentLibrary: () => {
+          closeCreatorEditor();
+          openLibraryCharacter(name);
+        },
+      });
+      closeLibrary();
+    } catch (error) {
+      console.error('[CharInfo Runtime] 快速视觉编辑器打开失败：', error);
+      toastr.warning('快速视觉编辑器暂时无法打开。');
+    }
+  };
+
   const openSettings = () => {
     if (!started) return;
     closeCreatorEditor();
@@ -789,6 +811,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         onCloseWorldbookLibrary: closeWorldbookLibrary,
         onOpenCurrentChatLibrary: openCurrentChatLibrary,
         onEditWorldbookCharacter: editWorldbookCharacter,
+        onEditCurrentChatCharacterVisual: editCurrentChatCharacterVisual,
         onMoveLibraryButton: updateLibraryButtonPosition,
         onOpenSettings: openSettings,
         onCloseSettings: closeSettings,

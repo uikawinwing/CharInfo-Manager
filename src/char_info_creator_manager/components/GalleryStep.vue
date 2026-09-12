@@ -1,6 +1,9 @@
 <template>
-  <div class="gallery-step">
-    <section class="role-panel">
+  <div class="gallery-step" :class="{ 'quick-mode': props.quickMode }">
+    <p v-if="props.quickMode" class="quick-mode-guidance">
+      粘贴图片直链即可。第一张会作为主立绘；第一张可用静态图片会自动用于头像和角色库封面。
+    </p>
+    <section v-if="!props.quickMode" class="role-panel">
       <div class="panel-heading">
         <div>
           <h3>图片用途</h3>
@@ -56,7 +59,7 @@
       </label>
     </section>
 
-    <section class="gallery-storage-panel">
+    <section v-if="!props.quickMode" class="gallery-storage-panel">
       <div class="panel-heading">
         <h3>远程 Gallery Pack</h3>
         <p>填写 ImgBed 的公开图库 API URL 后，远端 char-info-gallery-pack 会作为运行时图库；下方本地图片只作为断线 fallback。</p>
@@ -85,7 +88,7 @@
       <a href="https://imgbb.com/" target="_blank" rel="noopener noreferrer">打开 ImgBB</a>
     </div>
 
-    <div class="batch-toolbar" :class="{ active: batchMode }">
+    <div v-if="!props.quickMode" class="batch-toolbar" :class="{ active: batchMode }">
       <button type="button" class="toolbar-button" @click="toggleBatchMode">
         {{ batchMode ? '完成批量选择' : '批量选择' }}
       </button>
@@ -237,7 +240,7 @@
 
     <button class="add-image-button" type="button" @click="addImage">＋ 添加一张图片</button>
 
-    <div class="step-actions">
+    <div v-if="!props.quickMode" class="step-actions">
       <button type="button" class="secondary-button" @click="emit('previous')">上一步</button>
       <button type="button" class="primary-button" @click="emit('next')">下一步：确认写入</button>
     </div>
@@ -267,13 +270,19 @@ import {
   type EditableGalleryImage,
 } from '../galleryEditor';
 
-const props = defineProps<{
-  avatarUrl: string;
-  coverUrl: string;
-  galleryPackUrl: string;
-  characterName: string;
-  debugEnabled: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    avatarUrl: string;
+    coverUrl: string;
+    galleryPackUrl: string;
+    characterName: string;
+    debugEnabled: boolean;
+    quickMode?: boolean;
+  }>(),
+  {
+    quickMode: false,
+  },
+);
 
 const gallery = defineModel<EditableGalleryImage[]>('gallery', { required: true });
 
@@ -320,6 +329,19 @@ function syncRoleSelections() {
 
   const coverMatch = gallery.value.find(image => preferredStaticImageUrl(image) === props.coverUrl.trim());
   coverSelection.value = coverMatch ? `gallery:${coverMatch.id}` : '';
+
+  if (props.quickMode) {
+    const fallback = firstStaticImage(gallery.value);
+    const fallbackUrl = preferredStaticImageUrl(fallback);
+    if (fallback && fallbackUrl && !props.avatarUrl.trim()) {
+      avatarSelection.value = `gallery:${fallback.id}`;
+      emit('update:avatarUrl', fallbackUrl);
+    }
+    if (fallback && fallbackUrl && !props.coverUrl.trim()) {
+      coverSelection.value = `gallery:${fallback.id}`;
+      emit('update:coverUrl', fallbackUrl);
+    }
+  }
 }
 
 watch(() => [props.avatarUrl, props.coverUrl, gallery.value.length], syncRoleSelections, { immediate: true });
@@ -352,13 +374,22 @@ function onCoverSelectionChange(event: Event) {
 }
 
 function syncRoleUrlsForImage(image: EditableGalleryImage) {
+  const url = preferredStaticImageUrl(image);
+  if (props.quickMode && url) {
+    if (!props.avatarUrl.trim()) {
+      avatarSelection.value = `gallery:${image.id}`;
+      emit('update:avatarUrl', url);
+    }
+    if (!props.coverUrl.trim()) {
+      coverSelection.value = `gallery:${image.id}`;
+      emit('update:coverUrl', url);
+    }
+  }
   if (avatarImageId.value === image.id) {
-    const url = preferredStaticImageUrl(image);
     emit('update:avatarUrl', url);
     if (!url) avatarSelection.value = '';
   }
   if (coverImageId.value === image.id) {
-    const url = preferredStaticImageUrl(image);
     emit('update:coverUrl', url);
     if (!url) coverSelection.value = '';
   }
@@ -664,6 +695,28 @@ onBeforeUnmount(() => {
 .gallery-step {
   display: grid;
   gap: 12px;
+}
+
+.quick-mode-guidance {
+  margin: 0;
+  padding: 12px 14px;
+  color: var(--text-secondary);
+  background: var(--primary-soft);
+  border: 1px solid color-mix(in srgb, var(--primary) 32%, var(--border));
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.gallery-step.quick-mode .gallery-card-heading,
+.gallery-step.quick-mode .gallery-fields > .field:first-child,
+.gallery-step.quick-mode .source-order-actions,
+.gallery-step.quick-mode .add-source-button {
+  display: none;
+}
+
+.gallery-step.quick-mode .gallery-fields {
+  grid-template-columns: 1fr;
 }
 
 .role-panel,

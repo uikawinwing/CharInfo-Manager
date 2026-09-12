@@ -267,6 +267,18 @@
             <span>角色列表</span>
           </button>
           <button
+            v-if="selectedCharacter"
+            class="char-info-library-list-action char-info-library-visual-action"
+            type="button"
+            @click="props.onEditCurrentChatCharacterVisual(selectedCharacter.name)"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M4 19.5V15l10.8-10.8a2.1 2.1 0 0 1 3 0l2 2a2.1 2.1 0 0 1 0 3L9 20H4Z" />
+              <path d="m13.5 5.5 5 5" />
+            </svg>
+            <span>{{ selectedCharacter.hasVisualProfile ? '编辑视觉' : '添加视觉' }}</span>
+          </button>
+          <button
             class="char-info-library-icon-action"
             type="button"
             :disabled="state.library.loading"
@@ -328,6 +340,18 @@
             <circle cx="3" cy="18" r="0.75" />
           </svg>
           <span>角色列表</span>
+        </button>
+        <button
+          v-if="selectedCharacter"
+          type="button"
+          :aria-label="selectedCharacter.hasVisualProfile ? '编辑角色视觉资料' : '添加角色视觉资料'"
+          @click="props.onEditCurrentChatCharacterVisual(selectedCharacter.name)"
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M4 19.5V15l10.8-10.8a2.1 2.1 0 0 1 3 0l2 2a2.1 2.1 0 0 1 0 3L9 20H4Z" />
+            <path d="m13.5 5.5 5 5" />
+          </svg>
+          <span>{{ selectedCharacter.hasVisualProfile ? '编辑视觉' : '添加视觉' }}</span>
         </button>
         <button class="primary" type="button" aria-label="返回游戏并关闭角色资料" @click="closeLibraryWorkspace">
           <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -570,6 +594,7 @@ const props = defineProps<{
   onCloseWorldbookLibrary: () => void;
   onOpenCurrentChatLibrary: () => void;
   onEditWorldbookCharacter: (worldbookName: string, entryUid?: number) => void;
+  onEditCurrentChatCharacterVisual: (characterName: string) => void;
   onMoveLibraryButton: (position: { left: number; top: number }) => void;
   onOpenSettings: () => void;
   onCloseSettings: () => void;
@@ -1952,7 +1977,7 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   min-height: 72px;
   flex: 0 0 auto;
-  grid-template-columns: 1fr 1.18fr 1fr;
+  grid-template-columns: 1fr 1fr 1.18fr 1fr;
   align-items: end;
   gap: 8px;
   padding: 7px 14px max(8px, env(safe-area-inset-bottom, 0px));
