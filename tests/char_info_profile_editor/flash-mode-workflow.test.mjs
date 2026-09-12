@@ -41,11 +41,16 @@ test('快速模式按来源写回正确世界书，专业模式继续使用完�
   assert.match(profileEditorSource, /async function saveToEntry\(\)[\s\S]*?upsertManagedEjsBlockWithLegacyMigration/u);
 });
 
-test('新入口保持移动安全区与清晰的模式卡布局', () => {
+test('新入口保持移动安全区，并用双色票券卡区分快速与专业模式', () => {
   assert.match(profileEditorSource, /--ci-mobile-safe-top: max\(env\(safe-area-inset-top, 0px\), 28px\);/u);
   assert.match(profileEditorSource, /--ci-mobile-safe-bottom: max\(env\(safe-area-inset-bottom, 0px\), 18px\);/u);
   assert.match(profileEditorSource, /\.mode-choice-grid\s*\{[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/u);
-  assert.match(profileEditorSource, /@mixin mobile-manager-layout[\s\S]*?\.mode-choice-grid \{[\s\S]*?grid-template-columns: 1fr;/u);
+  assert.match(profileEditorSource, /class="mode-choice-ticket-label">FLASH<\/span>/u);
+  assert.match(profileEditorSource, /class="mode-choice-ticket-label">PRO<\/span>/u);
+  assert.match(profileEditorSource, /\.mode-choice-card\.flash\s*\{[\s\S]*?--mode-accent-rgb: 225 173 93;/u);
+  assert.match(profileEditorSource, /\.mode-choice-card\.pro\s*\{[\s\S]*?--mode-accent-rgb: 143 169 237;/u);
+  assert.match(profileEditorSource, /\.mode-choice-stub::before,[\s\S]*?\.mode-choice-stub::after/u);
+  assert.match(profileEditorSource, /@mixin mobile-manager-layout[\s\S]*?\.mode-choice-grid \{[\s\S]*?grid-template-columns: 1fr;[\s\S]*?\.mode-choice-card \{[\s\S]*?grid-template-columns: 72px minmax\(0, 1fr\);/u);
   assert.match(profileEditorSource, /@mixin mobile-manager-layout[\s\S]*?\.return-library-button \{[\s\S]*?width: 42px;/u);
   assert.match(profileEditorSource, /\.dialog-header h1 \{[\s\S]*?white-space: nowrap;/u);
   assert.match(profileEditorSource, /function scheduleFlashReturn\(\)[\s\S]*?props\.onReturnToLibrary\(\)[\s\S]*?700\);/u);

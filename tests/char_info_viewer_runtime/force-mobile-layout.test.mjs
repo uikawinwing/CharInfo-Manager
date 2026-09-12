@@ -149,22 +149,26 @@ test('强制移动布局复用 Viewer 与 立绘角色卡 的同一套移动版�
   );
 });
 
-test('手机角色详情顶部只展示信息，操作移至底部安全区', () => {
+test('手机角色详情底栏保留三个主动作，并把刷新移到顶部工具区', () => {
   assert.match(
     runtimeRootSource,
-    /class="char-info-library-viewer-mobile-dock"[\s\S]*?角色列表[\s\S]*?添加角色档案[\s\S]*?返回游戏[\s\S]*?刷新/u,
+    /class="char-info-library-viewer-mobile-dock"[\s\S]*?角色列表[\s\S]*?添加角色档案[\s\S]*?返回游戏/u,
   );
   assert.match(
     runtimeRootSource,
-    /\.char-info-library-viewer-mobile-dock\s*\{[\s\S]*?grid-template-columns:\s*1fr 1fr 1\.18fr 1fr;[\s\S]*?var\(--ci-mobile-safe-bottom\)/u,
+    /\.char-info-library-viewer-mobile-dock\s*\{[\s\S]*?grid-template-columns:\s*1fr 1fr 1\.18fr;[\s\S]*?var\(--ci-mobile-safe-bottom\)/u,
   );
   assert.match(
     runtimeRootSource,
-    /@media \(max-width: 720px\) \{[\s\S]*?\.char-info-library-overlay \.char-info-library-header-actions\s*\{\s*display: none;[\s\S]*?\.char-info-library-viewer-mobile-dock\s*\{\s*display: grid;/u,
+    /class="char-info-library-icon-action"[\s\S]*?:aria-label="state\.library\.loading \? '正在刷新角色资料' : '刷新角色资料'"[\s\S]*?@click="onRefreshLibrary"/u,
   );
   assert.match(
     runtimeRootSource,
-    /\.char-info-library-overlay\.force-mobile-layout \.char-info-library-header-actions\s*\{\s*display: none;[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer-mobile-dock\s*\{\s*display: grid;/u,
+    /@media \(max-width: 720px\) \{[\s\S]*?\.char-info-library-overlay \.char-info-library-header-actions\s*\{[\s\S]*?display: flex;[\s\S]*?pointer-events: auto;[\s\S]*?\.char-info-library-header-actions \.char-info-library-list-action,[\s\S]*?\.char-info-library-header-actions \.char-info-library-close-action\s*\{\s*display: none;[\s\S]*?\.char-info-library-viewer-mobile-dock\s*\{\s*display: grid;/u,
+  );
+  assert.match(
+    runtimeRootSource,
+    /\.char-info-library-overlay\.force-mobile-layout \.char-info-library-header-actions\s*\{[\s\S]*?display: flex;[\s\S]*?pointer-events: auto;[\s\S]*?\.force-mobile-layout \.char-info-library-header-actions \.char-info-library-list-action,[\s\S]*?\.force-mobile-layout \.char-info-library-header-actions \.char-info-library-close-action\s*\{\s*display: none;[\s\S]*?\.char-info-library-overlay\.force-mobile-layout \.char-info-library-viewer-mobile-dock\s*\{\s*display: grid;/u,
   );
   assert.match(
     runtimeRootSource,

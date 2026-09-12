@@ -360,18 +360,6 @@
           </svg>
           <span>返回游戏</span>
         </button>
-        <button
-          type="button"
-          :disabled="state.library.loading"
-          :aria-label="state.library.loading ? '正在刷新角色资料' : '刷新角色资料'"
-          @click="onRefreshLibrary"
-        >
-          <svg :class="{ spinning: state.library.loading }" aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M20 11a8 8 0 1 0-2.34 5.66" />
-            <path d="M20 5v6h-6" />
-          </svg>
-          <span>刷新</span>
-        </button>
       </nav>
               </section>
             </div>
@@ -1977,10 +1965,10 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   min-height: 72px;
   flex: 0 0 auto;
-  grid-template-columns: 1fr 1fr 1.18fr 1fr;
+  grid-template-columns: 1fr 1fr 1.18fr;
   align-items: end;
-  gap: 8px;
-  padding: 7px 14px calc(8px + var(--ci-mobile-safe-bottom));
+  gap: 10px;
+  padding: 7px 18px calc(8px + var(--ci-mobile-safe-bottom));
   border-top: 1px solid var(--ci-border);
   background: var(--ci-header);
   backdrop-filter: blur(18px);
@@ -2309,6 +2297,12 @@ onBeforeUnmount(() => {
   }
 
   .char-info-library-overlay .char-info-library-header-actions {
+    display: flex;
+    pointer-events: auto;
+  }
+
+  .char-info-library-overlay .char-info-library-header-actions .char-info-library-list-action,
+  .char-info-library-overlay .char-info-library-header-actions .char-info-library-close-action {
     display: none;
   }
 
@@ -2567,6 +2561,12 @@ onBeforeUnmount(() => {
 }
 
 .char-info-library-overlay.force-mobile-layout .char-info-library-header-actions {
+  display: flex;
+  pointer-events: auto;
+}
+
+.char-info-library-overlay.force-mobile-layout .char-info-library-header-actions .char-info-library-list-action,
+.char-info-library-overlay.force-mobile-layout .char-info-library-header-actions .char-info-library-close-action {
   display: none;
 }
 

@@ -63,13 +63,16 @@
               :disabled="hasInitialWorldbookTarget && loadingWorldbooks"
               @click="selectEditorMode('flash')"
             >
-              <span class="mode-choice-icon" aria-hidden="true">⚡</span>
+              <span class="mode-choice-stub" aria-hidden="true">
+                <span class="mode-choice-ticket-label">FLASH</span>
+                <span class="mode-choice-icon">⚡</span>
+              </span>
               <span class="mode-choice-copy">
                 <strong>快速模式</strong>
-                <small>角色全名 + 一张图片，就可以完成。</small>
+                <small>角色全名 + 一张图片，立即建立最小角色档案。</small>
                 <span class="mode-choice-fields">角色全名 · 图片 URL</span>
               </span>
-              <span class="mode-choice-action">快速建立 →</span>
+              <span class="mode-choice-action">快速建立 <span aria-hidden="true">→</span></span>
             </button>
 
             <button
@@ -78,13 +81,16 @@
               :disabled="hasInitialWorldbookTarget && loadingWorldbooks"
               @click="selectEditorMode('pro')"
             >
-              <span class="mode-choice-icon" aria-hidden="true">✦</span>
+              <span class="mode-choice-stub" aria-hidden="true">
+                <span class="mode-choice-ticket-label">PRO</span>
+                <span class="mode-choice-icon">✦</span>
+              </span>
               <span class="mode-choice-copy">
                 <strong>专业模式</strong>
-                <small>完整编辑角色档案，并把 CharInfo 管理 EJS 写入目标世界书。</small>
+                <small>完整编辑档案，并把 CharInfo 管理 EJS 写入目标世界书。</small>
                 <span class="mode-choice-fields">档案 · 配色 · 相册 · Metadata · 远程图库</span>
               </span>
-              <span class="mode-choice-action">打开完整编辑器 →</span>
+              <span class="mode-choice-action">打开完整编辑器 <span aria-hidden="true">→</span></span>
             </button>
           </div>
         </section>
@@ -2267,40 +2273,74 @@ button {
 .mode-choice-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 18px;
 }
 
 .mode-choice-card {
+  --mode-accent: var(--primary);
+  --mode-accent-rgb: var(--ci-primary-rgb);
+
+  position: relative;
   display: grid;
   min-width: 0;
-  min-height: 230px;
-  padding: 24px;
-  align-content: start;
-  gap: 18px;
+  min-height: 206px;
+  padding: 0;
+  overflow: visible;
+  grid-template-areas:
+    'stub copy'
+    'stub action';
+  grid-template-columns: 88px minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
   color: var(--text);
   text-align: left;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0, rgb(var(--mode-accent-rgb) / 13%), transparent 48%),
+    linear-gradient(145deg, rgb(var(--mode-accent-rgb) / 7%), var(--surface) 62%);
+  border: 1px solid rgb(var(--mode-accent-rgb) / 32%);
+  border-radius: 20px;
+  box-shadow:
+    0 12px 28px rgb(0 0 0 / 16%),
+    inset 0 1px 0 rgb(255 255 255 / 4%);
   cursor: pointer;
   transition:
     transform 160ms ease,
     border-color 160ms ease,
-    background-color 160ms ease,
     box-shadow 160ms ease;
 }
 
 .mode-choice-card.flash {
-  background: linear-gradient(145deg, var(--primary-soft), var(--surface) 58%);
-  border-color: rgb(var(--ci-primary-rgb) / 38%);
+  --mode-accent: #e1ad5d;
+  --mode-accent-rgb: 225 173 93;
+}
+
+.mode-choice-card.pro {
+  --mode-accent: #8fa9ed;
+  --mode-accent-rgb: 143 169 237;
+}
+
+.manager-root.char-info-theme-light .mode-choice-card.flash {
+  --mode-accent: #9b641d;
+  --mode-accent-rgb: 190 127 45;
+}
+
+.manager-root.char-info-theme-light .mode-choice-card.pro {
+  --mode-accent: #526fbd;
+  --mode-accent-rgb: 82 111 189;
 }
 
 .mode-choice-card:hover:not(:disabled),
 .mode-choice-card:focus-visible:not(:disabled) {
-  border-color: rgb(var(--ci-primary-rgb) / 58%);
-  box-shadow: 0 14px 34px rgb(0 0 0 / 20%);
+  border-color: rgb(var(--mode-accent-rgb) / 64%);
+  box-shadow:
+    0 16px 38px rgb(0 0 0 / 23%),
+    0 0 0 1px rgb(var(--mode-accent-rgb) / 10%);
   transform: translateY(-2px);
   outline: none;
+}
+
+.mode-choice-card:focus-visible:not(:disabled) {
+  outline: 2px solid rgb(var(--mode-accent-rgb) / 74%);
+  outline-offset: 3px;
 }
 
 .mode-choice-card:disabled {
@@ -2308,26 +2348,75 @@ button {
   cursor: wait;
 }
 
+.mode-choice-stub {
+  position: relative;
+  display: grid;
+  min-height: 100%;
+  padding: 18px 10px;
+  grid-area: stub;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  color: var(--mode-accent);
+  background: linear-gradient(180deg, rgb(var(--mode-accent-rgb) / 20%), rgb(var(--mode-accent-rgb) / 8%));
+  border-right: 1px dashed rgb(var(--mode-accent-rgb) / 36%);
+  border-radius: 19px 0 0 19px;
+}
+
+.mode-choice-stub::before,
+.mode-choice-stub::after {
+  position: absolute;
+  right: -9px;
+  width: 16px;
+  height: 16px;
+  content: '';
+  background: var(--bg);
+  border: 1px solid rgb(var(--mode-accent-rgb) / 28%);
+  border-radius: 50%;
+}
+
+.mode-choice-stub::before {
+  top: -9px;
+}
+
+.mode-choice-stub::after {
+  bottom: -9px;
+}
+
+.mode-choice-ticket-label {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  opacity: 0.72;
+}
+
 .mode-choice-icon {
   display: grid;
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   place-items: center;
-  color: var(--primary);
-  background: var(--primary-soft);
-  border: 1px solid rgb(var(--ci-primary-rgb) / 26%);
-  border-radius: 13px;
-  font-size: 21px;
+  color: var(--mode-accent);
+  background: rgb(var(--mode-accent-rgb) / 12%);
+  border: 1px solid rgb(var(--mode-accent-rgb) / 34%);
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 5%);
+  font-size: 22px;
 }
 
 .mode-choice-copy {
   display: grid;
   min-width: 0;
-  gap: 7px;
+  padding: 23px 24px 8px;
+  grid-area: copy;
+  align-content: start;
+  gap: 8px;
 }
 
 .mode-choice-copy > strong {
-  font-size: 22px;
+  color: var(--text);
+  font-size: 23px;
   line-height: 1.2;
 }
 
@@ -2345,10 +2434,25 @@ button {
 }
 
 .mode-choice-action {
-  margin-top: auto;
-  color: var(--primary);
+  display: flex;
+  padding: 10px 24px 22px;
+  grid-area: action;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--mode-accent);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 850;
+}
+
+.mode-choice-action > span {
+  font-size: 18px;
+  line-height: 1;
+  transition: transform 160ms ease;
+}
+
+.mode-choice-card:hover:not(:disabled) .mode-choice-action > span,
+.mode-choice-card:focus-visible:not(:disabled) .mode-choice-action > span {
+  transform: translateX(3px);
 }
 
 .flash-mode-editor {
@@ -3759,13 +3863,48 @@ pre {
   }
 
   .mode-choice-card {
-    min-height: 0;
-    padding: 18px;
-    gap: 14px;
+    min-height: 168px;
+    padding: 0;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .mode-choice-stub {
+    padding: 14px 8px;
+    gap: 9px;
+  }
+
+  .mode-choice-ticket-label {
+    font-size: 8px;
+  }
+
+  .mode-choice-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
+  }
+
+  .mode-choice-copy {
+    padding: 18px 17px 6px;
+    gap: 6px;
+  }
+
+  .mode-choice-copy > strong {
+    font-size: 20px;
   }
 
   .mode-choice-copy > small {
     min-height: 0;
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+
+  .mode-choice-fields {
+    font-size: 10px;
+  }
+
+  .mode-choice-action {
+    padding: 8px 17px 18px;
   }
 
   .flash-mode-editor {
@@ -4089,13 +4228,48 @@ pre {
   }
 
   .mode-choice-card {
-    min-height: 0;
-    padding: 18px;
-    gap: 14px;
+    min-height: 168px;
+    padding: 0;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .mode-choice-stub {
+    padding: 14px 8px;
+    gap: 9px;
+  }
+
+  .mode-choice-ticket-label {
+    font-size: 8px;
+  }
+
+  .mode-choice-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
+  }
+
+  .mode-choice-copy {
+    padding: 18px 17px 6px;
+    gap: 6px;
+  }
+
+  .mode-choice-copy > strong {
+    font-size: 20px;
   }
 
   .mode-choice-copy > small {
     min-height: 0;
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+
+  .mode-choice-fields {
+    font-size: 10px;
+  }
+
+  .mode-choice-action {
+    padding: 8px 17px 18px;
   }
 
   .flash-mode-gallery {
