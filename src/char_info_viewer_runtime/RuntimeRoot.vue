@@ -23,22 +23,14 @@
   </template>
 
   <Teleport v-if="state.library" :to="state.library.host">
-    <WorldbookCharacterLibrary
-      v-if="state.library.worldbookOpen"
-      :force-mobile-layout="state.settings.forceMobileLayout"
-      @close="onCloseWorldbookLibrary"
-      @open-current-chat="onOpenCurrentChatLibrary"
-      @edit-library="worldbookName => onEditWorldbookCharacter(worldbookName)"
-      @edit="onEditWorldbookCharacter"
-    />
-
     <button
-      v-if="!state.library.listOpen && !state.library.viewerOpen"
+      v-if="!characterLibraryOpen"
       class="char-info-library-floating-button"
+      :class="managerThemeClass(state.settings.themeMode)"
       type="button"
       :style="floatingButtonStyle"
       :aria-label="floatingButtonAriaLabel"
-      @click="openLibraryFromFloatingButton($event)"
+      @click="openLibraryFromFloatingButton"
       @pointerdown="beginFloatingButtonDrag"
       @pointermove="moveFloatingButton"
       @pointerup="endFloatingButtonDrag"
@@ -56,48 +48,57 @@
       ></span>
     </button>
 
-    <div v-if="state.library.listOpen" class="char-info-library-list-backdrop">
+    <div v-if="characterLibraryOpen" class="char-info-character-library-backdrop">
       <section
-        ref="listWindowRef"
-        class="char-info-library-list-dialog"
-        :class="{ 'with-viewer': state.library.viewerOpen, 'force-mobile-layout': state.settings.forceMobileLayout }"
-        :style="listWindowStyle"
+        ref="viewerWindowRef"
+        class="char-info-library-overlay char-info-character-library"
+        :class="[
+          managerThemeClass(state.settings.themeMode),
+          {
+            'worldbook-mode': state.library.worldbookOpen,
+            'force-mobile-layout': state.settings.forceMobileLayout,
+          },
+        ]"
+        :style="viewerWindowStyle"
         role="dialog"
         aria-modal="false"
         aria-label="角色资料库"
       >
         <header
-          @pointerdown="beginListWindowDrag"
-          @pointermove="moveListWindow"
-          @pointerup="endListWindowDrag"
-          @pointercancel="cancelListWindowDrag"
+          class="char-info-character-library-header"
+          @pointerdown="beginViewerWindowDrag"
+          @pointermove="moveViewerWindow"
+          @pointerup="endViewerWindowDrag"
+          @pointercancel="cancelViewerWindowDrag"
         >
-          <div class="char-info-library-list-title">
-            <div class="char-info-library-mobile-heading">
-              <h2>角色资料库</h2>
-              <p>
-                当前聊天角色 · 筛选：{{ activeFilterLabel }} · {{ filteredCharacters.length }}/{{
-                  libraryCharacterCount
-                }}
-                位角色
-              </p>
-            </div>
-            <div class="char-info-library-source-switch" role="group" aria-label="角色资料来源">
-              <button type="button" class="active" aria-pressed="true" @click="props.onOpenLibraryList">
-                当前聊天角色
-              </button>
-              <button
-                type="button"
-                aria-pressed="false"
-                aria-label="打开世界书角色库"
-                title="打开世界书角色库"
-                @click="props.onOpenWorldbookLibrary"
-              >
-                世界书角色
-              </button>
-            </div>
+          <div class="char-info-character-library-title">
+            <h2>角色资料库</h2>
+            <p v-if="state.library.worldbookOpen">世界书角色</p>
+            <p v-else>
+              当前聊天角色 · 筛选：{{ activeFilterLabel }} · {{ filteredCharacters.length }}/{{ libraryCharacterCount }} 位角色
+            </p>
           </div>
-          <div class="char-info-library-list-actions">
+
+          <div class="char-info-library-source-switch char-info-character-library-switch" role="group" aria-label="角色资料来源">
+            <button
+              type="button"
+              :class="{ active: !state.library.worldbookOpen }"
+              :aria-pressed="!state.library.worldbookOpen"
+              @click="props.onOpenCurrentChatLibrary"
+            >
+              当前聊天角色
+            </button>
+            <button
+              type="button"
+              :class="{ active: state.library.worldbookOpen }"
+              :aria-pressed="state.library.worldbookOpen"
+              @click="props.onOpenWorldbookLibrary"
+            >
+              世界书角色
+            </button>
+          </div>
+
+          <div class="char-info-character-library-actions">
             <button type="button" aria-label="查看器设置" title="设置" @click="onOpenSettings">
               <svg aria-hidden="true" viewBox="0 0 24 24">
                 <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" />
@@ -106,13 +107,30 @@
                 />
               </svg>
             </button>
-            <button type="button" :disabled="state.library.loading" aria-label="刷新角色列表" @click="onRefreshLibrary">
-              {{ state.library.loading ? '…' : '↻' }}
-            </button>
-            <button type="button" aria-label="关闭角色列表" @click="closeListWindow">×</button>
+            <button type="button" aria-label="关闭角色资料库" @click="closeCharacterLibrary">×</button>
           </div>
         </header>
 
+        <div class="char-info-character-library-body">
+          <WorldbookCharacterLibrary
+            v-if="state.library.worldbookOpen"
+            embedded
+            :force-mobile-layout="state.settings.forceMobileLayout"
+            :theme-mode="state.settings.themeMode"
+            @close="closeCharacterLibrary"
+            @open-current-chat="onOpenCurrentChatLibrary"
+            @edit-library="worldbookName => onEditWorldbookCharacter(worldbookName)"
+            @edit="onEditWorldbookCharacter"
+          />
+
+          <template v-else>
+            <div class="char-info-library-current-layout" :class="{ 'viewer-open': state.library.viewerOpen }">
+              <div class="char-info-library-list-backdrop">
+              <section
+                class="char-info-library-list-dialog"
+                :class="{ 'force-mobile-layout': state.settings.forceMobileLayout }"
+                aria-label="当前聊天角色列表"
+              >
         <div class="char-info-library-list-controls">
           <label>
             <span class="sr-only">搜索角色</span>
@@ -199,7 +217,7 @@
             </svg>
             <span>筛选</span>
           </button>
-          <button class="primary" type="button" aria-label="返回游戏并关闭角色资料库" @click="closeListWindow">
+          <button class="primary" type="button" aria-label="返回游戏并关闭角色资料库" @click="closeCharacterLibrary">
             <svg aria-hidden="true" viewBox="0 0 24 24">
               <path d="m4 11 8-7 8 7" />
               <path d="M6.5 10v10h11V10M9.5 20v-6h5v6" />
@@ -213,36 +231,30 @@
             </svg>
             <span>刷新</span>
           </button>
-          <button type="button" aria-label="查看器设置" @click="onOpenSettings">
-            <svg aria-hidden="true" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="3" />
-              <path
-                d="m19 15.2 2 .8-2 3.5-1.6-1.3a7.8 7.8 0 0 1-2.7 1.6L14.4 22H9.6l-.3-2.2a7.8 7.8 0 0 1-2.7-1.6L5 19.5 3 16l2-.8a8.2 8.2 0 0 1 0-3.2L3 11l2-3.5 1.6 1.3a7.8 7.8 0 0 1 2.7-1.6L9.6 5h4.8l.3 2.2a7.8 7.8 0 0 1 2.7 1.6L19 7.5 21 11l-2 .8a8.2 8.2 0 0 1 0 3.4Z"
-              />
-            </svg>
-            <span>设置</span>
-          </button>
+          <div class="char-info-library-mobile-more">
+            <button
+              type="button"
+              aria-label="更多角色资料库操作"
+              :aria-expanded="currentMobileMoreOpen"
+              @click="currentMobileMoreOpen = !currentMobileMoreOpen"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <circle cx="5" cy="12" r="1.5" />
+                <circle cx="12" cy="12" r="1.5" />
+                <circle cx="19" cy="12" r="1.5" />
+              </svg>
+              <span>更多</span>
+            </button>
+            <div v-if="currentMobileMoreOpen" class="char-info-library-mobile-more-menu" role="menu">
+              <button type="button" role="menuitem" @click="openSettingsFromCurrentMobileMore">设置</button>
+            </div>
+          </div>
         </nav>
       </section>
     </div>
 
-    <section
-      v-if="state.library.viewerOpen"
-      ref="viewerWindowRef"
-      class="char-info-library-overlay"
-      :class="{ 'with-list': state.library.listOpen, 'force-mobile-layout': state.settings.forceMobileLayout }"
-      :style="viewerWindowStyle"
-      role="dialog"
-      aria-modal="false"
-      aria-label="当前聊天角色资料"
-    >
-      <header
-        class="char-info-library-header"
-        @pointerdown="beginViewerWindowDrag"
-        @pointermove="moveViewerWindow"
-        @pointerup="endViewerWindowDrag"
-        @pointercancel="cancelViewerWindowDrag"
-      >
+              <section class="char-info-library-current-viewer" aria-label="当前聊天角色资料">
+                <header class="char-info-library-header">
         <h2>{{ selectedCharacter?.name || '角色资料' }}</h2>
         <div class="char-info-library-header-actions">
           <button class="char-info-library-list-action" type="button" @click="onOpenLibraryList">
@@ -253,6 +265,18 @@
               <circle cx="3" cy="18" r="0.75" />
             </svg>
             <span>角色列表</span>
+          </button>
+          <button
+            v-if="selectedCharacter"
+            class="char-info-library-list-action char-info-library-profile-action"
+            type="button"
+            @click="props.onEditCurrentChatCharacterProfile(selectedCharacter.name)"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M4 19.5V15l10.8-10.8a2.1 2.1 0 0 1 3 0l2 2a2.1 2.1 0 0 1 0 3L9 20H4Z" />
+              <path d="m13.5 5.5 5 5" />
+            </svg>
+            <span>{{ selectedCharacter.hasProfileRecord ? '编辑档案' : '添加档案' }}</span>
           </button>
           <button
             class="char-info-library-icon-action"
@@ -270,7 +294,7 @@
             class="char-info-library-icon-action char-info-library-close-action"
             type="button"
             aria-label="关闭角色资料"
-            @click="closeViewerWindow"
+            @click="closeCharacterLibrary"
           >
             <svg aria-hidden="true" viewBox="0 0 24 24">
               <path d="m7 7 10 10M17 7 7 17" />
@@ -317,31 +341,40 @@
           </svg>
           <span>角色列表</span>
         </button>
-        <button class="primary" type="button" aria-label="返回游戏并关闭角色资料" @click="closeLibraryWindows">
+        <button
+          v-if="selectedCharacter"
+          type="button"
+          :aria-label="selectedCharacter.hasProfileRecord ? '编辑角色档案' : '添加角色档案'"
+          @click="props.onEditCurrentChatCharacterProfile(selectedCharacter.name)"
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M4 19.5V15l10.8-10.8a2.1 2.1 0 0 1 3 0l2 2a2.1 2.1 0 0 1 0 3L9 20H4Z" />
+            <path d="m13.5 5.5 5 5" />
+          </svg>
+          <span>{{ selectedCharacter.hasProfileRecord ? '编辑档案' : '添加档案' }}</span>
+        </button>
+        <button class="primary" type="button" aria-label="返回游戏并关闭角色资料" @click="closeCharacterLibrary">
           <svg aria-hidden="true" viewBox="0 0 24 24">
             <path d="m4 11 8-7 8 7" />
             <path d="M6.5 10v10h11V10M9.5 20v-6h5v6" />
           </svg>
           <span>返回游戏</span>
         </button>
-        <button
-          type="button"
-          :disabled="state.library.loading"
-          :aria-label="state.library.loading ? '正在刷新角色资料' : '刷新角色资料'"
-          @click="onRefreshLibrary"
-        >
-          <svg :class="{ spinning: state.library.loading }" aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M20 11a8 8 0 1 0-2.34 5.66" />
-            <path d="M20 5v6h-6" />
-          </svg>
-          <span>刷新</span>
-        </button>
       </nav>
-    </section>
+              </section>
+            </div>
+          </template>
+        </div>
+      </section>
+    </div>
   </Teleport>
 
   <Teleport v-if="state.settingsView" :to="state.settingsView.host">
-    <div class="char-info-settings-backdrop" @click.self="onCloseSettings">
+    <div
+      class="char-info-settings-backdrop"
+      :class="managerThemeClass(state.settings.themeMode)"
+      @click.self="onCloseSettings"
+    >
       <section
         class="char-info-settings-dialog"
         role="dialog"
@@ -402,6 +435,17 @@
               <small>关闭可降低手机负担。</small>
             </span>
             <input v-model="effectsEnabledDraft" type="checkbox" @change="applySettings" />
+          </label>
+
+          <label>
+            <span>
+              <strong>界面主题</strong>
+              <small>深色与浅色使用同一套暖金视觉语言。</small>
+            </span>
+            <select v-model="themeModeDraft" @change="applySettings">
+              <option value="dark">深色</option>
+              <option value="light">浅色</option>
+            </select>
           </label>
 
           <label class="char-info-settings-switch">
@@ -509,6 +553,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type CSSProperties } from 'vue';
 import { dump } from 'js-yaml';
 
+import { managerThemeClass } from '../char_info_shared/managerTheme';
 import ViewerApp from '../char_info_viewer/App.vue';
 import type { ViewerSaveFeedback } from '../char_info_viewer/types';
 import WorldbookCharacterLibrary from './WorldbookCharacterLibrary.vue';
@@ -528,7 +573,7 @@ type LibraryFilter = 'all' | 'present' | 'away';
 
 const props = defineProps<{
   state: RuntimeViewState;
-  onCloseLibraryList: () => void;
+  onCloseLibrary: () => void;
   onCloseLibraryViewer: () => void;
   onRefreshLibrary: () => void;
   onOpenLibraryList: () => void;
@@ -537,6 +582,7 @@ const props = defineProps<{
   onCloseWorldbookLibrary: () => void;
   onOpenCurrentChatLibrary: () => void;
   onEditWorldbookCharacter: (worldbookName: string, entryUid?: number) => void;
+  onEditCurrentChatCharacterProfile: (characterName: string) => void;
   onMoveLibraryButton: (position: { left: number; top: number }) => void;
   onOpenSettings: () => void;
   onCloseSettings: () => void;
@@ -548,12 +594,11 @@ const props = defineProps<{
 const searchText = ref('');
 const activeFilter = ref<LibraryFilter>('all');
 const mobileFiltersExpanded = ref(false);
+const currentMobileMoreOpen = ref(false);
 const selectedCharacterName = ref('');
 const failedAvatarUrls = ref(new Set<string>());
 const dragPosition = ref<{ left: number; top: number } | null>(null);
-const listWindowRef = ref<HTMLElement | null>(null);
 const searchInputRef = ref<HTMLInputElement | null>(null);
-const listWindowPosition = ref<{ left: number; top: number } | null>(null);
 const viewerWindowRef = ref<HTMLElement | null>(null);
 const viewerWindowPosition = ref<{ left: number; top: number } | null>(null);
 const floorLimitDraft = ref(props.state.settings.activeFloorLimit);
@@ -561,10 +606,15 @@ const maxCardsPerMessageDraft = ref(props.state.settings.maxCardsPerMessage);
 const unlimitedCardsPerMessageDraft = ref(props.state.settings.unlimitedCardsPerMessage);
 const effectsEnabledDraft = ref(props.state.settings.effectsEnabled);
 const forceMobileLayoutDraft = ref(props.state.settings.forceMobileLayout);
+const themeModeDraft = ref(props.state.settings.themeMode);
 const debugEnabledDraft = ref(props.state.settings.debugEnabled);
 const imageSourcePriorityEnabledDraft = ref(props.state.settings.imageSourcePriorityEnabled);
 const imageSourcePriorityDraft = ref([...props.state.settings.imageSourcePriority]);
 const settingsMessage = ref('');
+const characterLibraryOpen = computed(() => {
+  const library = props.state.library;
+  return Boolean(library && (library.listOpen || library.viewerOpen || library.worldbookOpen));
+});
 const activeImageSourcePriority = computed(() =>
   props.state.settings.imageSourcePriorityEnabled ? props.state.settings.imageSourcePriority : [],
 );
@@ -576,10 +626,6 @@ const filterOptions: Array<{ value: LibraryFilter; label: string }> = [
 
 const FLOATING_BUTTON_SIZE = 58;
 const FLOATING_BUTTON_MARGIN = 8;
-const LIST_WINDOW_DESKTOP_BREAKPOINT = 720;
-const LIST_WINDOW_WIDTH = 390;
-const LIST_WINDOW_HEIGHT = 680;
-const LIST_WINDOW_ANCHOR_GAP = 12;
 const floatingButtonDrag = {
   pointerId: -1,
   startX: 0,
@@ -588,13 +634,6 @@ const floatingButtonDrag = {
   originTop: 0,
   moved: false,
   suppressClick: false,
-};
-const listWindowDrag = {
-  pointerId: -1,
-  startX: 0,
-  startY: 0,
-  originLeft: 0,
-  originTop: 0,
 };
 const viewerWindowDrag = {
   pointerId: -1,
@@ -613,9 +652,15 @@ function openCharacter(name: string): void {
   props.onOpenLibraryCharacter(name);
 }
 
-function closeListWindow(): void {
+function closeCharacterLibrary(): void {
   mobileFiltersExpanded.value = false;
-  props.onCloseLibraryList();
+  currentMobileMoreOpen.value = false;
+  props.onCloseLibrary();
+}
+
+function openSettingsFromCurrentMobileMore(): void {
+  currentMobileMoreOpen.value = false;
+  props.onOpenSettings();
 }
 
 function focusLibrarySearch(): void {
@@ -633,11 +678,6 @@ function closeViewerWindow(): void {
 function showLibraryListFromViewer(): void {
   closeViewerWindow();
   props.onOpenLibraryList();
-}
-
-function closeLibraryWindows(): void {
-  closeViewerWindow();
-  closeListWindow();
 }
 
 function getHostViewport(): { width: number; height: number } {
@@ -673,32 +713,12 @@ const floatingButtonAriaLabel = computed(() => {
   return unreadCount > 0 ? `打开当前角色列表，${unreadCount} 名角色的好感度有更新` : '打开当前角色列表';
 });
 
-function getAnchoredListWindowPosition(buttonRect: DOMRect): { left: number; top: number } {
-  const viewport = getHostViewport();
-  const width = Math.min(LIST_WINDOW_WIDTH, viewport.width - 24);
-  const height = Math.min(LIST_WINDOW_HEIGHT, viewport.height - 24);
-  const spaceRight = viewport.width - buttonRect.right;
-  const spaceLeft = buttonRect.left;
-  const openRight = spaceRight >= width + LIST_WINDOW_ANCHOR_GAP || spaceRight >= spaceLeft;
-  const left = openRight
-    ? buttonRect.right + LIST_WINDOW_ANCHOR_GAP
-    : buttonRect.left - width - LIST_WINDOW_ANCHOR_GAP;
-  const top = buttonRect.top + buttonRect.height / 2 - height / 2;
-  return clampListWindowPosition({ left, top });
-}
-
-function openLibraryFromFloatingButton(event: MouseEvent): void {
+function openLibraryFromFloatingButton(): void {
   if (floatingButtonDrag.suppressClick) {
     floatingButtonDrag.suppressClick = false;
     return;
   }
 
-  const buttonRect = (event.currentTarget as HTMLButtonElement).getBoundingClientRect();
-  const viewport = getHostViewport();
-  listWindowPosition.value =
-    !props.state.settings.forceMobileLayout && viewport.width > LIST_WINDOW_DESKTOP_BREAKPOINT
-      ? getAnchoredListWindowPosition(buttonRect)
-      : null;
   props.onOpenLibraryList();
 }
 
@@ -753,67 +773,6 @@ function keepFloatingButtonInViewport(): void {
   if (!position) return;
   const clamped = clampFloatingButtonPosition(position);
   if (clamped.left !== position.left || clamped.top !== position.top) props.onMoveLibraryButton(clamped);
-}
-
-function clampListWindowPosition(position: { left: number; top: number }): { left: number; top: number } {
-  const viewport = getHostViewport();
-  const windowElement = listWindowRef.value;
-  const width = windowElement?.offsetWidth ?? Math.min(390, viewport.width - 16);
-  const height = windowElement?.offsetHeight ?? Math.min(680, viewport.height - 16);
-  const margin = 8;
-  return {
-    left: Math.min(Math.max(margin, position.left), Math.max(margin, viewport.width - width - margin)),
-    top: Math.min(Math.max(margin, position.top), Math.max(margin, viewport.height - height - margin)),
-  };
-}
-
-const listWindowStyle = computed<CSSProperties>(() => {
-  const position = listWindowPosition.value;
-  return position ? { left: `${position.left}px`, top: `${position.top}px`, transform: 'none' } : {};
-});
-
-function beginListWindowDrag(event: PointerEvent): void {
-  if (event.button !== 0 || (event.target as HTMLElement).closest('button')) return;
-  const header = event.currentTarget as HTMLElement;
-  const windowElement = listWindowRef.value;
-  if (!windowElement) return;
-  const rect = windowElement.getBoundingClientRect();
-  listWindowDrag.pointerId = event.pointerId;
-  listWindowDrag.startX = event.clientX;
-  listWindowDrag.startY = event.clientY;
-  listWindowDrag.originLeft = rect.left;
-  listWindowDrag.originTop = rect.top;
-  listWindowPosition.value = { left: rect.left, top: rect.top };
-  header.setPointerCapture(event.pointerId);
-}
-
-function moveListWindow(event: PointerEvent): void {
-  if (listWindowDrag.pointerId !== event.pointerId) return;
-  listWindowPosition.value = clampListWindowPosition({
-    left: listWindowDrag.originLeft + event.clientX - listWindowDrag.startX,
-    top: listWindowDrag.originTop + event.clientY - listWindowDrag.startY,
-  });
-  event.preventDefault();
-}
-
-function finishListWindowDrag(event: PointerEvent): void {
-  if (listWindowDrag.pointerId !== event.pointerId) return;
-  const header = event.currentTarget as HTMLElement;
-  if (header.hasPointerCapture(event.pointerId)) header.releasePointerCapture(event.pointerId);
-  listWindowDrag.pointerId = -1;
-}
-
-function endListWindowDrag(event: PointerEvent): void {
-  finishListWindowDrag(event);
-}
-
-function cancelListWindowDrag(event: PointerEvent): void {
-  finishListWindowDrag(event);
-}
-
-function keepListWindowInViewport(): void {
-  if (!listWindowPosition.value) return;
-  listWindowPosition.value = clampListWindowPosition(listWindowPosition.value);
 }
 
 function clampViewerWindowPosition(position: { left: number; top: number }): { left: number; top: number } {
@@ -879,7 +838,6 @@ function keepViewerWindowInViewport(): void {
 
 function keepFloatingUiInViewport(): void {
   keepFloatingButtonInViewport();
-  keepListWindowInViewport();
   keepViewerWindowInViewport();
 }
 
@@ -889,6 +847,7 @@ function replaceSettingsDraft(settings: CharInfoUiSettings): void {
   unlimitedCardsPerMessageDraft.value = settings.unlimitedCardsPerMessage;
   effectsEnabledDraft.value = settings.effectsEnabled;
   forceMobileLayoutDraft.value = settings.forceMobileLayout;
+  themeModeDraft.value = settings.themeMode;
   debugEnabledDraft.value = settings.debugEnabled;
   imageSourcePriorityEnabledDraft.value = settings.imageSourcePriorityEnabled;
   imageSourcePriorityDraft.value = [...settings.imageSourcePriority];
@@ -910,6 +869,7 @@ function applySettings(): void {
     unlimitedCardsPerMessage: unlimitedCardsPerMessageDraft.value,
     effectsEnabled: effectsEnabledDraft.value,
     forceMobileLayout: forceMobileLayoutDraft.value,
+    themeMode: themeModeDraft.value,
     debugEnabled: debugEnabledDraft.value,
     imageSourcePriorityEnabled: imageSourcePriorityEnabledDraft.value,
     imageSourcePriority: priorityNormalization.priorities,
@@ -1045,6 +1005,58 @@ onBeforeUnmount(() => {
 </script>
 
 <style>
+.char-info-theme-dark {
+  --ci-bg: #121417;
+  --ci-surface: #1b1e22;
+  --ci-surface-raised: #23272c;
+  --ci-surface-soft: #2c3137;
+  --ci-input: #0f1114;
+  --ci-border: #494236;
+  --ci-border-strong: #6a5b43;
+  --ci-text: #f7f2e9;
+  --ci-text-secondary: #d9cfbf;
+  --ci-text-muted: #aea290;
+  --ci-primary: #d2ac6d;
+  --ci-primary-strong: #b88a46;
+  --ci-primary-soft: rgb(210 172 109 / 18%);
+  --ci-primary-rgb: 210 172 109;
+  --ci-on-primary: #1d1811;
+  --ci-overlay: rgb(5 6 7 / 80%);
+  --ci-header: rgb(22 24 27 / 98%);
+  --ci-success: #88a18e;
+  --ci-danger: #d4878c;
+  --ci-affinity: #f1b4c1;
+  --ci-warning: #d2ad71;
+  --ci-shadow: rgb(0 0 0 / 58%);
+  color-scheme: dark;
+}
+
+.char-info-theme-light {
+  --ci-bg: #e3ded6;
+  --ci-surface: #f0ece6;
+  --ci-surface-raised: #f6f2ec;
+  --ci-surface-soft: #d5cec4;
+  --ci-input: #f8f5ef;
+  --ci-border: #b9aa96;
+  --ci-border-strong: #806b50;
+  --ci-text: #1f1d1a;
+  --ci-text-secondary: #403a34;
+  --ci-text-muted: #5d544a;
+  --ci-primary: #6b4a22;
+  --ci-primary-strong: #513615;
+  --ci-primary-soft: rgb(107 74 34 / 12%);
+  --ci-primary-rgb: 107 74 34;
+  --ci-on-primary: #fff8ee;
+  --ci-overlay: rgb(31 27 23 / 28%);
+  --ci-header: rgb(216 208 197 / 98%);
+  --ci-success: #365844;
+  --ci-danger: #873941;
+  --ci-affinity: #9a3552;
+  --ci-warning: #68451f;
+  --ci-shadow: rgb(58 47 36 / 24%);
+  color-scheme: light;
+}
+
 .char-info-runtime-root {
   display: contents;
 }
@@ -1089,8 +1101,8 @@ onBeforeUnmount(() => {
   padding: 18px;
   overflow: auto;
   place-items: safe center;
-  background: rgba(7, 8, 13, 0.78);
-  color: #f7f1e8;
+  background: var(--ci-overlay);
+  color: var(--ci-text);
   font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
   backdrop-filter: blur(8px);
 }
@@ -1101,10 +1113,10 @@ onBeforeUnmount(() => {
   flex-direction: column;
   width: min(100%, 520px);
   overflow: hidden;
-  border: 1px solid rgba(232, 210, 171, 0.28);
+  border: 1px solid var(--ci-border-strong);
   border-radius: 18px;
-  background: radial-gradient(circle at 0% 0%, rgba(122, 92, 168, 0.2), transparent 42%), #15151d;
-  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.48);
+  background: radial-gradient(circle at 0% 0%, rgb(var(--ci-primary-rgb) / 12%), transparent 42%), var(--ci-bg);
+  box-shadow: 0 20px 70px var(--ci-shadow);
 }
 
 .char-info-settings-dialog header,
@@ -1117,11 +1129,11 @@ onBeforeUnmount(() => {
 }
 
 .char-info-settings-dialog header {
-  border-bottom: 1px solid rgba(232, 210, 171, 0.16);
+  border-bottom: 1px solid var(--ci-border);
 }
 
 .char-info-settings-dialog header span {
-  color: #d9b87a;
+  color: var(--ci-primary);
   font-size: 0.65rem;
   letter-spacing: 0.16em;
 }
@@ -1149,7 +1161,7 @@ onBeforeUnmount(() => {
 }
 
 .char-info-settings-dialog button.primary {
-  border-color: #d9b87a;
+  border-color: var(--ci-primary);
   background: rgba(217, 184, 122, 0.16);
 }
 
@@ -1174,9 +1186,9 @@ onBeforeUnmount(() => {
   gap: 16px;
   min-height: 66px;
   padding: 12px 14px;
-  border: 1px solid rgba(232, 210, 171, 0.16);
+  border: 1px solid var(--ci-border);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--ci-surface);
 }
 
 .char-info-settings-fields label > span {
@@ -1185,28 +1197,36 @@ onBeforeUnmount(() => {
 }
 
 .char-info-settings-fields small {
-  color: #9f9aa7;
+  color: var(--ci-text-muted);
   font-size: 0.72rem;
+}
+
+.char-info-settings-fields input[type='number'],
+.char-info-settings-fields select {
+  min-height: 40px;
+  padding: 7px 9px;
+  border: 1px solid var(--ci-border);
+  border-radius: 9px;
+  background: var(--ci-input);
+  color: var(--ci-text);
 }
 
 .char-info-settings-fields input[type='number'] {
   width: 76px;
-  min-height: 40px;
-  padding: 7px 9px;
-  border: 1px solid rgba(232, 210, 171, 0.25);
-  border-radius: 9px;
-  background: rgba(0, 0, 0, 0.28);
-  color: #fff;
   text-align: center;
+}
+
+.char-info-settings-fields select {
+  width: 112px;
 }
 
 .char-info-settings-priority {
   display: grid;
   gap: 12px;
   padding: 12px 14px;
-  border: 1px solid rgba(232, 210, 171, 0.16);
+  border: 1px solid var(--ci-border);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--ci-surface);
 }
 
 .char-info-settings-fields .char-info-settings-priority-switch {
@@ -1252,7 +1272,7 @@ onBeforeUnmount(() => {
 }
 
 .char-info-settings-switch input.char-info-settings-priority-toggle:checked {
-  border-color: #d9b87a;
+  border-color: var(--ci-primary);
   background: rgba(217, 184, 122, 0.3);
 }
 
@@ -1270,7 +1290,7 @@ onBeforeUnmount(() => {
 
 .char-info-settings-priority-editor > p {
   margin: 0;
-  color: #b9b4bd;
+  color: var(--ci-text-secondary);
   font-size: 0.76rem;
   line-height: 1.5;
 }
@@ -1294,7 +1314,7 @@ onBeforeUnmount(() => {
   place-items: center;
   border: 1px solid rgba(217, 184, 122, 0.26);
   border-radius: 50%;
-  color: #d9b87a;
+  color: var(--ci-primary);
   font-size: 0.75rem;
   font-weight: 700;
 }
@@ -1305,15 +1325,15 @@ onBeforeUnmount(() => {
   min-height: 40px;
   box-sizing: border-box;
   padding: 8px 10px;
-  border: 1px solid rgba(232, 210, 171, 0.25);
+  border: 1px solid var(--ci-border);
   border-radius: 9px;
-  background: rgba(0, 0, 0, 0.28);
-  color: #fff;
+  background: var(--ci-input);
+  color: var(--ci-text);
   font: inherit;
 }
 
 .char-info-settings-priority-row input[type='text']:focus {
-  border-color: #d9b87a;
+  border-color: var(--ci-primary);
   outline: 2px solid rgba(217, 184, 122, 0.14);
 }
 
@@ -1348,7 +1368,7 @@ onBeforeUnmount(() => {
 .char-info-settings-switch input {
   width: 22px;
   height: 22px;
-  accent-color: #d9b87a;
+  accent-color: var(--ci-primary);
 }
 
 .char-info-settings-feedback {
@@ -1370,16 +1390,16 @@ onBeforeUnmount(() => {
   left: 50%;
   display: flex;
   flex-direction: column;
-  width: min(1240px, calc(100% - 24px));
-  height: min(892px, calc(100% - 24px));
+  width: min(1800px, calc(100% - 24px));
+  height: min(1020px, calc(100% - 24px));
   overflow: hidden;
-  border: 1px solid rgba(232, 210, 171, 0.28);
+  border: 1px solid var(--ci-border-strong);
   border-radius: 18px;
   background:
-    radial-gradient(circle at 15% 0%, rgba(122, 92, 168, 0.22), transparent 38%),
-    linear-gradient(145deg, #11121a 0%, #191620 48%, #0d1017 100%);
-  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.58);
-  color: #f7f1e8;
+    radial-gradient(circle at 15% 0%, rgb(var(--ci-primary-rgb) / 12%), transparent 38%),
+    linear-gradient(145deg, var(--ci-bg) 0%, var(--ci-surface-raised) 100%);
+  box-shadow: 0 24px 72px var(--ci-shadow);
+  color: var(--ci-text);
   font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
   transform: translate(-50%, -50%);
   pointer-events: auto;
@@ -1394,11 +1414,11 @@ onBeforeUnmount(() => {
   height: 58px;
   padding: 14px;
   place-items: center;
-  border: 1px solid rgba(232, 210, 171, 0.42);
+  border: 1px solid rgb(var(--ci-primary-rgb) / 42%);
   border-radius: 18px;
-  background: radial-gradient(circle at 30% 22%, rgba(217, 184, 122, 0.24), transparent 38%), rgba(18, 18, 26, 0.96);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.42);
-  color: #ead19c;
+  background: radial-gradient(circle at 30% 22%, rgb(var(--ci-primary-rgb) / 22%), transparent 38%), var(--ci-surface-raised);
+  box-shadow: 0 10px 30px var(--ci-shadow);
+  color: var(--ci-primary);
   cursor: grab;
   touch-action: none;
   pointer-events: auto;
@@ -1452,11 +1472,11 @@ onBeforeUnmount(() => {
   height: min(680px, calc(100% - 24px));
   max-height: min(680px, calc(100% - 24px));
   overflow: hidden;
-  border: 1px solid rgba(232, 210, 171, 0.28);
+  border: 1px solid var(--ci-border-strong);
   border-radius: 18px;
-  background: radial-gradient(circle at 0 0, rgba(122, 92, 168, 0.18), transparent 44%), rgba(18, 18, 26, 0.985);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.56);
-  color: #f7f1e8;
+  background: radial-gradient(circle at 0 0, rgb(var(--ci-primary-rgb) / 10%), transparent 44%), var(--ci-bg);
+  box-shadow: 0 24px 70px var(--ci-shadow);
+  color: var(--ci-text);
   font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
   transform: translate(-50%, -50%);
   pointer-events: auto;
@@ -1502,9 +1522,9 @@ onBeforeUnmount(() => {
   width: 100%;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   overflow: hidden;
-  border: 1px solid rgba(232, 210, 171, 0.2);
+  border: 1px solid var(--ci-border);
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.18);
+  background: var(--ci-input);
 }
 
 .char-info-library-source-switch button {
@@ -1512,13 +1532,13 @@ onBeforeUnmount(() => {
   min-height: 38px;
   padding: 7px 9px;
   border: 0;
-  border-left: 1px solid rgba(232, 210, 171, 0.14);
+  border-left: 1px solid var(--ci-border);
   background: transparent;
-  color: #b9b4bd;
+  color: var(--ci-text-secondary);
   cursor: pointer;
   font: inherit;
-  font-size: 0.78rem;
-  font-weight: 650;
+  font-size: 0.84rem;
+  font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
@@ -1528,17 +1548,18 @@ onBeforeUnmount(() => {
 }
 
 .char-info-library-source-switch button:hover {
-  background: rgba(217, 184, 122, 0.1);
-  color: #fff8eb;
+  background: var(--ci-primary-soft);
+  color: var(--ci-primary-strong);
 }
 
 .char-info-library-source-switch button.active {
-  background: rgba(217, 184, 122, 0.2);
-  color: #f4d493;
+  background: var(--ci-primary-soft);
+  color: var(--ci-primary-strong);
+  box-shadow: inset 0 0 0 1px rgb(var(--ci-primary-rgb) / 34%);
 }
 
 .char-info-library-source-switch button:focus-visible {
-  outline: 2px solid #f0cf8e;
+  outline: 2px solid var(--ci-primary);
   outline-offset: -2px;
 }
 
@@ -1579,15 +1600,17 @@ onBeforeUnmount(() => {
   width: 100%;
   min-height: 42px;
   padding: 9px 12px;
-  border: 1px solid rgba(232, 210, 171, 0.2);
+  border: 1px solid var(--ci-border);
   border-radius: 10px;
   outline: none;
-  background: rgba(0, 0, 0, 0.25);
-  color: #fff;
+  background: var(--ci-input);
+  color: var(--ci-text);
+  font-size: 0.84rem;
+  font-weight: 550;
 }
 
 .char-info-library-list-controls input:focus {
-  border-color: #d9b87a;
+  border-color: var(--ci-primary);
 }
 
 .sr-only {
@@ -1609,8 +1632,8 @@ onBeforeUnmount(() => {
   gap: 18px;
   min-height: 64px;
   padding: 10px 12px 10px 18px;
-  border-bottom: 1px solid rgba(232, 210, 171, 0.2);
-  background: linear-gradient(90deg, rgba(18, 19, 27, 0.97), rgba(13, 14, 20, 0.92));
+  border-bottom: 1px solid var(--ci-border);
+  background: var(--ci-header);
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -1626,14 +1649,13 @@ onBeforeUnmount(() => {
   margin: 0;
   padding-left: 13px;
   overflow: hidden;
-  color: #f7f3ec;
+  color: var(--ci-text);
   font-family: 'Noto Sans SC', 'Microsoft YaHei UI', 'PingFang SC', sans-serif;
   font-size: clamp(1.2rem, 2.1vw, 1.55rem);
   font-weight: 700;
   letter-spacing: 0.08em;
   line-height: 1.2;
   text-overflow: ellipsis;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.36);
   white-space: nowrap;
 }
 
@@ -1644,7 +1666,7 @@ onBeforeUnmount(() => {
   width: 3px;
   height: 22px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #f0cf8e, #8ed9b6);
+  background: linear-gradient(180deg, var(--ci-primary), var(--ci-primary-strong));
   box-shadow: 0 0 12px rgba(217, 184, 122, 0.3);
   content: '';
   transform: translateY(-50%);
@@ -1656,25 +1678,26 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 6px;
   padding: 4px;
-  border: 1px solid rgba(232, 210, 171, 0.14);
+  border: 1px solid var(--ci-border);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--ci-surface);
 }
 
 .char-info-library-filters button {
   min-height: 38px;
   padding: 7px 14px;
-  border: 1px solid rgba(232, 210, 171, 0.25);
+  border: 1px solid var(--ci-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  color: inherit;
+  background: var(--ci-surface);
+  color: var(--ci-text-secondary);
   cursor: pointer;
 }
 
 .char-info-library-filters button:hover,
 .char-info-library-filters button.active {
-  border-color: #d9b87a;
-  background: rgba(217, 184, 122, 0.14);
+  border-color: var(--ci-primary);
+  background: var(--ci-primary-soft);
+  color: var(--ci-primary-strong);
 }
 
 .char-info-library-header-actions button {
@@ -1684,7 +1707,7 @@ onBeforeUnmount(() => {
   justify-content: center;
   border: 1px solid transparent;
   border-radius: 10px;
-  color: #e9e5de;
+  color: var(--ci-text-secondary);
   cursor: pointer;
   transition:
     border-color 150ms ease,
@@ -1694,9 +1717,9 @@ onBeforeUnmount(() => {
 }
 
 .char-info-library-header-actions button:hover:not(:disabled) {
-  border-color: rgba(217, 184, 122, 0.34);
-  background: rgba(217, 184, 122, 0.1);
-  color: #fff8eb;
+  border-color: rgb(var(--ci-primary-rgb) / 34%);
+  background: var(--ci-primary-soft);
+  color: var(--ci-primary-strong);
 }
 
 .char-info-library-header-actions button:active:not(:disabled) {
@@ -1704,7 +1727,7 @@ onBeforeUnmount(() => {
 }
 
 .char-info-library-header-actions button:focus-visible {
-  outline: 2px solid #f0cf8e;
+  outline: 2px solid var(--ci-primary);
   outline-offset: 2px;
 }
 
@@ -1767,7 +1790,8 @@ onBeforeUnmount(() => {
 .char-info-library-filters button {
   min-height: 32px;
   padding: 5px 10px;
-  font-size: 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 650;
 }
 
 .char-info-library-list {
@@ -1787,10 +1811,10 @@ onBeforeUnmount(() => {
   width: 100%;
   min-height: 66px;
   padding: 10px 11px;
-  border: 1px solid transparent;
+  border: 1px solid var(--ci-border);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
-  color: inherit;
+  background: var(--ci-surface);
+  color: var(--ci-text);
   cursor: pointer;
   text-align: left;
 }
@@ -1798,8 +1822,8 @@ onBeforeUnmount(() => {
 .char-info-library-list > button:hover,
 .char-info-library-list > button.active,
 .char-info-library-list > button.unread {
-  border-color: rgba(217, 184, 122, 0.55);
-  background: rgba(217, 184, 122, 0.1);
+  border-color: rgb(var(--ci-primary-rgb) / 55%);
+  background: var(--ci-primary-soft);
 }
 
 .char-info-library-avatar {
@@ -1808,10 +1832,10 @@ onBeforeUnmount(() => {
   height: 42px;
   overflow: hidden;
   place-items: center;
-  border: 1px solid rgba(217, 184, 122, 0.4);
+  border: 1px solid rgb(var(--ci-primary-rgb) / 40%);
   border-radius: 50%;
-  background: rgba(217, 184, 122, 0.08);
-  color: #e6c98d;
+  background: var(--ci-primary-soft);
+  color: var(--ci-primary-strong);
   font-family: Georgia, 'Noto Serif SC', serif;
 }
 
@@ -1834,6 +1858,13 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
+.char-info-library-list-copy strong {
+  color: var(--ci-text);
+  font-size: 0.94rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
 .char-info-library-list-meta {
   display: grid;
   justify-items: end;
@@ -1841,29 +1872,32 @@ onBeforeUnmount(() => {
 }
 
 .char-info-library-affinity {
-  color: #f1b4c1;
+  color: var(--ci-affinity);
   font-family: Georgia, 'Noto Serif SC', serif;
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .char-info-library-list-copy small {
-  color: #9b96a1;
-  font-size: 0.72rem;
+  color: var(--ci-text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.35;
 }
 
 .char-info-library-presence {
   padding: 3px 6px;
   border-radius: 999px;
-  background: rgba(91, 181, 139, 0.16);
-  color: #8ed9b6;
-  font-size: 0.68rem;
+  background: color-mix(in srgb, var(--ci-success) 16%, transparent);
+  color: var(--ci-success);
+  font-size: 0.75rem;
+  font-weight: 750;
 }
 
 .char-info-library-presence.away {
-  background: rgba(160, 160, 170, 0.11);
-  color: #aaa7b0;
+  background: var(--ci-surface-soft);
+  color: var(--ci-text-muted);
 }
 
 .char-info-library-character-dot {
@@ -1917,7 +1951,7 @@ onBeforeUnmount(() => {
 }
 
 .char-info-library-placeholder span {
-  color: #d9b87a;
+  color: var(--ci-primary);
   font-size: 2rem;
 }
 
@@ -1931,12 +1965,12 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   min-height: 72px;
   flex: 0 0 auto;
-  grid-template-columns: 1fr 1.18fr 1fr;
+  grid-template-columns: 1fr 1fr 1.18fr;
   align-items: end;
-  gap: 8px;
-  padding: 7px 14px max(8px, env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(14, 16, 22, 0.96);
+  gap: 10px;
+  padding: 7px 18px calc(8px + var(--ci-mobile-safe-bottom));
+  border-top: 1px solid var(--ci-border);
+  background: var(--ci-header);
   backdrop-filter: blur(18px);
 }
 
@@ -1949,7 +1983,7 @@ onBeforeUnmount(() => {
   border: 0;
   border-radius: 11px;
   background: transparent;
-  color: #9b9da7;
+  color: var(--ci-text-muted);
   cursor: pointer;
   font: inherit;
   font-size: 0.65rem;
@@ -1984,13 +2018,13 @@ onBeforeUnmount(() => {
 .char-info-library-viewer-mobile-dock .primary {
   min-height: 66px;
   margin: -14px 3px 0;
-  border: 1px solid rgba(142, 217, 182, 0.42);
+  border: 1px solid rgb(var(--ci-primary-rgb) / 42%);
   border-radius: 18px;
-  background: radial-gradient(circle at 50% 18%, rgba(142, 217, 182, 0.2), transparent 58%), #171d20;
+  background: radial-gradient(circle at 50% 18%, rgb(var(--ci-primary-rgb) / 18%), transparent 58%), var(--ci-surface-raised);
   box-shadow:
     0 -8px 24px rgba(0, 0, 0, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  color: #8ed9b6;
+  color: var(--ci-primary);
   font-weight: 750;
 }
 
@@ -2096,7 +2130,7 @@ onBeforeUnmount(() => {
 
   .char-info-library-mobile-heading h2 {
     margin: 0;
-    color: #f7f3ec;
+    color: var(--ci-text);
     font-family: Georgia, 'Noto Serif SC', serif;
     font-size: 1.22rem;
     letter-spacing: 0.05em;
@@ -2161,6 +2195,8 @@ onBeforeUnmount(() => {
   .char-info-library-list {
     flex: 1 1 auto;
     grid-template-columns: 1fr;
+    grid-auto-rows: max-content;
+    align-content: start;
     padding: 8px 14px;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
@@ -2185,9 +2221,9 @@ onBeforeUnmount(() => {
     grid-template-columns: 1fr 1fr 1.18fr 1fr 1fr;
     align-items: end;
     gap: 3px;
-    padding: 7px 7px max(8px, env(safe-area-inset-bottom, 0px));
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(14, 16, 22, 0.94);
+    padding: 7px 7px calc(8px + var(--ci-mobile-safe-bottom));
+    border-top: 1px solid var(--ci-border);
+    background: var(--ci-header);
     backdrop-filter: blur(18px);
   }
 
@@ -2200,7 +2236,7 @@ onBeforeUnmount(() => {
     border: 0;
     border-radius: 11px;
     background: transparent;
-    color: #9b9da7;
+    color: var(--ci-text-muted);
     cursor: pointer;
     font: inherit;
     font-size: 0.65rem;
@@ -2230,13 +2266,13 @@ onBeforeUnmount(() => {
   .char-info-library-mobile-dock .primary {
     min-height: 66px;
     margin: -14px 3px 0;
-    border: 1px solid rgba(142, 217, 182, 0.42);
+    border: 1px solid rgb(var(--ci-primary-rgb) / 42%);
     border-radius: 18px;
-    background: radial-gradient(circle at 50% 18%, rgba(142, 217, 182, 0.2), transparent 58%), #171d20;
+    background: radial-gradient(circle at 50% 18%, rgb(var(--ci-primary-rgb) / 18%), transparent 58%), var(--ci-surface-raised);
     box-shadow:
       0 -8px 24px rgba(0, 0, 0, 0.28),
       inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    color: #8ed9b6;
+    color: var(--ci-primary);
     font-weight: 750;
   }
 
@@ -2261,6 +2297,12 @@ onBeforeUnmount(() => {
   }
 
   .char-info-library-overlay .char-info-library-header-actions {
+    display: flex;
+    pointer-events: auto;
+  }
+
+  .char-info-library-overlay .char-info-library-header-actions .char-info-library-list-action,
+  .char-info-library-overlay .char-info-library-header-actions .char-info-library-close-action {
     display: none;
   }
 
@@ -2352,7 +2394,7 @@ onBeforeUnmount(() => {
 
 .char-info-library-list-dialog.force-mobile-layout .char-info-library-mobile-heading h2 {
   margin: 0;
-  color: #f7f3ec;
+  color: var(--ci-text);
   font-family: Georgia, 'Noto Serif SC', serif;
   font-size: 1.22rem;
   letter-spacing: 0.05em;
@@ -2417,6 +2459,8 @@ onBeforeUnmount(() => {
 .char-info-library-list-dialog.force-mobile-layout .char-info-library-list {
   flex: 1 1 auto;
   grid-template-columns: 1fr;
+  grid-auto-rows: max-content;
+  align-content: start;
   padding: 8px 14px;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
@@ -2441,9 +2485,9 @@ onBeforeUnmount(() => {
   grid-template-columns: 1fr 1fr 1.18fr 1fr 1fr;
   align-items: end;
   gap: 3px;
-  padding: 7px 7px max(8px, env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(14, 16, 22, 0.94);
+  padding: 7px 7px calc(8px + var(--ci-mobile-safe-bottom));
+  border-top: 1px solid var(--ci-border);
+  background: var(--ci-header);
   backdrop-filter: blur(18px);
 }
 
@@ -2456,7 +2500,7 @@ onBeforeUnmount(() => {
   border: 0;
   border-radius: 11px;
   background: transparent;
-  color: #9b9da7;
+  color: var(--ci-text-muted);
   cursor: pointer;
   font: inherit;
   font-size: 0.65rem;
@@ -2486,13 +2530,13 @@ onBeforeUnmount(() => {
 .char-info-library-list-dialog.force-mobile-layout .char-info-library-mobile-dock .primary {
   min-height: 66px;
   margin: -14px 3px 0;
-  border: 1px solid rgba(142, 217, 182, 0.42);
+  border: 1px solid rgb(var(--ci-primary-rgb) / 42%);
   border-radius: 18px;
-  background: radial-gradient(circle at 50% 18%, rgba(142, 217, 182, 0.2), transparent 58%), #171d20;
+  background: radial-gradient(circle at 50% 18%, rgb(var(--ci-primary-rgb) / 18%), transparent 58%), var(--ci-surface-raised);
   box-shadow:
     0 -8px 24px rgba(0, 0, 0, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  color: #8ed9b6;
+  color: var(--ci-primary);
   font-weight: 750;
 }
 
@@ -2517,6 +2561,12 @@ onBeforeUnmount(() => {
 }
 
 .char-info-library-overlay.force-mobile-layout .char-info-library-header-actions {
+  display: flex;
+  pointer-events: auto;
+}
+
+.char-info-library-overlay.force-mobile-layout .char-info-library-header-actions .char-info-library-list-action,
+.char-info-library-overlay.force-mobile-layout .char-info-library-header-actions .char-info-library-close-action {
   display: none;
 }
 
@@ -2577,5 +2627,329 @@ onBeforeUnmount(() => {
   object-fit: cover;
   object-position: top center;
   background: transparent;
+}
+
+.char-info-character-library-backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.char-info-character-library {
+  --ci-mobile-safe-top: max(env(safe-area-inset-top, 0px), 28px);
+  --ci-mobile-safe-bottom: max(env(safe-area-inset-bottom, 0px), 18px);
+  --ci-mobile-safe-left: env(safe-area-inset-left, 0px);
+  --ci-mobile-safe-right: env(safe-area-inset-right, 0px);
+  pointer-events: auto;
+}
+
+.char-info-character-library-header {
+  display: grid;
+  min-height: 78px;
+  padding: 12px 16px;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(220px, 1fr) minmax(340px, 480px) auto;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid var(--ci-border);
+  background: var(--ci-header);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.char-info-character-library-header:active {
+  cursor: grabbing;
+}
+
+.char-info-character-library-title {
+  min-width: 0;
+}
+
+.char-info-character-library-title h2,
+.char-info-character-library-title p {
+  margin: 0;
+}
+
+.char-info-character-library-title h2 {
+  color: var(--ci-text);
+  font-size: 1.35rem;
+  letter-spacing: 0.04em;
+}
+
+.char-info-character-library-title p {
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--ci-text-muted);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.char-info-character-library-switch {
+  width: 100%;
+}
+
+.char-info-character-library-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.char-info-character-library-actions button {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid var(--ci-border);
+  border-radius: 11px;
+  background: var(--ci-surface-soft);
+  color: var(--ci-text-secondary);
+  cursor: pointer;
+}
+
+.char-info-character-library-actions svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.char-info-character-library-body {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.char-info-character-library-body > .manager-root {
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.char-info-library-current-layout {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: minmax(300px, 390px) minmax(0, 1fr);
+  animation: char-info-library-content-in 140ms ease-out;
+}
+
+.char-info-character-library .char-info-library-list-backdrop {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  pointer-events: auto;
+}
+
+.char-info-character-library .char-info-library-list-dialog {
+  position: relative;
+  inset: auto !important;
+  top: auto !important;
+  left: auto !important;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  border: 0;
+  border-right: 1px solid var(--ci-border);
+  border-radius: 0;
+  background: var(--ci-bg);
+  box-shadow: none;
+  transform: none !important;
+}
+
+.char-info-character-library .char-info-library-list-dialog > header {
+  display: none;
+}
+
+.char-info-library-current-viewer {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--ci-bg);
+}
+
+.char-info-library-current-viewer .char-info-library-header {
+  cursor: default;
+  touch-action: manipulation;
+}
+
+.char-info-library-current-viewer .char-info-library-list-action,
+.char-info-library-current-viewer .char-info-library-close-action {
+  display: none;
+}
+
+.char-info-character-library.worldbook-mode .manager-root.embedded {
+  animation: char-info-library-content-in 140ms ease-out;
+}
+
+.char-info-library-mobile-more {
+  position: relative;
+  min-width: 0;
+}
+
+.char-info-library-mobile-more > button {
+  width: 100%;
+}
+
+.char-info-library-mobile-more-menu {
+  position: absolute;
+  z-index: 8;
+  right: 0;
+  bottom: calc(100% + 10px);
+  display: grid;
+  min-width: 140px;
+  padding: 6px;
+  border: 1px solid var(--ci-border-strong);
+  border-radius: 12px;
+  background: var(--ci-surface-raised);
+  box-shadow: 0 14px 36px var(--ci-shadow);
+}
+
+.char-info-library-mobile-more-menu button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ci-text-secondary);
+}
+
+@keyframes char-info-library-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 720px) {
+  .char-info-character-library-header {
+    min-height: 0;
+    padding: calc(10px + var(--ci-mobile-safe-top)) calc(12px + var(--ci-mobile-safe-right)) 8px calc(12px + var(--ci-mobile-safe-left));
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 9px;
+    cursor: default;
+    touch-action: manipulation;
+  }
+
+  .char-info-character-library-title h2 {
+    font-size: 1.12rem;
+  }
+
+  .char-info-character-library-title p {
+    font-size: 0.68rem;
+  }
+
+  .char-info-character-library-switch {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .char-info-character-library-actions {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .char-info-character-library-actions button:first-child {
+    display: none;
+  }
+
+  .char-info-character-library-body {
+    flex: 1 1 auto;
+  }
+
+  .char-info-library-current-layout {
+    display: block;
+    height: 100%;
+  }
+
+  .char-info-character-library .char-info-library-list-backdrop,
+  .char-info-character-library .char-info-library-current-viewer {
+    width: 100%;
+    height: 100%;
+  }
+
+  .char-info-character-library .char-info-library-current-viewer {
+    display: none;
+  }
+
+  .char-info-library-current-layout.viewer-open .char-info-library-list-backdrop {
+    display: none;
+  }
+
+  .char-info-library-current-layout.viewer-open .char-info-library-current-viewer {
+    display: flex;
+  }
+
+  .char-info-character-library .char-info-library-list-dialog {
+    border-right: 0;
+  }
+}
+
+.char-info-character-library.force-mobile-layout .char-info-character-library-header {
+  min-height: 0;
+  padding: calc(10px + var(--ci-mobile-safe-top)) calc(12px + var(--ci-mobile-safe-right)) 8px calc(12px + var(--ci-mobile-safe-left));
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 9px;
+  cursor: default;
+  touch-action: manipulation;
+}
+
+.char-info-character-library.force-mobile-layout .char-info-character-library-switch {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.char-info-character-library.force-mobile-layout .char-info-character-library-actions {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.char-info-character-library.force-mobile-layout .char-info-character-library-actions button:first-child {
+  display: none;
+}
+
+.char-info-character-library.force-mobile-layout .char-info-library-current-layout {
+  display: block;
+  height: 100%;
+}
+
+.char-info-character-library.force-mobile-layout .char-info-library-list-backdrop,
+.char-info-character-library.force-mobile-layout .char-info-library-current-viewer {
+  width: 100%;
+  height: 100%;
+}
+
+.char-info-character-library.force-mobile-layout .char-info-library-current-viewer {
+  display: none;
+}
+
+.char-info-character-library.force-mobile-layout .char-info-library-current-layout.viewer-open .char-info-library-list-backdrop {
+  display: none;
+}
+
+.char-info-character-library.force-mobile-layout .char-info-library-current-layout.viewer-open .char-info-library-current-viewer {
+  display: flex;
+}
+
+.char-info-character-library.force-mobile-layout .char-info-library-list-dialog {
+  border-right: 0;
 }
 </style>

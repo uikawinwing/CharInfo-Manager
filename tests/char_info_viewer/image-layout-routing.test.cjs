@@ -2,13 +2,13 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const { reactive } = require('vue');
 
-const { buildCreatorViewerPreviewData, buildCreatorViewerVisualOverride } = require('../../src/char_info_creator_manager/viewerPreview.ts');
-const { createEmptyProfile } = require('../../src/char_info_shared/characterVisualProfile.ts');
+const { buildProfileEditorViewerPreviewData, buildProfileEditorViewerVisualOverride } = require('../../src/char_info_profile_editor/viewerPreview.ts');
+const { createEmptyProfile } = require('../../src/char_info_shared/characterProfile.ts');
 const { buildCharacterViewModel } = require('../../src/char_info_viewer/services/characterViewModel.ts');
 const {
   cloneCharacterDataWithVisualOverrides,
   resolveCharacterVisualConfig,
-  resolveCharacterVisualMetadata,
+  resolveCharacterProfileMetadata,
   resolveCharacterVisualPreview,
 } = require('../../src/char_info_viewer/services/themeService.ts');
 
@@ -18,13 +18,13 @@ test('a character without an image uses the normal layout', () => {
   assert.equal(vm.layoutKind, 'default');
 });
 
-test('Creator 示例资料进入真实 Preview 路由后保留姓名、等级、身份与资源', () => {
+test('角色档案编辑器示例资料进入真实 Preview 路由后保留姓名、等级、身份与资源', () => {
   const profile = {
     ...createEmptyProfile('千爻'),
     gallery: [{ title: '主立绘', sources: ['https://example.com/qianyao.png'] }],
   };
-  const sampleData = buildCreatorViewerPreviewData(profile);
-  const override = buildCreatorViewerVisualOverride(profile);
+  const sampleData = buildProfileEditorViewerPreviewData(profile);
+  const override = buildProfileEditorViewerVisualOverride(profile);
   const resolved = resolveCharacterVisualPreview(sampleData, override.characterName, override.config);
   const vm = buildCharacterViewModel(resolved);
 
@@ -56,7 +56,7 @@ test('Current Character Viewer reads v1.9.5 MVU resource objects', () => {
   ]);
 });
 
-test('正文显式图片不会授予 Special NPC 布局', () => {
+test('正文显式图片不会授予 立绘角色卡 布局', () => {
   const vm = buildCharacterViewModel({
     姓名: '傲雪',
     角色图片: 'https://example.com/aoxue.png',
@@ -66,7 +66,7 @@ test('正文显式图片不会授予 Special NPC 布局', () => {
   assert.equal(vm.imageUrl, '');
 });
 
-test('metadata 单独存在不会授予 Special NPC，但会作为只读 presentation metadata 进入 ViewModel', () => {
+test('metadata 单独存在不会授予 立绘角色卡，但会作为只读 presentation metadata 进入 ViewModel', () => {
   const resolved = resolveCharacterVisualConfig(
     { 姓名: '无图故事角色', 背景故事: '原始精简故事。' },
     {
@@ -99,7 +99,7 @@ test('metadata 单独存在不会授予 Special NPC，但会作为只读 present
   assert.deepEqual(vm.storySections, [{ title: '第一章', content: '作者展示故事。' }]);
 });
 
-test('Special NPC 保留原始 backstory，同时按作者顺序读取自定义故事，视觉 clone 不丢 metadata', () => {
+test('立绘角色卡 保留原始 backstory，同时按作者顺序读取自定义故事，视觉 clone 不丢 metadata', () => {
   const resolved = resolveCharacterVisualConfig(
     { 姓名: '千爻', 背景故事: 'LLM 使用的精简背景。' },
     {
@@ -130,10 +130,10 @@ test('Special NPC 保留原始 backstory，同时按作者顺序读取自定义�
     { title: '序章', content: '第一段。' },
     { title: '雪夜', content: '第二段。' },
   ]);
-  assert.deepEqual(resolveCharacterVisualMetadata(overridden)?.story_sections, vm.storySections);
+  assert.deepEqual(resolveCharacterProfileMetadata(overridden)?.story_sections, vm.storySections);
 });
 
-test('带 metadata 的 Special NPC 进入 Vue reactive 后仍可读取姓名、视觉身份和未知字段安全忽略', () => {
+test('带 metadata 的 立绘角色卡 进入 Vue reactive 后仍可读取姓名、视觉身份和未知字段安全忽略', () => {
   const resolved = resolveCharacterVisualConfig(
     { 姓名: '千爻', 等级: 13, 生命层级: '第四层级' },
     {
@@ -165,7 +165,7 @@ test('带 metadata 的 Special NPC 进入 Vue reactive 后仍可读取姓名、�
   assert.equal(Object.hasOwn(vm.profileMetadata ?? {}, 'unknown_future_field'), false);
 });
 
-test('Current NPC 心里话覆盖后仍保留 Special NPC 视觉身份与图库', () => {
+test('Current NPC 心里话覆盖后仍保留 立绘角色卡 视觉身份与图库', () => {
   const resolved = resolveCharacterVisualConfig(
     { 姓名: '千爻', 登场台词: '原始台词' },
     {

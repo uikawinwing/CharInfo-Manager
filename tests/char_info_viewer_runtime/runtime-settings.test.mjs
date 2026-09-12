@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import {
@@ -17,6 +18,7 @@ test('运行时设置使用稳定默认值并修复越界输入', () => {
     unlimitedCardsPerMessage: false,
     effectsEnabled: true,
     forceMobileLayout: false,
+    themeMode: 'dark',
     debugEnabled: false,
     imageSourcePriorityEnabled: false,
     imageSourcePriority: ['files.catbox.moe', 'i.ibb.co'],
@@ -32,6 +34,7 @@ test('运行时设置使用稳定默认值并修复越界输入', () => {
       unlimitedCardsPerMessage: false,
       effectsEnabled: true,
       forceMobileLayout: false,
+      themeMode: 'dark',
       debugEnabled: false,
       imageSourcePriorityEnabled: false,
       imageSourcePriority: ['files.catbox.moe', 'i.ibb.co'],
@@ -41,6 +44,7 @@ test('运行时设置使用稳定默认值并修复越界输入', () => {
     normalizeRuntimeSettings({
       activeFloorLimit: '12',
       effectsEnabled: false,
+      themeMode: 'light',
     }),
     {
       activeFloorLimit: 12,
@@ -48,11 +52,18 @@ test('运行时设置使用稳定默认值并修复越界输入', () => {
       unlimitedCardsPerMessage: false,
       effectsEnabled: false,
       forceMobileLayout: false,
+      themeMode: 'light',
       debugEnabled: false,
       imageSourcePriorityEnabled: false,
       imageSourcePriority: ['files.catbox.moe', 'i.ibb.co'],
     },
   );
+});
+
+test('切换界面主题会同步当前运行时 reactive state，避免浅色立即被旧深色状态覆盖', async () => {
+  const runtimeSource = await readFile(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
+
+  assert.match(runtimeSource, /state\.settings\.themeMode = nextSettings\.themeMode;/u);
 });
 
 test('悬浮角色按钮位置作为脚本 UI 偏好独立保存', () => {
@@ -91,6 +102,7 @@ test('运行时设置只读写脚本变量命名空间，并保留其他脚本�
     unlimitedCardsPerMessage: false,
     effectsEnabled: false,
     forceMobileLayout: false,
+    themeMode: 'dark',
     debugEnabled: false,
     imageSourcePriorityEnabled: false,
     imageSourcePriority: ['files.catbox.moe', 'i.ibb.co'],
@@ -110,6 +122,7 @@ test('运行时设置只读写脚本变量命名空间，并保留其他脚本�
           unlimitedCardsPerMessage: false,
           effectsEnabled: true,
           forceMobileLayout: false,
+          themeMode: 'dark',
           debugEnabled: false,
           imageSourcePriorityEnabled: false,
           imageSourcePriority: ['files.catbox.moe', 'i.ibb.co'],

@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - '.github/**'
 
 permissions:
   contents: write
@@ -17,15 +15,27 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      PROJECT_DIR: TavernDev/Scripts/project
+      TOOLCHAIN_DIR: TavernDev/Toolchain
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          path: ${{ env.PROJECT_DIR }}
+
+      - name: Checkout shared TavernHelper Toolchain
+        uses: actions/checkout@v4
+        with:
+          repository: uikawinwing/tavern_helper_toolchain
+          ref: main
+          path: ${{ env.TOOLCHAIN_DIR }}
 
       - name: Skip if this source commit is already released
         id: released
         shell: bash
+        working-directory: ${{ env.PROJECT_DIR }}
         run: |
           git fetch --tags
           existing=""
@@ -54,31 +64,31 @@ jobs:
         with:
           version: 10
 
-      - name: Install dependencies
+      - name: Install shared Toolchain dependencies
         if: steps.released.outputs.tag == ''
         run: pnpm install --frozen-lockfile
+        working-directory: ${{ env.TOOLCHAIN_DIR }}
 
       - name: Test
         if: steps.released.outputs.tag == ''
-        run: pnpm test
+        run: npm run test
+        working-directory: ${{ env.PROJECT_DIR }}
 
       - name: Lint
         if: steps.released.outputs.tag == ''
-        run: pnpm lint
+        run: npm run lint
+        working-directory: ${{ env.PROJECT_DIR }}
 
       - name: Build release dist
         if: steps.released.outputs.tag == ''
-        run: pnpm build
-
-      - name: Remove template example bundles
-        if: steps.released.outputs.tag == ''
-        shell: bash
-        run: rm -rf dist/角色卡示例 dist/脚本示例 dist/流式楼层界面示例 dist/前端界面示例
+        run: npm run build
+        working-directory: ${{ env.PROJECT_DIR }}
 
       - name: Choose next version tag
         if: steps.released.outputs.tag == ''
         id: version
         shell: bash
+        working-directory: ${{ env.PROJECT_DIR }}
         run: |
           latest=$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)
           if [ -z "$latest" ]; then
@@ -96,6 +106,7 @@ jobs:
         env:
           TAG: ${{ steps.version.outputs.tag }}
         shell: bash
+        working-directory: ${{ env.PROJECT_DIR }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -111,6 +122,7 @@ jobs:
         env:
           TAG: ${{ steps.version.outputs.tag }}
         shell: bash
+        working-directory: ${{ env.PROJECT_DIR }}
         run: |
           git tag -a "$TAG" -m "Release $TAG"
           git push origin "$TAG"

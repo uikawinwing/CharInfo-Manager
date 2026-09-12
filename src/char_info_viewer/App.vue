@@ -522,13 +522,12 @@ import {
   statusEffectType,
   type TabKey,
 } from './services/characterViewModel';
-import { resolveRemoteGalleryConfig } from './services/galleryPackService';
+import { resolveRemoteGalleryConfig } from './services/remoteGalleryService';
 import { importToMvuVariables, saveToChatWorldbook } from './services/importService';
 import { createParticleEngine, type ParticleEngine } from './services/particleEngine';
 import {
   applyTheme,
   cloneCharacterDataWithVisualOverrides,
-  getLegacyVisualProfileSource,
   hasDeprecatedVisualSyntax,
   resolveCharacterVisualConfigWithExtensions,
   resolveCharacterVisualPreview,
@@ -814,15 +813,10 @@ async function applyParsedCharacterData(
         previewVisualConfig,
       )
     : await resolveCharacterVisualConfigWithExtensions(data, getVariables({ type: 'chat' }));
-  const legacyVisualProfileSource = getLegacyVisualProfileSource(resolvedData);
   const hasLegacyInlineImageSyntax = hasDeprecatedVisualSyntax(resolvedData);
-  deprecatedVisualSyntaxWarning.value = legacyVisualProfileSource
-    ? `检测到旧版 CharInfo 视觉变量结构（${legacyVisualProfileSource}）。当前仍会兼容显示，但该兼容路径仅用于迁移，后续版本不再保证维护。请尽快在角色视觉编辑器中重新保存，升级至 char_info.profiles v2。${
-        hasLegacyInlineImageSyntax ? ' 同时检测到正文旧图片字段；该字段已忽略，当前视觉仍由同名 profile 提供。' : ''
-      }`
-    : hasLegacyInlineImageSyntax
-      ? '检测到正文旧版角色图片字段。该字段已忽略，也不再单独授予 Special NPC；若存在同名 CharInfo visual profile，Viewer 会继续使用该 profile。请尽快在角色视觉编辑器中重新保存并清理旧字段。'
-      : '';
+  deprecatedVisualSyntaxWarning.value = hasLegacyInlineImageSyntax
+    ? '检测到正文旧版角色图片字段。v0.3.0 起角色查看器已忽略该字段；角色档案只读取 char_info.profiles。请在角色档案编辑器中重新保存为新版档案。'
+    : '';
   const displayData =
     props.entranceQuoteOverride === undefined
       ? resolvedData
@@ -985,8 +979,10 @@ function onKeydown(ev: KeyboardEvent) {
 }
 
 onMounted(() => {
-  void initFromYaml().finally(() => {
+  void initFromYaml().finally(async () => {
     initializingViewer.value = false;
+    await nextTick();
+    setupParticleEngine();
   });
   listenerDocument = viewerRootRef.value?.ownerDocument ?? null;
   listenerDocument?.addEventListener('click', onDocumentClick);

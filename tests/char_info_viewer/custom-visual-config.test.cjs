@@ -72,7 +72,7 @@ test('没有角色图片字段时按姓名读取 CharInfo 自有资料，并读�
   assert.equal(data.登场台词, '霜雪会记住每一道剑痕。');
 });
 
-test('新版资料只有图库时继承旧版同名角色的颜色与登场台词', () => {
+test('新版资料不会再从旧版同名变量继承颜色与登场台词', () => {
   const data = resolveCharacterVisualConfig(
     { 姓名: '傲雪', 种族: '龙裔', 生命层级: '第四层级' },
     {
@@ -96,9 +96,9 @@ test('新版资料只有图库时继承旧版同名角色的颜色与登场台�
   );
 
   assert.equal(data.角色图片, 'https://example.com/new.png');
-  assert.equal(data.custom_racecolor, '#A9DBC3');
-  assert.equal(data.custom_tiercolor, '#B7D9E8');
-  assert.equal(data.登场台词, '霜雪会记住每一道剑痕。');
+  assert.equal(data.custom_racecolor, undefined);
+  assert.equal(data.custom_tiercolor, undefined);
+  assert.equal(data.登场台词, undefined);
 });
 
 test('CharInfo 自有资料的第一张相册图片固定作为主立绘', () => {
@@ -128,7 +128,7 @@ test('CharInfo 自有资料的第一张相册图片固定作为主立绘', () =>
   assert.equal(data.__char_info_randomize_initial_image, false);
 });
 
-test('旧版姓名视觉配置仍把主图和 gallery 整理为去重图片列表', () => {
+test('v0.3.0 起旧版 char_info_visuals 不再提供 Viewer 图片', () => {
   const data = resolveCharacterVisualConfig(
     { 姓名: '傲雪' },
     {
@@ -138,7 +138,6 @@ test('旧版姓名视觉配置仍把主图和 gallery 整理为去重图片列�
           gallery: [
             'https://example.com/alternate-01.png',
             'https://example.com/main.png',
-            'javascript:alert(1)',
             'https://example.com/alternate-02.png',
           ],
         },
@@ -146,16 +145,12 @@ test('旧版姓名视觉配置仍把主图和 gallery 整理为去重图片列�
     },
   );
 
-  assert.equal(data.角色图片, 'https://example.com/main.png');
-  assert.deepEqual(data.__char_info_image_urls, [
-    'https://example.com/main.png',
-    'https://example.com/alternate-01.png',
-    'https://example.com/alternate-02.png',
-  ]);
-  assert.equal(data.__char_info_randomize_initial_image, false);
+  assert.equal(data.角色图片, undefined);
+  assert.equal(data.__char_info_image_urls, undefined);
+  assert.equal(data.__char_info_randomize_initial_image, undefined);
 });
 
-test('旧版只有 gallery 时仍启用特殊版并标记初次随机图片', () => {
+test('v0.3.0 起旧版 gallery-only 配置也保持普通无图 Viewer', () => {
   const data = resolveCharacterVisualConfig(
     { 姓名: '傲雪' },
     {
@@ -167,9 +162,9 @@ test('旧版只有 gallery 时仍启用特殊版并标记初次随机图片', ()
     },
   );
 
-  assert.equal(data.角色图片, 'https://example.com/01.png');
-  assert.deepEqual(data.__char_info_image_urls, ['https://example.com/01.png', 'https://example.com/02.png']);
-  assert.equal(data.__char_info_randomize_initial_image, true);
+  assert.equal(data.角色图片, undefined);
+  assert.equal(data.__char_info_image_urls, undefined);
+  assert.equal(data.__char_info_randomize_initial_image, undefined);
 });
 
 test('普通版也不再读取 Aoo externalGalleries', () => {
@@ -192,7 +187,7 @@ test('普通版也不再读取 Aoo externalGalleries', () => {
   assert.equal(data.__char_info_image_urls, undefined);
 });
 
-test('姓名视觉配置缺失时保持普通资料；图片无效时仍应用独立配色和台词', () => {
+test('旧版视觉变量即使包含配色和台词也不会再注入 Viewer', () => {
   const missing = resolveCharacterVisualConfig(
     {
       姓名: '傲雪',
@@ -222,9 +217,9 @@ test('姓名视觉配置缺失时保持普通资料；图片无效时仍应用�
   assert.equal(missing.角色图片, undefined);
   assert.equal(missing.登场台词, undefined);
   assert.equal(invalid.角色图片, undefined);
-  assert.equal(invalid.custom_racecolor, '#78C8F0');
-  assert.equal(invalid.custom_tiercolor, '#A855F7');
-  assert.equal(invalid.登场台词, '不应注入');
+  assert.equal(invalid.custom_racecolor, undefined);
+  assert.equal(invalid.custom_tiercolor, undefined);
+  assert.equal(invalid.登场台词, undefined);
 });
 
 test('普通字符串图片变量占位符不再作为 Viewer 图片来源', () => {

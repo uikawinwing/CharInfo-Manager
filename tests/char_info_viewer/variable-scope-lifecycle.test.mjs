@@ -6,9 +6,9 @@ const repoRoot = new URL('../../', import.meta.url);
 const appSource = await readFile(new URL('src/char_info_viewer/App.vue', repoRoot), 'utf8');
 const themeSource = await readFile(new URL('src/char_info_viewer/services/themeService.ts', repoRoot), 'utf8');
 const importServiceSource = await readFile(new URL('src/char_info_viewer/services/importService.ts', repoRoot), 'utf8');
-const ejsProfileSource = await readFile(new URL('src/char_info_shared/characterVisualProfile.ts', repoRoot), 'utf8');
-const creatorManagerSource = await readFile(new URL('src/char_info_creator_manager/App.vue', repoRoot), 'utf8');
-const creatorManagerControllerSource = await readFile(new URL('src/char_info_creator_manager/controller.ts', repoRoot), 'utf8');
+const ejsProfileSource = await readFile(new URL('src/char_info_shared/characterProfile.ts', repoRoot), 'utf8');
+const profileEditorSource = await readFile(new URL('src/char_info_profile_editor/App.vue', repoRoot), 'utf8');
+const profileEditorControllerSource = await readFile(new URL('src/char_info_profile_editor/controller.ts', repoRoot), 'utf8');
 const viewerRuntimeSource = await readFile(new URL('src/char_info_viewer_runtime/runtime.ts', repoRoot), 'utf8');
 const previewBuilderSource = await readFile(new URL('docs/previews/char_info_ejs_builder.html', repoRoot), 'utf8');
 
@@ -27,10 +27,12 @@ test('Viewer 只读取 CharInfo 视觉资料，状态栏只接收单向相簿与
   assert.doesNotMatch(themeSource, /externalGalleries/);
   assert.match(ejsProfileSource, /char_info\.profiles/);
   assert.match(ejsProfileSource, /status\.externalAvatars\.partners/);
-  assert.doesNotMatch(ejsProfileSource, /setLocalVar\(`status\.externalGalleries/);
-  assert.match(creatorManagerSource, /syncStatusGallerySnapshotToCurrentChat/);
+  assert.match(ejsProfileSource, /status\.externalGalleries\.partners/);
+  assert.doesNotMatch(profileEditorSource, /syncStatusGallerySnapshotToCurrentChat/);
+  assert.match(profileEditorSource, /readStatusGallerySnapshotFromCurrentChat/);
   assert.match(previewBuilderSource, /char_info\.profiles/);
-  assert.doesNotMatch(previewBuilderSource, /externalGalleries|char_info_visuals|dryRun|merge:/);
+  assert.match(previewBuilderSource, /status\.externalGalleries\.partners/);
+  assert.doesNotMatch(previewBuilderSource, /char_info_visuals|dryRun|merge:/);
 });
 
 test('MVU 更新会刷新角色库与聊天视觉卡，资料始终重新读取最新作用域', () => {
@@ -63,30 +65,30 @@ test('MVU 更新会刷新角色库与聊天视觉卡，资料始终重新读取�
   );
   assert.match(
     viewerRuntimeSource,
-    /tavern_events\.GENERATION_ENDED,\s*messageId\s*=>\s*\{[\s\S]*?enqueueMessage\(messageId\);[\s\S]*?void refreshLibrary\(\);/,
+    /tavern_events\.GENERATION_ENDED,\s*messageId\s*=>\s*\{[\s\S]*?enqueueMessage\(messageId, 'GENERATION_ENDED', \{ lifecycleDriven: true \}\);[\s\S]*?void refreshLibrary\(\);/,
   );
   assert.match(viewerRuntimeSource, /const scheduleVisualCardRefresh = \(\) => \{[\s\S]*?refreshMountedCharInfoCards\(\)/);
-  assert.match(viewerRuntimeSource, /const refreshMountedCharInfoCards = \(\) => \{[\s\S]*?removeMessage\(messageId\)[\s\S]*?renderMessage\(messageId\)/);
+  assert.match(viewerRuntimeSource, /const refreshMountedCharInfoCards = \(\) => \{[\s\S]*?removeMessage\(messageId\)[\s\S]*?renderMessage\(messageId, 'force-refresh'\)/);
   assert.match(viewerRuntimeSource, /if \(visualRefreshTimer\) clearTimeout\(visualRefreshTimer\)/);
   assert.match(viewerRuntimeSource, /const startRevision = \+\+lifecycleRevision/);
   assert.match(viewerRuntimeSource, /!started \|\| lifecycleRevision !== startRevision/);
   assert.match(viewerRuntimeSource, /started = false;\s*lifecycleRevision \+= 1/);
-  assert.match(viewerRuntimeSource, /tavern_events\.CHAT_CHANGED[\s\S]*?closeCreatorEditor\(\)/);
-  assert.match(creatorManagerControllerSource, /overlay\?\.destroy\(\);[\s\S]*?overlay = null/);
+  assert.match(viewerRuntimeSource, /tavern_events\.CHAT_CHANGED[\s\S]*?closeProfileEditor\(\)/);
+  assert.match(profileEditorControllerSource, /overlay\?\.destroy\(\);[\s\S]*?overlay = null/);
 });
 
-test('Creator 首屏优先打开 Viewer 指定的世界书与条目，所有世界书切换路径共用单次读取', () => {
-  const selectWorldbookSource = creatorManagerSource.match(
+test('角色档案编辑器首屏优先打开角色查看器指定的世界书与条目，所有世界书切换路径共用单次读取', () => {
+  const selectWorldbookSource = profileEditorSource.match(
     /function selectWorldbook\(worldbookName: string\) \{([\s\S]*?)\n\}/u,
   )?.[1];
-  const loadWorldbooksSource = creatorManagerSource.match(
+  const loadWorldbooksSource = profileEditorSource.match(
     /async function loadWorldbooks\(\) \{([\s\S]*?)\n\}\n\nasync function loadEntries/u,
   )?.[1];
-  const selectedWorldbookWatcherSource = creatorManagerSource.match(
+  const selectedWorldbookWatcherSource = profileEditorSource.match(
     /watch\(selectedWorldbookName, worldbookName => \{([\s\S]*?)\n\}\);\nwatch\(selectedEntryUid/u,
   )?.[1];
 
-  assert.match(creatorManagerSource, /let selectedWorldbookEntriesLoad: Promise<void> = Promise\.resolve\(\);/u);
+  assert.match(profileEditorSource, /let selectedWorldbookEntriesLoad: Promise<void> = Promise\.resolve\(\);/u);
   assert.doesNotMatch(selectWorldbookSource ?? '', /loadEntries\(/u);
   assert.match(
     loadWorldbooksSource ?? '',
@@ -97,15 +99,15 @@ test('Creator 首屏优先打开 Viewer 指定的世界书与条目，所有世�
     /props\.initialEntryUid !== undefined[\s\S]*?entries\.value\.find\(entry => entry\.uid === props\.initialEntryUid\)[\s\S]*?selectEntry\(requestedEntry\);/u,
   );
   assert.match(selectedWorldbookWatcherSource ?? '', /selectedWorldbookEntriesLoad = loadEntries\(worldbookName\);/u);
-  assert.match(creatorManagerSource, /v-model="worldbookSearch"[\s\S]*?@click="selectWorldbook\(worldbook\)"/u);
+  assert.match(profileEditorSource, /v-model="worldbookSearch"[\s\S]*?@click="selectWorldbook\(worldbook\)"/u);
 });
 
 test('快速切换世界书时只采纳最新条目请求，过期成功或失败不得覆盖结果或结束加载', () => {
-  const loadEntriesSource = creatorManagerSource.match(
+  const loadEntriesSource = profileEditorSource.match(
     /async function loadEntries\(worldbookName: string\) \{([\s\S]*?)\n\}\n\nasync function loadSelectedEntryProfile/u,
   )?.[1] ?? '';
 
-  assert.match(creatorManagerSource, /let entriesLoadRevision = 0;/u);
+  assert.match(profileEditorSource, /let entriesLoadRevision = 0;/u);
   assert.match(loadEntriesSource, /const loadRevision = \+\+entriesLoadRevision;/u);
   assert.match(
     loadEntriesSource,

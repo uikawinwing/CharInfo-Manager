@@ -10,7 +10,7 @@ export type CharacterEntryLike = {
 export type WorldbookCharacterEntry<T extends CharacterEntryLike, TProfile> = {
   entry: T;
   profile: TProfile;
-  hasVisualProfile: boolean;
+  hasProfileRecord: boolean;
   title: CharacterEntryTitle;
 };
 
@@ -153,7 +153,7 @@ export function collectWorldbookCharacterEntries<T extends CharacterEntryLike, T
       {
         entry,
         profile: profile ?? createFallbackProfile(entry, title),
-        hasVisualProfile: profile !== null,
+        hasProfileRecord: profile !== null,
         title,
       },
     ];
@@ -402,7 +402,7 @@ export function collectEncounteredCharacters(mvuData: unknown): EncounteredChara
 }
 
 export function inferCharacterRace(entryBody: string, characterName?: string | null): string {
-  const staticRace = readStaticCharacterFields(entryBody).种族?.split(/[，,]/u)[0]?.trim() ?? '';
+  const staticRace = readStaticRaceAtKnownPaths(entryBody, characterName);
   if (!entryBody.trim() || dynamicFieldValuePattern.test(entryBody)) return staticRace;
 
   let parsedBody: unknown;
@@ -434,6 +434,54 @@ export function inferCharacterRace(entryBody: string, characterName?: string | n
   }
 
   return staticRace;
+}
+
+function readStaticRaceAtKnownPaths(entryBody: string, characterName?: string | null): string {
+  const normalizedCharacterName = normalizeStaticName(characterName);
+  const stack: { indent: number; key: string }[] = [];
+  let insideEjs = false;
+
+  for (const line of entryBody.split(/\r?\n/u)) {
+    if (insideEjs) {
+      if (line.includes('%>')) insideEjs = false;
+      continue;
+    }
+    if (line.includes('<%')) {
+      if (!line.slice(line.indexOf('<%') + 2).includes('%>')) insideEjs = true;
+      continue;
+    }
+
+    const match = line.match(/^( *)([^\s:#][^:]*):[ \t]*(.*?)\s*$/u);
+    if (!match) continue;
+
+    const indent = match[1].length;
+    const key = match[2].trim();
+    const rawValue = match[3];
+    if (!key || dynamicFieldValuePattern.test(key)) continue;
+
+    while (stack.length > 0 && stack[stack.length - 1].indent >= indent) stack.pop();
+    const path = [...stack.map(item => item.key), key];
+    const value = normalizeStaticFieldValue(rawValue);
+
+    if (key === '种族' && value && isTrustedStaticRacePath(path, normalizedCharacterName)) {
+      return value.split(/[，,]/u)[0]?.trim() ?? '';
+    }
+
+    stack.push({ indent, key });
+  }
+
+  return '';
+}
+
+function isTrustedStaticRacePath(path: readonly string[], characterName: string | null): boolean {
+  if (path.length === 1 && path[0] === '种族') return true;
+  if (path.length === 2 && path[0] === '基本信息' && path[1] === '种族') return true;
+  if (!characterName) return false;
+
+  const rootName = path[0];
+  if (!rootName || !namesShareQualifiedBoundary(rootName, characterName)) return false;
+  if (path.length === 2 && path[1] === '种族') return true;
+  return path.length === 3 && path[1] === '基本信息' && path[2] === '种族';
 }
 
 function namesShareQualifiedBoundary(left: string, right: string): boolean {

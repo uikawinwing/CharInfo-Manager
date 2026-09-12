@@ -79,6 +79,7 @@ test('图片源优先级随既有 char_info_runtime.settings 持久化，且保�
     unlimitedCardsPerMessage: false,
     effectsEnabled: false,
     forceMobileLayout: false,
+    themeMode: 'dark',
     debugEnabled: false,
     imageSourcePriorityEnabled: true,
     imageSourcePriority: ['files.catbox.moe'],

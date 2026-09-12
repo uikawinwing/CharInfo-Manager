@@ -47,6 +47,17 @@ export type MountedNativeCardHost = {
   restore(): void;
 };
 
+export type NativeMessageMountDiagnosticCode = 'CARD_MOUNT_FAILED' | 'MOUNT_SUCCESS';
+
+export type NativeMessageMountDiagnostic = {
+  code: NativeMessageMountDiagnosticCode;
+  details?: Record<string, unknown>;
+};
+
+export type NativeMessageMountOptions = {
+  onDiagnostic?: (diagnostic: NativeMessageMountDiagnostic) => void;
+};
+
 type CollapsedTextRangeMatch = TextRangeMatch & {
   collapsedStart: number;
   collapsedEnd: number;
@@ -361,15 +372,21 @@ function mountOneCard(root: HTMLElement, card: CharInfoCardPart): MountedNativeC
 export function mountCharInfoCardHosts(
   root: HTMLElement,
   cards: readonly CharInfoCardPart[],
+  options: NativeMessageMountOptions = {},
 ): MountedNativeCardHost[] | null {
   const mounted: MountedNativeCardHost[] = [];
   for (const card of cards) {
     const cardMount = mountOneCard(root, card);
     if (!cardMount) {
+      options.onDiagnostic?.({
+        code: 'CARD_MOUNT_FAILED',
+        details: { cardId: card.id, mountedCount: mounted.length, cardCount: cards.length },
+      });
       mounted.reverse().forEach(item => item.restore());
       return null;
     }
     mounted.push(cardMount);
   }
+  options.onDiagnostic?.({ code: 'MOUNT_SUCCESS', details: { hostCount: mounted.length } });
   return mounted;
 }

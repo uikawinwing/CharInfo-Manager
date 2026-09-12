@@ -12,7 +12,7 @@ pnpm-debug.log*
 
 auto-imports.d.ts
 components.d.ts
-dist/tsconfig.tsbuildinfo
+dist/
 screenshots/
 .kilocode/
 .ai-bridge/

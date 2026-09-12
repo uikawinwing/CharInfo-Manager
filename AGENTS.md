@@ -6,6 +6,7 @@
 ## 回复与协作
 
 - 始终使用中文回复，并称呼用户为 Master。
+- 项目人类术语以 `docs/terminology-keymap.md` 为准；`Creator` 只表示内容创作者，编辑器统一称“角色档案编辑器 / Profile Editor”，Library 统一称“角色资料库”，玩家看到的界面称“角色卡”。
 - 先给结果或下一步，少套话和空泛总结。
 - 需求明确时直接执行；只有缺失信息会明显改变方案或带来风险时才提问。
 - 多步骤任务先发送一句简短进度说明，再开始读取和修改。
@@ -41,8 +42,10 @@
 - 使用 TypeScript，不新建 JavaScript 脚本。
 - 运行环境是浏览器，不使用 Node.js 专用库。
 - 修改前查看同目录已有写法，保持项目风格。
-- `main` 发布线的 CharInfo 查看器版式只有两类，禁止自行创造或混用“普通立绘版”等分类：**普通角色**没有有效立绘，使用普通无图版式；**Special NPC**有有效立绘，使用 `special_npc` 版式。未发布的专属主题、角色 loader、占位符与自动注入逻辑不得加入 `main`，除非 Master 明确批准发布。
-- 优先复用 `util/`、`@types/`、现有模板和 `package.json` 已有依赖。
+- `main` 发布线的 CharInfo 查看器版式只有两类，禁止自行创造或混用“普通立绘版”等分类：**普通角色**没有有效立绘，使用普通无图版式；**立绘角色卡**有有效立绘，内部使用 `special_npc` 版式。未发布的专属主题、角色 loader、占位符与自动注入逻辑不得加入 `main`，除非 Master 明确批准发布。
+- 立绘角色卡的最低门槛固定为：消息角色姓名能精确匹配 `char_info.profiles[姓名]`，且该档案提供至少一个角色卡可用图片来源（本地 gallery 或成功解析的远程图库）。`metadata`、配色、作者、版本、故事栏目本身都不能授予 `special_npc`。角色档案编辑器的快速模式是最小合法角色档案的参考实现。
+- 现行“一条 URL 获取整套图片”的功能统一称 **远程图库 / Remote Gallery**。旧的 Gallery Pack 世界书拆分存储已废弃；`gallery_pack_url` 与 `char-info-gallery-pack` 只作为既有持久化 / wire-format 兼容名保留，不得据此重新引入旧存储方案。
+- 优先复用共享 `../../Toolchain/util/`、`../../Toolchain/@types/`、现有模板和 Toolchain 已有依赖；不要在本仓库重新复制一套模板工具链。
 - 不随意新增依赖、抽象层、兼容层或隐藏 fallback。
 - 只修改与任务直接相关的文件；发现无关问题时说明，不要静默修复。
 - 删除被新实现取代的旧逻辑，避免重复路径、吞错和死代码。
@@ -64,9 +67,11 @@
 - 最终回复前检查 diff，确认没有无关改动、症状补丁、重复逻辑、未清理资源或未说明的行为变化。
 - 未实际验证的内容必须明确说明，不得假装成功。
 
-## 发布与 tag
+## Branch、发布与 tag
 
-- `.github/workflows/bundle.yaml` 会在 `main` / `master` 收到非 `dist/**` 的 push 后自动重建 `dist`、提交 `[bot] bundle` 并创建下一个 `vX.Y.Z` tag。
-- 除非用户明确要求，不要手动创建或推送 tag。
-- 通常只 push 主分支，等待 GitHub Actions 创建 tag 后再 fetch tags 验证。
-- 用户要求手动 tag 时，先提醒自动 workflow 可能继续生成下一个版本。
+- `dev` 是唯一日常开发与上游同步分支；其他 feature branch 先进入 `dev`，不得直接进入 `main`。
+- `main` 是稳定发布分支，应由 GitHub Branch Protection 强制必须 PR、禁止 direct/force push 与删除，并要求 `verify` + `only-dev`；只有本仓库 `dev -> main` 可以 merge。
+- `dev` push / PR 只运行 test、lint、build 验证，不 commit、不 tag、不修改仓库。
+- `main` 更新后 `.github/workflows/bundle.yaml` 会 fresh install、test、lint、build，并把当次 `dist` 冻结进 release-only commit 后创建下一个 `vX.Y.Z` tag；release commit 不回写 `main`。
+- `dist` 是生成物，不是源码真相；正常开发、branch 切换和 PR 不要因本地 `dist` 缺失、旧或 dirty 而阻止操作。
+- 已发布 tag 永不移动、覆盖或删除；除非 Master 明确要求，不要手动创建或推送 tag。

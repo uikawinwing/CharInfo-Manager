@@ -46,7 +46,7 @@ test('entrance quote keeps one lead ornament, subtle quotation marks, and a quie
   assert.doesNotMatch(overviewSource, /content:\s*'[「」]'/);
 });
 
-test('Special NPC attributes always keep a three-over-two flag composition', () => {
+test('立绘角色卡 attributes always keep a three-over-two flag composition', () => {
   assert.match(
     sheetSource,
     /IllustratedOverviewPanel[\s\S]*?'is-special-npc-overview': specialNpc/,
@@ -61,7 +61,7 @@ test('Special NPC attributes always keep a three-over-two flag composition', () 
   );
 });
 
-test('Special NPC overview uses the shared geometry scale', () => {
+test('立绘角色卡 overview uses the shared geometry scale', () => {
   assert.match(
     sheetSource,
     /\.illustrated-wrapper\s*\{[^}]*--illustrated-flag-width:\s*128px;[^}]*--illustrated-flag-height:\s*156px;[^}]*--illustrated-resource-height:\s*72px;/,
@@ -73,7 +73,7 @@ test('Special NPC overview uses the shared geometry scale', () => {
   assert.match(overviewSource, /\.illustrated-resource\s*\{[^}]*min-height:\s*var\(--illustrated-resource-height\);/);
 });
 
-test('Special NPC desktop header keeps one readable title scale', () => {
+test('立绘角色卡 desktop header keeps one readable title scale', () => {
   assert.match(
     headerSource,
     /\.illustrated-header:not\(\.compact\)\s*\{[^}]*min-height:\s*var\(--illustrated-header-min-height\);/,
@@ -81,7 +81,7 @@ test('Special NPC desktop header keeps one readable title scale', () => {
   assert.match(headerSource, /\.illustrated-name\s*\{[^}]*font-size:\s*clamp\(30px, 4\.2cqw, 38px\);/);
 });
 
-test('overview stays screenshot-oriented, with a Special NPC scroll fallback only when content overflows', () => {
+test('overview stays screenshot-oriented, with a 立绘角色卡 scroll fallback only when content overflows', () => {
   assert.match(
     sheetSource,
     /\.illustrated-panels\s*\{[^}]*overflow-y:\s*auto;[\s\S]*?\.illustrated-shell\.is-overview-tab \.illustrated-panels\s*\{[^}]*overflow-y:\s*hidden;[^}]*padding-bottom:\s*0;/,

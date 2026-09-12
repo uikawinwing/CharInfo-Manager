@@ -1248,6 +1248,11 @@
             lines.push("    avatarUrl,");
             lines.push("  );");
           }
+          lines.push("");
+          lines.push("  setLocalVar(");
+          lines.push("    `status.externalGalleries.partners[${JSON.stringify(npcName)}].images`,");
+          lines.push("    gallery.map((image) => ({ title: image.title, url: image.sources[0] })),");
+          lines.push("  );");
           lines.push("}");
           lines.push("_%>");
 

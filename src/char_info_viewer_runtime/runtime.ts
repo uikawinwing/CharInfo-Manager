@@ -2,15 +2,19 @@ import { createPinia } from 'pinia';
 import { createApp, markRaw, reactive, type App } from 'vue';
 
 import { createScriptIdDiv, teleportStyle } from '@util/script';
-import { closeCreatorManager, openCreatorManager } from '../char_info_creator_manager/controller';
+import { closeProfileEditor as destroyProfileEditor, openProfileEditor } from '../char_info_profile_editor/controller';
 import { projectCharInfoMessage } from '../char_info_viewer/runtime/charInfoMessage';
 import { selectRecentMessageIds } from '../char_info_viewer/runtime/recentMessages';
 import { preloadPortraitImages } from '../char_info_viewer/services/imagePreload';
-import { resolveRemoteGalleryPresentation } from '../char_info_viewer/services/galleryPackService';
+import { resolveRemoteGalleryPresentation } from '../char_info_viewer/services/remoteGalleryService';
 import { resolveCharacterVisualPreloadUrls } from '../char_info_viewer/services/themeService';
 import RuntimeRoot from './RuntimeRoot.vue';
 import { collectChangedAffinityNames, collectCurrentCharacterSnapshots } from './currentCharacterLibrary';
-import { mountCharInfoCardHosts, type MountedNativeCardHost } from './nativeMessageMount';
+import {
+  mountCharInfoCardHosts,
+  type MountedNativeCardHost,
+  type NativeMessageMountDiagnostic,
+} from './nativeMessageMount';
 import {
   defaultRuntimeSettings,
   mergeRuntimeFloatingButtonPosition,
@@ -29,16 +33,17 @@ const DIRTY_FLUSH_DELAY_MS = 20;
 const REMOUNT_LOOP_GUARD_MS = 3000;
 const LIBRARY_HOST_CLASS = 'char-info-library-host';
 const LEGACY_CURRENT_LIBRARY_BUTTON_NAME = '角色资料库';
-const CREATOR_BUTTON_NAME = '角色视觉编辑器';
-const LEGACY_CREATOR_BUTTON_NAME = '角色视觉编辑';
+const PROFILE_EDITOR_BUTTON_NAME = '角色档案编辑器';
+const LEGACY_PROFILE_EDITOR_BUTTON_NAME = '角色视觉编辑';
 const SETTINGS_HOST_CLASS = 'char-info-settings-host';
 const SETTINGS_BUTTON_NAME = 'CharInfo 设置';
+const MOUNT_LOG_PREFIX = '[CharInfo Mount]';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function resolveCharacterGalleryPackUrl(chatVariables: unknown, characterName: string): string {
+function resolveCharacterRemoteGalleryUrl(chatVariables: unknown, characterName: string): string {
   if (!isRecord(chatVariables) || !isRecord(chatVariables.char_info)) return '';
   const profiles = chatVariables.char_info.profiles;
   if (!isRecord(profiles)) return '';
@@ -64,6 +69,8 @@ type CharInfoRuntimeStopOptions = {
   restoreNativeMessages?: boolean;
 };
 
+type MountTraceLevel = 'info' | 'warn' | 'error';
+
 export type CharInfoRuntime = {
   start(): void;
   stop(options?: CharInfoRuntimeStopOptions): void;
@@ -82,6 +89,20 @@ function readMessage(messageId: number): { message: ChatMessage; swipeId: number
   return { message, swipeId };
 }
 
+function traceMount(
+  level: MountTraceLevel,
+  messageId: number,
+  code: string,
+  details: Record<string, unknown> = {},
+): void {
+  console[level](`${MOUNT_LOG_PREFIX} #${messageId} ${code}`, {
+    time: new Date().toISOString(),
+    messageId,
+    code,
+    ...details,
+  });
+}
+
 export function createCharInfoRuntime(): CharInfoRuntime {
   const state = reactive<RuntimeViewState>({
     messages: [],
@@ -95,6 +116,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   const overflowWarnings = new Map<number, string>();
   const activeFloorIds = new Set<number>();
   const dirtyMessageIds = new Set<number>();
+  const dirtyReasons = new Map<number, Set<string>>();
+  const lifecycleDrivenMessageIds = new Set<number>();
   const eventStops: Array<() => void> = [];
 
   let app: App<Element> | null = null;
@@ -145,8 +168,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     state.library.viewerLoading = false;
   };
 
-  const closeCreatorEditor = () => {
-    closeCreatorManager();
+  const closeProfileEditor = () => {
+    destroyProfileEditor();
   };
 
   const resetLibraryForChat = () => {
@@ -193,7 +216,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
     void Promise.all(
       baseCharacters.map(async character => {
-        const remoteUrl = resolveCharacterGalleryPackUrl(chatVariables, character.name);
+        const remoteUrl = resolveCharacterRemoteGalleryUrl(chatVariables, character.name);
         if (!remoteUrl) return;
         try {
           const presentation = await resolveRemoteGalleryPresentation(remoteUrl);
@@ -246,7 +269,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
   const openLibraryList = () => {
     if (!started) return;
-    closeCreatorEditor();
+    closeProfileEditor();
     closeSettings();
     if (!state.library) return;
     state.library.worldbookOpen = false;
@@ -322,6 +345,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     state.settings.unlimitedCardsPerMessage = nextSettings.unlimitedCardsPerMessage;
     state.settings.effectsEnabled = nextSettings.effectsEnabled;
     state.settings.forceMobileLayout = nextSettings.forceMobileLayout;
+    state.settings.themeMode = nextSettings.themeMode;
     state.settings.debugEnabled = nextSettings.debugEnabled;
     state.settings.imageSourcePriorityEnabled = nextSettings.imageSourcePriorityEnabled;
     state.settings.imageSourcePriority = nextSettings.imageSourcePriority;
@@ -334,43 +358,67 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
   const openWorldbookLibrary = () => {
     if (!started) return;
-    closeLibrary();
+    closeProfileEditor();
     closeSettings();
-    if (state.library) state.library.worldbookOpen = true;
+    if (!state.library) return;
+    state.library.listOpen = true;
+    state.library.worldbookOpen = true;
   };
 
   const closeWorldbookLibrary = () => {
-    if (state.library) state.library.worldbookOpen = false;
+    closeLibrary();
   };
 
   const openCurrentChatLibrary = () => {
-    closeWorldbookLibrary();
     openLibraryList();
   };
 
   const editWorldbookCharacter = (worldbookName: string, entryUid?: number) => {
     try {
-      openCreatorManager({
+      openProfileEditor({
         worldbookName,
         entryUid,
         forceMobileLayout: state.settings.forceMobileLayout,
+        themeMode: state.settings.themeMode,
         debugEnabled: state.settings.debugEnabled,
         onForceRefresh: forceRefreshCharInfo,
-        onReturnToWorldbookLibrary: () => {
-          closeCreatorEditor();
+        onReturnToLibrary: () => {
+          closeProfileEditor();
           openWorldbookLibrary();
         },
       });
       closeWorldbookLibrary();
     } catch (error) {
-      console.error('[CharInfo Runtime] 角色资料编辑器打开失败：', error);
-      toastr.warning('角色资料编辑器暂时无法打开。');
+      console.error('[CharInfo Runtime] 角色档案编辑器打开失败：', error);
+      toastr.warning('角色档案编辑器暂时无法打开。');
+    }
+  };
+
+  const editCurrentChatCharacterProfile = (characterName: string) => {
+    const name = characterName.trim();
+    if (!name) return;
+    try {
+      openProfileEditor({
+        initialCharacterName: name,
+        forceMobileLayout: state.settings.forceMobileLayout,
+        themeMode: state.settings.themeMode,
+        debugEnabled: state.settings.debugEnabled,
+        onForceRefresh: forceRefreshCharInfo,
+        onReturnToLibrary: () => {
+          closeProfileEditor();
+          openLibraryCharacter(name);
+        },
+      });
+      closeLibrary();
+    } catch (error) {
+      console.error('[CharInfo Runtime] 角色档案编辑器打开失败：', error);
+      toastr.warning('角色档案编辑器暂时无法打开。');
     }
   };
 
   const openSettings = () => {
     if (!started) return;
-    closeCreatorEditor();
+    closeProfileEditor();
     closeLibrary();
     if (state.settingsView) return;
 
@@ -401,6 +449,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     overflowWarnings.clear();
     activeFloorIds.clear();
     dirtyMessageIds.clear();
+    dirtyReasons.clear();
+    lifecycleDrivenMessageIds.clear();
   };
 
   const restoreNativeMessageDisplays = (messageIds: readonly number[]) => {
@@ -424,7 +474,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     }
   };
 
-  const renderMessage = (messageId: number) => {
+  const renderMessage = (messageId: number, trigger = 'unknown', lifecycleDriven = false) => {
     if (!activeFloorIds.has(messageId)) {
       removeMessage(messageId);
       return;
@@ -434,10 +484,20 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     const messageElement = getMessageElement(messageId);
     const sourceElement = messageElement?.querySelector<HTMLElement>('.mes_text') ?? null;
     if (!source || !sourceElement) {
+      if (source?.message.message.includes('<char_info')) {
+        traceMount('warn', messageId, 'MESSAGE_DOM_UNAVAILABLE', {
+          trigger,
+          hasMessageElement: Boolean(messageElement),
+          hasMessageTextElement: Boolean(sourceElement),
+        });
+      }
       removeMessage(messageId);
       return;
     }
     if (messageElement.querySelector('#curEditTextarea')) {
+      if (source.message.message.includes('<char_info')) {
+        traceMount('info', messageId, 'SKIP_EDITING', { trigger });
+      }
       removeMessage(messageId);
       return;
     }
@@ -481,21 +541,47 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     }
 
     const sourceSignature = `${source.swipeId}:${source.message.message}`;
+    traceMount('info', messageId, 'MOUNT_ATTEMPT', {
+      trigger,
+      cardCount: projection.cards.length,
+      hadPreviousMount: Boolean(current),
+      sourceElementConnected: sourceElement.isConnected,
+      previousHostsConnected: current ? current.cardMounts.filter(cardMount => cardMount.host.isConnected).length : 0,
+      previousHostCount: current?.cardMounts.length ?? 0,
+    });
     if (current) {
-      const previousAttempt = remountAttempts.get(messageId);
-      const now = Date.now();
-      if (previousAttempt?.signature === sourceSignature && now - previousAttempt.attemptedAt < REMOUNT_LOOP_GUARD_MS) {
-        console.warn(`[CharInfo Runtime] 第 ${messageId} 楼在短时间内重复失去挂载点，已停止自动重挂载以避免渲染循环。`);
-        removeMessage(messageId);
-        return;
+      if (!lifecycleDriven) {
+        const previousAttempt = remountAttempts.get(messageId);
+        const now = Date.now();
+        if (previousAttempt?.signature === sourceSignature && now - previousAttempt.attemptedAt < REMOUNT_LOOP_GUARD_MS) {
+          traceMount('warn', messageId, 'REMOUNT_LOOP_GUARD', {
+            trigger,
+            elapsedMs: now - previousAttempt.attemptedAt,
+            guardMs: REMOUNT_LOOP_GUARD_MS,
+          });
+          console.warn(
+            `[CharInfo Runtime] 第 ${messageId} 楼在没有新的 SillyTavern 渲染事件时连续失去挂载点，已停止 DOM 观察器自动重挂载以避免渲染循环。`,
+          );
+          removeMessage(messageId);
+          return;
+        }
+        remountAttempts.set(messageId, { signature: sourceSignature, attemptedAt: now });
+      } else {
+        remountAttempts.delete(messageId);
       }
-      remountAttempts.set(messageId, { signature: sourceSignature, attemptedAt: now });
       removeMessage(messageId);
     } else {
       remountAttempts.delete(messageId);
     }
 
-    const cardMounts = mountCharInfoCardHosts(sourceElement, projection.cards);
+    const cardMounts = mountCharInfoCardHosts(sourceElement, projection.cards, {
+      onDiagnostic: (diagnostic: NativeMessageMountDiagnostic) => {
+        traceMount(diagnostic.code === 'MOUNT_SUCCESS' ? 'info' : 'warn', messageId, diagnostic.code, {
+          trigger,
+          ...diagnostic.details,
+        });
+      },
+    });
     if (!cardMounts) {
       console.warn(`[CharInfo Runtime] 第 ${messageId} 楼无法安全定位 char_info，已保留原生消息。`);
       removeMessage(messageId);
@@ -533,7 +619,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     });
     messageIds.forEach(messageId => {
       try {
-        renderMessage(messageId);
+        renderMessage(messageId, 'force-refresh');
       } catch (error) {
         console.error(`[CharInfo Runtime] 第 ${messageId} 楼强制刷新失败：`, error);
       }
@@ -560,9 +646,16 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     const batch = Array.from(dirtyMessageIds).slice(0, DIRTY_BATCH_SIZE);
     batch.forEach(messageId => dirtyMessageIds.delete(messageId));
     batch.forEach(messageId => {
+      const trigger = Array.from(dirtyReasons.get(messageId) ?? ['unknown']).join(',');
+      const lifecycleDriven = lifecycleDrivenMessageIds.delete(messageId);
+      dirtyReasons.delete(messageId);
       try {
-        renderMessage(messageId);
+        renderMessage(messageId, trigger, lifecycleDriven);
       } catch (error) {
+        traceMount('error', messageId, 'RENDER_THROWN', {
+          trigger,
+          error: error instanceof Error ? error.message : String(error),
+        });
         console.error(`[CharInfo Runtime] 第 ${messageId} 楼渲染失败：`, error);
         removeMessage(messageId);
       }
@@ -573,9 +666,17 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     }
   };
 
-  const enqueueMessage = (messageId: number) => {
+  const enqueueMessage = (
+    messageId: number,
+    reason = 'unspecified',
+    options: { lifecycleDriven?: boolean } = {},
+  ) => {
     if (!Number.isInteger(messageId) || messageId < 0) return;
     dirtyMessageIds.add(messageId);
+    if (options.lifecycleDriven) lifecycleDrivenMessageIds.add(messageId);
+    const reasons = dirtyReasons.get(messageId) ?? new Set<string>();
+    reasons.add(reason);
+    dirtyReasons.set(messageId, reasons);
     if (!dirtyFlushTimer) {
       dirtyFlushTimer = setTimeout(flushDirtyMessages, DIRTY_FLUSH_DELAY_MS);
     }
@@ -588,7 +689,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     Array.from(mountedMessages.keys()).forEach(messageId => {
       if (!activeFloorIds.has(messageId)) removeMessage(messageId);
     });
-    recentIds.forEach(enqueueMessage);
+    recentIds.forEach(messageId => enqueueMessage(messageId, 'recent-scan'));
   };
 
   const scanRecentFloors = () => {
@@ -636,7 +737,12 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         const mounted = mountedMessages.get(messageId);
         if (!mounted) return;
         if (!mounted.sourceElement.isConnected || mounted.cardMounts.some(cardMount => !cardMount.host.isConnected)) {
-          enqueueMessage(messageId);
+          traceMount('warn', messageId, 'HOST_DISCONNECTED', {
+            sourceElementConnected: mounted.sourceElement.isConnected,
+            connectedHosts: mounted.cardMounts.filter(cardMount => cardMount.host.isConnected).length,
+            hostCount: mounted.cardMounts.length,
+          });
+          enqueueMessage(messageId, 'dom-host-disconnected');
         }
       });
     });
@@ -649,24 +755,24 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     });
     listen(tavern_events.CHARACTER_MESSAGE_RENDERED, messageId => {
       advanceRecentFloor(messageId);
-      enqueueMessage(messageId);
+      enqueueMessage(messageId, 'CHARACTER_MESSAGE_RENDERED', { lifecycleDriven: true });
     });
     listen(tavern_events.MESSAGE_RECEIVED, messageId => {
       advanceRecentFloor(messageId);
-      enqueueMessage(messageId);
+      enqueueMessage(messageId, 'MESSAGE_RECEIVED', { lifecycleDriven: true });
     });
     listen(tavern_events.GENERATION_ENDED, messageId => {
-      enqueueMessage(messageId);
+      enqueueMessage(messageId, 'GENERATION_ENDED', { lifecycleDriven: true });
       void refreshLibrary();
     });
     listen(tavern_events.MESSAGE_EDITED, messageId => {
-      enqueueMessage(messageId);
+      enqueueMessage(messageId, 'MESSAGE_EDITED', { lifecycleDriven: true });
     });
     listen(tavern_events.MESSAGE_UPDATED, messageId => {
-      enqueueMessage(messageId);
+      enqueueMessage(messageId, 'MESSAGE_UPDATED', { lifecycleDriven: true });
     });
     listen(tavern_events.MESSAGE_SWIPED, messageId => {
-      enqueueMessage(messageId);
+      enqueueMessage(messageId, 'MESSAGE_SWIPED', { lifecycleDriven: true });
       void refreshLibrary();
     });
     listen(tavern_events.MESSAGE_DELETED, messageId => {
@@ -674,7 +780,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       scheduleRecentScan();
     });
     listen(tavern_events.CHAT_CHANGED, () => {
-      closeCreatorEditor();
+      closeProfileEditor();
       resetLibraryForChat();
       closeSettings();
       clearMessages();
@@ -696,7 +802,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       destroyTeleportedStyle = teleportStyle().destroy;
       app = createApp(RuntimeRoot, {
         state,
-        onCloseLibraryList: closeLibraryList,
+        onCloseLibrary: closeLibrary,
         onCloseLibraryViewer: closeLibraryViewer,
         onRefreshLibrary: () => void forceRefreshCharInfo(),
         onOpenLibraryList: openLibraryList,
@@ -705,6 +811,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         onCloseWorldbookLibrary: closeWorldbookLibrary,
         onOpenCurrentChatLibrary: openCurrentChatLibrary,
         onEditWorldbookCharacter: editWorldbookCharacter,
+        onEditCurrentChatCharacterProfile: editCurrentChatCharacterProfile,
         onMoveLibraryButton: updateLibraryButtonPosition,
         onOpenSettings: openSettings,
         onCloseSettings: closeSettings,
@@ -717,8 +824,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       updateScriptButtonsWith(buttons =>
         buttons.filter(
           button =>
-            button.name !== CREATOR_BUTTON_NAME &&
-            button.name !== LEGACY_CREATOR_BUTTON_NAME &&
+            button.name !== PROFILE_EDITOR_BUTTON_NAME &&
+            button.name !== LEGACY_PROFILE_EDITOR_BUTTON_NAME &&
             button.name !== LEGACY_CURRENT_LIBRARY_BUTTON_NAME &&
             button.name !== '世界书角色库' &&
             button.name !== SETTINGS_BUTTON_NAME,
@@ -758,7 +865,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       mutationObserver?.disconnect();
       mutationObserver = null;
       eventStops.splice(0).forEach(stop => stop());
-      closeCreatorEditor();
+      closeProfileEditor();
       closeLibrary();
       closeSettings();
       clearMessages();

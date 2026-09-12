@@ -41,7 +41,7 @@ test('vNext runtime mounts cards through local displayed-text ranges', () => {
   assert.match(runtimeSource, /destroyTeleportedStyle = teleportStyle\(\)\.destroy/);
   assert.match(runtimeSource, /window\.parent\.document\.querySelector/);
   assert.doesNotMatch(runtimeSource, /mutation\.target instanceof Element/);
-  assert.match(runtimeSource, /mountCharInfoCardHosts\(sourceElement, projection\.cards\)/);
+  assert.match(runtimeSource, /mountCharInfoCardHosts\(sourceElement, projection\.cards, \{/);
   assert.doesNotMatch(runtimeRootSource, /\bv-html\b|char-info-runtime-text|char-info-runtime-source-hidden/);
 
   assert.match(nativeMountSource, /export const BLOCKED_NATIVE_SCOPE_SELECTOR/);
@@ -79,12 +79,27 @@ test('runtime mutation observer skips all mutation traversal until a card is mou
   );
 });
 
-test('runtime stops repeated remounts and detects editing at the message boundary', () => {
+test('runtime guards observer remount loops while trusting SillyTavern lifecycle rerenders', () => {
   assert.match(runtimeSource, /const REMOUNT_LOOP_GUARD_MS = 3000/);
   assert.match(runtimeSource, /messageElement\.querySelector\('#curEditTextarea'\)/);
+  assert.match(runtimeSource, /if \(!lifecycleDriven\) \{/);
   assert.match(runtimeSource, /previousAttempt\?\.signature === sourceSignature/);
   assert.match(runtimeSource, /now - previousAttempt\.attemptedAt < REMOUNT_LOOP_GUARD_MS/);
-  assert.match(runtimeSource, /已停止自动重挂载以避免渲染循环/);
+  assert.match(runtimeSource, /已停止 DOM 观察器自动重挂载以避免渲染循环/);
+  assert.match(runtimeSource, /else \{\s*remountAttempts\.delete\(messageId\);\s*\}/);
+  assert.match(
+    runtimeSource,
+    /CHARACTER_MESSAGE_RENDERED[\s\S]*?enqueueMessage\(messageId, 'CHARACTER_MESSAGE_RENDERED', \{ lifecycleDriven: true \}\)/,
+  );
+});
+
+test('runtime emits structured CharInfo mount diagnostics for race-condition reports', () => {
+  assert.match(runtimeSource, /const MOUNT_LOG_PREFIX = '\[CharInfo Mount\]'/);
+  assert.match(runtimeSource, /traceMount\('warn', messageId, 'HOST_DISCONNECTED'/);
+  assert.match(runtimeSource, /traceMount\('warn', messageId, 'REMOUNT_LOOP_GUARD'/);
+  assert.match(runtimeSource, /dirtyReasons = new Map<number, Set<string>>\(\)/);
+  assert.match(nativeMountSource, /code: 'CARD_MOUNT_FAILED'/);
+  assert.match(nativeMountSource, /code: 'MOUNT_SUCCESS'/);
 });
 
 test('runtime restores native message display only after a real script stop', () => {
