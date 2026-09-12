@@ -522,7 +522,7 @@ import {
   statusEffectType,
   type TabKey,
 } from './services/characterViewModel';
-import { resolveRemoteGalleryConfig } from './services/galleryPackService';
+import { resolveRemoteGalleryConfig } from './services/remoteGalleryService';
 import { importToMvuVariables, saveToChatWorldbook } from './services/importService';
 import { createParticleEngine, type ParticleEngine } from './services/particleEngine';
 import {
@@ -815,7 +815,7 @@ async function applyParsedCharacterData(
     : await resolveCharacterVisualConfigWithExtensions(data, getVariables({ type: 'chat' }));
   const hasLegacyInlineImageSyntax = hasDeprecatedVisualSyntax(resolvedData);
   deprecatedVisualSyntaxWarning.value = hasLegacyInlineImageSyntax
-    ? '检测到正文旧版角色图片字段。v0.3.0 起 Viewer 已忽略该字段，视觉资料只读取 char_info.profiles；请在角色视觉编辑器中重新保存为新版资料。'
+    ? '检测到正文旧版角色图片字段。v0.3.0 起角色查看器已忽略该字段；角色档案只读取 char_info.profiles。请在角色档案编辑器中重新保存为新版档案。'
     : '';
   const displayData =
     props.entranceQuoteOverride === undefined

@@ -19,7 +19,7 @@ function sectionBetween(source, start, end) {
   return source.slice(startIndex, endIndex);
 }
 
-test('Special NPC 档案只在有自定义故事时显示资料/故事二级切换，并保持六项主导航', () => {
+test('立绘角色卡 档案只在有自定义故事时显示资料/故事二级切换，并保持六项主导航', () => {
   assert.match(
     sheetSource,
     /const tabs = computed<IllustratedTab\[\]>\(\(\) => \[[\s\S]*?\{ key: 'overview', label: '首页' \},[\s\S]*?\{ key: 'characterPanel', label: '面板' \},[\s\S]*?\{ key: 'profile', label: '档案' \},[\s\S]*?\{ key: 'skills', label: '技能' \},[\s\S]*?\{ key: 'holdings', label: '持有' \},[\s\S]*?\{ key: 'divinity', label: '登神' \},[\s\S]*?\]\);/u,
@@ -65,7 +65,7 @@ test('没有自定义故事时不显示二级切换，并把原始背景故事�
   assert.match(profileSource, /\{ title: '背景故事', text: props\.backstoryText \}/u);
 });
 
-test('Special NPC 故事页复用 detail panels 整页滚动，并提供 mobile 可读排版', () => {
+test('立绘角色卡 故事页复用 detail panels 整页滚动，并提供 mobile 可读排版', () => {
   assert.match(sheetSource, /\.illustrated-panels\s*\{[\s\S]*?overflow-y:\s*auto;/u);
   assert.match(
     sheetSource,

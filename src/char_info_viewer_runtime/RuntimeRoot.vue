@@ -24,7 +24,7 @@
 
   <Teleport v-if="state.library" :to="state.library.host">
     <button
-      v-if="!libraryWorkspaceOpen"
+      v-if="!characterLibraryOpen"
       class="char-info-library-floating-button"
       :class="managerThemeClass(state.settings.themeMode)"
       type="button"
@@ -48,10 +48,10 @@
       ></span>
     </button>
 
-    <div v-if="libraryWorkspaceOpen" class="char-info-library-workspace-backdrop">
+    <div v-if="characterLibraryOpen" class="char-info-character-library-backdrop">
       <section
         ref="viewerWindowRef"
-        class="char-info-library-overlay char-info-library-workspace"
+        class="char-info-library-overlay char-info-character-library"
         :class="[
           managerThemeClass(state.settings.themeMode),
           {
@@ -65,13 +65,13 @@
         aria-label="角色资料库"
       >
         <header
-          class="char-info-library-workspace-header"
+          class="char-info-character-library-header"
           @pointerdown="beginViewerWindowDrag"
           @pointermove="moveViewerWindow"
           @pointerup="endViewerWindowDrag"
           @pointercancel="cancelViewerWindowDrag"
         >
-          <div class="char-info-library-workspace-title">
+          <div class="char-info-character-library-title">
             <h2>角色资料库</h2>
             <p v-if="state.library.worldbookOpen">世界书角色</p>
             <p v-else>
@@ -79,7 +79,7 @@
             </p>
           </div>
 
-          <div class="char-info-library-source-switch char-info-library-workspace-switch" role="group" aria-label="角色资料来源">
+          <div class="char-info-library-source-switch char-info-character-library-switch" role="group" aria-label="角色资料来源">
             <button
               type="button"
               :class="{ active: !state.library.worldbookOpen }"
@@ -98,7 +98,7 @@
             </button>
           </div>
 
-          <div class="char-info-library-workspace-actions">
+          <div class="char-info-character-library-actions">
             <button type="button" aria-label="查看器设置" title="设置" @click="onOpenSettings">
               <svg aria-hidden="true" viewBox="0 0 24 24">
                 <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" />
@@ -107,17 +107,17 @@
                 />
               </svg>
             </button>
-            <button type="button" aria-label="关闭角色资料库" @click="closeLibraryWorkspace">×</button>
+            <button type="button" aria-label="关闭角色资料库" @click="closeCharacterLibrary">×</button>
           </div>
         </header>
 
-        <div class="char-info-library-workspace-body">
+        <div class="char-info-character-library-body">
           <WorldbookCharacterLibrary
             v-if="state.library.worldbookOpen"
             embedded
             :force-mobile-layout="state.settings.forceMobileLayout"
             :theme-mode="state.settings.themeMode"
-            @close="closeLibraryWorkspace"
+            @close="closeCharacterLibrary"
             @open-current-chat="onOpenCurrentChatLibrary"
             @edit-library="worldbookName => onEditWorldbookCharacter(worldbookName)"
             @edit="onEditWorldbookCharacter"
@@ -217,7 +217,7 @@
             </svg>
             <span>筛选</span>
           </button>
-          <button class="primary" type="button" aria-label="返回游戏并关闭角色资料库" @click="closeLibraryWorkspace">
+          <button class="primary" type="button" aria-label="返回游戏并关闭角色资料库" @click="closeCharacterLibrary">
             <svg aria-hidden="true" viewBox="0 0 24 24">
               <path d="m4 11 8-7 8 7" />
               <path d="M6.5 10v10h11V10M9.5 20v-6h5v6" />
@@ -268,15 +268,15 @@
           </button>
           <button
             v-if="selectedCharacter"
-            class="char-info-library-list-action char-info-library-visual-action"
+            class="char-info-library-list-action char-info-library-profile-action"
             type="button"
-            @click="props.onEditCurrentChatCharacterVisual(selectedCharacter.name)"
+            @click="props.onEditCurrentChatCharacterProfile(selectedCharacter.name)"
           >
             <svg aria-hidden="true" viewBox="0 0 24 24">
               <path d="M4 19.5V15l10.8-10.8a2.1 2.1 0 0 1 3 0l2 2a2.1 2.1 0 0 1 0 3L9 20H4Z" />
               <path d="m13.5 5.5 5 5" />
             </svg>
-            <span>{{ selectedCharacter.hasVisualProfile ? '编辑视觉' : '添加视觉' }}</span>
+            <span>{{ selectedCharacter.hasProfileRecord ? '编辑档案' : '添加档案' }}</span>
           </button>
           <button
             class="char-info-library-icon-action"
@@ -294,7 +294,7 @@
             class="char-info-library-icon-action char-info-library-close-action"
             type="button"
             aria-label="关闭角色资料"
-            @click="closeLibraryWorkspace"
+            @click="closeCharacterLibrary"
           >
             <svg aria-hidden="true" viewBox="0 0 24 24">
               <path d="m7 7 10 10M17 7 7 17" />
@@ -344,16 +344,16 @@
         <button
           v-if="selectedCharacter"
           type="button"
-          :aria-label="selectedCharacter.hasVisualProfile ? '编辑角色视觉资料' : '添加角色视觉资料'"
-          @click="props.onEditCurrentChatCharacterVisual(selectedCharacter.name)"
+          :aria-label="selectedCharacter.hasProfileRecord ? '编辑角色档案' : '添加角色档案'"
+          @click="props.onEditCurrentChatCharacterProfile(selectedCharacter.name)"
         >
           <svg aria-hidden="true" viewBox="0 0 24 24">
             <path d="M4 19.5V15l10.8-10.8a2.1 2.1 0 0 1 3 0l2 2a2.1 2.1 0 0 1 0 3L9 20H4Z" />
             <path d="m13.5 5.5 5 5" />
           </svg>
-          <span>{{ selectedCharacter.hasVisualProfile ? '编辑视觉' : '添加视觉' }}</span>
+          <span>{{ selectedCharacter.hasProfileRecord ? '编辑档案' : '添加档案' }}</span>
         </button>
-        <button class="primary" type="button" aria-label="返回游戏并关闭角色资料" @click="closeLibraryWorkspace">
+        <button class="primary" type="button" aria-label="返回游戏并关闭角色资料" @click="closeCharacterLibrary">
           <svg aria-hidden="true" viewBox="0 0 24 24">
             <path d="m4 11 8-7 8 7" />
             <path d="M6.5 10v10h11V10M9.5 20v-6h5v6" />
@@ -594,7 +594,7 @@ const props = defineProps<{
   onCloseWorldbookLibrary: () => void;
   onOpenCurrentChatLibrary: () => void;
   onEditWorldbookCharacter: (worldbookName: string, entryUid?: number) => void;
-  onEditCurrentChatCharacterVisual: (characterName: string) => void;
+  onEditCurrentChatCharacterProfile: (characterName: string) => void;
   onMoveLibraryButton: (position: { left: number; top: number }) => void;
   onOpenSettings: () => void;
   onCloseSettings: () => void;
@@ -623,7 +623,7 @@ const debugEnabledDraft = ref(props.state.settings.debugEnabled);
 const imageSourcePriorityEnabledDraft = ref(props.state.settings.imageSourcePriorityEnabled);
 const imageSourcePriorityDraft = ref([...props.state.settings.imageSourcePriority]);
 const settingsMessage = ref('');
-const libraryWorkspaceOpen = computed(() => {
+const characterLibraryOpen = computed(() => {
   const library = props.state.library;
   return Boolean(library && (library.listOpen || library.viewerOpen || library.worldbookOpen));
 });
@@ -664,7 +664,7 @@ function openCharacter(name: string): void {
   props.onOpenLibraryCharacter(name);
 }
 
-function closeLibraryWorkspace(): void {
+function closeCharacterLibrary(): void {
   mobileFiltersExpanded.value = false;
   currentMobileMoreOpen.value = false;
   props.onCloseLibrary();
@@ -2629,17 +2629,17 @@ onBeforeUnmount(() => {
   background: transparent;
 }
 
-.char-info-library-workspace-backdrop {
+.char-info-character-library-backdrop {
   position: absolute;
   inset: 0;
   pointer-events: none;
 }
 
-.char-info-library-workspace {
+.char-info-character-library {
   pointer-events: auto;
 }
 
-.char-info-library-workspace-header {
+.char-info-character-library-header {
   display: grid;
   min-height: 78px;
   padding: 12px 16px;
@@ -2654,26 +2654,26 @@ onBeforeUnmount(() => {
   user-select: none;
 }
 
-.char-info-library-workspace-header:active {
+.char-info-character-library-header:active {
   cursor: grabbing;
 }
 
-.char-info-library-workspace-title {
+.char-info-character-library-title {
   min-width: 0;
 }
 
-.char-info-library-workspace-title h2,
-.char-info-library-workspace-title p {
+.char-info-character-library-title h2,
+.char-info-character-library-title p {
   margin: 0;
 }
 
-.char-info-library-workspace-title h2 {
+.char-info-character-library-title h2 {
   color: var(--ci-text);
   font-size: 1.35rem;
   letter-spacing: 0.04em;
 }
 
-.char-info-library-workspace-title p {
+.char-info-character-library-title p {
   margin-top: 4px;
   overflow: hidden;
   color: var(--ci-text-muted);
@@ -2682,17 +2682,17 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-.char-info-library-workspace-switch {
+.char-info-character-library-switch {
   width: 100%;
 }
 
-.char-info-library-workspace-actions {
+.char-info-character-library-actions {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.char-info-library-workspace-actions button {
+.char-info-character-library-actions button {
   display: grid;
   width: 40px;
   height: 40px;
@@ -2705,7 +2705,7 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 
-.char-info-library-workspace-actions svg {
+.char-info-character-library-actions svg {
   width: 19px;
   height: 19px;
   fill: none;
@@ -2715,7 +2715,7 @@ onBeforeUnmount(() => {
   stroke-width: 1.7;
 }
 
-.char-info-library-workspace-body {
+.char-info-character-library-body {
   display: flex;
   min-width: 0;
   min-height: 0;
@@ -2723,7 +2723,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-.char-info-library-workspace-body > .manager-root {
+.char-info-character-library-body > .manager-root {
   min-width: 0;
   min-height: 0;
   flex: 1 1 auto;
@@ -2739,7 +2739,7 @@ onBeforeUnmount(() => {
   animation: char-info-library-content-in 140ms ease-out;
 }
 
-.char-info-library-workspace .char-info-library-list-backdrop {
+.char-info-character-library .char-info-library-list-backdrop {
   position: relative;
   inset: auto;
   width: 100%;
@@ -2749,7 +2749,7 @@ onBeforeUnmount(() => {
   pointer-events: auto;
 }
 
-.char-info-library-workspace .char-info-library-list-dialog {
+.char-info-character-library .char-info-library-list-dialog {
   position: relative;
   inset: auto !important;
   top: auto !important;
@@ -2765,7 +2765,7 @@ onBeforeUnmount(() => {
   transform: none !important;
 }
 
-.char-info-library-workspace .char-info-library-list-dialog > header {
+.char-info-character-library .char-info-library-list-dialog > header {
   display: none;
 }
 
@@ -2788,7 +2788,7 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-.char-info-library-workspace.worldbook-mode .manager-root.embedded {
+.char-info-character-library.worldbook-mode .manager-root.embedded {
   animation: char-info-library-content-in 140ms ease-out;
 }
 
@@ -2836,7 +2836,7 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 720px) {
-  .char-info-library-workspace-header {
+  .char-info-character-library-header {
     min-height: 0;
     padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 8px;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -2845,29 +2845,29 @@ onBeforeUnmount(() => {
     touch-action: manipulation;
   }
 
-  .char-info-library-workspace-title h2 {
+  .char-info-character-library-title h2 {
     font-size: 1.12rem;
   }
 
-  .char-info-library-workspace-title p {
+  .char-info-character-library-title p {
     font-size: 0.68rem;
   }
 
-  .char-info-library-workspace-switch {
+  .char-info-character-library-switch {
     grid-column: 1 / -1;
     grid-row: 2;
   }
 
-  .char-info-library-workspace-actions {
+  .char-info-character-library-actions {
     grid-column: 2;
     grid-row: 1;
   }
 
-  .char-info-library-workspace-actions button:first-child {
+  .char-info-character-library-actions button:first-child {
     display: none;
   }
 
-  .char-info-library-workspace-body {
+  .char-info-character-library-body {
     flex: 1 1 auto;
   }
 
@@ -2876,13 +2876,13 @@ onBeforeUnmount(() => {
     height: 100%;
   }
 
-  .char-info-library-workspace .char-info-library-list-backdrop,
-  .char-info-library-workspace .char-info-library-current-viewer {
+  .char-info-character-library .char-info-library-list-backdrop,
+  .char-info-character-library .char-info-library-current-viewer {
     width: 100%;
     height: 100%;
   }
 
-  .char-info-library-workspace .char-info-library-current-viewer {
+  .char-info-character-library .char-info-library-current-viewer {
     display: none;
   }
 
@@ -2894,12 +2894,12 @@ onBeforeUnmount(() => {
     display: flex;
   }
 
-  .char-info-library-workspace .char-info-library-list-dialog {
+  .char-info-character-library .char-info-library-list-dialog {
     border-right: 0;
   }
 }
 
-.char-info-library-workspace.force-mobile-layout .char-info-library-workspace-header {
+.char-info-character-library.force-mobile-layout .char-info-character-library-header {
   min-height: 0;
   padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 8px;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -2908,44 +2908,44 @@ onBeforeUnmount(() => {
   touch-action: manipulation;
 }
 
-.char-info-library-workspace.force-mobile-layout .char-info-library-workspace-switch {
+.char-info-character-library.force-mobile-layout .char-info-character-library-switch {
   grid-column: 1 / -1;
   grid-row: 2;
 }
 
-.char-info-library-workspace.force-mobile-layout .char-info-library-workspace-actions {
+.char-info-character-library.force-mobile-layout .char-info-character-library-actions {
   grid-column: 2;
   grid-row: 1;
 }
 
-.char-info-library-workspace.force-mobile-layout .char-info-library-workspace-actions button:first-child {
+.char-info-character-library.force-mobile-layout .char-info-character-library-actions button:first-child {
   display: none;
 }
 
-.char-info-library-workspace.force-mobile-layout .char-info-library-current-layout {
+.char-info-character-library.force-mobile-layout .char-info-library-current-layout {
   display: block;
   height: 100%;
 }
 
-.char-info-library-workspace.force-mobile-layout .char-info-library-list-backdrop,
-.char-info-library-workspace.force-mobile-layout .char-info-library-current-viewer {
+.char-info-character-library.force-mobile-layout .char-info-library-list-backdrop,
+.char-info-character-library.force-mobile-layout .char-info-library-current-viewer {
   width: 100%;
   height: 100%;
 }
 
-.char-info-library-workspace.force-mobile-layout .char-info-library-current-viewer {
+.char-info-character-library.force-mobile-layout .char-info-library-current-viewer {
   display: none;
 }
 
-.char-info-library-workspace.force-mobile-layout .char-info-library-current-layout.viewer-open .char-info-library-list-backdrop {
+.char-info-character-library.force-mobile-layout .char-info-library-current-layout.viewer-open .char-info-library-list-backdrop {
   display: none;
 }
 
-.char-info-library-workspace.force-mobile-layout .char-info-library-current-layout.viewer-open .char-info-library-current-viewer {
+.char-info-character-library.force-mobile-layout .char-info-library-current-layout.viewer-open .char-info-library-current-viewer {
   display: flex;
 }
 
-.char-info-library-workspace.force-mobile-layout .char-info-library-list-dialog {
+.char-info-character-library.force-mobile-layout .char-info-library-list-dialog {
   border-right: 0;
 }
 </style>

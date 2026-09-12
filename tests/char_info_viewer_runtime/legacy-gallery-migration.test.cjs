@@ -114,5 +114,5 @@ test('Viewer Runtime 不再执行 legacy gallery 迁移或写回聊天变量', (
 
   assert.doesNotMatch(runtimeSource, /migrateLegacyExternalGalleries|migrateLegacyGalleries/);
   assert.doesNotMatch(runtimeSource, /updateVariablesWith\([\s\S]*?\{ type: 'chat' \}/);
-  assert.match(runtimeSource, /tavern_events\.CHAT_CHANGED, \(\) => \{[\s\S]*?closeCreatorEditor\(\);/);
+  assert.match(runtimeSource, /tavern_events\.CHAT_CHANGED, \(\) => \{[\s\S]*?closeProfileEditor\(\);/);
 });

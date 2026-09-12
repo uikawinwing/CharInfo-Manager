@@ -174,10 +174,10 @@ test('手动刷新会重读变量并强制重挂当前 CharInfo floors', async (
   assert.match(source, /onRefreshLibrary: \(\) => void forceRefreshCharInfo\(\)/);
 });
 
-test('Creator 即时写入当前 draft 时强校验 CharInfo、状态栏相簿与头像，并复用同一 Force Refresh callback', async () => {
+test('角色档案编辑器即时写入当前 draft 时强校验 CharInfo、状态栏相簿与头像，并复用同一 Force Refresh callback', async () => {
   const runtimeSource = await readFile(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
-  const overlaySource = await readFile(new URL('../../src/char_info_creator_manager/overlay.ts', import.meta.url), 'utf8');
-  const appSource = await readFile(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
+  const overlaySource = await readFile(new URL('../../src/char_info_profile_editor/overlay.ts', import.meta.url), 'utf8');
+  const appSource = await readFile(new URL('../../src/char_info_profile_editor/App.vue', import.meta.url), 'utf8');
 
   assert.match(runtimeSource, /onForceRefresh: forceRefreshCharInfo/);
   assert.match(overlaySource, /onForceRefresh: options\.onForceRefresh/);
@@ -196,13 +196,13 @@ test('Creator 即时写入当前 draft 时强校验 CharInfo、状态栏相簿�
   assert.match(appSource, /当前聊天变量未修改/u);
 });
 
-test('从世界书角色库进入 Creator 时提供直接返回角色库的回调', async () => {
+test('从世界书角色库进入角色档案编辑器时提供直接返回角色库的回调', async () => {
   const runtimeSource = await readFile(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
-  const overlaySource = await readFile(new URL('../../src/char_info_creator_manager/overlay.ts', import.meta.url), 'utf8');
-  const appSource = await readFile(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
+  const overlaySource = await readFile(new URL('../../src/char_info_profile_editor/overlay.ts', import.meta.url), 'utf8');
+  const appSource = await readFile(new URL('../../src/char_info_profile_editor/App.vue', import.meta.url), 'utf8');
 
-  assert.match(runtimeSource, /onReturnToWorldbookLibrary: \(\) => \{[\s\S]*?closeCreatorEditor\(\);[\s\S]*?openWorldbookLibrary\(\);/u);
+  assert.match(runtimeSource, /onReturnToWorldbookLibrary: \(\) => \{[\s\S]*?closeProfileEditor\(\);[\s\S]*?openWorldbookLibrary\(\);/u);
   assert.match(overlaySource, /onReturnToWorldbookLibrary: options\.onReturnToWorldbookLibrary/u);
-  assert.match(appSource, /v-if="!quickVisualMode && props\.onReturnToWorldbookLibrary"/u);
-  assert.match(appSource, /← 返回角色库/u);
+  assert.match(appSource, /v-if="!flashMode && props\.onReturnToWorldbookLibrary"/u);
+  assert.match(appSource, /← 返回世界书角色库/u);
 });

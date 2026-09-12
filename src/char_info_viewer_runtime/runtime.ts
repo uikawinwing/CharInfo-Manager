@@ -2,11 +2,11 @@ import { createPinia } from 'pinia';
 import { createApp, markRaw, reactive, type App } from 'vue';
 
 import { createScriptIdDiv, teleportStyle } from '@util/script';
-import { closeCreatorManager, openCreatorManager } from '../char_info_creator_manager/controller';
+import { closeProfileEditor as destroyProfileEditor, openProfileEditor } from '../char_info_profile_editor/controller';
 import { projectCharInfoMessage } from '../char_info_viewer/runtime/charInfoMessage';
 import { selectRecentMessageIds } from '../char_info_viewer/runtime/recentMessages';
 import { preloadPortraitImages } from '../char_info_viewer/services/imagePreload';
-import { resolveRemoteGalleryPresentation } from '../char_info_viewer/services/galleryPackService';
+import { resolveRemoteGalleryPresentation } from '../char_info_viewer/services/remoteGalleryService';
 import { resolveCharacterVisualPreloadUrls } from '../char_info_viewer/services/themeService';
 import RuntimeRoot from './RuntimeRoot.vue';
 import { collectChangedAffinityNames, collectCurrentCharacterSnapshots } from './currentCharacterLibrary';
@@ -33,8 +33,8 @@ const DIRTY_FLUSH_DELAY_MS = 20;
 const REMOUNT_LOOP_GUARD_MS = 3000;
 const LIBRARY_HOST_CLASS = 'char-info-library-host';
 const LEGACY_CURRENT_LIBRARY_BUTTON_NAME = '角色资料库';
-const CREATOR_BUTTON_NAME = '角色视觉编辑器';
-const LEGACY_CREATOR_BUTTON_NAME = '角色视觉编辑';
+const PROFILE_EDITOR_BUTTON_NAME = '角色档案编辑器';
+const LEGACY_PROFILE_EDITOR_BUTTON_NAME = '角色视觉编辑';
 const SETTINGS_HOST_CLASS = 'char-info-settings-host';
 const SETTINGS_BUTTON_NAME = 'CharInfo 设置';
 const MOUNT_LOG_PREFIX = '[CharInfo Mount]';
@@ -43,7 +43,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function resolveCharacterGalleryPackUrl(chatVariables: unknown, characterName: string): string {
+function resolveCharacterRemoteGalleryUrl(chatVariables: unknown, characterName: string): string {
   if (!isRecord(chatVariables) || !isRecord(chatVariables.char_info)) return '';
   const profiles = chatVariables.char_info.profiles;
   if (!isRecord(profiles)) return '';
@@ -168,8 +168,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     state.library.viewerLoading = false;
   };
 
-  const closeCreatorEditor = () => {
-    closeCreatorManager();
+  const closeProfileEditor = () => {
+    destroyProfileEditor();
   };
 
   const resetLibraryForChat = () => {
@@ -216,7 +216,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
     void Promise.all(
       baseCharacters.map(async character => {
-        const remoteUrl = resolveCharacterGalleryPackUrl(chatVariables, character.name);
+        const remoteUrl = resolveCharacterRemoteGalleryUrl(chatVariables, character.name);
         if (!remoteUrl) return;
         try {
           const presentation = await resolveRemoteGalleryPresentation(remoteUrl);
@@ -269,7 +269,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
   const openLibraryList = () => {
     if (!started) return;
-    closeCreatorEditor();
+    closeProfileEditor();
     closeSettings();
     if (!state.library) return;
     state.library.worldbookOpen = false;
@@ -358,7 +358,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
   const openWorldbookLibrary = () => {
     if (!started) return;
-    closeCreatorEditor();
+    closeProfileEditor();
     closeSettings();
     if (!state.library) return;
     state.library.listOpen = true;
@@ -375,7 +375,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
   const editWorldbookCharacter = (worldbookName: string, entryUid?: number) => {
     try {
-      openCreatorManager({
+      openProfileEditor({
         worldbookName,
         entryUid,
         forceMobileLayout: state.settings.forceMobileLayout,
@@ -383,42 +383,42 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         debugEnabled: state.settings.debugEnabled,
         onForceRefresh: forceRefreshCharInfo,
         onReturnToWorldbookLibrary: () => {
-          closeCreatorEditor();
+          closeProfileEditor();
           openWorldbookLibrary();
         },
       });
       closeWorldbookLibrary();
     } catch (error) {
-      console.error('[CharInfo Runtime] 角色资料编辑器打开失败：', error);
-      toastr.warning('角色资料编辑器暂时无法打开。');
+      console.error('[CharInfo Runtime] 角色档案编辑器打开失败：', error);
+      toastr.warning('角色档案编辑器暂时无法打开。');
     }
   };
 
-  const editCurrentChatCharacterVisual = (characterName: string) => {
+  const editCurrentChatCharacterProfile = (characterName: string) => {
     const name = characterName.trim();
     if (!name) return;
     try {
-      openCreatorManager({
-        quickCharacterName: name,
+      openProfileEditor({
+        flashCharacterName: name,
         forceMobileLayout: state.settings.forceMobileLayout,
         themeMode: state.settings.themeMode,
         debugEnabled: state.settings.debugEnabled,
         onForceRefresh: forceRefreshCharInfo,
         onReturnToCurrentLibrary: () => {
-          closeCreatorEditor();
+          closeProfileEditor();
           openLibraryCharacter(name);
         },
       });
       closeLibrary();
     } catch (error) {
-      console.error('[CharInfo Runtime] 快速视觉编辑器打开失败：', error);
-      toastr.warning('快速视觉编辑器暂时无法打开。');
+      console.error('[CharInfo Runtime] 角色档案编辑器（快速模式）打开失败：', error);
+      toastr.warning('角色档案编辑器（快速模式）暂时无法打开。');
     }
   };
 
   const openSettings = () => {
     if (!started) return;
-    closeCreatorEditor();
+    closeProfileEditor();
     closeLibrary();
     if (state.settingsView) return;
 
@@ -780,7 +780,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       scheduleRecentScan();
     });
     listen(tavern_events.CHAT_CHANGED, () => {
-      closeCreatorEditor();
+      closeProfileEditor();
       resetLibraryForChat();
       closeSettings();
       clearMessages();
@@ -811,7 +811,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         onCloseWorldbookLibrary: closeWorldbookLibrary,
         onOpenCurrentChatLibrary: openCurrentChatLibrary,
         onEditWorldbookCharacter: editWorldbookCharacter,
-        onEditCurrentChatCharacterVisual: editCurrentChatCharacterVisual,
+        onEditCurrentChatCharacterProfile: editCurrentChatCharacterProfile,
         onMoveLibraryButton: updateLibraryButtonPosition,
         onOpenSettings: openSettings,
         onCloseSettings: closeSettings,
@@ -824,8 +824,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       updateScriptButtonsWith(buttons =>
         buttons.filter(
           button =>
-            button.name !== CREATOR_BUTTON_NAME &&
-            button.name !== LEGACY_CREATOR_BUTTON_NAME &&
+            button.name !== PROFILE_EDITOR_BUTTON_NAME &&
+            button.name !== LEGACY_PROFILE_EDITOR_BUTTON_NAME &&
             button.name !== LEGACY_CURRENT_LIBRARY_BUTTON_NAME &&
             button.name !== '世界书角色库' &&
             button.name !== SETTINGS_BUTTON_NAME,
@@ -865,7 +865,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       mutationObserver?.disconnect();
       mutationObserver = null;
       eventStops.splice(0).forEach(stop => stop());
-      closeCreatorEditor();
+      closeProfileEditor();
       closeLibrary();
       closeSettings();
       clearMessages();

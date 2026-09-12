@@ -108,7 +108,7 @@ function bootstrap(input: { sources: Record<string, string>; settings: any; inli
     vue: { ...Vue, reactive: (value: any) => { state = Vue.reactive(value); return state; } },
     pinia: { createPinia: () => ({ install() {} }) },
     '@util/script': { createScriptIdDiv: () => $('<div>'), teleportStyle: () => ({ destroy() {} }) },
-    '../char_info_creator_manager/controller': { closeCreatorManager() {}, openCreatorManager() {} },
+    '../char_info_profile_editor/controller': { closeProfileEditor() {}, openProfileEditor() {} },
     '../char_info_viewer/services/imagePreload': { preloadPortraitImages: async () => {} },
     '../char_info_viewer/services/themeService': { resolveCharacterVisualPreloadUrls: () => [] },
     './currentCharacterLibrary': { collectChangedAffinityNames: () => [], collectCurrentCharacterSnapshots: () => [] },

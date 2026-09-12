@@ -1,0 +1,3822 @@
+<template>
+  <div class="manager-root" :class="managerThemeClass(props.themeMode)" @keydown.esc="onEscape">
+    <button class="backdrop" type="button" aria-label="关闭管理器" @click="emit('close')"></button>
+
+    <main class="manager-dialog" role="dialog" aria-modal="true" aria-labelledby="manager-title">
+      <header class="dialog-header">
+        <div class="header-title">
+          <h1 id="manager-title">角色档案编辑器</h1>
+          <span class="phase-badge">{{ flashMode ? '快速模式' : `专业模式 · ${activeStep}/${steps.length}` }}</span>
+        </div>
+
+        <div class="header-actions">
+          <button
+            v-if="flashMode && props.onReturnToCurrentLibrary"
+            class="secondary-button return-library-button"
+            type="button"
+            @click="props.onReturnToCurrentLibrary"
+          >
+            ← 返回角色卡
+          </button>
+          <button
+            v-if="!flashMode && props.onReturnToWorldbookLibrary"
+            class="secondary-button return-library-button"
+            type="button"
+            @click="props.onReturnToWorldbookLibrary"
+          >
+            ← 返回世界书角色库
+          </button>
+          <button
+            v-if="!flashMode"
+            class="secondary-button viewer-preview-trigger"
+            type="button"
+            :disabled="!canPreviewViewer"
+            @click="openViewerPreview"
+          >
+            预览
+          </button>
+          <button class="close-button" type="button" aria-label="关闭" @click="emit('close')">×</button>
+        </div>
+      </header>
+
+      <div class="dialog-body" :class="{ 'flash-mode': flashMode }">
+        <form v-if="flashMode" class="flash-mode-editor" novalidate @submit.prevent="saveFlashProfile">
+          <section class="flash-mode-intro">
+            <div>
+              <span>当前聊天角色</span>
+              <strong>{{ profile.characterName }}</strong>
+            </div>
+            <p>角色设定继续读取当前聊天变量；这里只保存立绘、头像与相册到当前聊天世界书。</p>
+          </section>
+
+          <div class="flash-mode-gallery">
+            <p class="flash-mode-guidance">粘贴 HTTPS 图片直链即可。第一张静态图会自动作为头像和角色库封面。</p>
+
+            <div class="flash-mode-list">
+              <article v-for="(image, index) in profile.gallery" :key="image.id" class="flash-mode-card">
+                <div class="flash-mode-card-heading">
+                  <strong>{{ index === 0 ? '主立绘' : `图片 ${index + 1}` }}</strong>
+                  <button
+                    v-if="profile.gallery.length > 1"
+                    type="button"
+                    class="flash-mode-remove"
+                    :aria-label="`删除第 ${index + 1} 张图片`"
+                    @click="removeFlashImage(index)"
+                  >
+                    删除
+                  </button>
+                </div>
+                <label class="flash-mode-url-field">
+                  <span>图片 URL</span>
+                  <input
+                    :value="image.sources[0] ?? ''"
+                    type="url"
+                    inputmode="url"
+                    autocomplete="off"
+                    placeholder="https://…/portrait.webp"
+                    @input="updateFlashImageUrl(image, ($event.target as HTMLInputElement).value)"
+                  />
+                </label>
+              </article>
+            </div>
+
+            <button class="flash-mode-add" type="button" @click="addFlashImage">＋ 添加另一张图片</button>
+          </div>
+
+          <footer class="flash-mode-save-bar">
+            <div class="save-feedback" aria-live="polite">
+              <strong :class="{ success: saveState === 'success', error: saveState === 'error' }">{{ saveMessage }}</strong>
+              <span v-if="validationErrors.length">{{ validationErrors[0] }}</span>
+              <span v-else-if="applyMessage && saveState !== 'success'">{{ applyMessage }}</span>
+            </div>
+            <button
+              class="primary-button flash-save-button"
+              :class="{ 'save-success': flashSaveCelebrating }"
+              type="submit"
+              :disabled="!canFlashSave || flashSaveCelebrating"
+            >
+              {{
+                flashSaveCelebrating
+                  ? '✓ 已保存'
+                  : saving || applyingSavedProfile
+                    ? '正在保存…'
+                    : flashProfileExists
+                      ? '保存并应用'
+                      : '添加并应用'
+              }}
+            </button>
+          </footer>
+        </form>
+
+        <nav v-if="!flashMode" class="wizard-step-nav" aria-label="角色档案编辑步骤">
+          <div class="wizard-nav-header">
+            <span>配置流程</span>
+            <strong>{{ activeStep }} / {{ steps.length }}</strong>
+          </div>
+
+          <button
+            v-for="step in steps"
+            :key="step.id"
+            type="button"
+            :class="{ active: activeStep === step.id, complete: isStepComplete(step.id) }"
+            :disabled="!canVisitStep(step.id)"
+            :aria-current="activeStep === step.id ? 'step' : undefined"
+            @click="goToStep(step.id)"
+          >
+            <span class="wizard-step-index">{{ isStepComplete(step.id) ? '✓' : step.id }}</span>
+            <span class="wizard-step-copy">
+              <strong>{{ step.title }}</strong>
+            </span>
+            <small class="wizard-step-short-label">{{ step.shortLabel }}</small>
+          </button>
+
+          <div class="wizard-nav-context">
+            <strong>{{ profile.characterName || selectedEntry?.name || '尚未选择角色' }}</strong>
+          </div>
+        </nav>
+
+        <aside
+          v-if="!flashMode"
+          id="manager-step-1"
+          class="target-panel wizard-step-section"
+          :class="{ 'is-collapsed': activeStep !== 1 }"
+        >
+          <div class="mobile-section-toggle mobile-target-toggle">
+            <span class="step-number">1</span>
+            <span class="mobile-section-copy">
+              <strong>选择写入目标</strong>
+              <small>{{ selectedEntry?.name || '尚未选择角色条目' }}</small>
+            </span>
+          </div>
+
+          <div id="target-panel-content" class="target-panel-content">
+            <section class="target-section">
+              <div class="section-title-row">
+                <div>
+                  <span class="step-label">步骤 1</span>
+                  <h2>选择写入目标</h2>
+                </div>
+                <button
+                  class="icon-button"
+                  type="button"
+                  title="重新读取"
+                  :disabled="loadingWorldbooks"
+                  @click="loadWorldbooks"
+                >
+                  ↻
+                </button>
+              </div>
+
+              <div class="current-character">
+                <span>当前角色卡</span>
+                <strong>{{ currentCharacterName || '未打开角色卡' }}</strong>
+              </div>
+
+              <div class="field">
+                <span class="field-label">搜索并选择世界书</span>
+                <div class="entry-combobox" @focusout="onWorldbookPickerFocusout">
+                  <input
+                    v-model="worldbookSearch"
+                    type="search"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-controls="worldbook-options"
+                    :aria-expanded="worldbookPickerOpen"
+                    placeholder="输入世界书名称或点击选择"
+                    :disabled="loadingWorldbooks || worldbooks.length === 0"
+                    @focus="openWorldbookPicker"
+                    @input="onWorldbookSearchInput"
+                    @keydown.down.prevent="moveWorldbookHighlight(1)"
+                    @keydown.up.prevent="moveWorldbookHighlight(-1)"
+                    @keydown.enter.prevent="selectHighlightedWorldbook"
+                    @keydown.esc.stop="worldbookPickerOpen = false"
+                  />
+                  <button
+                    class="entry-picker-button"
+                    type="button"
+                    tabindex="-1"
+                    aria-label="展开世界书列表"
+                    :disabled="loadingWorldbooks || worldbooks.length === 0"
+                    @mousedown.prevent
+                    @click="toggleWorldbookPicker"
+                  >
+                    ⌄
+                  </button>
+
+                  <div v-if="worldbookPickerOpen" id="worldbook-options" class="entry-options" role="listbox">
+                    <button
+                      v-for="(worldbook, index) in filteredWorldbooks"
+                      :key="worldbook"
+                      type="button"
+                      role="option"
+                      :aria-selected="worldbook === selectedWorldbookName"
+                      :class="{ highlighted: index === highlightedWorldbookIndex }"
+                      @mousedown.prevent
+                      @mouseenter="highlightedWorldbookIndex = index"
+                      @click="selectWorldbook(worldbook)"
+                    >
+                      <span>{{ worldbook }}</span>
+                      <small v-if="isCharacterWorldbook(worldbook)">当前角色</small>
+                    </button>
+                    <p v-if="filteredWorldbooks.length === 0" class="entry-empty">没有符合条件的世界书</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="field">
+                <span class="field-label">搜索并选择角色条目</span>
+                <div class="entry-combobox" @focusout="onEntryPickerFocusout">
+                  <input
+                    v-model="entrySearch"
+                    type="search"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-controls="entry-options"
+                    :aria-expanded="entryPickerOpen"
+                    placeholder="输入名称或点击选择"
+                    :disabled="entries.length === 0"
+                    @focus="openEntryPicker"
+                    @input="onEntrySearchInput"
+                    @keydown.down.prevent="moveEntryHighlight(1)"
+                    @keydown.up.prevent="moveEntryHighlight(-1)"
+                    @keydown.enter.prevent="selectHighlightedEntry"
+                    @keydown.esc.stop="entryPickerOpen = false"
+                  />
+                  <button
+                    class="entry-picker-button"
+                    type="button"
+                    tabindex="-1"
+                    aria-label="展开角色条目列表"
+                    :disabled="entries.length === 0"
+                    @mousedown.prevent
+                    @click="toggleEntryPicker"
+                  >
+                    ⌄
+                  </button>
+
+                  <div v-if="entryPickerOpen" id="entry-options" class="entry-options" role="listbox">
+                    <button
+                      v-for="(entry, index) in filteredEntries"
+                      :key="entry.uid"
+                      type="button"
+                      role="option"
+                      :aria-selected="entry.uid === selectedEntryUid"
+                      :class="{ highlighted: index === highlightedEntryIndex }"
+                      @mousedown.prevent
+                      @mouseenter="highlightedEntryIndex = index"
+                      @click="selectEntry(entry)"
+                    >
+                      <span>{{ entry.name || `未命名条目 #${entry.uid}` }}</span>
+                      <small v-if="!entry.enabled">已禁用</small>
+                    </button>
+                    <p v-if="filteredEntries.length === 0" class="entry-empty">没有符合条件的条目</p>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="selectedEntry" class="target-summary">
+                <span class="status-dot" :class="entryStateClass"></span>
+                <div>
+                  <strong>{{ entryStateTitle }}</strong>
+                  <p>{{ entryStateDescription }}</p>
+                </div>
+              </div>
+
+              <div v-if="legacyVisualInspection.state === 'importable'" class="migration-banner">
+                <strong>检测到可迁移的旧档案格式</strong>
+                <p>已自动预填到新版编辑器；当前世界书尚未修改。</p>
+                <p>保存时会精确移除已识别的 {{ legacyVisualInspection.sourceRoot }} 写入，并升级为 char_info.profiles v2。</p>
+                <ul v-if="legacyVisualInspection.warnings.length > 0">
+                  <li v-for="warning in legacyVisualInspection.warnings" :key="warning">{{ warning }}</li>
+                </ul>
+              </div>
+
+              <p v-if="loadError" class="message error">{{ loadError }}</p>
+            </section>
+
+            <section class="safety-note">
+              <strong>🔒 只更新角色档案</strong>
+            </section>
+
+            <div class="wizard-step-actions">
+              <span></span>
+              <button type="button" class="primary-button" :disabled="!selectedEntry" @click="goToStep(2)">
+                下一步：角色档案
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <form v-if="!flashMode" v-show="activeStep !== 1" class="editor-panel" novalidate @submit.prevent="saveToEntry">
+          <section
+            id="manager-step-2"
+            class="form-section wizard-step-section"
+            :class="{ 'is-collapsed': activeStep !== 2 }"
+          >
+            <div class="mobile-section-toggle">
+              <span class="step-number">2</span>
+              <span class="mobile-section-copy">
+                <strong>角色档案</strong>
+                <small>{{ profile.characterName || '填写姓名、性别与种族' }}</small>
+              </span>
+            </div>
+
+            <div class="section-heading">
+              <span class="step-number">2</span>
+              <div>
+                <h2>角色档案</h2>
+              </div>
+            </div>
+
+            <div id="manager-step-2-content" class="mobile-step-content">
+              <section class="metadata-editor-panel basic-profile-panel">
+                <div class="metadata-editor-heading">
+                  <div>
+                    <h3>基本资料</h3>
+                  </div>
+                </div>
+
+                <div class="metadata-field-grid">
+                  <label class="field">
+                    <span class="field-label">
+                      角色姓名 <b>*</b>
+                      <small :class="{ warning: profile.characterName.length > 12 }">
+                        {{ profile.characterName.length }} 字
+                      </small>
+                    </span>
+                    <input
+                      v-model="profile.characterName"
+                      type="text"
+                      maxlength="80"
+                      autocomplete="off"
+                      aria-describedby="character-name-guidance"
+                      placeholder="例如：傲雪"
+                    />
+                    <small
+                      id="character-name-guidance"
+                      class="field-guidance"
+                      :class="{ warning: profile.characterName.length > 12 }"
+                    >
+                      建议中文姓名不超过 12 字；英文姓名可适当放宽。
+                    </small>
+                  </label>
+                  <label class="field">
+                    <span class="field-label">性别 <small>选填</small></span>
+                    <input v-model="profile.metadata.sex" type="text" autocomplete="off" placeholder="例如：女" />
+                  </label>
+                  <label class="field">
+                    <span class="field-label">种族 <small>选填</small></span>
+                    <input v-model="profile.metadata.race" type="text" autocomplete="off" placeholder="例如：东方龙裔" />
+                  </label>
+                </div>
+              </section>
+
+              <section class="metadata-editor-panel presentation-editor-panel">
+                <div class="metadata-editor-heading">
+                  <div>
+                    <h3>角色展示文案</h3>
+                  </div>
+                </div>
+                <label class="field">
+                  <span class="field-label">
+                    登场台词
+                    <small :class="{ warning: profile.entranceQuote.length > 48 }">
+                      {{ profile.entranceQuote.length }} 字
+                    </small>
+                  </span>
+                  <textarea
+                    v-model="profile.entranceQuote"
+                    rows="2"
+                    aria-describedby="entrance-quote-guidance"
+                    placeholder="例如：霜雪会记住每一道剑痕。"
+                  ></textarea>
+                  <small
+                    id="entrance-quote-guidance"
+                    class="field-guidance"
+                    :class="{ warning: profile.entranceQuote.length > 48 }"
+                  >
+                    建议 12–32 字；超过 48 字时，首页最多显示三行，完整内容仍会保存。
+                  </small>
+                </label>
+              </section>
+
+              <section class="story-editor-panel">
+                <div class="story-editor-heading">
+                  <div>
+                    <h3>角色故事</h3>
+                  </div>
+                  <button type="button" class="secondary-button story-add-button" @click="addStorySection">＋ 添加故事段落</button>
+                </div>
+
+                <p v-if="profile.metadata.storySections.length === 0" class="story-editor-empty">
+                  尚未添加故事段落。
+                </p>
+
+                <div v-else class="story-section-list">
+                  <article
+                    v-for="(section, index) in profile.metadata.storySections"
+                    :key="section.id"
+                    class="story-section-card"
+                  >
+                    <header class="story-section-card-header">
+                      <strong>故事段落 {{ index + 1 }}</strong>
+                      <div class="story-section-actions">
+                        <button type="button" title="上移" :disabled="index === 0" @click="moveStorySection(index, -1)">↑</button>
+                        <button
+                          type="button"
+                          title="下移"
+                          :disabled="index === profile.metadata.storySections.length - 1"
+                          @click="moveStorySection(index, 1)"
+                        >
+                          ↓
+                        </button>
+                        <button type="button" class="danger" title="删除" @click="removeStorySection(index)">×</button>
+                      </div>
+                    </header>
+                    <label class="field">
+                      <span class="field-label">段落标题</span>
+                      <input v-model="section.title" type="text" autocomplete="off" placeholder="例如：初遇 · 雪夜" />
+                    </label>
+                    <label class="field">
+                      <span class="field-label">故事内容</span>
+                      <textarea v-model="section.content" rows="6" placeholder="填写故事内容。"></textarea>
+                    </label>
+                    <small class="field-guidance">标题和内容需同时填写。</small>
+                  </article>
+                </div>
+              </section>
+
+              <section class="metadata-editor-panel author-editor-panel">
+                <div class="metadata-editor-heading">
+                  <div>
+                    <h3>作者署名</h3>
+                  </div>
+                </div>
+
+                <div class="metadata-field-grid author-metadata-grid">
+                  <label class="field">
+                    <span class="field-label">作者 <small>选填</small></span>
+                    <input v-model="profile.metadata.author" type="text" autocomplete="off" placeholder="例如：作者名 / 社团名" />
+                  </label>
+                  <label class="field">
+                    <span class="field-label">版本 / 更新标记 <small>选填</small></span>
+                    <input v-model="profile.metadata.version" type="text" autocomplete="off" placeholder="例如：v0.0.3 / 0816" />
+                  </label>
+                  <label class="field field-full">
+                    <span class="field-label">作者说明 <small>选填</small></span>
+                    <textarea
+                      v-model="profile.metadata.authorNote"
+                      rows="3"
+                      placeholder="简单介绍这个角色、创作重点、版本备注或推荐阅读方式。"
+                    ></textarea>
+                  </label>
+                </div>
+              </section>
+
+              <div class="wizard-step-actions">
+                <button type="button" class="secondary-button" @click="goToStep(1)">上一步</button>
+                <button
+                  type="button"
+                  class="primary-button"
+                  :disabled="!profile.characterName.trim()"
+                  @click="goToStep(3)"
+                >
+                  下一步：主题颜色
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section
+            id="manager-step-3"
+            class="form-section wizard-step-section"
+            :class="{ 'is-collapsed': activeStep !== 3 }"
+          >
+            <div class="mobile-section-toggle">
+              <span class="step-number">3</span>
+              <span class="mobile-section-copy">
+                <strong>主题颜色</strong>
+                <small>{{ customizeColors ? '已启用自定义配色' : '使用默认配色' }}</small>
+              </span>
+            </div>
+
+            <div class="section-heading">
+              <span class="step-number">3</span>
+              <div>
+                <h2>主题颜色</h2>
+              </div>
+            </div>
+
+            <div id="manager-step-3-content" class="mobile-step-content">
+              <label class="color-custom-toggle">
+                <input v-model="customizeColors" type="checkbox" @change="onCustomizeColorsChange" />
+                <span>
+                  <strong>启用自定义主题颜色</strong>
+                  <small>{{ customizeColors ? '正在使用自定义颜色' : '使用默认配色' }}</small>
+                </span>
+              </label>
+
+              <div v-if="customizeColors" class="color-grid">
+                <label class="color-field">
+                  <span>种族颜色</span>
+                  <div class="color-control">
+                    <input v-model="profile.raceColor" type="color" aria-label="选择种族颜色" />
+                    <input v-model="profile.raceColor" type="text" maxlength="7" spellcheck="false" />
+                  </div>
+                </label>
+
+                <label class="color-field">
+                  <span>阶层颜色</span>
+                  <div class="color-control">
+                    <input v-model="profile.tierColor" type="color" aria-label="选择阶层颜色" />
+                    <input v-model="profile.tierColor" type="text" maxlength="7" spellcheck="false" />
+                  </div>
+                </label>
+              </div>
+
+              <div class="wizard-step-actions">
+                <button type="button" class="secondary-button" @click="goToStep(2)">上一步</button>
+                <button type="button" class="primary-button" @click="goToStep(4)">下一步：相册与头像</button>
+              </div>
+            </div>
+          </section>
+
+          <section
+            id="manager-step-4"
+            class="form-section wizard-step-section"
+            :class="{ 'is-collapsed': activeStep !== 4 }"
+          >
+            <div class="mobile-section-toggle">
+              <span class="step-number">4</span>
+              <span class="mobile-section-copy">
+                <strong>相册与头像</strong>
+                <small>{{ configuredGalleryCount }} 张已填写图片</small>
+              </span>
+            </div>
+
+            <div class="section-heading">
+              <span class="step-number">4</span>
+              <div>
+                <h2>相册与头像</h2>
+                <p>第一张图片会作为主立绘；状态栏头像可直接从相册选择，或单独使用一张头像图片。</p>
+              </div>
+            </div>
+
+            <div id="manager-step-4-content" class="mobile-step-content">
+              <GalleryStep
+                v-model:gallery="profile.gallery"
+                :avatar-url="profile.avatarUrl"
+                :cover-url="profile.coverUrl"
+                :remote-gallery-url="profile.remoteGalleryUrl ?? ''"
+                :character-name="profile.characterName"
+                :debug-enabled="props.debugEnabled"
+                @update:avatar-url="profile.avatarUrl = $event"
+                @update:cover-url="profile.coverUrl = $event"
+                @update:remote-gallery-url="profile.remoteGalleryUrl = $event.trim() || undefined"
+                @previous="goToStep(3)"
+                @next="goToStep(5)"
+              />
+            </div>
+          </section>
+
+          <section
+            id="manager-step-5"
+            class="output-section wizard-step-section"
+            :class="{ 'is-collapsed': activeStep !== 5 }"
+          >
+            <div class="mobile-section-toggle">
+              <span class="step-number">5</span>
+              <span class="mobile-section-copy">
+                <strong>确认写入</strong>
+              </span>
+            </div>
+
+            <div class="output-heading">
+              <div>
+                <h2>写入预览</h2>
+                <p>{{ generatedCode ? `${generatedCode.split('\n').length} 行内容` : '填写完整后生成' }}</p>
+              </div>
+              <button type="button" class="secondary-button" :disabled="!generatedCode" @click="copyEjs">
+                复制写入内容
+              </button>
+            </div>
+
+            <details>
+              <summary>查看写入内容</summary>
+              <pre>{{ generatedCode || '尚未生成可写入内容。' }}</pre>
+            </details>
+
+            <div class="wizard-step-actions wizard-step-actions-final">
+              <button type="button" class="secondary-button" @click="goToStep(4)">上一步</button>
+            </div>
+
+            <div class="save-bar">
+              <div class="save-feedback" aria-live="polite">
+                <strong :class="{ success: saveState === 'success', error: saveState === 'error' }">
+                  {{ saveMessage }}
+                </strong>
+                <span v-if="validationErrors.length">{{ validationErrors[0] }}</span>
+                <span v-if="applyMessage">{{ applyMessage }}</span>
+              </div>
+              <div class="save-actions">
+                <button
+                  class="secondary-button"
+                  type="button"
+                  :disabled="!canApplyCurrentProfile || applyingSavedProfile"
+                  title="立即写入当前聊天的 CharInfo 变量、状态栏头像与状态栏相簿"
+                  @click="applyCurrentProfileToCurrentChat"
+                >
+                  {{ applyingSavedProfile ? '正在写入…' : '即时写入变量及状态栏' }}
+                </button>
+                <button
+                  class="primary-button"
+                  type="submit"
+                  :disabled="!canSave"
+                  title="仅保存到世界书条目，不修改当前聊天变量"
+                >
+                  {{
+                    saving
+                      ? '正在保存…'
+                      : legacyVisualInspection.state === 'importable'
+                        ? '升级并保存到世界书'
+                        : '保存到世界书'
+                  }}
+                </button>
+              </div>
+            </div>
+          </section>
+        </form>
+      </div>
+
+      <section v-if="viewerPreviewOpen" class="profile-editor-viewer-preview" role="dialog" aria-modal="true" aria-label="角色卡预览">
+        <header class="dialog-header profile-editor-viewer-preview-header">
+          <strong>角色卡预览 · {{ profile.characterName || '未命名角色' }}</strong>
+          <div class="profile-editor-viewer-preview-toolbar">
+            <div class="profile-editor-viewer-preview-source-state" aria-live="polite">
+              <span>预览资料</span>
+              <strong>{{ viewerPreviewSource === 'pasted' ? '自定义 CharInfo' : '示例资料' }}</strong>
+            </div>
+            <button class="secondary-button profile-editor-viewer-preview-source-toggle" type="button" @click="toggleViewerPreviewSource">
+              {{ viewerPreviewSource === 'pasted' ? '使用示例资料' : '粘贴自己的 CharInfo' }}
+            </button>
+            <button class="close-button" type="button" aria-label="关闭预览" @click="closeViewerPreview">×</button>
+          </div>
+        </header>
+        <div v-if="viewerPreviewSource === 'pasted'" class="profile-editor-viewer-preview-source">
+          <label class="profile-editor-viewer-preview-input">
+            <span class="field-label">预览资料（完整 &lt;char_info&gt; 或纯 YAML）</span>
+            <textarea
+              v-model="viewerPreviewPastedText"
+              rows="7"
+              spellcheck="false"
+              placeholder="<char_info>\n姓名: ...\n...\n</char_info>"
+            ></textarea>
+            <small class="field-guidance">只用于当前预览；不会写入世界书、聊天变量或执行 EJS。</small>
+          </label>
+        </div>
+        <div ref="viewerPreviewStageRef" class="profile-editor-viewer-preview-stage">
+          <div class="profile-editor-viewer-preview-frame" :style="viewerPreviewFrameStyle">
+            <div ref="viewerPreviewCanvasRef" class="profile-editor-viewer-preview-canvas" :style="viewerPreviewCanvasStyle">
+              <div v-if="viewerPreviewSource === 'pasted' && !viewerPreviewPastedText.trim()" class="profile-editor-viewer-preview-empty">
+                粘贴完整 &lt;char_info&gt; 或纯 YAML 后，将在这里显示真实角色卡预览。
+              </div>
+              <ViewerApp
+                v-else
+                :key="viewerPreviewKey"
+                :yaml-text="viewerPreviewYaml"
+                :preview-data="viewerPreviewSource === 'sample' ? viewerPreviewSampleData : undefined"
+                :message-id="-1"
+                :debug-enabled="props.debugEnabled"
+                :visual-config-override="viewerPreviewVisualOverride"
+                embedded
+                read-only
+                preview-mode
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+
+import {
+  parseWorldbookCharacterDisplayName,
+  parseWorldbookCharacterEntryTitle,
+} from '../char_info_shared/characterEntryLibrary';
+import { DEFAULT_CHAR_INFO_THEME_MODE, managerThemeClass, type CharInfoThemeMode } from '../char_info_shared/managerTheme';
+import { copyTextWithDocumentSelection, copyTextWithFallback } from './clipboard';
+import GalleryStep from './components/GalleryStep.vue';
+import { preferredStaticImageUrl, type EditableGalleryImage } from './galleryEditor';
+import {
+  buildManagedEjsBlock,
+  buildStatusGalleryImages,
+  countUnsupportedStatusGalleryItems,
+  createEmptyProfile,
+  DEFAULT_RACE_COLOR,
+  DEFAULT_TIER_COLOR,
+  extractManagedEjsBlock,
+  hasUnmanagedVisualEjs,
+  inspectManagedBlock,
+  isHttpsUrl,
+  normalizeProfile,
+  STATUS_GALLERY_IMAGE_EXTENSIONS,
+  validateProfile,
+  type CharacterProfileMetadata,
+  type CharacterStorySection,
+  type CharacterProfile,
+} from '../char_info_shared/characterProfile';
+import {
+  inspectLegacyVisualProfile,
+  upsertManagedEjsBlockWithLegacyMigration,
+} from '../char_info_shared/legacyVisualProfile';
+import { buildCurrentWorldbookList, buildWorldbookList } from '../char_info_shared/worldbookList';
+import ViewerApp from '../char_info_viewer/App.vue';
+import { evaluateManagedEjs } from './ejsRuntime';
+import {
+  readFlashProfileFromChatVariables,
+  saveFlashProfileToCurrentChatWorldbook,
+} from './flashProfile';
+import {
+  buildProfileEditorViewerPreviewData,
+  buildProfileEditorViewerVisualOverride,
+  resolveProfileEditorViewerPreviewYaml,
+  type ProfileEditorViewerPreviewSource,
+} from './viewerPreview';
+
+interface EditableStorySection {
+  id: number;
+  title: string;
+  content: string;
+}
+
+interface EditableProfileMetadata {
+  author: string;
+  version: string;
+  authorNote: string;
+  sex: string;
+  race: string;
+  storySections: EditableStorySection[];
+}
+
+interface EditableProfile extends Omit<CharacterProfile, 'gallery' | 'metadata'> {
+  gallery: EditableGalleryImage[];
+  metadata: EditableProfileMetadata;
+}
+
+type StepId = 1 | 2 | 3 | 4 | 5;
+
+const props = withDefaults(
+  defineProps<{
+    initialWorldbookName?: string;
+    initialEntryUid?: number;
+    flashCharacterName?: string;
+    themeMode?: CharInfoThemeMode;
+    debugEnabled?: boolean;
+    onForceRefresh?: () => void | Promise<void>;
+    onReturnToWorldbookLibrary?: () => void;
+    onReturnToCurrentLibrary?: () => void;
+  }>(),
+  {
+    initialWorldbookName: '',
+    initialEntryUid: undefined,
+    flashCharacterName: '',
+    themeMode: DEFAULT_CHAR_INFO_THEME_MODE,
+    debugEnabled: false,
+    onForceRefresh: undefined,
+    onReturnToWorldbookLibrary: undefined,
+    onReturnToCurrentLibrary: undefined,
+  },
+);
+const emit = defineEmits<{ close: [] }>();
+const steps: { id: StepId; shortLabel: string; title: string }[] = [
+  { id: 1, shortLabel: '目标', title: '选择写入目标' },
+  { id: 2, shortLabel: '档案', title: '填写角色档案' },
+  { id: 3, shortLabel: '配色', title: '设置主题颜色' },
+  { id: 4, shortLabel: '相册', title: '整理相册与头像' },
+  { id: 5, shortLabel: '生成', title: '生成并写入' },
+];
+const flashMode = computed(() => !!props.flashCharacterName.trim());
+const flashProfileExists = ref(false);
+const currentCharacterName = ref('');
+const worldbooks = ref<string[]>([]);
+const characterWorldbooks = ref<string[]>([]);
+const entries = ref<WorldbookEntry[]>([]);
+const selectedWorldbookName = ref('');
+const worldbookSearch = ref('');
+const worldbookPickerOpen = ref(false);
+const highlightedWorldbookIndex = ref(-1);
+const selectedEntryUid = ref<number | null>(null);
+const entrySearch = ref('');
+const entryPickerOpen = ref(false);
+const highlightedEntryIndex = ref(-1);
+const loadingWorldbooks = ref(false);
+const loadingEntries = ref(false);
+let selectedWorldbookEntriesLoad: Promise<void> = Promise.resolve();
+let entriesLoadRevision = 0;
+const activeStep = ref<StepId>(1);
+const furthestStep = ref<StepId>(1);
+const customizeColors = ref(false);
+const saving = ref(false);
+const applyingSavedProfile = ref(false);
+const flashSaveCelebrating = ref(false);
+const saveState = ref<'idle' | 'success' | 'error'>('idle');
+const saveMessage = ref('选择世界书条目后即可写入。');
+const applyMessage = ref('');
+let flashSaveSuccessTimer: number | null = null;
+let nextImageId = 1;
+let nextStorySectionId = 1;
+const loadError = ref('');
+
+const viewerPreviewOpen = ref(false);
+const viewerPreviewSource = ref<ProfileEditorViewerPreviewSource>('sample');
+const viewerPreviewPastedText = ref('');
+const viewerPreviewScale = ref(1);
+const viewerPreviewMobileLayout = ref(false);
+const viewerPreviewCanvasWidth = ref(1200);
+const viewerPreviewCanvasHeight = ref(800);
+const viewerPreviewStageRef = ref<HTMLElement | null>(null);
+const viewerPreviewCanvasRef = ref<HTMLElement | null>(null);
+let viewerPreviewResizeObserver: ResizeObserver | null = null;
+
+const profile = reactive<EditableProfile>(toEditableProfile(createEmptyProfile()));
+
+function toEditableProfile(value: CharacterProfile): EditableProfile {
+  return {
+    ...value,
+    metadata: {
+      author: value.metadata?.author ?? '',
+      version: value.metadata?.version ?? '',
+      authorNote: value.metadata?.author_note ?? '',
+      sex: value.metadata?.sex ?? '',
+      race: value.metadata?.race ?? '',
+      storySections: (value.metadata?.story_sections ?? []).map(section => ({
+        id: nextStorySectionId++,
+        title: section.title,
+        content: section.content,
+      })),
+    },
+    gallery: value.gallery.map(image => ({
+      ...image,
+      sources: [...image.sources],
+      id: nextImageId++,
+      previewSourceIndex: 0,
+    })),
+  };
+}
+
+function toSerializableMetadata(): CharacterProfileMetadata | undefined {
+  const storySections: CharacterStorySection[] = profile.metadata.storySections.map(({ title, content }) => ({ title, content }));
+  return normalizeProfile({
+    characterName: profile.characterName,
+    avatarUrl: profile.avatarUrl,
+    coverUrl: profile.coverUrl,
+    raceColor: profile.raceColor,
+    tierColor: profile.tierColor,
+    entranceQuote: profile.entranceQuote,
+    gallery: profile.gallery.map(({ title, sources, viewerVisible }) => ({
+      title,
+      sources: [...sources],
+      ...(viewerVisible === false ? { viewerVisible: false } : {}),
+    })),
+    metadata: {
+      author: profile.metadata.author,
+      version: profile.metadata.version,
+      author_note: profile.metadata.authorNote,
+      sex: profile.metadata.sex,
+      race: profile.metadata.race,
+      story_sections: storySections,
+    },
+  }).metadata;
+}
+
+function toFullSerializableProfile(): CharacterProfile {
+  const metadata = toSerializableMetadata();
+  return {
+    characterName: profile.characterName,
+    avatarUrl: profile.avatarUrl,
+    coverUrl: profile.coverUrl,
+    raceColor: profile.raceColor,
+    tierColor: profile.tierColor,
+    entranceQuote: profile.entranceQuote,
+    ...(profile.remoteGalleryUrl?.trim() ? { remoteGalleryUrl: profile.remoteGalleryUrl.trim() } : {}),
+    gallery: profile.gallery.map(({ title, sources, viewerVisible }) => ({
+      title,
+      sources: [...sources],
+      ...(viewerVisible === false ? { viewerVisible: false } : {}),
+    })),
+    ...(metadata ? { metadata } : {}),
+  };
+}
+
+function toSerializableProfile(): CharacterProfile {
+  return toFullSerializableProfile();
+}
+
+function replaceProfile(value: CharacterProfile) {
+  const editable = toEditableProfile(value);
+  profile.characterName = editable.characterName;
+  profile.avatarUrl = editable.avatarUrl;
+  profile.coverUrl = editable.coverUrl;
+  profile.raceColor = editable.raceColor;
+  profile.tierColor = editable.tierColor;
+  customizeColors.value = !!(editable.raceColor || editable.tierColor);
+  profile.entranceQuote = editable.entranceQuote;
+  profile.remoteGalleryUrl = editable.remoteGalleryUrl;
+  profile.gallery.splice(0, profile.gallery.length, ...editable.gallery);
+  profile.metadata.author = editable.metadata.author;
+  profile.metadata.version = editable.metadata.version;
+  profile.metadata.authorNote = editable.metadata.authorNote;
+  profile.metadata.sex = editable.metadata.sex;
+  profile.metadata.race = editable.metadata.race;
+  profile.metadata.storySections.splice(0, profile.metadata.storySections.length, ...editable.metadata.storySections);
+}
+
+const selectedEntry = computed(() => entries.value.find(entry => entry.uid === selectedEntryUid.value) ?? null);
+const canApplyCurrentProfile = computed(() => validationErrors.value.length === 0 && !applyingSavedProfile.value);
+const canFlashSave = computed(
+  () =>
+    flashMode.value &&
+    validationErrors.value.length === 0 &&
+    !saving.value &&
+    !applyingSavedProfile.value &&
+    !flashSaveCelebrating.value,
+);
+const canPreviewViewer = computed(
+  () => profile.characterName.trim().length > 0 && (flashMode.value || !!selectedEntry.value),
+);
+const viewerPreviewProfile = computed(() => toFullSerializableProfile());
+const viewerPreviewSampleData = computed(() => buildProfileEditorViewerPreviewData(viewerPreviewProfile.value));
+const viewerPreviewYaml = computed(() =>
+  resolveProfileEditorViewerPreviewYaml(viewerPreviewProfile.value, viewerPreviewSource.value, viewerPreviewPastedText.value),
+);
+const viewerPreviewVisualOverride = computed(() => buildProfileEditorViewerVisualOverride(viewerPreviewProfile.value));
+const viewerPreviewKey = computed(
+  () => `${selectedEntryUid.value ?? 'none'}:${profile.characterName.trim()}:${viewerPreviewSource.value}`,
+);
+const viewerPreviewFrameStyle = computed(() =>
+  viewerPreviewMobileLayout.value
+    ? { width: '100%', height: 'auto' }
+    : {
+        width: `${Math.max(1, viewerPreviewCanvasWidth.value * viewerPreviewScale.value)}px`,
+        height: `${Math.max(1, viewerPreviewCanvasHeight.value * viewerPreviewScale.value)}px`,
+      },
+);
+const viewerPreviewCanvasStyle = computed(() =>
+  viewerPreviewMobileLayout.value
+    ? { width: '100%', transform: 'none' }
+    : {
+        transform: `scale(${viewerPreviewScale.value})`,
+      },
+);
+const configuredGalleryCount = computed(
+  () => profile.gallery.filter(image => image.sources.some(source => isHttpsUrl(source))).length,
+);
+const filteredWorldbooks = computed(() => {
+  const query = worldbookSearch.value.trim().toLocaleLowerCase();
+  const isShowingSelectedName = !!selectedWorldbookName.value && worldbookSearch.value === selectedWorldbookName.value;
+  if (!query || isShowingSelectedName) return worldbooks.value;
+  return worldbooks.value.filter(worldbook => worldbook.toLocaleLowerCase().includes(query));
+});
+
+const filteredEntries = computed(() => {
+  const query = entrySearch.value.trim().toLocaleLowerCase();
+  const selectedName = selectedEntry.value?.name || '';
+  const isShowingSelectedName = selectedEntryUid.value !== null && entrySearch.value === selectedName;
+  const matches =
+    !query || isShowingSelectedName
+      ? entries.value
+      : entries.value.filter(entry => (entry.name || '').toLocaleLowerCase().includes(query));
+
+  return matches
+    .map((entry, originalIndex) => ({
+      entry,
+      originalIndex,
+      preferred: /^\s*\[DLC\]\[角色\]/i.test(entry.name || ''),
+    }))
+    .sort((left, right) => Number(right.preferred) - Number(left.preferred) || left.originalIndex - right.originalIndex)
+    .map(item => item.entry);
+});
+
+const entryInspection = computed(() =>
+  selectedEntry.value ? inspectManagedBlock(selectedEntry.value.content) : { state: 'absent' as const },
+);
+
+const selectedEntryCharacterName = computed(() => {
+  const entry = selectedEntry.value;
+  if (!entry) return '';
+  const title = parseWorldbookCharacterEntryTitle(entry.name, { content: entry.content });
+  return title.entryKind === 'character' ? (title.displayName?.trim() ?? '') : '';
+});
+
+const legacyVisualInspection = computed(() => {
+  const entry = selectedEntry.value;
+  if (!entry || entryInspection.value.state !== 'absent') return { state: 'absent' as const };
+  return inspectLegacyVisualProfile(entry.content, selectedEntryCharacterName.value || undefined);
+});
+
+const hasLegacyVisualEjs = computed(() => !!selectedEntry.value && hasUnmanagedVisualEjs(selectedEntry.value.content));
+
+const entryStateClass = computed(() => {
+  if (entryInspection.value.state === 'valid') return 'managed';
+  if (entryInspection.value.state === 'malformed' || entryInspection.value.state === 'multiple') return 'blocked';
+  if (legacyVisualInspection.value.state === 'importable') return 'legacy-importable';
+  if (legacyVisualInspection.value.state === 'unsupported') return 'blocked';
+  if (hasLegacyVisualEjs.value) return 'blocked';
+  return 'new';
+});
+
+const entryStateTitle = computed(() => {
+  if (entryInspection.value.state === 'valid') return '已有角色档案';
+  if (entryInspection.value.state === 'malformed' || entryInspection.value.state === 'multiple')
+    return '角色档案需要修复';
+  if (legacyVisualInspection.value.state === 'importable') return '可升级旧档案格式';
+  if (legacyVisualInspection.value.state === 'unsupported') return '旧档案格式无法自动读取';
+  if (hasLegacyVisualEjs.value) return '检测到旧档案格式';
+  return '可以添加角色档案';
+});
+
+const entryStateDescription = computed(() => {
+  if (entryInspection.value.state === 'valid') return '保存时只更新现有角色档案。';
+  if (entryInspection.value.state === 'malformed' || entryInspection.value.state === 'multiple') {
+    return entryInspection.value.reason;
+  }
+  if (legacyVisualInspection.value.state === 'importable') return '已安全读取并预填；当前世界书尚未修改。';
+  if (legacyVisualInspection.value.state === 'unsupported') return legacyVisualInspection.value.reason;
+  if (hasLegacyVisualEjs.value) return '旧版视觉代码无法安全自动读取，原内容不会被修改。';
+  return '保存后不会改动角色原有设定。';
+});
+
+const validationErrors = computed(() => [...new Set(validateProfile(toFullSerializableProfile()))]);
+
+const generatedCode = computed(() => {
+  if (validationErrors.value.length > 0) return '';
+  try {
+    return buildManagedEjsBlock(toSerializableProfile());
+  } catch {
+    return '';
+  }
+});
+
+const writeBlocked = computed(
+  () =>
+    entryInspection.value.state === 'malformed' ||
+    entryInspection.value.state === 'multiple' ||
+    (hasLegacyVisualEjs.value && legacyVisualInspection.value.state !== 'importable'),
+);
+
+const canSave = computed(
+  () =>
+    !!selectedWorldbookName.value &&
+    !!selectedEntry.value &&
+    !writeBlocked.value &&
+    validationErrors.value.length === 0 &&
+    !saving.value,
+);
+
+function isCharacterWorldbook(worldbookName: string): boolean {
+  return characterWorldbooks.value.includes(worldbookName);
+}
+
+function openWorldbookPicker() {
+  worldbookPickerOpen.value = true;
+  const selectedIndex = filteredWorldbooks.value.indexOf(selectedWorldbookName.value);
+  highlightedWorldbookIndex.value = selectedIndex >= 0 ? selectedIndex : filteredWorldbooks.value.length > 0 ? 0 : -1;
+}
+
+function toggleWorldbookPicker() {
+  if (worldbookPickerOpen.value) {
+    worldbookPickerOpen.value = false;
+    return;
+  }
+  openWorldbookPicker();
+}
+
+function onWorldbookSearchInput() {
+  if (selectedWorldbookName.value && worldbookSearch.value !== selectedWorldbookName.value) {
+    selectedWorldbookName.value = '';
+  }
+  worldbookPickerOpen.value = true;
+  highlightedWorldbookIndex.value = filteredWorldbooks.value.length > 0 ? 0 : -1;
+}
+
+function onWorldbookPickerFocusout(event: FocusEvent) {
+  const currentTarget = event.currentTarget as HTMLElement;
+  const relatedTarget = event.relatedTarget as Node | null;
+  if (!relatedTarget || !currentTarget.contains(relatedTarget)) worldbookPickerOpen.value = false;
+}
+
+function selectWorldbook(worldbookName: string) {
+  selectedWorldbookName.value = worldbookName;
+  worldbookSearch.value = worldbookName;
+  worldbookPickerOpen.value = false;
+}
+
+function moveWorldbookHighlight(offset: -1 | 1) {
+  if (!worldbookPickerOpen.value) openWorldbookPicker();
+  const count = filteredWorldbooks.value.length;
+  if (count === 0) return;
+  highlightedWorldbookIndex.value = (highlightedWorldbookIndex.value + offset + count) % count;
+}
+
+function selectHighlightedWorldbook() {
+  const worldbook = filteredWorldbooks.value[highlightedWorldbookIndex.value];
+  if (worldbook) selectWorldbook(worldbook);
+}
+
+function openEntryPicker() {
+  entryPickerOpen.value = true;
+  const selectedIndex = filteredEntries.value.findIndex(entry => entry.uid === selectedEntryUid.value);
+  highlightedEntryIndex.value = selectedIndex >= 0 ? selectedIndex : filteredEntries.value.length > 0 ? 0 : -1;
+}
+
+function toggleEntryPicker() {
+  if (entryPickerOpen.value) {
+    entryPickerOpen.value = false;
+    return;
+  }
+  openEntryPicker();
+}
+
+function onEntrySearchInput() {
+  if (selectedEntry.value && entrySearch.value !== (selectedEntry.value.name || '')) {
+    selectedEntryUid.value = null;
+  }
+  entryPickerOpen.value = true;
+  highlightedEntryIndex.value = filteredEntries.value.length > 0 ? 0 : -1;
+}
+
+function onEntryPickerFocusout(event: FocusEvent) {
+  const currentTarget = event.currentTarget as HTMLElement;
+  const relatedTarget = event.relatedTarget as Node | null;
+  if (!relatedTarget || !currentTarget.contains(relatedTarget)) entryPickerOpen.value = false;
+}
+
+function selectEntry(entry: WorldbookEntry) {
+  selectedEntryUid.value = entry.uid;
+  entrySearch.value = entry.name || `未命名条目 #${entry.uid}`;
+  entryPickerOpen.value = false;
+}
+
+function moveEntryHighlight(offset: -1 | 1) {
+  if (!entryPickerOpen.value) openEntryPicker();
+  const count = filteredEntries.value.length;
+  if (count === 0) return;
+  highlightedEntryIndex.value = (highlightedEntryIndex.value + offset + count) % count;
+}
+
+function selectHighlightedEntry() {
+  const entry = filteredEntries.value[highlightedEntryIndex.value];
+  if (entry) selectEntry(entry);
+}
+
+function onCustomizeColorsChange() {
+  if (customizeColors.value) {
+    profile.raceColor ||= DEFAULT_RACE_COLOR;
+    profile.tierColor ||= DEFAULT_TIER_COLOR;
+    return;
+  }
+  profile.raceColor = '';
+  profile.tierColor = '';
+}
+
+function ensureFlashRows() {
+  if (profile.gallery.length === 0) {
+    profile.gallery.push({ id: nextImageId++, title: '主立绘', sources: [''], previewSourceIndex: 0 });
+  }
+  for (const image of profile.gallery) {
+    if (image.sources.length === 0) image.sources.push('');
+  }
+}
+
+function firstFlashStaticImageUrl(): string {
+  for (const image of profile.gallery) {
+    const url = preferredStaticImageUrl(image);
+    if (url) return url;
+  }
+  return '';
+}
+
+function syncFlashRoleUrls(previousUrl = '') {
+  const fallbackUrl = firstFlashStaticImageUrl();
+  const previous = previousUrl.trim();
+  if (!profile.avatarUrl.trim() || (previous && profile.avatarUrl.trim() === previous)) profile.avatarUrl = fallbackUrl;
+  if (!profile.coverUrl.trim() || (previous && profile.coverUrl.trim() === previous)) profile.coverUrl = fallbackUrl;
+}
+
+function updateFlashImageUrl(image: EditableGalleryImage, value: string) {
+  const previousUrl = image.sources[0] ?? '';
+  if (image.sources.length === 0) image.sources.push(value);
+  else image.sources[0] = value;
+  syncFlashRoleUrls(previousUrl);
+}
+
+function addFlashImage() {
+  profile.gallery.push({
+    id: nextImageId++,
+    title: `备用立绘 ${profile.gallery.length + 1}`,
+    sources: [''],
+    previewSourceIndex: 0,
+  });
+}
+
+function removeFlashImage(index: number) {
+  if (profile.gallery.length <= 1) return;
+  const [removed] = profile.gallery.splice(index, 1);
+  syncFlashRoleUrls(removed?.sources[0] ?? '');
+}
+
+function initializeFlashMode() {
+  const characterName = props.flashCharacterName.trim();
+  if (!characterName) return;
+
+  const existingProfile = readFlashProfileFromChatVariables(characterName, getVariables({ type: 'chat' }));
+  flashProfileExists.value = !!existingProfile;
+  replaceProfile(existingProfile ?? createEmptyProfile(characterName));
+  ensureFlashRows();
+  syncFlashRoleUrls();
+  profile.characterName = characterName;
+  activeStep.value = 4;
+  furthestStep.value = 5;
+  saveState.value = 'idle';
+  saveMessage.value = existingProfile
+    ? `已读取「${characterName}」角色档案；快速模式只修改图片相关字段。`
+    : `正在为「${characterName}」建立角色档案的视觉部分；角色设定继续使用当前聊天变量。`;
+}
+
+async function loadWorldbooks() {
+  loadingWorldbooks.value = true;
+  loadError.value = '';
+  saveState.value = 'idle';
+  let initialEntriesLoaded = false;
+  try {
+    currentCharacterName.value = getCurrentCharacterName() || '';
+    if (!currentCharacterName.value) throw new Error('请先在 SillyTavern 打开一张角色卡。');
+
+    const binding = getCharWorldbookNames('current');
+    characterWorldbooks.value = buildWorldbookList([binding.primary, ...binding.additional], []);
+    const globalWorldbooks = getGlobalWorldbookNames();
+    const chatWorldbook = getChatWorldbookName('current');
+    worldbooks.value = buildCurrentWorldbookList(binding, globalWorldbooks, chatWorldbook);
+    if (worldbooks.value.length === 0) throw new Error('酒馆中没有可用的世界书。');
+
+    const requestedWorldbook = props.initialWorldbookName.trim();
+    const nextWorldbook = worldbooks.value.includes(requestedWorldbook)
+      ? requestedWorldbook
+      : worldbooks.value.includes(selectedWorldbookName.value)
+        ? selectedWorldbookName.value
+        : worldbooks.value[0];
+    if (selectedWorldbookName.value !== nextWorldbook) {
+      selectWorldbook(nextWorldbook);
+      await nextTick();
+      await selectedWorldbookEntriesLoad;
+    } else {
+      worldbookSearch.value = selectedWorldbookName.value;
+      await loadEntries(selectedWorldbookName.value);
+    }
+    if (props.initialEntryUid !== undefined) {
+      const requestedEntry = entries.value.find(entry => entry.uid === props.initialEntryUid);
+      if (requestedEntry) selectEntry(requestedEntry);
+    }
+    initialEntriesLoaded = true;
+  } catch (error) {
+    worldbooks.value = [];
+    characterWorldbooks.value = [];
+    entries.value = [];
+    selectedWorldbookName.value = '';
+    worldbookSearch.value = '';
+    worldbookPickerOpen.value = false;
+    selectedEntryUid.value = null;
+    loadError.value = error instanceof Error ? error.message : String(error);
+  } finally {
+    loadingWorldbooks.value = false;
+  }
+}
+
+async function loadEntries(worldbookName: string) {
+  const loadRevision = ++entriesLoadRevision;
+  if (!worldbookName) {
+    entries.value = [];
+    selectedEntryUid.value = null;
+    entrySearch.value = '';
+    entryPickerOpen.value = false;
+    loadingEntries.value = false;
+    return;
+  }
+
+  loadingEntries.value = true;
+  loadError.value = '';
+  try {
+    const loadedEntries = await getWorldbook(worldbookName);
+    if (loadRevision !== entriesLoadRevision || selectedWorldbookName.value !== worldbookName) return;
+    entries.value = loadedEntries;
+    if (!entries.value.some(entry => entry.uid === selectedEntryUid.value)) {
+      selectedEntryUid.value = null;
+      entrySearch.value = '';
+    }
+  } catch (error) {
+    if (loadRevision !== entriesLoadRevision || selectedWorldbookName.value !== worldbookName) return;
+    entries.value = [];
+    selectedEntryUid.value = null;
+    loadError.value = `无法读取世界书：${error instanceof Error ? error.message : String(error)}`;
+  } finally {
+    if (loadRevision === entriesLoadRevision) loadingEntries.value = false;
+  }
+}
+
+async function loadSelectedEntryProfile() {
+  saveState.value = 'idle';
+  const entry = selectedEntry.value;
+  if (!entry) {
+    replaceProfile(createEmptyProfile());
+    saveMessage.value = '选择世界书条目后即可写入。';
+    return;
+  }
+
+  const inspection = inspectManagedBlock(entry.content);
+  if (inspection.state === 'valid') {
+    replaceProfile(inspection.profile);
+    saveMessage.value = '已读取该条目的现有角色档案。';
+    return;
+  }
+
+  const legacyInspection = inspection.state === 'absent' ? legacyVisualInspection.value : { state: 'absent' as const };
+  if (legacyInspection.state === 'importable') {
+    replaceProfile(legacyInspection.profile);
+    saveMessage.value = `已从旧版 ${legacyInspection.sourceRoot} 安全预填；当前世界书尚未修改。`;
+    return;
+  }
+
+  replaceProfile(createEmptyProfile(parseWorldbookCharacterDisplayName(entry.name)));
+  saveMessage.value =
+    inspection.state === 'malformed' || inspection.state === 'multiple'
+      ? inspection.reason
+      : legacyInspection.state === 'unsupported'
+        ? legacyInspection.reason
+        : hasUnmanagedVisualEjs(entry.content)
+          ? '检测到旧版视觉代码，但无法安全自动读取；原内容不会被修改。'
+          : '该角色尚未建立角色档案；已从条目名称预填姓名。';
+}
+
+function isNarrowViewport(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches;
+}
+
+function updateViewerPreviewScale() {
+  const stage = viewerPreviewStageRef.value;
+  const canvas = viewerPreviewCanvasRef.value;
+  if (!stage || !canvas) return;
+
+  const stageStyle = window.getComputedStyle(stage);
+  const horizontalPadding = parseFloat(stageStyle.paddingLeft) + parseFloat(stageStyle.paddingRight);
+  const verticalPadding = parseFloat(stageStyle.paddingTop) + parseFloat(stageStyle.paddingBottom);
+  const availableWidth = Math.max(1, stage.clientWidth - horizontalPadding);
+  const availableHeight = Math.max(1, stage.clientHeight - verticalPadding);
+  const mobileLayout = isNarrowViewport();
+
+  viewerPreviewMobileLayout.value = mobileLayout;
+  if (mobileLayout) {
+    viewerPreviewScale.value = 1;
+    viewerPreviewCanvasWidth.value = availableWidth;
+    viewerPreviewCanvasHeight.value = Math.max(1, canvas.scrollHeight, canvas.offsetHeight);
+    return;
+  }
+
+  const naturalWidth = Math.max(1, canvas.scrollWidth, canvas.offsetWidth);
+  const naturalHeight = Math.max(1, canvas.scrollHeight, canvas.offsetHeight);
+
+  viewerPreviewCanvasWidth.value = naturalWidth;
+  viewerPreviewCanvasHeight.value = naturalHeight;
+
+  const nextScale = Math.min(1, availableWidth / naturalWidth, availableHeight / naturalHeight);
+  viewerPreviewScale.value = Number.isFinite(nextScale) ? Math.max(0.1, nextScale) : 1;
+}
+
+async function initializeViewerPreviewScale() {
+  await nextTick();
+  viewerPreviewResizeObserver?.disconnect();
+  const stage = viewerPreviewStageRef.value;
+  const canvas = viewerPreviewCanvasRef.value;
+  if (!stage || !canvas) return;
+
+  viewerPreviewResizeObserver = new ResizeObserver(() => updateViewerPreviewScale());
+  viewerPreviewResizeObserver.observe(stage);
+  viewerPreviewResizeObserver.observe(canvas);
+  updateViewerPreviewScale();
+}
+
+function toggleViewerPreviewSource() {
+  viewerPreviewSource.value = viewerPreviewSource.value === 'pasted' ? 'sample' : 'pasted';
+}
+
+function openViewerPreview() {
+  if (!canPreviewViewer.value) return;
+  viewerPreviewSource.value = 'sample';
+  viewerPreviewOpen.value = true;
+  void initializeViewerPreviewScale();
+}
+
+function closeViewerPreview() {
+  viewerPreviewResizeObserver?.disconnect();
+  viewerPreviewResizeObserver = null;
+  viewerPreviewOpen.value = false;
+}
+
+function onEscape() {
+  if (viewerPreviewOpen.value) {
+    closeViewerPreview();
+    return;
+  }
+  emit('close');
+}
+
+function canVisitStep(step: StepId): boolean {
+  if (step === 1) return true;
+  if (!selectedEntry.value) return false;
+  if (step === 2) return true;
+  return profile.characterName.trim().length > 0;
+}
+
+function isStepComplete(step: StepId): boolean {
+  if (step === 1) return !!selectedEntry.value;
+  if (step === 2) return profile.characterName.trim().length > 0;
+  if (step === 3) return furthestStep.value > 3;
+  if (step === 4) {
+    return (configuredGalleryCount.value > 0 || isHttpsUrl(profile.remoteGalleryUrl ?? '')) && furthestStep.value > 4;
+  }
+  return saveState.value === 'success';
+}
+
+function goToStep(step: StepId) {
+  if (!canVisitStep(step)) return;
+  activeStep.value = step;
+  furthestStep.value = Math.max(furthestStep.value, step) as StepId;
+  if (!isNarrowViewport()) return;
+
+  void nextTick(() => {
+    document.getElementById(`manager-step-${step}`)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  });
+}
+
+function addStorySection() {
+  profile.metadata.storySections.push({
+    id: nextStorySectionId++,
+    title: '',
+    content: '',
+  });
+}
+
+function removeStorySection(index: number) {
+  profile.metadata.storySections.splice(index, 1);
+}
+
+function moveStorySection(index: number, offset: -1 | 1) {
+  const targetIndex = index + offset;
+  if (targetIndex < 0 || targetIndex >= profile.metadata.storySections.length) return;
+  const [section] = profile.metadata.storySections.splice(index, 1);
+  profile.metadata.storySections.splice(targetIndex, 0, section);
+}
+
+async function copyEjs() {
+  if (!generatedCode.value) return;
+  try {
+    const method = await copyTextWithFallback(generatedCode.value, {
+      writeText: text => navigator.clipboard.writeText(text),
+      fallbackCopy: copyTextWithDocumentSelection,
+    });
+    saveState.value = 'success';
+    saveMessage.value = method === 'fallback' ? '写入内容已复制。' : '写入内容已复制到剪贴板。';
+  } catch {
+    saveState.value = 'error';
+    saveMessage.value = '浏览器阻止了自动复制，请展开上方内容后手动复制，或直接保存。';
+  }
+}
+
+function readStatusGallerySnapshotFromCurrentChat(characterName: string): unknown[] | null {
+  const chatVariables = getVariables({ type: 'chat' });
+  const chatRecord = chatVariables && typeof chatVariables === 'object' ? (chatVariables as Record<string, unknown>) : {};
+  const status = chatRecord.status;
+  const externalGalleries =
+    status && typeof status === 'object' ? (status as Record<string, unknown>).externalGalleries : undefined;
+  const partners =
+    externalGalleries && typeof externalGalleries === 'object'
+      ? (externalGalleries as Record<string, unknown>).partners
+      : undefined;
+  const gallery =
+    partners && typeof partners === 'object' ? (partners as Record<string, unknown>)[characterName] : undefined;
+  return gallery && typeof gallery === 'object' && Array.isArray((gallery as Record<string, unknown>).images)
+    ? ((gallery as Record<string, unknown>).images as unknown[])
+    : null;
+}
+
+function scheduleFlashReturn() {
+  flashSaveCelebrating.value = true;
+  if (flashSaveSuccessTimer !== null) window.clearTimeout(flashSaveSuccessTimer);
+  flashSaveSuccessTimer = window.setTimeout(() => {
+    flashSaveSuccessTimer = null;
+    if (props.onReturnToCurrentLibrary) {
+      props.onReturnToCurrentLibrary();
+      return;
+    }
+    emit('close');
+  }, 700);
+}
+
+async function saveFlashProfile() {
+  if (!canFlashSave.value) return;
+
+  saving.value = true;
+  saveState.value = 'idle';
+  saveMessage.value = '正在保存角色档案到当前聊天世界书…';
+  applyMessage.value = '';
+
+  try {
+    ensureFlashRows();
+    syncFlashRoleUrls();
+    const normalizedProfile = normalizeProfile(toFullSerializableProfile());
+    const result = await saveFlashProfileToCurrentChatWorldbook(normalizedProfile);
+    saveMessage.value = '世界书已保存，正在同步当前聊天视觉…';
+    const applied = await applyCurrentProfileToCurrentChat();
+    if (!applied) {
+      throw new Error(applyMessage.value.replace(/^即时写入失败：\s*/u, '') || '当前聊天视觉同步失败。');
+    }
+
+    flashProfileExists.value = true;
+    saveState.value = 'success';
+    saveMessage.value = `✓ 已${result.created ? '添加' : '更新'}「${normalizedProfile.characterName}」角色档案，并同步到当前聊天。`;
+    scheduleFlashReturn();
+  } catch (error) {
+    console.error('[CharInfo Profile Editor] Failed to save profile in flash mode:', error);
+    saveState.value = 'error';
+    saveMessage.value = `保存失败：${error instanceof Error ? error.message : String(error)}`;
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function saveToEntry() {
+  const worldbookName = selectedWorldbookName.value;
+  const entry = selectedEntry.value;
+  if (!canSave.value || !entry) return;
+
+  const legacyMigrationSource =
+    legacyVisualInspection.value.state === 'importable' ? legacyVisualInspection.value.sourceRoot : null;
+  const migrationNotice = legacyMigrationSource
+    ? `\n\n旧版 ${legacyMigrationSource} 写入将被精确移除，并升级为 char_info.profiles v2。`
+    : '';
+  const confirmed = window.confirm(
+    `确定将角色档案写入以下条目？\n\n世界书：${worldbookName}\n条目：${entry.name || `#${entry.uid}`}${migrationNotice}`,
+  );
+  if (!confirmed) return;
+
+  saving.value = true;
+  saveState.value = 'idle';
+  saveMessage.value = '正在读取条目并安全写入…';
+
+  try {
+    const normalizedProfile = normalizeProfile(toSerializableProfile());
+    const latestEntries = await getWorldbook(worldbookName);
+    const latestEntry = latestEntries.find(item => item.uid === entry.uid);
+    if (!latestEntry) throw new Error(`找不到世界书条目 #${entry.uid}。`);
+    upsertManagedEjsBlockWithLegacyMigration(latestEntry.content, normalizedProfile);
+
+    saveMessage.value = '正在读取角色条目并安全写入…';
+    const updatedWorldbook = await updateWorldbookWith(
+      worldbookName,
+      entries => {
+        const target = entries.find(item => item.uid === entry.uid);
+        if (!target) throw new Error(`找不到世界书条目 #${entry.uid}。`);
+        return entries.map(item =>
+          item.uid === entry.uid
+            ? { ...item, content: upsertManagedEjsBlockWithLegacyMigration(item.content, normalizedProfile) }
+            : item,
+        );
+      },
+      { render: 'immediate' },
+    );
+
+    entries.value = updatedWorldbook;
+    const savedEntry = updatedWorldbook.find(item => item.uid === entry.uid);
+    if (!savedEntry || inspectManagedBlock(savedEntry.content).state !== 'valid') {
+      throw new Error('写入后的读回验证失败。');
+    }
+
+    saveState.value = 'success';
+    const migrationSummary = legacyMigrationSource
+      ? `旧版 ${legacyMigrationSource} 已升级为 char_info.profiles v2；`
+      : '';
+    saveMessage.value = `${
+      legacyMigrationSource
+        ? `升级成功：${migrationSummary}原条目其余内容保持不变。`
+        : '保存成功：角色档案已写入世界书条目，原条目其余内容保持不变。'
+    } 当前聊天变量未修改；如需立即生效，请点击「即时写入变量及状态栏」。`;
+    console.info('[CharInfo Profile Editor] Managed EJS saved', {
+      worldbook: worldbookName,
+      entryUid: entry.uid,
+      entryName: entry.name,
+    });
+  } catch (error) {
+    console.error('[CharInfo Profile Editor] Failed to save managed EJS:', error);
+    saveState.value = 'error';
+    saveMessage.value = `保存失败：${error instanceof Error ? error.message : String(error)}`;
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function applyCurrentProfileToCurrentChat(): Promise<boolean> {
+  if (!canApplyCurrentProfile.value || applyingSavedProfile.value) return false;
+
+  applyingSavedProfile.value = true;
+  applyMessage.value = '正在即时写入当前编辑资料、状态栏头像与状态栏相簿…';
+  try {
+    const currentProfile = normalizeProfile(toFullSerializableProfile());
+    const managedCode = buildManagedEjsBlock(currentProfile);
+    const expectedStatusGalleryImages = buildStatusGalleryImages(currentProfile.gallery);
+    const unsupportedStatusGalleryItems = countUnsupportedStatusGalleryItems(currentProfile.gallery);
+
+    await evaluateManagedEjs(managedCode, props.debugEnabled);
+    const appliedStatusGalleryImages = readStatusGallerySnapshotFromCurrentChat(currentProfile.characterName);
+    if (JSON.stringify(appliedStatusGalleryImages) !== JSON.stringify(expectedStatusGalleryImages)) {
+      throw new Error('status.externalGalleries 中的状态栏相簿没有正确写入。');
+    }
+
+    const chatVariables = getVariables({ type: 'chat' });
+    const chatRecord = chatVariables && typeof chatVariables === 'object' ? (chatVariables as Record<string, unknown>) : {};
+    const charInfo = chatRecord.char_info;
+    const profiles = charInfo && typeof charInfo === 'object' ? (charInfo as { profiles?: unknown }).profiles : undefined;
+    const appliedProfile =
+      profiles && typeof profiles === 'object'
+        ? (profiles as Record<string, unknown>)[currentProfile.characterName]
+        : undefined;
+    if (!appliedProfile || typeof appliedProfile !== 'object') {
+      throw new Error('即时写入已执行，但当前聊天变量中没有读回该角色的 CharInfo profile。');
+    }
+
+    const appliedRecord = appliedProfile as Record<string, unknown>;
+    const expectedGallery = currentProfile.gallery.map(image => ({
+      title: image.title,
+      sources: [...image.sources],
+      ...(image.viewerVisible === false ? { viewer_visible: false } : {}),
+    }));
+    if (JSON.stringify(appliedRecord.gallery ?? null) !== JSON.stringify(expectedGallery)) {
+      throw new Error('即时写入已执行，但 char_info.profiles 中的 gallery 与当前编辑内容不一致。');
+    }
+
+    const status = chatRecord.status;
+    const expectedAvatarUrl = currentProfile.avatarUrl.trim();
+    if (expectedAvatarUrl) {
+      const externalAvatars = status && typeof status === 'object' ? (status as Record<string, unknown>).externalAvatars : undefined;
+      const partners =
+        externalAvatars && typeof externalAvatars === 'object'
+          ? (externalAvatars as Record<string, unknown>).partners
+          : undefined;
+      const avatar =
+        partners && typeof partners === 'object'
+          ? (partners as Record<string, unknown>)[currentProfile.characterName]
+          : undefined;
+      const appliedAvatarUrl =
+        avatar && typeof avatar === 'object' && typeof (avatar as Record<string, unknown>).url === 'string'
+          ? ((avatar as Record<string, unknown>).url as string)
+          : '';
+      if (appliedAvatarUrl !== expectedAvatarUrl) {
+        throw new Error('即时写入已执行，但 status.externalAvatars 中的状态栏头像没有正确写入。');
+      }
+    }
+
+    if (unsupportedStatusGalleryItems > 0) {
+      const supportedFormats = STATUS_GALLERY_IMAGE_EXTENSIONS.map(extension => extension.slice(1)).join(' / ');
+      toastr.warning(
+        `即时写入成功，但状态栏相簿目前仅支援 ${supportedFormats}。${unsupportedStatusGalleryItems} 个其他格式媒体不会进入状态栏相簿；CharInfo 相簿仍已完整写入。`,
+      );
+    }
+
+    await props.onForceRefresh?.();
+    const appliedParts = [`CharInfo 图库 ${currentProfile.gallery.length} 张`, `状态栏相簿 ${expectedStatusGalleryImages.length} 张`];
+    if (expectedAvatarUrl) appliedParts.push('状态栏头像');
+    applyMessage.value = `已即时写入「${currentProfile.characterName}」（${appliedParts.join('、')}）并刷新 CharInfo。`;
+    console.info('[CharInfo Profile Editor] Current profile applied to current chat', {
+      character: currentProfile.characterName,
+      statusGalleryImages: expectedStatusGalleryImages.length,
+    });
+    return true;
+  } catch (error) {
+    console.error('[CharInfo Profile Editor] Failed to apply current profile:', error);
+    applyMessage.value = `即时写入失败：${error instanceof Error ? error.message : String(error)}`;
+    return false;
+  } finally {
+    applyingSavedProfile.value = false;
+  }
+}
+
+watch(selectedWorldbookName, worldbookName => {
+  entrySearch.value = '';
+  entryPickerOpen.value = false;
+  selectedWorldbookEntriesLoad = loadEntries(worldbookName);
+});
+watch(selectedEntryUid, uid => {
+  if (uid === null) {
+    void loadSelectedEntryProfile();
+    furthestStep.value = 1;
+    goToStep(1);
+    return;
+  }
+
+  void loadSelectedEntryProfile();
+  furthestStep.value = 2;
+  goToStep(2);
+});
+watch(viewerPreviewSource, () => {
+  if (!viewerPreviewOpen.value) return;
+  void nextTick(() => updateViewerPreviewScale());
+});
+
+onMounted(() => {
+  if (flashMode.value) {
+    initializeFlashMode();
+    return;
+  }
+  void loadWorldbooks();
+});
+
+onBeforeUnmount(() => {
+  viewerPreviewResizeObserver?.disconnect();
+  viewerPreviewResizeObserver = null;
+  if (flashSaveSuccessTimer !== null) {
+    window.clearTimeout(flashSaveSuccessTimer);
+    flashSaveSuccessTimer = null;
+  }
+});
+</script>
+
+<style scoped lang="scss">
+:global(#char-info-profile-editor) {
+  width: 100%;
+  height: 100%;
+}
+
+:global(#char-info-profile-editor),
+:global(#char-info-profile-editor *) {
+  box-sizing: border-box;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}
+
+.manager-root {
+  --bg: var(--ci-bg);
+  --surface: var(--ci-surface);
+  --surface-raised: var(--ci-surface-raised);
+  --surface-soft: var(--ci-surface-soft);
+  --border: var(--ci-border);
+  --border-strong: var(--ci-border-strong);
+  --text: var(--ci-text);
+  --text-secondary: var(--ci-text-secondary);
+  --text-muted: var(--ci-text-muted);
+  --primary: var(--ci-primary);
+  --primary-strong: var(--ci-primary-strong);
+  --primary-soft: var(--ci-primary-soft);
+  --danger: var(--ci-danger);
+  --danger-soft: rgb(199 125 130 / 12%);
+  --warning: var(--ci-warning);
+  --success: var(--ci-success);
+
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  padding: 24px;
+  overflow: auto;
+  place-items: center;
+  color: var(--text);
+  font-family:
+    Inter,
+    'Noto Sans SC',
+    'Microsoft YaHei',
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+
+.backdrop {
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  background: var(--ci-overlay);
+  border: 0;
+  backdrop-filter: blur(9px);
+  cursor: default;
+}
+.manager-dialog {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: min(1420px, 100%);
+  height: min(720px, calc(100% - 8px));
+  max-height: calc(100% - 8px);
+  overflow: hidden;
+  flex-direction: column;
+  background: radial-gradient(circle at 0 0, rgb(var(--ci-primary-rgb) / 8%), transparent 28rem), var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  box-shadow: 0 28px 90px rgb(0 0 0 / 55%);
+}
+
+.dialog-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 22px 26px;
+  background: var(--ci-header);
+  border-bottom: 1px solid var(--border);
+}
+
+.dialog-header h1 {
+  margin: 0;
+}
+
+.header-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.dialog-header h1 {
+  font-size: clamp(22px, 3vw, 31px);
+  line-height: 1.2;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.viewer-preview-trigger,
+.return-library-button {
+  min-height: 40px;
+}
+
+.return-library-button {
+  white-space: nowrap;
+}
+
+.profile-editor-viewer-preview {
+  position: fixed;
+  z-index: 20;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  width: min(1400px, calc(100vw - 24px));
+  height: calc(100dvh - 24px);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  flex-direction: column;
+  transform: translate(-50%, -50%);
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  box-shadow: 0 24px 70px rgb(0 0 0 / 48%);
+}
+
+.profile-editor-viewer-preview-header {
+  flex: 0 0 auto;
+  gap: 16px;
+  padding: 12px 14px 12px 18px;
+}
+
+.profile-editor-viewer-preview-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.profile-editor-viewer-preview-source-state {
+  display: grid;
+  min-width: 92px;
+  gap: 1px;
+  text-align: right;
+}
+
+.profile-editor-viewer-preview-source-state span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.profile-editor-viewer-preview-source-state strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.profile-editor-viewer-preview-source-toggle {
+  min-height: 34px;
+  padding: 7px 10px;
+}
+
+.profile-editor-viewer-preview-source {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--border);
+}
+
+.profile-editor-viewer-preview-input {
+  display: grid;
+  gap: 6px;
+}
+
+.profile-editor-viewer-preview-input textarea {
+  min-height: 110px;
+  max-height: 220px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.profile-editor-viewer-preview-stage {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 12px;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-editor-viewer-preview-frame {
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 1px;
+  min-height: 1px;
+}
+
+.profile-editor-viewer-preview-canvas {
+  width: 1200px;
+  max-width: none;
+  transform-origin: top left;
+  will-change: transform;
+}
+
+.profile-editor-viewer-preview-empty {
+  display: grid;
+  min-height: 800px;
+  place-items: center;
+  padding: 32px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.phase-badge {
+  padding: 5px 8px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px solid rgb(var(--ci-primary-rgb) / 25%);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.close-button,
+.icon-button {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  place-items: center;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.close-button {
+  font-size: 25px;
+  line-height: 1;
+}
+
+.dialog-body {
+  display: grid;
+  min-height: 0;
+  overflow: hidden;
+  flex: 1 1 auto;
+  grid-template-columns: 272px minmax(0, 1fr);
+}
+
+.flash-mode-editor {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  grid-column: 1 / -1;
+  flex-direction: column;
+}
+
+.flash-mode-intro {
+  display: flex;
+  padding: 16px 22px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.flash-mode-intro div {
+  display: grid;
+  gap: 3px;
+}
+
+.flash-mode-intro span,
+.flash-mode-intro p {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.flash-mode-intro strong {
+  font-size: 18px;
+}
+
+.flash-mode-intro p {
+  max-width: 620px;
+  margin: 0;
+  text-align: right;
+}
+
+.flash-mode-gallery {
+  min-height: 0;
+  padding: 18px 22px 26px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+
+.flash-mode-guidance {
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.flash-mode-list {
+  display: grid;
+  gap: 12px;
+}
+
+.flash-mode-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.flash-mode-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.flash-mode-url-field {
+  display: grid;
+  gap: 7px;
+}
+
+.flash-mode-url-field > span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.flash-mode-url-field input {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  color: var(--text);
+  background: var(--surface-soft);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+}
+
+.flash-mode-remove,
+.flash-mode-add {
+  min-height: 40px;
+  padding: 8px 12px;
+  color: var(--text-secondary);
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.flash-mode-remove {
+  min-height: 34px;
+  color: var(--danger);
+}
+
+.flash-mode-add {
+  width: 100%;
+  margin-top: 12px;
+  color: var(--primary);
+  border-style: dashed;
+}
+
+.flash-mode-save-bar {
+  display: flex;
+  padding: 14px 22px max(14px, env(safe-area-inset-bottom, 0px));
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  background: var(--ci-header);
+  border-top: 1px solid var(--border);
+}
+
+.flash-mode-save-bar .primary-button {
+  min-width: 180px;
+}
+
+.flash-save-button {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.flash-save-button.save-success,
+.flash-save-button.save-success:disabled {
+  color: var(--ci-on-primary);
+  background: var(--success);
+  border-color: var(--success);
+  box-shadow: 0 8px 26px color-mix(in srgb, var(--success) 34%, transparent);
+  opacity: 1;
+  cursor: default;
+  animation: flash-save-success-pop 560ms cubic-bezier(0.2, 0.85, 0.35, 1);
+}
+
+@keyframes flash-save-success-pop {
+  0% {
+    transform: scale(1);
+  }
+  42% {
+    transform: scale(1.035);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.target-panel,
+.editor-panel {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.wizard-step-nav {
+  display: flex;
+  min-height: 0;
+  padding: 22px 16px 18px;
+  overflow-y: auto;
+  flex-direction: column;
+  gap: 8px;
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  border-right: 1px solid var(--border);
+}
+
+.wizard-nav-header {
+  display: flex;
+  margin-bottom: 7px;
+  padding: 0 7px 12px;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.wizard-nav-header strong {
+  color: var(--primary);
+}
+
+.wizard-step-nav button {
+  display: grid;
+  width: 100%;
+  min-height: 66px;
+  padding: 10px;
+  align-items: center;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 11px;
+  color: var(--text-secondary);
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.wizard-step-nav button:hover:not(:disabled) {
+  background: rgb(255 255 255 / 4%);
+  border-color: var(--border);
+}
+
+.wizard-step-nav button.active {
+  color: var(--text);
+  background: linear-gradient(110deg, var(--primary-soft), rgb(var(--ci-primary-rgb) / 4%));
+  border-color: rgb(var(--ci-primary-rgb) / 35%);
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.wizard-step-index {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  color: var(--text-muted);
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.wizard-step-nav button.active .wizard-step-index {
+  color: var(--ci-on-primary);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.wizard-step-nav button.complete:not(.active) .wizard-step-index {
+  color: var(--success);
+  background: rgb(120 213 156 / 9%);
+  border-color: rgb(120 213 156 / 30%);
+}
+
+.wizard-step-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.wizard-step-copy strong,
+.wizard-step-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wizard-step-copy strong {
+  font-size: 13px;
+}
+
+.wizard-step-copy small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.wizard-step-short-label {
+  display: none;
+}
+
+.wizard-nav-context {
+  display: flex;
+  margin-top: auto;
+  padding: 13px;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.wizard-nav-context small,
+.wizard-nav-context span {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.wizard-nav-context strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-section-toggle {
+  display: none;
+}
+
+.wizard-step-section.is-collapsed {
+  display: none;
+}
+
+.target-panel,
+.editor-panel {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.target-panel {
+  padding: 32px 40px 36px;
+  background: transparent;
+  border-right: 0;
+}
+
+.target-panel-content {
+  width: min(100%, 820px);
+  margin: 0 auto;
+}
+
+.editor-panel {
+  padding: 0;
+}
+
+.editor-panel > .wizard-step-section {
+  width: min(100%, 1080px);
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 32px 40px 0;
+}
+
+.wizard-step-actions {
+  display: flex;
+  margin-top: 30px;
+  padding-top: 20px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.wizard-step-actions > span {
+  flex: 1;
+}
+
+.section-title-row,
+.output-heading,
+.save-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.save-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.step-label {
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.section-title-row h2,
+.section-heading h2,
+.output-heading h2 {
+  font-size: 22px;
+}
+
+.current-character,
+.target-summary,
+.safety-note {
+  padding: 14px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.current-character {
+  display: flex;
+  margin: 18px 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.current-character span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.current-character strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.target-panel .field + .field {
+  margin-top: 15px;
+}
+
+.field-label {
+  display: flex;
+  min-height: 18px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.field-label b {
+  color: var(--danger);
+}
+
+.field-label small {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.field-label small.warning,
+.field-guidance.warning {
+  color: var(--warning);
+}
+
+.field-guidance {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.metadata-editor-panel,
+.story-editor-panel {
+  margin-top: 22px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-raised) 74%, transparent);
+}
+
+.metadata-editor-heading,
+.story-editor-heading,
+.story-section-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.metadata-editor-heading h3,
+.story-editor-heading h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.metadata-editor-heading p,
+.story-editor-heading p,
+.story-editor-empty {
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.metadata-field-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.author-metadata-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.avatar-source-panel {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-raised) 74%, transparent);
+}
+
+.avatar-source-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.avatar-source-option {
+  display: flex;
+  min-height: 64px;
+  padding: 12px 13px;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.avatar-source-option.active {
+  border-color: var(--primary-strong);
+  background: var(--primary-soft);
+}
+
+.avatar-source-option input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  padding: 0;
+  accent-color: var(--primary-strong);
+}
+
+.avatar-source-option span {
+  display: grid;
+  gap: 3px;
+}
+
+.avatar-source-option strong {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.avatar-source-option small {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.avatar-gallery-picker,
+.avatar-custom-url {
+  max-width: 620px;
+}
+
+.story-section-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.story-section-card {
+  display: grid;
+  gap: 13px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-raised);
+}
+
+.story-section-card-header strong {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.story-section-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.story-section-actions button {
+  width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.story-section-actions button:hover:not(:disabled) {
+  border-color: var(--primary-strong);
+  color: var(--text);
+}
+
+.story-section-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.story-section-actions button.danger {
+  color: var(--danger);
+}
+
+.story-section-card textarea {
+  min-height: 132px;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  color: var(--text);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  outline: none;
+}
+
+textarea {
+  resize: vertical;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary-strong);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.entry-combobox {
+  position: relative;
+}
+
+.entry-combobox > input {
+  padding-right: 44px;
+}
+
+.entry-picker-button {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  place-items: center;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.entry-options {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 7px);
+  right: 0;
+  left: 0;
+  max-height: min(42vh, 360px);
+  padding: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 11px;
+  box-shadow: 0 18px 44px rgb(0 0 0 / 48%);
+}
+
+.entry-options button {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.entry-options button:hover,
+.entry-options button.highlighted,
+.entry-options button[aria-selected='true'] {
+  background: var(--primary-soft);
+}
+
+.entry-options button[aria-selected='true'] {
+  color: var(--primary);
+}
+
+.entry-options button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entry-options button small {
+  flex: 0 0 auto;
+  padding: 2px 5px;
+  color: var(--warning);
+  background: rgb(244 195 106 / 10%);
+  border-radius: 5px;
+  font-size: 9px;
+}
+
+.entry-empty {
+  margin: 0;
+  padding: 18px 10px;
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 12px;
+}
+
+button:disabled,
+input:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.target-summary {
+  display: flex;
+  margin-top: 18px;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.target-summary p,
+.safety-note p,
+.section-heading p,
+.output-heading p {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.status-dot {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  margin-top: 5px;
+  background: var(--text-muted);
+  border-radius: 50%;
+}
+
+.status-dot.managed {
+  background: var(--success);
+  box-shadow: 0 0 10px rgb(120 213 156 / 55%);
+}
+
+.status-dot.new {
+  background: var(--primary);
+}
+
+.status-dot.blocked {
+  background: var(--danger);
+}
+
+.status-dot.legacy-importable {
+  background: var(--primary);
+  box-shadow: 0 0 10px rgb(var(--ci-primary-rgb) / 45%);
+}
+
+.migration-banner {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgb(var(--ci-primary-rgb) / 24%);
+  border-radius: 10px;
+  background: rgb(var(--ci-primary-rgb) / 7%);
+}
+
+.migration-banner strong {
+  color: var(--primary);
+  font-size: 12px;
+}
+
+.migration-banner p,
+.migration-banner ul {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.migration-banner ul {
+  padding-left: 18px;
+}
+
+.safety-note {
+  margin-top: 16px;
+  border-color: rgb(var(--ci-primary-rgb) / 22%);
+}
+
+.safety-note strong {
+  color: var(--primary);
+  font-size: 12px;
+}
+
+.message.error,
+.save-feedback .error {
+  color: var(--danger);
+}
+
+.form-section + .form-section,
+.output-section {
+  margin-top: 0;
+  padding-top: 32px;
+  border-top: 0;
+}
+
+.section-heading {
+  display: flex;
+  margin-bottom: 17px;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.step-number {
+  display: grid;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  color: var(--ci-on-primary);
+  background: var(--primary);
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.section-heading p {
+  margin-top: 2px;
+}
+
+code {
+  color: var(--primary);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.field-grid,
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.field-full {
+  grid-column: 1 / -1;
+}
+
+.color-custom-toggle {
+  display: flex;
+  min-height: 58px;
+  margin-bottom: 14px;
+  padding: 11px 13px;
+  align-items: center;
+  gap: 11px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  cursor: pointer;
+}
+
+.color-custom-toggle input {
+  width: 19px;
+  min-height: 19px;
+  height: 19px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--primary-strong);
+}
+
+.color-custom-toggle span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.color-custom-toggle strong {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.color-custom-toggle small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.color-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.color-control {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 9px;
+}
+
+.color-control input[type='color'] {
+  padding: 5px;
+  cursor: pointer;
+}
+
+.gallery-storage-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.gallery-storage-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.gallery-storage-toggle input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--primary);
+}
+
+.gallery-storage-toggle span {
+  display: grid;
+  gap: 3px;
+}
+
+.gallery-storage-toggle strong {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.gallery-storage-toggle small,
+.gallery-storage-message {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.gallery-storage-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.gallery-storage-fields .field-full {
+  grid-column: 1 / -1;
+}
+
+.gallery-storage-message {
+  margin: 0;
+}
+
+.gallery-storage-errors {
+  margin: 0;
+  padding: 10px 12px 10px 30px;
+  border: 1px solid color-mix(in srgb, #ef8585 48%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, #ef8585 9%, transparent);
+  color: #f2a2a2;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.image-host-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.image-host-links > div {
+  display: grid;
+  flex: 1 1 260px;
+  gap: 2px;
+}
+
+.image-host-links strong {
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.image-host-links small {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.image-host-links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 7px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  color: var(--primary);
+  font-size: 0.75rem;
+  text-decoration: none;
+}
+
+.image-host-links a:hover,
+.image-host-links a:focus-visible {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.gallery-list {
+  display: grid;
+  gap: 12px;
+}
+
+.gallery-card {
+  display: grid;
+  padding: 12px;
+  grid-template-columns: 92px minmax(0, 1fr) auto;
+  gap: 13px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+}
+
+.image-preview {
+  position: relative;
+  display: grid;
+  min-height: 104px;
+  overflow: hidden;
+  place-items: center;
+  color: var(--text-muted);
+  background: var(--surface-soft);
+  border-radius: 9px;
+}
+
+.image-preview img,
+.image-preview video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 104px;
+  object-fit: cover;
+}
+
+.image-preview video {
+  pointer-events: none;
+}
+
+.image-preview .gallery-media-kind {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  padding: 3px 6px;
+  color: var(--text);
+  background: var(--ci-header);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.image-preview b {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 3px 6px;
+  color: var(--ci-on-primary);
+  background: var(--primary);
+  border-radius: 999px;
+  font-size: 9px;
+}
+
+.image-preview .gallery-location-badge {
+  color: var(--text);
+  background: var(--ci-header);
+}
+
+.image-preview .gallery-location-badge.is-extension {
+  color: var(--ci-on-primary);
+  background: var(--primary);
+}
+
+.gallery-fields {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.42fr) minmax(220px, 1fr);
+  gap: 10px;
+}
+
+.source-list {
+  display: grid;
+  gap: 9px;
+}
+
+.source-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+}
+
+.source-order-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.source-order-button,
+.remove-source-button,
+.add-source-button {
+  color: var(--text-secondary);
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.source-order-button,
+.remove-source-button {
+  width: 34px;
+  min-height: 42px;
+}
+
+.source-order-button:disabled,
+.remove-source-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.remove-source-button {
+  color: var(--danger);
+}
+
+.add-source-button {
+  min-height: 36px;
+  padding: 7px 10px;
+  justify-self: start;
+  color: var(--primary);
+}
+
+.gallery-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gallery-actions button {
+  width: 38px;
+  height: 32px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.gallery-actions .danger {
+  color: var(--danger);
+}
+
+.add-image-button,
+.secondary-button,
+.primary-button {
+  min-height: 42px;
+  padding: 9px 15px;
+  border-radius: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.add-image-button {
+  width: 100%;
+  margin-top: 11px;
+  color: var(--primary);
+  background: transparent;
+  border: 1px dashed var(--border-strong);
+}
+
+.secondary-button {
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+}
+
+.primary-button {
+  color: var(--ci-on-primary);
+  background: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+.primary-button:hover:not(:disabled),
+.add-image-button:hover {
+  background: var(--primary-strong);
+}
+
+.output-section {
+  padding-bottom: 20px;
+}
+
+.output-heading p {
+  margin-top: 1px;
+}
+
+details {
+  margin-top: 12px;
+  overflow: hidden;
+  background: var(--ci-input);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+}
+
+summary {
+  padding: 11px 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+pre {
+  max-height: 280px;
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border);
+  font:
+    11px/1.65 ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    monospace;
+  white-space: pre;
+}
+
+.gallery-pack-download-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: linear-gradient(120deg, var(--primary-soft), rgb(255 255 255 / 2%));
+}
+
+.gallery-pack-download-panel h3,
+.gallery-pack-download-panel p {
+  margin: 0;
+}
+
+.gallery-pack-download-panel h3 {
+  margin-top: 3px;
+  font-size: 15px;
+}
+
+.gallery-pack-download-panel p {
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.gallery-pack-download-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.gallery-pack-download-status,
+.gallery-pack-download-message {
+  grid-column: 1 / -1;
+  margin: 0 !important;
+  border-radius: 8px;
+  padding: 9px 11px;
+  font-weight: 700;
+}
+
+.gallery-pack-download-status {
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  background: color-mix(in srgb, var(--primary) 9%, transparent);
+  color: var(--primary) !important;
+}
+
+.gallery-pack-download-status.error {
+  border: 1px solid color-mix(in srgb, #ef8585 48%, transparent);
+  background: color-mix(in srgb, #ef8585 9%, transparent);
+  color: #f2a2a2 !important;
+}
+
+.gallery-pack-download-message {
+  color: var(--primary) !important;
+}
+
+.save-bar {
+  position: sticky;
+  bottom: 0;
+  margin: 28px -40px 0;
+  padding: 15px 40px;
+  background: var(--ci-header);
+  border-top: 1px solid var(--border);
+  backdrop-filter: blur(14px);
+}
+
+.save-feedback {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.save-feedback strong {
+  overflow: hidden;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+}
+
+.save-feedback .success {
+  color: var(--success);
+}
+
+@media (max-width: 900px) {
+  .manager-root {
+    padding: 10px;
+    overflow: hidden;
+  }
+  .gallery-pack-download-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .gallery-pack-download-actions {
+    justify-content: flex-start;
+  }
+
+  .manager-dialog {
+    height: calc(100% - 2px);
+    max-height: calc(100% - 2px);
+    border-radius: 14px;
+  }
+
+  .dialog-header {
+    padding: 17px;
+  }
+
+  .profile-editor-viewer-preview {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-width: none;
+    max-height: none;
+    box-sizing: border-box;
+    transform: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .profile-editor-viewer-preview-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    padding: calc(env(safe-area-inset-top) + 12px) 14px 12px;
+  }
+
+  .profile-editor-viewer-preview-toolbar {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(126px, auto) 40px;
+    gap: 8px;
+  }
+
+  .profile-editor-viewer-preview-source-state {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .profile-editor-viewer-preview-source-toggle {
+    min-width: 0;
+    max-width: 164px;
+    white-space: normal;
+  }
+
+  .profile-editor-viewer-preview-stage {
+    padding: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    align-items: flex-start;
+    justify-content: flex-start;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .profile-editor-viewer-preview-frame,
+  .profile-editor-viewer-preview-canvas {
+    max-width: 100%;
+  }
+
+  .phase-badge {
+    display: none;
+  }
+
+  .dialog-body {
+    display: block;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .dialog-body.flash-mode {
+    display: flex;
+    overflow: hidden;
+  }
+
+  .flash-mode-editor {
+    min-height: 0;
+    height: 100%;
+    flex: 1 1 auto;
+  }
+
+  .flash-mode-intro {
+    padding: 12px 14px;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .flash-mode-intro p {
+    max-width: none;
+    text-align: left;
+  }
+
+  .flash-mode-gallery {
+    min-height: 0;
+    padding: 12px 14px 18px;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .flash-mode-save-bar {
+    position: sticky;
+    z-index: 6;
+    bottom: 0;
+    padding: 10px 14px max(10px, env(safe-area-inset-bottom, 0px));
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .flash-mode-save-bar .primary-button {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .wizard-step-nav {
+    position: sticky;
+    z-index: 5;
+    top: 0;
+    display: grid;
+    padding: 8px 10px;
+    background: var(--ci-header);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 24%);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .wizard-nav-header,
+  .wizard-step-copy,
+  .wizard-nav-context {
+    display: none;
+  }
+
+  .wizard-step-nav button {
+    display: flex;
+    min-width: 0;
+    min-height: 48px;
+    padding: 5px 2px;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    color: var(--text-muted);
+    background: transparent;
+    border: 0;
+    border-radius: 9px;
+    cursor: pointer;
+  }
+
+  .wizard-step-index {
+    display: grid;
+    width: 22px;
+    height: 22px;
+    place-items: center;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 900;
+  }
+
+  .wizard-step-short-label {
+    display: block;
+    overflow: hidden;
+    max-width: 100%;
+    font-size: 10px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .wizard-step-nav button.active {
+    color: var(--primary);
+    background: var(--primary-soft);
+  }
+
+  .wizard-step-nav button.active .wizard-step-index {
+    color: var(--ci-on-primary);
+    background: var(--primary);
+    border-color: var(--primary);
+  }
+
+  .target-panel,
+  .editor-panel {
+    overflow: visible;
+  }
+
+  .target-panel {
+    padding: 0;
+    border-right: 0;
+  }
+
+  .wizard-step-section {
+    scroll-margin-top: 65px;
+  }
+
+  .wizard-step-section.is-collapsed {
+    display: none;
+  }
+
+  .mobile-section-toggle {
+    display: flex;
+    width: 100%;
+    min-height: 76px;
+    padding: 16px 17px 12px;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+    background: linear-gradient(180deg, rgb(var(--ci-primary-rgb) / 8%), transparent);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .mobile-section-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .mobile-section-copy strong {
+    overflow: hidden;
+    color: var(--text);
+    font-size: 16px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-section-copy small {
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .target-panel-content {
+    padding: 17px;
+  }
+
+  .target-panel .section-title-row,
+  .form-section > .section-heading {
+    display: none;
+  }
+
+  .entry-options {
+    max-height: min(46vh, 320px);
+  }
+
+  .editor-panel {
+    padding: 0;
+  }
+
+  .editor-panel > .wizard-step-section {
+    width: 100%;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .form-section + .form-section,
+  .output-section {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .mobile-step-content,
+  .output-section details {
+    margin-right: 17px;
+    margin-left: 17px;
+  }
+
+  .output-section > .output-heading {
+    margin: 17px;
+  }
+
+  .output-section > .output-heading h2 {
+    font-size: 15px;
+  }
+
+  .mobile-step-content {
+    padding-top: 17px;
+    padding-bottom: 18px;
+  }
+
+  .wizard-step-actions {
+    display: flex;
+    margin-top: 22px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .wizard-step-actions > span {
+    flex: 1;
+  }
+
+  .wizard-step-actions .primary-button,
+  .wizard-step-actions .secondary-button {
+    min-height: 44px;
+  }
+
+  .wizard-step-actions-final {
+    margin: 20px 17px 0;
+  }
+
+  .save-bar {
+    position: static;
+    margin: 16px 0 0;
+    padding: 16px 17px;
+    background: var(--surface);
+    backdrop-filter: none;
+  }
+}
+
+@mixin mobile-manager-layout($root: '.manager-root') {
+  #{$root} {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+    max-height: 100%;
+    padding: 0;
+    overflow: hidden;
+  }
+  .manager-dialog {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-width: none;
+    max-height: none;
+    box-sizing: border-box;
+    border-width: 0;
+    border-radius: 0;
+  }
+
+  .dialog-header {
+    position: sticky;
+    z-index: 3;
+    top: 0;
+    align-items: center;
+    padding: 12px 14px;
+  }
+
+  .dialog-header h1 {
+    font-size: 19px;
+  }
+  .field-grid,
+  .metadata-field-grid,
+  .color-grid,
+  .gallery-storage-fields,
+  .gallery-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .metadata-editor-panel,
+  .story-editor-panel,
+  .avatar-source-panel {
+    padding: 14px;
+  }
+
+  .avatar-source-options {
+    grid-template-columns: 1fr;
+  }
+
+  .story-editor-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .story-add-button {
+    width: 100%;
+  }
+
+  .story-section-card {
+    padding: 14px;
+  }
+
+  .story-section-actions button {
+    width: 40px;
+    min-height: 40px;
+  }
+
+  .gallery-card {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .image-preview,
+  .image-preview img,
+  .image-preview video {
+    min-height: 112px;
+  }
+
+  .gallery-actions {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+
+  .gallery-actions button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .save-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .output-heading {
+    align-items: flex-start;
+  }
+
+  .primary-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  @include mobile-manager-layout;
+}
+
+.manager-root.force-mobile-layout {
+  @include mobile-manager-layout('&');
+}
+</style>

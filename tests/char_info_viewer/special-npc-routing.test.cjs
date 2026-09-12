@@ -10,7 +10,7 @@ const {
   resolveCharacterVisualPreview,
 } = require('../../src/char_info_viewer/services/themeService.ts');
 
-test('同名 char_info.profiles 的有效立绘授予 Special NPC 路由', () => {
+test('同名 char_info.profiles 的有效立绘授予 立绘角色卡 路由', () => {
   const data = resolveCharacterVisualConfig(
     { 姓名: '特别角色' },
     {
@@ -27,7 +27,7 @@ test('同名 char_info.profiles 的有效立绘授予 Special NPC 路由', () =>
   assert.equal(hasDeprecatedVisualSyntax(data), false);
 });
 
-test('自定义故事不会参与 YAML 解析或阻止媒体 profile 授予 Special NPC', () => {
+test('自定义故事不会参与 YAML 解析或阻止媒体 profile 授予 立绘角色卡', () => {
   const data = resolveCharacterVisualConfig(
     { 姓名: '故事角色', 等级: 13 },
     {
@@ -58,7 +58,7 @@ test('自定义故事不会参与 YAML 解析或阻止媒体 profile 授予 Spec
   ]);
 });
 
-test('Creator 草稿预览只把视觉资料授予同名角色', () => {
+test('角色档案编辑器草稿预览只把视觉资料授予同名角色', () => {
   const visualConfig = {
     schema_version: 1,
     custom_racecolor: '#112233',
@@ -123,7 +123,7 @@ test('普通变量占位符与其他图片字段不得进入 Normal Viewer 图�
   assert.equal(forgedInternal.imageUrl, '');
 });
 
-test('v0.3.0 起 char_info_visuals 不再授予 Special NPC', () => {
+test('v0.3.0 起 char_info_visuals 不再授予 立绘角色卡', () => {
   const data = resolveCharacterVisualConfig(
     { 姓名: '旧版特别角色' },
     {
@@ -155,7 +155,7 @@ test('v0.3.0 起 char_info.visual / char_info.visuals 旧路径不再参与 View
   }
 });
 
-test('status external gallery 单独存在时不得授予 Special NPC', () => {
+test('status external gallery 单独存在时不得授予 立绘角色卡', () => {
   const data = resolveCharacterVisualConfig(
     { 姓名: '状态栏角色' },
     {
@@ -177,8 +177,8 @@ test('v0.3.0 继续提示正文旧图片字段已停用，并指向 char_info.pr
   const appSource = fs.readFileSync(path.resolve(__dirname, '../../src/char_info_viewer/App.vue'), 'utf8');
 
   assert.match(appSource, /v-if="deprecatedVisualSyntaxWarning" class="parse-warning-card"/);
-  assert.match(appSource, /v0\.3\.0 起 Viewer 已忽略该字段/);
-  assert.match(appSource, /视觉资料只读取 char_info\.profiles/);
+  assert.match(appSource, /v0\.3\.0 起角色查看器已忽略该字段/);
+  assert.match(appSource, /角色档案只读取 char_info\.profiles/);
   assert.match(appSource, /正文旧版角色图片字段/);
 });
 

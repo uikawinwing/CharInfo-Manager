@@ -8,8 +8,8 @@ import {
   normalizeProfile,
   upsertManagedEjsBlock,
   validateProfile,
-  type CharacterVisualProfile,
-} from './characterVisualProfile.ts';
+  type CharacterProfile,
+} from './characterProfile.ts';
 
 // json5 is CommonJS in the Node test runtime, so its synthetic named export is not portable here.
 // eslint-disable-next-line import-x/no-named-as-default-member
@@ -23,7 +23,7 @@ export type LegacyVisualInspection =
       state: 'importable';
       sourceRoot: LegacyVisualRoot;
       characterName: string;
-      profile: CharacterVisualProfile;
+      profile: CharacterProfile;
       start: number;
       end: number;
       warnings: string[];
@@ -283,12 +283,12 @@ function parseLegacySetLocalVarCall(source: string, start: number, openParen: nu
   }
   cursor = skipTrivia(source, cursor + 1);
   if (source[cursor] !== '{') {
-    return { kind: 'unsupported', reason: '旧版视觉配置使用了变量或表达式，无法安全自动读取。' };
+    return { kind: 'unsupported', reason: '旧档案格式使用了变量或表达式，无法安全自动读取。' };
   }
 
   const object = readBalancedObject(source, cursor);
   if (!object) {
-    return { kind: 'unsupported', reason: '旧版视觉配置对象包含动态模板或没有正确闭合。' };
+    return { kind: 'unsupported', reason: '旧档案格式对象包含动态模板或没有正确闭合。' };
   }
 
   cursor = skipTrivia(source, object.end);
@@ -300,10 +300,10 @@ function parseLegacySetLocalVarCall(source: string, start: number, openParen: nu
   try {
     parsed = parseJson5(object.objectSource);
   } catch {
-    return { kind: 'unsupported', reason: '旧版视觉配置不是纯静态 JSON/JSON5 对象，无法安全自动读取。' };
+    return { kind: 'unsupported', reason: '旧档案格式不是纯静态 JSON/JSON5 对象，无法安全自动读取。' };
   }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    return { kind: 'unsupported', reason: '旧版视觉配置必须是静态对象。' };
+    return { kind: 'unsupported', reason: '旧档案格式必须是静态对象。' };
   }
 
   let end = callEnd;
@@ -368,7 +368,7 @@ function mapLegacyProfile(assignment: ParsedLegacyAssignment): LegacyVisualInspe
   }
 
   if (urls.length === 0) {
-    return { state: 'unsupported', reason: '旧版视觉配置中没有可迁移的有效 HTTPS 立绘 URL。' };
+    return { state: 'unsupported', reason: '旧档案格式中没有可迁移的有效 HTTPS 立绘 URL。' };
   }
 
   if (!hasValidMainUrl && validGalleryCount > 1) {
@@ -402,7 +402,7 @@ function mapLegacyProfile(assignment: ParsedLegacyAssignment): LegacyVisualInspe
 
   const errors = validateProfile(profile);
   if (errors.length > 0) {
-    return { state: 'unsupported', reason: `旧版视觉配置转换后无法安全保存：${errors[0]}` };
+    return { state: 'unsupported', reason: `旧档案格式转换后无法安全保存：${errors[0]}` };
   }
 
   return {
@@ -447,7 +447,7 @@ export function inspectLegacyVisualProfile(content: string, expectedCharacterNam
   if (expectedName && assignment.characterName !== expectedName) {
     return {
       state: 'unsupported',
-      reason: `旧版视觉配置姓名“${assignment.characterName}”与当前角色“${expectedName}”不一致，已停止自动导入。`,
+      reason: `旧档案格式姓名“${assignment.characterName}”与当前角色“${expectedName}”不一致，已停止自动导入。`,
     };
   }
 
@@ -456,7 +456,7 @@ export function inspectLegacyVisualProfile(content: string, expectedCharacterNam
 
 export function upsertManagedEjsBlockWithLegacyMigration(
   content: string,
-  profile: CharacterVisualProfile,
+  profile: CharacterProfile,
 ): string {
   const managedInspection = inspectManagedBlock(content);
   if (managedInspection.state !== 'absent') {

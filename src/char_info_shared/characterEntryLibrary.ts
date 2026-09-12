@@ -10,7 +10,7 @@ export type CharacterEntryLike = {
 export type WorldbookCharacterEntry<T extends CharacterEntryLike, TProfile> = {
   entry: T;
   profile: TProfile;
-  hasVisualProfile: boolean;
+  hasProfileRecord: boolean;
   title: CharacterEntryTitle;
 };
 
@@ -153,7 +153,7 @@ export function collectWorldbookCharacterEntries<T extends CharacterEntryLike, T
       {
         entry,
         profile: profile ?? createFallbackProfile(entry, title),
-        hasVisualProfile: profile !== null,
+        hasProfileRecord: profile !== null,
         title,
       },
     ];

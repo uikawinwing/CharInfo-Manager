@@ -16,7 +16,7 @@ const defaultDivinityPath = new URL(
 );
 const appPath = new URL('../../src/char_info_viewer/App.vue', import.meta.url);
 
-test('Special NPC 沿用有立绘页面，并将导航作为桌面右侧栏和移动底栏', async () => {
+test('立绘角色卡 沿用有立绘页面，并将导航作为桌面右侧栏和移动底栏', async () => {
   const [sheet, navigation] = await Promise.all([readFile(shellPath, 'utf8'), readFile(navigationPath, 'utf8')]);
   assert.match(sheet, /<IllustratedTabNav[\s\S]*?v-if="specialNpc"[\s\S]*?side-rail/);
   assert.match(sheet, /v-if="specialNpc"[\s\S]*?:show-import-action="!readOnly"/);
@@ -33,7 +33,7 @@ test('Special NPC 沿用有立绘页面，并将导航作为桌面右侧栏和�
   assert.doesNotMatch(navigation, /\b(?:d)?vh\b/);
 });
 
-test('Special NPC 手机卡片使用 2:3 固定比例，技能沿用紧凑但可读的移动排版', async () => {
+test('立绘角色卡 手机卡片使用 2:3 固定比例，技能沿用紧凑但可读的移动排版', async () => {
   const [sheet, itemCard] = await Promise.all([readFile(shellPath, 'utf8'), readFile(itemCardPath, 'utf8')]);
   assert.match(sheet, /\.illustrated-wrapper\.is-special-npc\s*\{[\s\S]*?max-width:\s*min\(100%, 414px\)/);
   assert.match(sheet, /\.illustrated-shell\.is-special-npc\s*\{[\s\S]*?aspect-ratio:\s*2 \/ 3/);
@@ -75,7 +75,7 @@ test('Special NPC 手机卡片使用 2:3 固定比例，技能沿用紧凑但可
   assert.match(sheet, /\.illustrated-shell\.is-special-npc\.is-skills-tab \.illustrated-data-pane\s*\{[\s\S]*?66%/);
 });
 
-test('Special NPC 档案隐藏属性与资源，持有沿用技能的紧凑行式布局', async () => {
+test('立绘角色卡 档案隐藏属性与资源，持有沿用技能的紧凑行式布局', async () => {
   const [sheet, profilePanel, itemCard] = await Promise.all([
     readFile(shellPath, 'utf8'),
     readFile(profilePanelPath, 'utf8'),
@@ -128,7 +128,7 @@ test('Special NPC 档案隐藏属性与资源，持有沿用技能的紧凑行�
   );
 });
 
-test('Special NPC 手机首页将台词与资料直接叠在立绘渐变上，不保留双层矩形卡', async () => {
+test('立绘角色卡 手机首页将台词与资料直接叠在立绘渐变上，不保留双层矩形卡', async () => {
   const sheet = await readFile(shellPath, 'utf8');
   assert.match(
     sheet,
@@ -149,7 +149,7 @@ test('Special NPC 手机首页将台词与资料直接叠在立绘渐变上，�
   );
 });
 
-test('Special NPC 手机详情沿用当前立绘静态快照，并把 Save 收进六项底栏右侧操作位', async () => {
+test('立绘角色卡 手机详情沿用当前立绘静态快照，并把 Save 收进六项底栏右侧操作位', async () => {
   const [sheet, navigation, panel] = await Promise.all([
     readFile(shellPath, 'utf8'),
     readFile(navigationPath, 'utf8'),
@@ -176,7 +176,7 @@ test('Special NPC 手机详情沿用当前立绘静态快照，并把 Save 收�
   assert.match(panel, /<dt>职业<\/dt>/);
 });
 
-test('Special NPC 把装备与背包合并为持有，并把资源集中到第二项角色面板', async () => {
+test('立绘角色卡 把装备与背包合并为持有，并把资源集中到第二项角色面板', async () => {
   const [sheet, panel] = await Promise.all([readFile(shellPath, 'utf8'), readFile(panelPath, 'utf8')]);
   assert.match(sheet, /key: 'holdings', label: '持有'/);
   assert.match(sheet, /activeSpecialTab === 'holdings'/);
@@ -192,7 +192,7 @@ test('Special NPC 把装备与背包合并为持有，并把资源集中到第�
   assert.doesNotMatch(panel, /illustrated-attribute/);
 });
 
-test('Special NPC 手机登神页使用紧凑分隔行', async () => {
+test('立绘角色卡 手机登神页使用紧凑分隔行', async () => {
   const [sheet, defaultDivinity] = await Promise.all([
     readFile(shellPath, 'utf8'),
     readFile(defaultDivinityPath, 'utf8'),
@@ -208,7 +208,7 @@ test('Special NPC 手机登神页使用紧凑分隔行', async () => {
   assert.match(defaultDivinity, /\.illustrated-default-divinity\.is-compact \.default-divinity-card p\s*\{[\s\S]*?font-size:\s*11px !important/);
 });
 
-test('App 在 Special NPC 分支复用有立绘页面，而不是挂载独立空壳', async () => {
+test('App 在 立绘角色卡 分支复用有立绘页面，而不是挂载独立空壳', async () => {
   const source = await readFile(appPath, 'utf8');
   assert.match(source, /<IllustratedCharacterSheet[\s\S]*?v-if="shouldShowSpecialNpcLayout && vm"/);
   assert.match(source, /:special-npc="shouldShowSpecialNpcLayout"/);

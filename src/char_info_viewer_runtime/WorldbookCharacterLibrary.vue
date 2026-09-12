@@ -199,14 +199,14 @@
               :class="{
                 disabled: !character.entry.enabled,
                 encountered: character.encountered,
-                unconfigured: !character.hasVisualProfile,
+                unconfigured: !character.hasProfileRecord,
               }"
               @click="openDetails(character)"
             >
               <button
                 class="character-cover-button"
                 type="button"
-                :aria-label="`查看 ${characterName(character)}${coverUrl(character) ? '' : '（未配置图片）'}`"
+                :aria-label="`查看 ${characterName(character)}${coverUrl(character) ? '' : '（未配置档案）'}`"
                 @click.stop="openDetails(character)"
               >
                 <img
@@ -240,7 +240,7 @@
                   <i>{{ character.race || '种族未知' }}</i>
                   <i v-if="layout === 'cards'" class="entry-status">{{ character.entry.enabled ? '已启用' : '已禁用' }}</i>
                   <i v-if="character.encountered" class="encountered">已遇到</i>
-                  <i v-if="!character.hasVisualProfile" class="visual-missing">未配置图片</i>
+                  <i v-if="!character.hasProfileRecord" class="visual-missing">未配置档案</i>
                 </span>
                 <span v-if="character.author" class="character-library-card-author">{{ character.author }}</span>
               </div>
@@ -441,7 +441,7 @@
         <footer class="character-detail-footer">
           <button class="secondary-button" type="button" @click="closeDetails">返回角色库</button>
           <button class="primary-button" type="button" @click="emit('edit', detailCharacter.worldbookName, detailCharacter.entry.uid)">
-            编辑视觉资料
+            编辑档案
           </button>
         </footer>
       </article>
@@ -464,9 +464,9 @@ import {
 import {
   createEmptyProfile,
   inspectManagedBlock,
-  type CharacterVisualProfile,
+  type CharacterProfile,
   type GalleryImage,
-} from '../char_info_shared/characterVisualProfile';
+} from '../char_info_shared/characterProfile';
 import { DEFAULT_CHAR_INFO_THEME_MODE, managerThemeClass, type CharInfoThemeMode } from '../char_info_shared/managerTheme';
 import {
   buildCurrentWorldbookList,
@@ -477,10 +477,10 @@ import {
 import {
   resolveRemoteGalleryPresentation,
   type RemoteGalleryPresentation,
-} from '../char_info_viewer/services/galleryPackService';
+} from '../char_info_viewer/services/remoteGalleryService';
 import { normalizePortraitMediaUrlForBrowser } from '../char_info_viewer/services/imageUrl';
 
-type LibraryCharacter = WorldbookCharacterEntry<WorldbookEntry, CharacterVisualProfile> & {
+type LibraryCharacter = WorldbookCharacterEntry<WorldbookEntry, CharacterProfile> & {
   worldbookName: string;
   key: string;
   encountered: boolean;
@@ -731,9 +731,9 @@ async function loadRemotePresentations(loaded: readonly WorldbookEntry[], revisi
       if (index >= loaded.length) return;
       const entry = loaded[index];
       const inspection = inspectManagedBlock(entry.content);
-      if (inspection.state !== 'valid' || !inspection.profile.galleryPackUrl) continue;
+      if (inspection.state !== 'valid' || !inspection.profile.remoteGalleryUrl) continue;
       try {
-        const presentation = await resolveRemoteGalleryPresentation(inspection.profile.galleryPackUrl);
+        const presentation = await resolveRemoteGalleryPresentation(inspection.profile.remoteGalleryUrl);
         if (presentation && revision === entriesLoadRevision) {
           const key = worldbookEntryKey(worldbookName, entry.uid);
           remotePresentations[key] = presentation;

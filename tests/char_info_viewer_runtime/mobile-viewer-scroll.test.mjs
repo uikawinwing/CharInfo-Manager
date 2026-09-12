@@ -24,7 +24,7 @@ test('手机版普通角色详情由 Viewer 根节点接管纵向滚动', () => 
   assert.match(mobileScrollSource, /overscroll-behavior-y:\s*contain;/u);
 });
 
-test('Special NPC 保持固定视口，不被普通卡滚动补丁接管', () => {
+test('立绘角色卡 保持固定视口，不被普通卡滚动补丁接管', () => {
   assert.match(mobileScrollSource, /:not\(\.special-npc-viewer-root\)/u);
   assert.doesNotMatch(
     mobileScrollSource,

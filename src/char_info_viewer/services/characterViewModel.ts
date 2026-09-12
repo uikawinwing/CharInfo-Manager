@@ -1,9 +1,9 @@
-import type { CharacterProfileMetadata, CharacterStorySection } from '../../char_info_shared/characterVisualProfile';
+import type { CharacterProfileMetadata, CharacterStorySection } from '../../char_info_shared/characterProfile';
 import type { CharacterData } from '../types';
 import { getSmartArray, hasArrayContent, hasText, normalizeDisplayText } from './common';
 import { prioritizeImageSourceGroups } from './imageSourcePriority';
 import { normalizePortraitMediaUrlForBrowser } from './imageUrl';
-import { isSpecialNpcVisualData, resolveCharacterVisualMetadata } from './themeService';
+import { isSpecialNpcVisualData, resolveCharacterProfileMetadata } from './themeService';
 
 export type TabKey = 'profile' | 'skills' | 'equipment' | 'inventory' | 'divinity' | 'backstory' | 'statusEffects';
 
@@ -442,7 +442,7 @@ export function buildCharacterViewModel(
 ): CharacterViewModel {
   const nameText = normalizeDisplayText(pickField(data, '姓名') || '未知角色');
   const backstoryText = normalizeDisplayText(pickField(data, '背景故事') || '');
-  const profileMetadata = resolveCharacterVisualMetadata(data);
+  const profileMetadata = resolveCharacterProfileMetadata(data);
   const storySections = profileMetadata?.story_sections?.map(section => ({ ...section })) ?? [];
   const storyAuthorText = normalizeDisplayText(profileMetadata?.author || '');
   const profileVersionText = normalizeDisplayText(profileMetadata?.version || '');

@@ -15,10 +15,10 @@ const runtimeRootSource = readFileSync(
 );
 const runtimeSource = readFileSync(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
 const managerOverlaySource = readFileSync(
-  new URL('../../src/char_info_creator_manager/overlay.ts', import.meta.url),
+  new URL('../../src/char_info_profile_editor/overlay.ts', import.meta.url),
   'utf8',
 );
-const managerAppSource = readFileSync(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
+const managerAppSource = readFileSync(new URL('../../src/char_info_profile_editor/App.vue', import.meta.url), 'utf8');
 const illustratedSheetSource = readFileSync(
   new URL('../../src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue', import.meta.url),
   'utf8',
@@ -54,7 +54,7 @@ test('设置开关和角色库强制移动布局沿用 720px 布局契约', () =
   );
   assert.match(
     runtimeRootSource,
-    /class="char-info-library-overlay char-info-library-workspace"[\s\S]*?'force-mobile-layout': state\.settings\.forceMobileLayout/u,
+    /class="char-info-library-overlay char-info-character-library"[\s\S]*?'force-mobile-layout': state\.settings\.forceMobileLayout/u,
   );
   assert.equal(
     (runtimeRootSource.match(/:force-mobile-layout="state\.settings\.forceMobileLayout"/gu) ?? []).length,
@@ -92,11 +92,11 @@ test('设置开关和角色库强制移动布局沿用 720px 布局契约', () =
   assert.doesNotMatch(runtimeRootSource, /768\s*[×x]\s*1388/u);
 });
 
-test('玩家世界书库与独立 Creator 编辑器都接收强制移动布局设置', () => {
+test('玩家世界书库与独立角色档案编辑器都接收强制移动布局设置', () => {
   assert.match(runtimeSource, /forceMobileLayout: state\.settings\.forceMobileLayout/u);
   assert.match(
     runtimeSource,
-    /openCreatorManager\(\{[\s\S]*?worldbookName,[\s\S]*?entryUid,[\s\S]*?forceMobileLayout: state\.settings\.forceMobileLayout,[\s\S]*?debugEnabled: state\.settings\.debugEnabled,[\s\S]*?\}\)/u,
+    /openProfileEditor\(\{[\s\S]*?worldbookName,[\s\S]*?entryUid,[\s\S]*?forceMobileLayout: state\.settings\.forceMobileLayout,[\s\S]*?debugEnabled: state\.settings\.debugEnabled,[\s\S]*?\}\)/u,
   );
   assert.match(managerOverlaySource, /setForceMobileLayout\(value: boolean\): void;/u);
   assert.match(
@@ -111,7 +111,7 @@ test('玩家世界书库与独立 Creator 编辑器都接收强制移动布局�
   assert.doesNotMatch(managerAppSource, /768\s*[×x]\s*1388/u);
 });
 
-test('强制移动布局复用 Viewer 与 Special NPC 的同一套移动版式规则', () => {
+test('强制移动布局复用 Viewer 与 立绘角色卡 的同一套移动版式规则', () => {
   assert.match(viewerAppSource, /forceMobileLayout\?: boolean/u);
   assert.match(viewerAppSource, /'force-mobile-layout': props\.forceMobileLayout/u);
   assert.match(viewerAppSource, /:force-mobile-layout="props\.forceMobileLayout"[\s\S]*?:special-npc="shouldShowSpecialNpcLayout"/u);
@@ -132,7 +132,7 @@ test('强制移动布局复用 Viewer 与 Special NPC 的同一套移动版式�
   assert.doesNotMatch(
     illustratedSheetSource,
     /\.illustrated-wrapper\.force-mobile-layout\.is-special-npc\s*\{/u,
-    'Force Mobile Special NPC 不应维护独立尺寸分支，应沿用统一的移动布局外壳',
+    'Force Mobile 立绘角色卡 不应维护独立尺寸分支，应沿用统一的移动布局外壳',
   );
   assert.doesNotMatch(
     illustratedSheetSource,
@@ -150,7 +150,7 @@ test('强制移动布局复用 Viewer 与 Special NPC 的同一套移动版式�
 test('手机角色详情顶部只展示信息，操作移至底部安全区', () => {
   assert.match(
     runtimeRootSource,
-    /class="char-info-library-viewer-mobile-dock"[\s\S]*?角色列表[\s\S]*?添加角色视觉资料[\s\S]*?返回游戏[\s\S]*?刷新/u,
+    /class="char-info-library-viewer-mobile-dock"[\s\S]*?角色列表[\s\S]*?添加角色档案[\s\S]*?返回游戏[\s\S]*?刷新/u,
   );
   assert.match(
     runtimeRootSource,
@@ -170,11 +170,11 @@ test('手机角色详情顶部只展示信息，操作移至底部安全区', ()
   );
   assert.match(
     runtimeRootSource,
-    /function closeLibraryWorkspace\(\): void \{[\s\S]*?props\.onCloseLibrary\(\);/u,
+    /function closeCharacterLibrary\(\): void \{[\s\S]*?props\.onCloseLibrary\(\);/u,
   );
   assert.match(
     runtimeRootSource,
-    /class="char-info-library-viewer-mobile-dock"[\s\S]*?@click="closeLibraryWorkspace"/u,
+    /class="char-info-library-viewer-mobile-dock"[\s\S]*?@click="closeCharacterLibrary"/u,
   );
 });
 
