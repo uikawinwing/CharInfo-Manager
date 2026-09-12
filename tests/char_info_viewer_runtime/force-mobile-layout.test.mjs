@@ -77,9 +77,11 @@ test('设置开关和角色库强制移动布局沿用 720px 布局契约', () =
     runtimeRootSource,
     /function toggleMobileFilters\(\): void \{[\s\S]*?mobileFiltersExpanded\.value = !mobileFiltersExpanded\.value/u,
   );
+  assert.match(runtimeRootSource, /--ci-mobile-safe-top: max\(env\(safe-area-inset-top, 0px\), 28px\);/u);
+  assert.match(runtimeRootSource, /--ci-mobile-safe-bottom: max\(env\(safe-area-inset-bottom, 0px\), 18px\);/u);
   assert.match(
     runtimeRootSource,
-    /@media \(max-width: 720px\) \{[\s\S]*?safe-area-inset-top[\s\S]*?safe-area-inset-bottom/u,
+    /@media \(max-width: 720px\) \{[\s\S]*?\.char-info-character-library-header \{[\s\S]*?var\(--ci-mobile-safe-top\)/u,
   );
   assert.match(
     runtimeRootSource,
@@ -87,7 +89,7 @@ test('设置开关和角色库强制移动布局沿用 720px 布局契约', () =
   );
   assert.match(
     runtimeRootSource,
-    /\.char-info-library-list-dialog\.force-mobile-layout \.char-info-library-mobile-dock \{[\s\S]*?display: grid;[\s\S]*?safe-area-inset-bottom/u,
+    /\.char-info-library-list-dialog\.force-mobile-layout \.char-info-library-mobile-dock \{[\s\S]*?display: grid;[\s\S]*?var\(--ci-mobile-safe-bottom\)/u,
   );
   assert.doesNotMatch(runtimeRootSource, /768\s*[×x]\s*1388/u);
 });
@@ -154,7 +156,7 @@ test('手机角色详情顶部只展示信息，操作移至底部安全区', ()
   );
   assert.match(
     runtimeRootSource,
-    /\.char-info-library-viewer-mobile-dock\s*\{[\s\S]*?grid-template-columns:\s*1fr 1fr 1\.18fr 1fr;[\s\S]*?safe-area-inset-bottom/u,
+    /\.char-info-library-viewer-mobile-dock\s*\{[\s\S]*?grid-template-columns:\s*1fr 1fr 1\.18fr 1fr;[\s\S]*?var\(--ci-mobile-safe-bottom\)/u,
   );
   assert.match(
     runtimeRootSource,

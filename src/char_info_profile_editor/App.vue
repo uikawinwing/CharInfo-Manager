@@ -1794,6 +1794,10 @@ button {
   --danger-soft: rgb(199 125 130 / 12%);
   --warning: var(--ci-warning);
   --success: var(--ci-success);
+  --ci-mobile-safe-top: max(env(safe-area-inset-top, 0px), 28px);
+  --ci-mobile-safe-bottom: max(env(safe-area-inset-bottom, 0px), 18px);
+  --ci-mobile-safe-left: env(safe-area-inset-left, 0px);
+  --ci-mobile-safe-right: env(safe-area-inset-right, 0px);
 
   position: relative;
   display: grid;
@@ -3415,7 +3419,7 @@ pre {
     align-items: stretch;
     flex-direction: column;
     gap: 10px;
-    padding: calc(env(safe-area-inset-top) + 12px) 14px 12px;
+    padding: calc(12px + var(--ci-mobile-safe-top)) calc(14px + var(--ci-mobile-safe-right)) 12px calc(14px + var(--ci-mobile-safe-left));
   }
 
   .profile-editor-viewer-preview-toolbar {
@@ -3497,7 +3501,7 @@ pre {
     position: sticky;
     z-index: 6;
     bottom: 0;
-    padding: 10px 14px max(10px, env(safe-area-inset-bottom, 0px));
+    padding: 10px calc(14px + var(--ci-mobile-safe-right)) calc(10px + var(--ci-mobile-safe-bottom)) calc(14px + var(--ci-mobile-safe-left));
     align-items: stretch;
     flex-direction: column;
     gap: 8px;
@@ -3701,7 +3705,7 @@ pre {
   .save-bar {
     position: static;
     margin: 16px 0 0;
-    padding: 16px 17px;
+    padding: 16px calc(17px + var(--ci-mobile-safe-right)) calc(16px + var(--ci-mobile-safe-bottom)) calc(17px + var(--ci-mobile-safe-left));
     background: var(--surface);
     backdrop-filter: none;
   }
@@ -3735,7 +3739,7 @@ pre {
     z-index: 3;
     top: 0;
     align-items: center;
-    padding: 12px 14px;
+    padding: calc(12px + var(--ci-mobile-safe-top)) calc(14px + var(--ci-mobile-safe-right)) 12px calc(14px + var(--ci-mobile-safe-left));
   }
 
   .dialog-header h1 {

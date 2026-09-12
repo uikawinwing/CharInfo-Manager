@@ -1980,7 +1980,7 @@ onBeforeUnmount(() => {
   grid-template-columns: 1fr 1fr 1.18fr 1fr;
   align-items: end;
   gap: 8px;
-  padding: 7px 14px max(8px, env(safe-area-inset-bottom, 0px));
+  padding: 7px 14px calc(8px + var(--ci-mobile-safe-bottom));
   border-top: 1px solid var(--ci-border);
   background: var(--ci-header);
   backdrop-filter: blur(18px);
@@ -2233,7 +2233,7 @@ onBeforeUnmount(() => {
     grid-template-columns: 1fr 1fr 1.18fr 1fr 1fr;
     align-items: end;
     gap: 3px;
-    padding: 7px 7px max(8px, env(safe-area-inset-bottom, 0px));
+    padding: 7px 7px calc(8px + var(--ci-mobile-safe-bottom));
     border-top: 1px solid var(--ci-border);
     background: var(--ci-header);
     backdrop-filter: blur(18px);
@@ -2491,7 +2491,7 @@ onBeforeUnmount(() => {
   grid-template-columns: 1fr 1fr 1.18fr 1fr 1fr;
   align-items: end;
   gap: 3px;
-  padding: 7px 7px max(8px, env(safe-area-inset-bottom, 0px));
+  padding: 7px 7px calc(8px + var(--ci-mobile-safe-bottom));
   border-top: 1px solid var(--ci-border);
   background: var(--ci-header);
   backdrop-filter: blur(18px);
@@ -2636,6 +2636,10 @@ onBeforeUnmount(() => {
 }
 
 .char-info-character-library {
+  --ci-mobile-safe-top: max(env(safe-area-inset-top, 0px), 28px);
+  --ci-mobile-safe-bottom: max(env(safe-area-inset-bottom, 0px), 18px);
+  --ci-mobile-safe-left: env(safe-area-inset-left, 0px);
+  --ci-mobile-safe-right: env(safe-area-inset-right, 0px);
   pointer-events: auto;
 }
 
@@ -2838,7 +2842,7 @@ onBeforeUnmount(() => {
 @media (max-width: 720px) {
   .char-info-character-library-header {
     min-height: 0;
-    padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 8px;
+    padding: calc(10px + var(--ci-mobile-safe-top)) calc(12px + var(--ci-mobile-safe-right)) 8px calc(12px + var(--ci-mobile-safe-left));
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 9px;
     cursor: default;
@@ -2901,7 +2905,7 @@ onBeforeUnmount(() => {
 
 .char-info-character-library.force-mobile-layout .char-info-character-library-header {
   min-height: 0;
-  padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 8px;
+  padding: calc(10px + var(--ci-mobile-safe-top)) calc(12px + var(--ci-mobile-safe-right)) 8px calc(12px + var(--ci-mobile-safe-left));
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 9px;
   cursor: default;

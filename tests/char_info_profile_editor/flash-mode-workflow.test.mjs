@@ -27,6 +27,10 @@ test('Flash Mode 只展示图片编辑并用一个保存并应用动作完成世
   assert.match(profileEditorSource, /function removeFlashImage\(index: number\)/u);
   assert.match(profileEditorSource, /\.dialog-body\.flash-mode\s*\{[\s\S]*?display: flex;[\s\S]*?overflow: hidden;/u);
   assert.match(profileEditorSource, /\.flash-mode-gallery\s*\{[\s\S]*?overflow-y: auto;[\s\S]*?flex: 1 1 auto;/u);
+  assert.match(profileEditorSource, /--ci-mobile-safe-top: max\(env\(safe-area-inset-top, 0px\), 28px\);/u);
+  assert.match(profileEditorSource, /--ci-mobile-safe-bottom: max\(env\(safe-area-inset-bottom, 0px\), 18px\);/u);
+  assert.match(profileEditorSource, /\.flash-mode-save-bar\s*\{[\s\S]*?var\(--ci-mobile-safe-bottom\)/u);
+  assert.match(profileEditorSource, /@mixin mobile-manager-layout[\s\S]*?\.dialog-header \{[\s\S]*?var\(--ci-mobile-safe-top\)/u);
   assert.match(profileEditorSource, /saveFlashProfileToCurrentChatWorldbook\(normalizedProfile\)/u);
   assert.match(profileEditorSource, /const applied = await applyCurrentProfileToCurrentChat\(\)/u);
   assert.match(profileEditorSource, /<h1 id="manager-title">角色档案编辑器<\/h1>/u);

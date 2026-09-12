@@ -83,8 +83,10 @@ test('手机角色库使用固定宿主坐标系、安全区底栏，并保留�
   assert.match(librarySource, /v-if="showBackToTop && !detailCharacter"[\s\S]*class="mobile-library-back-to-top"[\s\S]*:class="\{ 'menu-open': mobileMoreOpen \}"[\s\S]*aria-label="返回角色库顶部"[\s\S]*@click="scrollLibraryToTop"/u);
   assert.match(librarySource, /showBackToTop\.value = \(libraryPage\.value\?\.scrollTop \?\? 0\) > 320/u);
   assert.match(librarySource, /libraryPage\.value\?\.scrollTo\(\{ top: 0, behavior: 'smooth' \}\)/u);
-  assert.match(librarySource, /\.mobile-library-back-to-top \{[^}]*bottom: calc\(92px \+ env\(safe-area-inset-bottom\)\);[^}]*width: 44px;[^}]*height: 44px;/u);
-  assert.match(librarySource, /\.mobile-library-back-to-top\.menu-open \{ bottom: calc\(198px \+ env\(safe-area-inset-bottom\)\); \}/u);
+  assert.match(librarySource, /--ci-mobile-safe-top: max\(env\(safe-area-inset-top, 0px\), 28px\);/u);
+  assert.match(librarySource, /--ci-mobile-safe-bottom: max\(env\(safe-area-inset-bottom, 0px\), 18px\);/u);
+  assert.match(librarySource, /\.mobile-library-back-to-top \{[^}]*bottom: calc\(92px \+ var\(--ci-mobile-safe-bottom\)\);[^}]*width: 44px;[^}]*height: 44px;/u);
+  assert.match(librarySource, /\.mobile-library-back-to-top\.menu-open \{ bottom: calc\(198px \+ var\(--ci-mobile-safe-bottom\)\); \}/u);
   assert.match(librarySource, /@media \(max-width: 720px\)[\s\S]*?\.mobile-library-back-to-top \{ display: grid; \}/u);
   assert.match(librarySource, /\.force-mobile-layout \.mobile-library-back-to-top \{ display: grid; \}/u);
   assert.match(librarySource, /aria-label="搜索角色" @click="focusSearch"/u);
@@ -92,7 +94,7 @@ test('手机角色库使用固定宿主坐标系、安全区底栏，并保留�
   assert.match(librarySource, /aria-label="返回游戏"[^>]*@click="emit\('close'\)"/u);
   assert.match(librarySource, /mobileMoreOpen = false; emit\('editLibrary', selectedEditableWorldbookName\)[\s\S]*?视觉编辑/u);
   assert.match(librarySource, /@click="loadWorldbooks">重新读取角色库/u);
-  assert.match(librarySource, /\.mobile-library-dock \{ position: absolute;[\s\S]*?env\(safe-area-inset-bottom\)/u);
+  assert.match(librarySource, /\.mobile-library-dock \{ position: absolute;[\s\S]*?var\(--ci-mobile-safe-bottom\)/u);
   assert.match(librarySource, /\.manager-dialog, \.force-mobile-layout \.manager-dialog \{[^}]*height: 100dvh;/u);
   assert.match(librarySource, /\.force-mobile-layout \.manager-dialog \{ width: 100%; min-width: 0; max-width: none; height: 100dvh;[^}]*box-sizing: border-box;/u);
 });
@@ -101,6 +103,9 @@ test('手机角色详情锚定 CharInfo 全屏宿主，并将图库和只读条�
   assert.match(librarySource, /\.character-detail-layer \{ position: absolute; z-index: 3; inset: 0;/u);
   assert.match(librarySource, /\.character-detail-dialog \{ width: 100%; height: 100%; min-width: 0; min-height: 0; max-width: none; max-height: none; box-sizing: border-box;/u);
   assert.match(librarySource, /\.character-detail-body \{ display: block; overflow-y: auto; \}/u);
+  assert.match(librarySource, /\.manager-root:not\(\.embedded\) \.character-detail-header \{[\s\S]*?var\(--ci-mobile-safe-top\)/u);
+  assert.match(librarySource, /\.manager-root\.embedded \.character-detail-header \{ padding: 14px; \}/u);
+  assert.match(librarySource, /\.character-detail-footer \{[\s\S]*?calc\(14px \+ var\(--ci-mobile-safe-bottom\)\)/u);
   assert.match(librarySource, /class="character-detail-content"/u);
   assert.match(librarySource, /角色条目内容/u);
   assert.match(librarySource, /只读/u);
