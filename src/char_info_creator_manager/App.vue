@@ -39,7 +39,7 @@
         </div>
       </header>
 
-      <div class="dialog-body">
+      <div class="dialog-body" :class="{ 'quick-visual-mode': quickVisualMode }">
         <form v-if="quickVisualMode" class="quick-visual-editor" novalidate @submit.prevent="saveQuickVisualProfile">
           <section class="quick-visual-intro">
             <div>
@@ -50,18 +50,37 @@
           </section>
 
           <div class="quick-visual-gallery">
-            <GalleryStep
-              v-model:gallery="profile.gallery"
-              :avatar-url="profile.avatarUrl"
-              :cover-url="profile.coverUrl"
-              :gallery-pack-url="profile.galleryPackUrl ?? ''"
-              :character-name="profile.characterName"
-              :debug-enabled="props.debugEnabled"
-              quick-mode
-              @update:avatar-url="profile.avatarUrl = $event"
-              @update:cover-url="profile.coverUrl = $event"
-              @update:gallery-pack-url="profile.galleryPackUrl = $event.trim() || undefined"
-            />
+            <p class="quick-visual-guidance">粘贴 HTTPS 图片直链即可。第一张静态图会自动作为头像和角色库封面。</p>
+
+            <div class="quick-visual-list">
+              <article v-for="(image, index) in profile.gallery" :key="image.id" class="quick-visual-card">
+                <div class="quick-visual-card-heading">
+                  <strong>{{ index === 0 ? '主立绘' : `图片 ${index + 1}` }}</strong>
+                  <button
+                    v-if="profile.gallery.length > 1"
+                    type="button"
+                    class="quick-visual-remove"
+                    :aria-label="`删除第 ${index + 1} 张图片`"
+                    @click="removeQuickVisualImage(index)"
+                  >
+                    删除
+                  </button>
+                </div>
+                <label class="quick-visual-url-field">
+                  <span>图片 URL</span>
+                  <input
+                    :value="image.sources[0] ?? ''"
+                    type="url"
+                    inputmode="url"
+                    autocomplete="off"
+                    placeholder="https://…/portrait.webp"
+                    @input="updateQuickVisualImageUrl(image, ($event.target as HTMLInputElement).value)"
+                  />
+                </label>
+              </article>
+            </div>
+
+            <button class="quick-visual-add" type="button" @click="addQuickVisualImage">＋ 添加另一张图片</button>
           </div>
 
           <footer class="quick-visual-save-bar">
@@ -678,7 +697,7 @@ import {
 import { DEFAULT_CHAR_INFO_THEME_MODE, managerThemeClass, type CharInfoThemeMode } from '../char_info_shared/managerTheme';
 import { copyTextWithDocumentSelection, copyTextWithFallback } from './clipboard';
 import GalleryStep from './components/GalleryStep.vue';
-import type { EditableGalleryImage } from './galleryEditor';
+import { preferredStaticImageUrl, type EditableGalleryImage } from './galleryEditor';
 import {
   buildManagedEjsBlock,
   buildStatusGalleryImages,
@@ -1144,6 +1163,52 @@ function onCustomizeColorsChange() {
   profile.tierColor = '';
 }
 
+function ensureQuickVisualRows() {
+  if (profile.gallery.length === 0) {
+    profile.gallery.push({ id: nextImageId++, title: '主立绘', sources: [''], previewSourceIndex: 0 });
+  }
+  for (const image of profile.gallery) {
+    if (image.sources.length === 0) image.sources.push('');
+  }
+}
+
+function firstQuickStaticImageUrl(): string {
+  for (const image of profile.gallery) {
+    const url = preferredStaticImageUrl(image);
+    if (url) return url;
+  }
+  return '';
+}
+
+function syncQuickVisualRoleUrls(previousUrl = '') {
+  const fallbackUrl = firstQuickStaticImageUrl();
+  const previous = previousUrl.trim();
+  if (!profile.avatarUrl.trim() || (previous && profile.avatarUrl.trim() === previous)) profile.avatarUrl = fallbackUrl;
+  if (!profile.coverUrl.trim() || (previous && profile.coverUrl.trim() === previous)) profile.coverUrl = fallbackUrl;
+}
+
+function updateQuickVisualImageUrl(image: EditableGalleryImage, value: string) {
+  const previousUrl = image.sources[0] ?? '';
+  if (image.sources.length === 0) image.sources.push(value);
+  else image.sources[0] = value;
+  syncQuickVisualRoleUrls(previousUrl);
+}
+
+function addQuickVisualImage() {
+  profile.gallery.push({
+    id: nextImageId++,
+    title: `备用立绘 ${profile.gallery.length + 1}`,
+    sources: [''],
+    previewSourceIndex: 0,
+  });
+}
+
+function removeQuickVisualImage(index: number) {
+  if (profile.gallery.length <= 1) return;
+  const [removed] = profile.gallery.splice(index, 1);
+  syncQuickVisualRoleUrls(removed?.sources[0] ?? '');
+}
+
 function initializeQuickVisualMode() {
   const characterName = props.quickCharacterName.trim();
   if (!characterName) return;
@@ -1151,6 +1216,8 @@ function initializeQuickVisualMode() {
   const existingProfile = readQuickVisualProfileFromChatVariables(characterName, getVariables({ type: 'chat' }));
   quickProfileExists.value = !!existingProfile;
   replaceProfile(existingProfile ?? createEmptyProfile(characterName));
+  ensureQuickVisualRows();
+  syncQuickVisualRoleUrls();
   profile.characterName = characterName;
   activeStep.value = 4;
   furthestStep.value = 5;
@@ -1437,6 +1504,8 @@ async function saveQuickVisualProfile() {
   applyMessage.value = '';
 
   try {
+    ensureQuickVisualRows();
+    syncQuickVisualRoleUrls();
     const normalizedProfile = normalizeProfile(toFullSerializableProfile());
     const result = await saveQuickVisualProfileToCurrentChatWorldbook(normalizedProfile);
     saveMessage.value = '世界书已保存，正在同步当前聊天视觉…';
@@ -1925,6 +1994,7 @@ button {
   display: flex;
   min-width: 0;
   min-height: 0;
+  flex: 1 1 auto;
   grid-column: 1 / -1;
   flex-direction: column;
 }
@@ -1965,6 +2035,79 @@ button {
   min-height: 0;
   padding: 18px 22px 26px;
   overflow-y: auto;
+  flex: 1 1 auto;
+}
+
+.quick-visual-guidance {
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.quick-visual-list {
+  display: grid;
+  gap: 12px;
+}
+
+.quick-visual-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.quick-visual-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.quick-visual-url-field {
+  display: grid;
+  gap: 7px;
+}
+
+.quick-visual-url-field > span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.quick-visual-url-field input {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  color: var(--text);
+  background: var(--surface-soft);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+}
+
+.quick-visual-remove,
+.quick-visual-add {
+  min-height: 40px;
+  padding: 8px 12px;
+  color: var(--text-secondary);
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.quick-visual-remove {
+  min-height: 34px;
+  color: var(--danger);
+}
+
+.quick-visual-add {
+  width: 100%;
+  margin-top: 12px;
+  color: var(--primary);
+  border-style: dashed;
 }
 
 .quick-visual-save-bar {
@@ -3250,8 +3393,15 @@ pre {
     -webkit-overflow-scrolling: touch;
   }
 
+  .dialog-body.quick-visual-mode {
+    display: flex;
+    overflow: hidden;
+  }
+
   .quick-visual-editor {
-    min-height: 100%;
+    min-height: 0;
+    height: 100%;
+    flex: 1 1 auto;
   }
 
   .quick-visual-intro {
@@ -3267,8 +3417,11 @@ pre {
   }
 
   .quick-visual-gallery {
+    min-height: 0;
     padding: 12px 14px 18px;
-    overflow: visible;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .quick-visual-save-bar {

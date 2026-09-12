@@ -6,7 +6,6 @@ const runtimeRootSource = readFileSync(new URL('../../src/char_info_viewer_runti
 const runtimeSource = readFileSync(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
 const overlaySource = readFileSync(new URL('../../src/char_info_creator_manager/overlay.ts', import.meta.url), 'utf8');
 const creatorSource = readFileSync(new URL('../../src/char_info_creator_manager/App.vue', import.meta.url), 'utf8');
-const gallerySource = readFileSync(new URL('../../src/char_info_creator_manager/components/GalleryStep.vue', import.meta.url), 'utf8');
 
 test('当前聊天角色详情直接提供添加或编辑视觉入口', () => {
   assert.match(runtimeRootSource, /selectedCharacter\.hasVisualProfile \? '编辑视觉' : '添加视觉'/u);
@@ -21,12 +20,14 @@ test('Quick Mode 只展示图片编辑并用一个保存并应用动作完成世
   assert.match(creatorSource, /quickVisualMode\.value \|\| !!selectedEntry\.value/u);
   assert.match(creatorSource, /v-if="quickVisualMode" class="quick-visual-editor"/u);
   assert.match(creatorSource, /角色设定继续读取当前聊天变量；这里只保存立绘、头像与相册到当前聊天世界书/u);
-  assert.match(creatorSource, /<GalleryStep[\s\S]*?quick-mode/u);
+  assert.match(creatorSource, /class="quick-visual-url-field"[\s\S]*?type="url"[\s\S]*?placeholder="https:\/\/…\/portrait\.webp"/u);
+  assert.match(creatorSource, /@input="updateQuickVisualImageUrl\(image, \(\$event\.target as HTMLInputElement\)\.value\)"/u);
+  assert.match(creatorSource, /function ensureQuickVisualRows\(\)[\s\S]*?sources: \[''\]/u);
+  assert.match(creatorSource, /function addQuickVisualImage\(\)/u);
+  assert.match(creatorSource, /function removeQuickVisualImage\(index: number\)/u);
+  assert.match(creatorSource, /\.dialog-body\.quick-visual-mode\s*\{[\s\S]*?display: flex;[\s\S]*?overflow: hidden;/u);
+  assert.match(creatorSource, /\.quick-visual-gallery\s*\{[\s\S]*?overflow-y: auto;[\s\S]*?flex: 1 1 auto;/u);
   assert.match(creatorSource, /saveQuickVisualProfileToCurrentChatWorldbook\(normalizedProfile\)/u);
   assert.match(creatorSource, /const applied = await applyCurrentProfileToCurrentChat\(\)/u);
   assert.match(creatorSource, /quickProfileExists \? '保存并应用' : '添加并应用'/u);
-  assert.match(gallerySource, /v-if="!props\.quickMode" class="role-panel"/u);
-  assert.match(gallerySource, /v-if="!props\.quickMode" class="gallery-storage-panel"/u);
-  assert.match(gallerySource, /v-if="!props\.quickMode" class="batch-toolbar"/u);
-  assert.match(gallerySource, /props\.quickMode && url/u);
 });
