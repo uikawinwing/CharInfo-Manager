@@ -5,7 +5,7 @@
     <main class="manager-dialog" role="dialog" aria-modal="true" aria-labelledby="manager-title">
       <header class="dialog-header">
         <div class="header-title">
-          <h1 id="manager-title">{{ quickVisualMode ? `视觉资料 · ${profile.characterName || props.quickCharacterName}` : '角色视觉编辑器' }}</h1>
+          <h1 id="manager-title">{{ quickVisualMode ? '视觉编辑' : '角色视觉编辑器' }}</h1>
           <span v-if="!quickVisualMode" class="phase-badge">{{ activeStep }}/{{ steps.length }}</span>
         </div>
 
@@ -89,8 +89,21 @@
               <span v-if="validationErrors.length">{{ validationErrors[0] }}</span>
               <span v-else-if="applyMessage && saveState !== 'success'">{{ applyMessage }}</span>
             </div>
-            <button class="primary-button" type="submit" :disabled="!canQuickSave">
-              {{ saving || applyingSavedProfile ? '正在保存…' : quickProfileExists ? '保存并应用' : '添加并应用' }}
+            <button
+              class="primary-button quick-save-button"
+              :class="{ 'save-success': quickSaveCelebrating }"
+              type="submit"
+              :disabled="!canQuickSave || quickSaveCelebrating"
+            >
+              {{
+                quickSaveCelebrating
+                  ? '✓ 已保存'
+                  : saving || applyingSavedProfile
+                    ? '正在保存…'
+                    : quickProfileExists
+                      ? '保存并应用'
+                      : '添加并应用'
+              }}
             </button>
           </footer>
         </form>
@@ -809,9 +822,11 @@ const furthestStep = ref<StepId>(1);
 const customizeColors = ref(false);
 const saving = ref(false);
 const applyingSavedProfile = ref(false);
+const quickSaveCelebrating = ref(false);
 const saveState = ref<'idle' | 'success' | 'error'>('idle');
 const saveMessage = ref('选择世界书条目后即可写入。');
 const applyMessage = ref('');
+let quickSaveSuccessTimer: number | null = null;
 let nextImageId = 1;
 let nextStorySectionId = 1;
 const loadError = ref('');
@@ -923,7 +938,12 @@ function replaceProfile(value: CharacterVisualProfile) {
 const selectedEntry = computed(() => entries.value.find(entry => entry.uid === selectedEntryUid.value) ?? null);
 const canApplyCurrentProfile = computed(() => validationErrors.value.length === 0 && !applyingSavedProfile.value);
 const canQuickSave = computed(
-  () => quickVisualMode.value && validationErrors.value.length === 0 && !saving.value && !applyingSavedProfile.value,
+  () =>
+    quickVisualMode.value &&
+    validationErrors.value.length === 0 &&
+    !saving.value &&
+    !applyingSavedProfile.value &&
+    !quickSaveCelebrating.value,
 );
 const canPreviewViewer = computed(
   () => profile.characterName.trim().length > 0 && (quickVisualMode.value || !!selectedEntry.value),
@@ -1495,6 +1515,19 @@ function readStatusGallerySnapshotFromCurrentChat(characterName: string): unknow
     : null;
 }
 
+function scheduleQuickVisualReturn() {
+  quickSaveCelebrating.value = true;
+  if (quickSaveSuccessTimer !== null) window.clearTimeout(quickSaveSuccessTimer);
+  quickSaveSuccessTimer = window.setTimeout(() => {
+    quickSaveSuccessTimer = null;
+    if (props.onReturnToCurrentLibrary) {
+      props.onReturnToCurrentLibrary();
+      return;
+    }
+    emit('close');
+  }, 700);
+}
+
 async function saveQuickVisualProfile() {
   if (!canQuickSave.value) return;
 
@@ -1517,6 +1550,7 @@ async function saveQuickVisualProfile() {
     quickProfileExists.value = true;
     saveState.value = 'success';
     saveMessage.value = `✓ 已${result.created ? '添加' : '更新'}「${normalizedProfile.characterName}」视觉资料，并同步到当前聊天。`;
+    scheduleQuickVisualReturn();
   } catch (error) {
     console.error('[CharInfo Creator Manager] Failed to save quick visual profile:', error);
     saveState.value = 'error';
@@ -1714,6 +1748,10 @@ onMounted(() => {
 onBeforeUnmount(() => {
   viewerPreviewResizeObserver?.disconnect();
   viewerPreviewResizeObserver = null;
+  if (quickSaveSuccessTimer !== null) {
+    window.clearTimeout(quickSaveSuccessTimer);
+    quickSaveSuccessTimer = null;
+  }
 });
 </script>
 
@@ -2123,6 +2161,37 @@ button {
 
 .quick-visual-save-bar .primary-button {
   min-width: 180px;
+}
+
+.quick-save-button {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.quick-save-button.save-success,
+.quick-save-button.save-success:disabled {
+  color: var(--ci-on-primary);
+  background: var(--success);
+  border-color: var(--success);
+  box-shadow: 0 8px 26px color-mix(in srgb, var(--success) 34%, transparent);
+  opacity: 1;
+  cursor: default;
+  animation: quick-save-success-pop 560ms cubic-bezier(0.2, 0.85, 0.35, 1);
+}
+
+@keyframes quick-save-success-pop {
+  0% {
+    transform: scale(1);
+  }
+  42% {
+    transform: scale(1.035);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .target-panel,

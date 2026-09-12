@@ -29,5 +29,11 @@ test('Quick Mode 只展示图片编辑并用一个保存并应用动作完成世
   assert.match(creatorSource, /\.quick-visual-gallery\s*\{[\s\S]*?overflow-y: auto;[\s\S]*?flex: 1 1 auto;/u);
   assert.match(creatorSource, /saveQuickVisualProfileToCurrentChatWorldbook\(normalizedProfile\)/u);
   assert.match(creatorSource, /const applied = await applyCurrentProfileToCurrentChat\(\)/u);
-  assert.match(creatorSource, /quickProfileExists \? '保存并应用' : '添加并应用'/u);
+  assert.match(creatorSource, /quickVisualMode \? '视觉编辑' : '角色视觉编辑器'/u);
+  assert.match(creatorSource, /'save-success': quickSaveCelebrating/u);
+  assert.match(creatorSource, /quickSaveCelebrating\s*\? '✓ 已保存'/u);
+  assert.match(creatorSource, /quickProfileExists[\s\S]*?\? '保存并应用'[\s\S]*?: '添加并应用'/u);
+  assert.match(creatorSource, /function scheduleQuickVisualReturn\(\)[\s\S]*?window\.setTimeout\([\s\S]*?props\.onReturnToCurrentLibrary\(\)[\s\S]*?700\);/u);
+  assert.match(creatorSource, /saveMessage\.value = `✓ 已\$\{result\.created \? '添加' : '更新'\}[\s\S]*?scheduleQuickVisualReturn\(\);/u);
+  assert.match(creatorSource, /\.quick-save-button\.save-success[\s\S]*?background: var\(--success\);[\s\S]*?animation: quick-save-success-pop/u);
 });
