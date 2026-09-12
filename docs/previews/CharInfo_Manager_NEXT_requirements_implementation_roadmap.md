@@ -11,7 +11,7 @@ CharInfo Viewer 只有三种版式，不存在“普通立绘版”“普通带�
 | 分类 | 判定方式 | 当前范围 |
 | --- | --- | --- |
 | 普通角色 | 没有有效立绘，且不是可信 DX | 保留现有无图版式；未经 Master 明确要求，不重做布局、页签或视觉 |
-| Special NPC | 不是可信 DX，并且该姓名在 `char_info.profiles` 或暂时兼容的 `char_info_visuals` 中拥有有效立绘 | 使用 `special_npc` 版式；当前响应式重设计只属于这一类 |
+| Special NPC | 不是可信 DX，并且该姓名在 `char_info.profiles` 中拥有有效立绘 | 使用 `special_npc` 版式；当前响应式重设计只属于这一类 |
 | DX | roster 固定四名；当前只有前三名可通过可信 DX 占位符与 loader 加载，Siren（瑟涟）待确认启用 | 使用 DX 版式；不能通过姓名、立绘、profile 或 metadata 获得 DX 身份 |
 
 路由优先级固定为：
@@ -22,7 +22,7 @@ CharInfo Viewer 只有三种版式，不存在“普通立绘版”“普通带�
 
 必须遵守：
 
-- `char_info.profiles[姓名]` 是 Special NPC 的正式视觉资料来源；`char_info_visuals[姓名]` 仅作暂时兼容。
+- `char_info.profiles[姓名]` 是 Special NPC 唯一的运行时视觉资料来源；旧 `char_info_visuals` / `char_info.visual(s)` 只由 Creator 负责导入迁移。
 - `<char_info>` 内直接出现的图片 URL、普通变量占位符或其他图片字段不能授予 Special NPC 身份，也不能改变 UI 路由。
 - 没有受信视觉资料且不是可信 DX 的角色继续使用普通版；即使正文里出现图片字段，也不能因此升级成 Special NPC。
 - `char_info.profiles[姓名]` 不是 DX 身份凭证。
@@ -296,8 +296,8 @@ v0.1.7 不增加新的视觉设计或故事功能。目标是把当前工作线�
 状态：✅ Special NPC 路由白名单 / Viewer legacy gallery 只读边界 / test / lint / production build / 实际 SillyTavern Special NPC 已验证
 
 - DX 只认可信 DX placeholder + loader；不得通过姓名、profile、metadata 或手造字段升级。
-- Special NPC 只由 `char_info.profiles[姓名]` 与暂时兼容的 `char_info_visuals[姓名]` 授予。
-- `<char_info>` 内直接图片 URL、普通变量占位符及其他旧图片字段一律忽略，不进入 Viewer 图片数据；旧语法判定优先于聊天中残留的同名 visual profile，角色必须回退为真正的无图 Normal，并复用现有解析 warning 样式在卡片顶部提示作者在角色视觉编辑器中重新保存、升级至 v2。
+- Special NPC 只由 `char_info.profiles[姓名]` 授予；旧视觉变量不再参与 Viewer 路由。
+- `<char_info>` 内直接图片 URL、普通变量占位符及其他旧图片字段一律忽略，不进入 Viewer 图片数据；若同时存在同名 `char_info.profiles`，Viewer 继续使用新版 profile，并复用现有解析 warning 样式提示作者清理旧字段。
 - Viewer Runtime 停止把 `status.externalGalleries` 迁移并写回 `char_info.profiles`；Viewer 保持只读。
 - 旧 status gallery 如需兼容，只能作为只读 fallback；显式迁移与兼容输出留给 Creator 后续功能。
 - 普通无图版不得因本 checkpoint 发生布局或视觉变化。

@@ -97,9 +97,8 @@ LLM 只需在 `<char_info>` 内准确输出姓名，不需要输出图片字段�
 
 `登场台词` 与两种颜色均可省略。颜色只接受 `#RRGGBB`，缺失或无效时自动使用种族与生命层级的默认颜色。
 
-旧版
-`char_info_visuals[姓名].url/gallery`、`角色图片: '[[变量名]]`、直接填写图片 URL，以及“占位符对应 URL字符串”的方式仍然兼容。升级后会把
-`status.externalGalleries` 中尚未拥有新版图库的角色图片复制到 `char_info.profiles`；旧数据不会删除，已有新版图库也不会被覆盖。之后请使用角色视觉配置管理器维护图片。
+从 v0.3.0 起，Viewer 只读取 `char_info.profiles[姓名]` 作为角色视觉资料源。`char_info_visuals[姓名]`、`char_info.visual[姓名]`、`char_info.visuals[姓名]`、正文旧图片字段与变量占位符都不会再进入 Viewer。
+旧世界书数据不会因升级被自动删除；在角色视觉编辑器中打开可安全识别的旧格式条目时，Creator 会自动预填旧图片、颜色与登场台词，用户确认保存后才会精确移除旧视觉写入并升级为 `char_info.profiles`。无法静态确认的动态旧 EJS 会停止自动迁移，不会猜测或改写原内容。
 
 变量职责固定如下：
 

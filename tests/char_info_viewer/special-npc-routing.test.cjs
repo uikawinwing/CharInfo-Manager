@@ -5,7 +5,6 @@ const test = require('node:test');
 
 const { buildCharacterViewModel } = require('../../src/char_info_viewer/services/characterViewModel.ts');
 const {
-  getLegacyVisualProfileSource,
   hasDeprecatedVisualSyntax,
   resolveCharacterVisualConfig,
   resolveCharacterVisualPreview,
@@ -124,7 +123,7 @@ test('普通变量占位符与其他图片字段不得进入 Normal Viewer 图�
   assert.equal(forgedInternal.imageUrl, '');
 });
 
-test('暂时兼容的 char_info_visuals 同名资料仍可授予 Special NPC，并标记迁移来源', () => {
+test('v0.3.0 起 char_info_visuals 不再授予 Special NPC', () => {
   const data = resolveCharacterVisualConfig(
     { 姓名: '旧版特别角色' },
     {
@@ -134,12 +133,11 @@ test('暂时兼容的 char_info_visuals 同名资料仍可授予 Special NPC，�
     },
   );
 
-  assert.equal(data.角色图片, 'https://example.com/legacy-special.png');
-  assert.equal(buildCharacterViewModel(data).layoutKind, 'special_npc');
-  assert.equal(getLegacyVisualProfileSource(data), 'char_info_visuals');
+  assert.equal(data.角色图片, undefined);
+  assert.equal(buildCharacterViewModel(data).layoutKind, 'default');
 });
 
-test('历史 char_info.visual / char_info.visuals 路径只按精确姓名兼容 Special NPC', () => {
+test('v0.3.0 起 char_info.visual / char_info.visuals 旧路径不再参与 Viewer 路由', () => {
   for (const root of ['visual', 'visuals']) {
     const matching = resolveCharacterVisualConfig(
       { 姓名: '旧路径角色' },
@@ -151,21 +149,9 @@ test('历史 char_info.visual / char_info.visuals 路径只按精确姓名兼容
         },
       },
     );
-    const mismatch = resolveCharacterVisualConfig(
-      { 姓名: '其他角色' },
-      {
-        char_info: {
-          [root]: {
-            旧路径角色: { schema_version: 2, gallery: [{ sources: ['https://example.com/old-path.png'] }] },
-          },
-        },
-      },
-    );
 
-    assert.equal(buildCharacterViewModel(matching).layoutKind, 'special_npc');
-    assert.equal(getLegacyVisualProfileSource(matching), `char_info.${root}`);
-    assert.equal(buildCharacterViewModel(mismatch).layoutKind, 'default');
-    assert.equal(getLegacyVisualProfileSource(mismatch), null);
+    assert.equal(matching.角色图片, undefined);
+    assert.equal(buildCharacterViewModel(matching).layoutKind, 'default');
   }
 });
 
@@ -187,12 +173,12 @@ test('status external gallery 单独存在时不得授予 Special NPC', () => {
   assert.equal(buildCharacterViewModel(data).layoutKind, 'default');
 });
 
-test('旧版视觉兼容继续复用解析 warning 样式，并明确提示迁移与停止维护风险', () => {
+test('v0.3.0 继续提示正文旧图片字段已停用，并指向 char_info.profiles', () => {
   const appSource = fs.readFileSync(path.resolve(__dirname, '../../src/char_info_viewer/App.vue'), 'utf8');
 
   assert.match(appSource, /v-if="deprecatedVisualSyntaxWarning" class="parse-warning-card"/);
-  assert.match(appSource, /后续版本不再保证维护/);
-  assert.match(appSource, /char_info\.profiles v2/);
+  assert.match(appSource, /v0\.3\.0 起 Viewer 已忽略该字段/);
+  assert.match(appSource, /视觉资料只读取 char_info\.profiles/);
   assert.match(appSource, /正文旧版角色图片字段/);
 });
 
