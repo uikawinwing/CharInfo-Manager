@@ -149,14 +149,18 @@ test('强制移动布局复用 Viewer 与 立绘角色卡 的同一套移动版�
   );
 });
 
-test('手机角色详情底栏保留三个主动作，并把刷新移到顶部工具区', () => {
+test('手机角色详情底栏保留三个主动作，返回游戏固定在中央槽位，并把刷新移到顶部工具区', () => {
   assert.match(
     runtimeRootSource,
-    /class="char-info-library-viewer-mobile-dock"[\s\S]*?角色列表[\s\S]*?添加角色档案[\s\S]*?返回游戏/u,
+    /class="char-info-library-viewer-mobile-dock"[\s\S]*?viewer-dock-list[\s\S]*?角色列表[\s\S]*?viewer-dock-home[\s\S]*?返回游戏[\s\S]*?viewer-dock-profile[\s\S]*?添加角色档案/u,
   );
   assert.match(
     runtimeRootSource,
-    /\.char-info-library-viewer-mobile-dock\s*\{[\s\S]*?grid-template-columns:\s*1fr 1fr 1\.18fr;[\s\S]*?var\(--ci-mobile-safe-bottom\)/u,
+    /\.char-info-library-viewer-mobile-dock\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) 132px minmax\(0, 1fr\);[\s\S]*?var\(--ci-mobile-safe-bottom\)/u,
+  );
+  assert.match(
+    runtimeRootSource,
+    /\.char-info-library-viewer-mobile-dock \.viewer-dock-list\s*\{\s*grid-column:\s*1;[\s\S]*?\.char-info-library-viewer-mobile-dock \.viewer-dock-home\s*\{[\s\S]*?grid-column:\s*2;[\s\S]*?width:\s*100%;[\s\S]*?justify-self:\s*center;[\s\S]*?\.char-info-library-viewer-mobile-dock \.viewer-dock-profile\s*\{\s*grid-column:\s*3;/u,
   );
   assert.match(
     runtimeRootSource,
