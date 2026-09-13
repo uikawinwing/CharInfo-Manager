@@ -187,17 +187,21 @@ function tavern_sync(compiler: webpack.Compiler) {
   });
 }
 
-function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Configuration {
+function parse_configuration(
+  entry: Entry,
+  options: { themeLabOffline?: boolean } = {},
+): (_env: any, argv: any) => webpack.Configuration {
   const should_obfuscate = fs
     .readFileSync(path.join(import.meta.dirname, entry.script), 'utf-8')
     .includes('@obfuscate');
   const script_filepath = path.parse(entry.script);
   const standaloneBrowserPreview = entry.script.replaceAll('\\', '/') === 'src/char_info_v2_theme_lab/index.ts';
+  const themeLabOffline = options.themeLabOffline === true && standaloneBrowserPreview;
 
   return (_env, argv) => ({
     context: import.meta.dirname,
     experiments: {
-      outputModule: true,
+      outputModule: !themeLabOffline,
     },
     devtool: standaloneBrowserPreview ? false : argv.mode === 'production' ? 'source-map' : 'eval-source-map',
     watchOptions: {
@@ -224,12 +228,10 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
         path.relative(import.meta.dirname, script_filepath.dir).replace(/^[^\\/]+[\\/]/, ''),
       ),
       chunkFilename: `${script_filepath.name}.[contenthash].chunk.js`,
-      asyncChunks: true,
+      asyncChunks: !themeLabOffline,
       clean: true,
       publicPath: '',
-      library: {
-        type: 'module',
-      },
+      ...(themeLabOffline ? {} : { library: { type: 'module' as const } }),
     },
     module: {
       rules: [
@@ -430,8 +432,9 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
       : [
           new HtmlWebpackPlugin({
             template: path.join(import.meta.dirname, entry.html),
-            filename: path.parse(entry.html).base,
-            scriptLoading: 'module',
+            filename: themeLabOffline ? 'char_info_v2_theme_lab_OFFLINE.html' : path.parse(entry.html).base,
+            scriptLoading: themeLabOffline ? 'blocking' : 'module',
+            inject: themeLabOffline ? 'body' : true,
             cache: false,
           }),
           new HtmlInlineScriptWebpackPlugin(),
@@ -444,9 +447,7 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
         ]
     )
       .concat(
-        { apply: watch_tavern_helper },
-        { apply: schema_dump },
-        { apply: tavern_sync },
+        ...(themeLabOffline ? [] : [{ apply: watch_tavern_helper }, { apply: schema_dump }, { apply: tavern_sync }]),
         new VueLoaderPlugin(),
         unpluginAutoImport({
           dts: true,
@@ -503,29 +504,35 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
               },
             }),
       ],
-      splitChunks: {
-        chunks: 'async',
-        minSize: 20000,
-        minChunks: 1,
-        maxAsyncRequests: 30,
-        maxInitialRequests: 30,
-        cacheGroups: {
-          vendor: {
-            name: 'vendor',
-            test: /[\\/]node_modules[\\/]/,
-            priority: -10,
+      splitChunks: themeLabOffline
+        ? false
+        : {
+            chunks: 'async',
+            minSize: 20000,
+            minChunks: 1,
+            maxAsyncRequests: 30,
+            maxInitialRequests: 30,
+            cacheGroups: {
+              vendor: {
+                name: 'vendor',
+                test: /[\\/]node_modules[\\/]/,
+                priority: -10,
+              },
+              default: {
+                name: 'default',
+                minChunks: 2,
+                priority: -20,
+                reuseExistingChunk: true,
+              },
+            },
           },
-          default: {
-            name: 'default',
-            minChunks: 2,
-            priority: -20,
-            reuseExistingChunk: true,
-          },
-        },
-      },
     },
     externals: ({ context, request }, callback) => {
       if (!context || !request) {
+        return callback();
+      }
+
+      if (themeLabOffline) {
         return callback();
       }
 
@@ -578,7 +585,9 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
   });
 }
 
-export default (_env: any, argv: any) => {
-  const includeDevOnly = argv.mode !== 'production';
-  return glob_script_files(includeDevOnly).map(entry => parse_configuration(parse_entry(entry))(_env, argv));
+export default (_env: { themeLabOffline?: boolean | string } | undefined, argv: any) => {
+  const themeLabOffline = _env?.themeLabOffline === true || _env?.themeLabOffline === 'true';
+  const includeDevOnly = argv.mode !== 'production' || themeLabOffline;
+  const scriptFiles = themeLabOffline ? ['src/char_info_v2_theme_lab/index.ts'] : glob_script_files(includeDevOnly);
+  return scriptFiles.map(entry => parse_configuration(parse_entry(entry), { themeLabOffline })(_env, argv));
 };

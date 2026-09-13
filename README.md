@@ -56,7 +56,9 @@
 
 ### 按姓名读取 CharInfo 角色视觉资料
 
-查看器使用聊天级 `char_info.profiles[角色姓名]` 作为自己的视觉资料路径，不读取 `status.externalGalleries` 作为 CharInfo 数据源。Creator 的「即时写入变量及状态栏」会把状态栏支持的静态相册图片**单向投影**到 `status.externalGalleries.partners[角色姓名].images`，仅供状态栏相簿消费；不会从该路径反向同步回 CharInfo。「保存到世界书」只更新世界书条目，不修改当前聊天变量。头像仍可单独写入状态栏路径；头像与全身立绘分开配置，避免把构图不合适的相册图片自动裁成头像：
+查看器使用聊天级 `char_info.profiles[角色姓名]` 作为自己的视觉资料路径，不读取 `status.externalGalleries`
+作为 CharInfo 数据源。Creator 的「即时写入变量及状态栏」会把状态栏支持的静态相册图片**单向投影**到
+`status.externalGalleries.partners[角色姓名].images`，仅供状态栏相簿消费；不会从该路径反向同步回 CharInfo。「保存到世界书」只更新世界书条目，不修改当前聊天变量。头像仍可单独写入状态栏路径；头像与全身立绘分开配置，避免把构图不合适的相册图片自动裁成头像：
 
 ```ejs
 <%_
@@ -93,13 +95,15 @@ LLM 只需在 `<char_info>` 内准确输出姓名，不需要输出图片字段�
 是同一图片的镜像来源：按数组顺序加载，当前地址加载失败时自动尝试下一个。找不到有效相册时回退到无图普通版。状态栏头像只读取
 `status.externalAvatars.partners.<姓名>.url`，不会自动拿相册图片代替。
 
-状态栏相簿目前只支持 `png / jpg / jpeg / webp / avif`。使用「即时写入变量及状态栏」时，MP4／WebM 等不受支持格式仍会完整写入 CharInfo，但不会进入状态栏相簿，并会弹出非阻塞提示；若同一项提供受支持的静态 fallback，则状态栏使用该 fallback。查看器自身仍兼容静态图片、GIF、动态 WebP／AVIF，以及旧资料中的 MP4／WebM；Catbox 的动画图片与视频会保留原始 URL，避免图片代理压平动画帧或破坏视频流。
+状态栏相簿目前只支持
+`png / jpg / jpeg / webp / avif`。使用「即时写入变量及状态栏」时，MP4／WebM 等不受支持格式仍会完整写入 CharInfo，但不会进入状态栏相簿，并会弹出非阻塞提示；若同一项提供受支持的静态 fallback，则状态栏使用该 fallback。查看器自身仍兼容静态图片、GIF、动态 WebP／AVIF，以及旧资料中的 MP4／WebM；Catbox 的动画图片与视频会保留原始 URL，避免图片代理压平动画帧或破坏视频流。
 
 `登场台词` 与两种颜色均可省略。颜色只接受 `#RRGGBB`，缺失或无效时自动使用种族与生命层级的默认颜色。
 
 旧版
 `char_info_visuals[姓名].url/gallery`、`角色图片: '[[变量名]]`、直接填写图片 URL，以及“占位符对应 URL字符串”的方式仍然兼容。升级后会把
-`status.externalGalleries` 中尚未拥有新版图库的角色图片复制到 `char_info.profiles`；旧数据不会删除，已有新版图库也不会被覆盖。之后请使用角色视觉配置管理器维护图片。
+`status.externalGalleries` 中尚未拥有新版图库的角色图片复制到
+`char_info.profiles`；旧数据不会删除，已有新版图库也不会被覆盖。之后请使用角色视觉配置管理器维护图片。
 
 变量职责固定如下：
 
@@ -109,15 +113,22 @@ LLM 只需在 `<char_info>` 内准确输出姓名，不需要输出图片字段�
 - `script`：只保存查看器界面偏好，例如活跃渲染楼层数和粒子特效开关；不保存剧情或角色资料。
 - `global`：不保存 CharInfo 项目数据。
 
-当前发布线只提供两种 Viewer 版式：有有效立绘的角色使用 Special NPC 版式；没有有效立绘的角色使用普通无图版式。不存在第三种已发布角色路由，也不存在“普通立绘版”。立绘只决定是否进入 Special NPC，不会授予额外的隐藏身份或自动注入行为。
+当前发布线只提供两种 Viewer 版式：有有效立绘的角色使用 Special
+NPC 版式；没有有效立绘的角色使用普通无图版式。不存在第三种已发布角色路由，也不存在“普通立绘版”。立绘只决定是否进入 Special
+NPC，不会授予额外的隐藏身份或自动注入行为。
 
-普通 `<char_info>` 始终按完整 YAML 角色资料解析。玩家主动选择“导入角色状态”时，按当前导入规则更新对应角色资料；Viewer 不包含未发布角色主题的专属 loader、占位符或后台自动注入链路。
+普通 `<char_info>`
+始终按完整 YAML 角色资料解析。玩家主动选择“导入角色状态”时，按当前导入规则更新对应角色资料；Viewer 不包含未发布角色主题的专属 loader、占位符或后台自动注入链路。
 
 ### 玩家角色库与角色资料编辑器
 
-只需在酒馆助手中安装 `dist/char_info_viewer_runtime/index.js`。这个 CharInfo Manager 脚本同时提供常驻 Viewer、当前聊天角色库、世界书角色库和 Creator Editor。
+只需在酒馆助手中安装 `dist/char_info_viewer_runtime/index.js`。这个 CharInfo
+Manager 脚本同时提供常驻 Viewer、当前聊天角色库、世界书角色库和 Creator Editor。
 
-Viewer 与 Creator 在源码中仍保持独立模块和职责：玩家浏览、图库和世界书角色开关由 Viewer Runtime 管理；只有玩家选择“编辑角色资料”时才会按需挂载 Creator Editor，用于保存角色资料、头像、图库与配色。关闭 Editor 后会卸载其 Vue、样式和 iframe，不保持编辑器常驻。旧的 CharInfo 正则／`$1` iframe 入口不再需要。
+Viewer 与 Creator 在源码中仍保持独立模块和职责：玩家浏览、图库和世界书角色开关由 Viewer
+Runtime 管理；只有玩家选择“编辑角色资料”时才会按需挂载 Creator
+Editor，用于保存角色资料、头像、图库与配色。关闭 Editor 后会卸载其 Vue、样式和 iframe，不保持编辑器常驻。旧的 CharInfo 正则／`$1`
+iframe 入口不再需要。
 
 - 读取酒馆中的全部世界书，并将当前角色卡绑定的主世界书与附加世界书置顶。
 - 在可搜索选择器中查找目标世界书，再读取其中的角色条目。
@@ -125,7 +136,8 @@ Viewer 与 Creator 在源码中仍保持独立模块和职责：玩家浏览、�
 - 没有视觉资料的角色使用占位封面并标记“未配置图片”；有头像时优先使用头像，之后才尝试主立绘及备用图片地址。
 - 角色库支持按姓名、种族或条目名搜索，并按启用状态筛选。
 - 可直接启用或禁用角色条目；开关按世界书名称与条目 UID 定位，只修改目标条目的 `enabled` 字段。
-- 点击封面或角色卡片正文会先打开只读角色详情，展示完整图库与条目正文；需要修改角色资料时，再从详情页进入 Creator Manager。
+- 点击封面或角色卡片正文会先打开只读角色详情，展示完整图库与条目正文；需要修改角色资料时，再从详情页进入 Creator
+  Manager。
 - 没有视觉资料的角色同样可以查看原始条目正文，也可以从详情页进入五步编辑器新增视觉资料。
 - 条目显示名会移除固定 `[DLC][角色]` 标签与末尾括号元数据；世界书中的原始条目名不会被改写。
 - 在同一个搜索选择器中筛选角色条目；`[DLC][角色]` 前缀条目会优先显示。
@@ -158,11 +170,19 @@ Viewer 与 Creator 在源码中仍保持独立模块和职责：玩家浏览、�
 ## 开发与分发
 
 - `pnpm watch`：日常开发入口，会先清理旧 `dist`，然后持续编译所有开发入口；包含标记为 `@dev-only` 的 DX / Theme Lab。
-- `pnpm build:dev`：一次性生成完整开发预览，适合确认 `dist/char_info_v2_theme_lab/index.html` 等独立页面；若 watcher 已运行则拒绝启动，避免两个编译器同时写 `dist`。
+- `pnpm build:dev`：一次性生成完整开发预览，适合确认 `dist/char_info_v2_theme_lab/index.html`
+  等独立页面；若 watcher 已运行则拒绝启动，避免两个编译器同时写 `dist`。
+- `pnpm build:theme-lab-offline`：只构建 DX Theme Lab，把运行依赖与 fixture 立绘内联为
+  `dist/char_info_v2_theme_lab/char_info_v2_theme_lab_OFFLINE.html`，不会触发 Tavern 同步或公开发布流程。
+- `pnpm check:theme-lab-offline`：要求离线产物只有一个 HTML、没有 module/CDN 依赖，并用 Chrome/Chromium 在
+  `file://` + 禁网条件下实际渲染检查；可设置 `CHROME_PATH` 指定浏览器。
+- `pnpm verify:theme-lab-offline`：连续执行离线构建与上述真实浏览器检查，作为 DX 离线预览的完整验收入口。
 - `pnpm release:check`：公开分发前的唯一检查入口；依次执行 lint、完整测试、production build 和 DX 防泄漏扫描。
-- `pnpm build`：production build。若检测到 `pnpm watch` 仍占用开发监听端口，会直接拒绝执行，避免 dev-only 文件与公开 `dist` 互相覆盖。
+- `pnpm build`：production build。若检测到 `pnpm watch` 仍占用开发监听端口，会直接拒绝执行，避免 dev-only 文件与公开
+  `dist` 互相覆盖。
 - production build 会从干净 `dist` 开始，并物理排除 `@dev-only` entry；不要手工编辑 `dist` 作为源码。
-- Webpack 的 entry 列表在 watcher 启动时确定。如果切换 Git 分支时新增或删除了 `src/**/index.ts` 入口，需要重启一次 `pnpm watch`；普通 `.vue` / `.ts` / `.css` 修改不需要重启。
+- Webpack 的 entry 列表在 watcher 启动时确定。如果切换 Git 分支时新增或删除了 `src/**/index.ts` 入口，需要重启一次
+  `pnpm watch`；普通 `.vue` / `.ts` / `.css` 修改不需要重启。
 - GitHub 的 `bundle` workflow 使用同一个 `pnpm release:check`，通过后才提交公开 `dist` 并进入自动 tag 流程。
 
 ## 使用与发布提醒
