@@ -332,7 +332,7 @@
       </main>
 
       <nav class="char-info-library-viewer-mobile-dock" aria-label="角色资料操作">
-        <button type="button" aria-label="返回角色列表" @click="showLibraryListFromViewer">
+        <button class="viewer-dock-list" type="button" aria-label="返回角色列表" @click="showLibraryListFromViewer">
           <svg aria-hidden="true" viewBox="0 0 24 24">
             <path d="M5 6h14M5 12h14M5 18h14" />
             <circle cx="3" cy="6" r="0.75" />
@@ -341,8 +341,16 @@
           </svg>
           <span>角色列表</span>
         </button>
+        <button class="primary viewer-dock-home" type="button" aria-label="返回游戏并关闭角色资料" @click="closeCharacterLibrary">
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="m4 11 8-7 8 7" />
+            <path d="M6.5 10v10h11V10M9.5 20v-6h5v6" />
+          </svg>
+          <span>返回游戏</span>
+        </button>
         <button
           v-if="selectedCharacter"
+          class="viewer-dock-profile"
           type="button"
           :aria-label="selectedCharacter.hasProfileRecord ? '编辑角色档案' : '添加角色档案'"
           @click="props.onEditCurrentChatCharacterProfile(selectedCharacter.name)"
@@ -352,13 +360,6 @@
             <path d="m13.5 5.5 5 5" />
           </svg>
           <span>{{ selectedCharacter.hasProfileRecord ? '编辑档案' : '添加档案' }}</span>
-        </button>
-        <button class="primary" type="button" aria-label="返回游戏并关闭角色资料" @click="closeCharacterLibrary">
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="m4 11 8-7 8 7" />
-            <path d="M6.5 10v10h11V10M9.5 20v-6h5v6" />
-          </svg>
-          <span>返回游戏</span>
         </button>
       </nav>
               </section>
@@ -1965,13 +1966,27 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   min-height: 72px;
   flex: 0 0 auto;
-  grid-template-columns: 1fr 1fr 1.18fr;
+  grid-template-columns: minmax(0, 1fr) 132px minmax(0, 1fr);
   align-items: end;
   gap: 10px;
   padding: 7px 18px calc(8px + var(--ci-mobile-safe-bottom));
   border-top: 1px solid var(--ci-border);
   background: var(--ci-header);
   backdrop-filter: blur(18px);
+}
+
+.char-info-library-viewer-mobile-dock .viewer-dock-list {
+  grid-column: 1;
+}
+
+.char-info-library-viewer-mobile-dock .viewer-dock-home {
+  grid-column: 2;
+  width: 100%;
+  justify-self: center;
+}
+
+.char-info-library-viewer-mobile-dock .viewer-dock-profile {
+  grid-column: 3;
 }
 
 .char-info-library-viewer-mobile-dock button {
