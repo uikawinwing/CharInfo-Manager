@@ -152,5 +152,21 @@ test('相册步骤只提供外部图床快捷入口，不实现自动上传', ()
   assert.match(galleryStepSource, /href="https:\/\/catbox\.moe\/"/);
   assert.match(galleryStepSource, /href="https:\/\/imgbb\.com\/"/);
   assert.match(galleryStepSource, /target="_blank"\s+rel="noopener noreferrer"/);
+  assert.match(galleryStepSource, /什么是图片直链？/u);
+  assert.match(galleryStepSource, /\.png \/ \.jpg \/ \.jpeg \/ \.webp \/ \.avif/u);
+  assert.match(galleryStepSource, /图床的相册页或分享页不是直链/u);
   assert.doesNotMatch(galleryStepSource, /\/api\/files|uploadImage|uploadTo/);
+});
+
+test('相册步骤兼容宿主 Vue，并移除旧独立扩展图库 UI', () => {
+  const galleryStepSource = readFileSync(
+    new URL('../../src/char_info_profile_editor/components/GalleryStep.vue', import.meta.url),
+    'utf8',
+  );
+
+  assert.doesNotMatch(galleryStepSource, /defineModel/u);
+  assert.match(galleryStepSource, /gallery: EditableGalleryImage\[\]/u);
+  assert.match(galleryStepSource, /'update:gallery': \[value: EditableGalleryImage\[\]\]/u);
+  assert.match(galleryStepSource, /get: \(\) => props\.gallery/u);
+  assert.doesNotMatch(galleryStepSource, /使用独立扩展图库|useExtendedGallery|isExtendedGalleryImage|storage-pill/u);
 });

@@ -52,7 +52,7 @@
               <svg aria-hidden="true" viewBox="0 0 24 24">
                 <path d="m4 16 9.8-9.8 4 4L8 20H4v-4Zm11.2-11.2 1.4-1.4a1.4 1.4 0 0 1 2 0l2 2a1.4 1.4 0 0 1 0 2l-1.4 1.4-4-4Z" />
               </svg>
-              <span>视觉编辑</span>
+              <span>编辑角色档案</span>
             </button>
           </div>
           <button class="close-button" type="button" aria-label="关闭" @click="emit('close')">×</button>
@@ -310,7 +310,7 @@
                 role="menuitem"
                 @click="mobileMoreOpen = false; emit('editLibrary', selectedEditableWorldbookName)"
               >
-                视觉编辑
+                编辑角色档案
               </button>
               <button type="button" role="menuitem" @click="loadWorldbooks">重新读取角色库</button>
             </div>
