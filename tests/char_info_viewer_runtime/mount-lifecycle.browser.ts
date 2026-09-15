@@ -9,8 +9,9 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { after, before, test } from 'node:test';
 import ts from 'typescript';
+import { defaultRuntimeSettings } from '../../src/char_info_viewer_runtime/runtimeSettings';
 
-const { chromium } = require(process.env.CHARINFO_PLAYWRIGHT_MODULE || 'playwright');
+let chromium: any;
 const repo = path.resolve(__dirname, '../..');
 const sourcePaths = {
   runtime: 'src/char_info_viewer_runtime/runtime.ts',
@@ -24,13 +25,15 @@ const sources = Object.fromEntries(Object.entries(sourcePaths).map(([name, file]
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
   }).outputText,
 ]));
-const settings = require('../../src/char_info_viewer_runtime/runtimeSettings.ts').defaultRuntimeSettings();
+const settings = defaultRuntimeSettings();
 // Use the production inline Teleport template; replace only the leaf Viewer UI.
 const rootSource = readFileSync(path.join(repo, 'src/char_info_viewer_runtime/RuntimeRoot.vue'), 'utf8');
 const inlineTemplate = rootSource.slice('<template>'.length, rootSource.indexOf('  <Teleport v-if="state.library"'));
 let browser: any;
 
 before(async () => {
+  const playwrightModule = process.env.CHARINFO_PLAYWRIGHT_MODULE || 'playwright';
+  ({ chromium } = await import(playwrightModule));
   browser = await chromium.launch({ channel: 'chrome', headless: true });
 });
 after(async () => { await browser?.close(); });
