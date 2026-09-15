@@ -165,12 +165,16 @@ test('当前角色库先显示基础资料，再异步逐个补远程 avatarThum
 
 test('手动刷新会重读变量并强制重挂当前 CharInfo floors', async () => {
   const source = await readFile(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
+  const rootSource = await readFile(new URL('../../src/char_info_viewer_runtime/RuntimeRoot.vue', import.meta.url), 'utf8');
 
   assert.match(source, /const forceRefreshCharInfo = async \(\) => \{/);
   assert.match(source, /await refreshLibrary\(\)/);
+  assert.match(source, /visualRevision: 0/);
+  assert.match(source, /state\.visualRevision \+= 1/);
   assert.match(source, /const messageIds = Array\.from\(activeFloorIds\)/);
   assert.match(source, /removeMessage\(messageId\)/);
   assert.match(source, /renderMessage\(messageId, 'force-refresh'\)/);
+  assert.match(rootSource, /:key="`\$\{card\.renderKey\}:\$\{state\.visualRevision\}`"/u);
   assert.match(source, /onRefreshLibrary: \(\) => void forceRefreshCharInfo\(\)/);
 });
 

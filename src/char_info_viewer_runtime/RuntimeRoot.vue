@@ -7,7 +7,7 @@
         :data-char-info-render-key="card.renderKey"
       >
         <ViewerApp
-          :key="card.renderKey"
+          :key="`${card.renderKey}:${state.visualRevision}`"
           :yaml-text="card.yamlText"
           :message-id="message.messageId"
           :effects-enabled="state.settings.effectsEnabled"
