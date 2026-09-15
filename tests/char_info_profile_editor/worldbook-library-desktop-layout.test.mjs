@@ -92,7 +92,9 @@ test('手机角色库使用固定宿主坐标系、安全区底栏，并保留�
   assert.match(librarySource, /aria-label="搜索角色" @click="focusSearch"/u);
   assert.match(librarySource, /aria-label="筛选角色"[\s\S]*?<span>筛选<\/span>/u);
   assert.match(librarySource, /aria-label="返回游戏"[^>]*@click="emit\('close'\)"/u);
-  assert.match(librarySource, /mobileMoreOpen = false; emit\('editLibrary', selectedEditableWorldbookName\)[\s\S]*?视觉编辑/u);
+  assert.match(librarySource, /mobileMoreOpen = false; emit\('editLibrary', selectedEditableWorldbookName\)[\s\S]*?编辑角色档案/u);
+  assert.match(librarySource, /<span>编辑角色档案<\/span>/u);
+  assert.doesNotMatch(librarySource, />视觉编辑</u);
   assert.match(librarySource, /@click="loadWorldbooks">重新读取角色库/u);
   assert.match(librarySource, /\.mobile-library-dock \{ position: absolute;[\s\S]*?var\(--ci-mobile-safe-bottom\)/u);
   assert.match(librarySource, /\.manager-dialog, \.force-mobile-layout \.manager-dialog \{[^}]*height: 100dvh;/u);

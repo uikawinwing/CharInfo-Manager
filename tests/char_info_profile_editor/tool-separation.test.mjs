@@ -41,6 +41,8 @@ test('角色档案编辑器模块的可达界面只有编辑器，不再提供�
   assert.doesNotMatch(profileEditorAppSource, /class="manager-view-switch"/u);
   assert.doesNotMatch(profileEditorAppSource, /@click="switchManagerView\('library'\)"/u);
   assert.doesNotMatch(profileEditorAppSource, /WorldbookCharacterLibrary|条目开关后的读回验证失败/u);
+  assert.match(profileEditorAppSource, /<h1 id="manager-title">角色档案编辑器<\/h1>/u);
+  assert.doesNotMatch(profileEditorAppSource, /角色视觉编辑器/u);
   assert.match(profileEditorOverlaySource, /角色档案编辑器/u);
 });
 

@@ -40,6 +40,7 @@ export type RuntimeSaveState = {
 
 export type RuntimeViewState = {
   messages: RuntimeMessageView[];
+  visualRevision: number;
   library: RuntimeLibraryView | null;
   settings: CharInfoUiSettings;
   settingsView: RuntimeSettingsView | null;

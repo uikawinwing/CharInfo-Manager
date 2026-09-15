@@ -210,5 +210,5 @@ test('角色档案编辑器对 importable legacy 解除写入阻塞，并启用�
   assert.match(profileEditorSource, /class="migration-banner"/);
   assert.match(profileEditorSource, /legacyVisualInspection\.value\.state !== 'importable'/);
   assert.match(profileEditorSource, /upsertManagedEjsBlockWithLegacyMigration/);
-  assert.match(profileEditorSource, /升级并保存到世界书/);
+  assert.match(profileEditorSource, /升级、保存并立即生效/);
 });

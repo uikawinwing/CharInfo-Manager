@@ -11,7 +11,7 @@ const {
 } = require('../../src/char_info_profile_editor/flashProfile.ts');
 const { extractManagedEjsBlock } = require('../../src/char_info_shared/characterProfile.ts');
 
-test('快速模式从当前聊天 CharInfo 读取现有图片配置，不复制角色状态资料', () => {
+test('快速建立保留现有 CharInfo，并只从当前聊天关系资料补安全 metadata', () => {
   const profile = readFlashProfileFromChatVariables('奥琳科・乌尔芬', {
     char_info: {
       profiles: {
@@ -37,7 +37,13 @@ test('快速模式从当前聊天 CharInfo 读取现有图片配置，不复制�
     },
     stat_data: {
       关系列表: {
-        '奥琳科・乌尔芬': { 好感度: 88, 在场: true, 心里话: '不会进入视觉 profile' },
+        '奥琳科・乌尔芬': {
+          性别: '女',
+          种族: '狼裔',
+          好感度: 88,
+          在场: true,
+          心里话: '不会进入角色档案',
+        },
       },
     },
   });
@@ -53,11 +59,33 @@ test('快速模式从当前聊天 CharInfo 读取现有图片配置，不复制�
       thumbnail: 'https://img.example/thumb.webp',
     },
   ]);
+  assert.equal(profile.metadata?.sex, '女');
+  assert.equal(profile.metadata?.race, '狼裔');
   assert.equal('affinity' in profile, false);
   assert.equal('好感度' in profile, false);
+  assert.equal('心里话' in (profile.metadata ?? {}), false);
 });
 
-test('快速模式世界书条目只保存 managed EJS，并以角色姓名作为关键词', () => {
+test('只有 stat_data 关系资料的新角色也能建立可编辑草稿', () => {
+  const profile = readFlashProfileFromChatVariables('新人', {
+    stat_data: {
+      关系列表: {
+        新人: { 性别: '男', 种族: '人类', 好感度: 12, 心里话: '不要复制' },
+      },
+    },
+  });
+
+  assert.ok(profile);
+  assert.equal(profile.characterName, '新人');
+  assert.equal(profile.metadata?.sex, '男');
+  assert.equal(profile.metadata?.race, '人类');
+  assert.equal(profile.gallery.length, 1);
+  assert.equal(profile.gallery[0].sources[0], '');
+  assert.equal('好感度' in (profile.metadata ?? {}), false);
+  assert.equal('心里话' in (profile.metadata ?? {}), false);
+});
+
+test('快速建立自动条目使用 DLC 角色命名与 constant 蓝灯，只保存 managed EJS', () => {
   const entry = buildFlashWorldbookEntry({
     characterName: '奥琳科・乌尔芬',
     avatarUrl: 'https://img.example/main.webp',
@@ -68,9 +96,9 @@ test('快速模式世界书条目只保存 managed EJS，并以角色姓名作�
     gallery: [{ title: '主立绘', sources: ['https://img.example/main.webp'] }],
   });
 
-  assert.equal(flashEntryName('奥琳科・乌尔芬'), '[CharInfo][视觉] 奥琳科・乌尔芬');
-  assert.equal(entry.name, '[CharInfo][视觉] 奥琳科・乌尔芬');
-  assert.deepEqual(entry.strategy, { type: 'selective', keys: ['奥琳科・乌尔芬'] });
+  assert.equal(flashEntryName('奥琳科・乌尔芬'), '[DLC][角色][奥琳科・乌尔芬]奥琳科・乌尔芬角色档案');
+  assert.equal(entry.name, '[DLC][角色][奥琳科・乌尔芬]奥琳科・乌尔芬角色档案');
+  assert.deepEqual(entry.strategy, { type: 'constant' });
   assert.equal(entry.position.type, 'after_character_definition');
   assert.doesNotMatch(entry.content, /^姓名\s*:/mu);
   assert.doesNotMatch(entry.content, /好感度|在场|心里话/u);
