@@ -123,16 +123,22 @@ test('当前聊天资料库和设置宿主明确使用动态视口尺寸，避�
   );
 });
 
-test('移动端更多菜单中的设置会调用 Runtime 提供的设置回调', () => {
-  assert.match(runtimeRootSource, /@click="openSettingsFromCurrentMobileMore"/u);
+test('共享顶栏提供统一编辑入口，当前聊天底栏直接显示设置', () => {
   assert.match(
     runtimeRootSource,
-    /function openSettingsFromCurrentMobileMore\(\): void \{[\s\S]*?currentMobileMoreOpen\.value = false;[\s\S]*?props\.onOpenSettings\(\);[\s\S]*?\}/u,
+    /class="char-info-character-library-edit-action"[\s\S]*?aria-label="编辑角色档案"[\s\S]*?@click="editCharacterProfileFromHeader"/u,
   );
-  assert.doesNotMatch(
+  assert.match(
     runtimeRootSource,
-    /function openSettingsFromCurrentMobileMore\(\): void \{[\s\S]*?\n\s*onOpenSettings\(\);/u,
+    /function editCharacterProfileFromHeader\(\): void \{[\s\S]*?worldbookOpen[\s\S]*?onEditWorldbookCharacter\(activeWorldbookEditorTarget\.value\)[\s\S]*?viewerOpen[\s\S]*?onEditCurrentChatCharacterProfile\(characterName\)/u,
   );
+  assert.match(
+    runtimeRootSource,
+    /class="char-info-library-mobile-dock"[\s\S]*?aria-label="打开查看器设置"[\s\S]*?<span>设置<\/span>/u,
+  );
+  assert.doesNotMatch(runtimeRootSource, /currentMobileMoreOpen|openSettingsFromCurrentMobileMore|char-info-library-mobile-more/u);
+  assert.match(runtimeSource, /\.\.\.\(name \? \{ initialCharacterName: name \} : \{\}\)/u);
+  assert.match(runtimeSource, /if \(name\) openLibraryCharacter\(name\);[\s\S]*?else openCurrentChatLibrary\(\);/u);
 });
 
 test('悬浮入口打开共享角色资料库，当前聊天使用侧栏与详情区', () => {

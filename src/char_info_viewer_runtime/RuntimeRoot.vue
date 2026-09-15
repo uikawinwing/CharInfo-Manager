@@ -99,7 +99,19 @@
           </div>
 
           <div class="char-info-character-library-actions">
-            <button type="button" aria-label="查看器设置" title="设置" @click="onOpenSettings">
+            <button
+              class="char-info-character-library-edit-action"
+              type="button"
+              aria-label="编辑角色档案"
+              title="编辑角色档案"
+              @click="editCharacterProfileFromHeader"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M4 19.5V15l10.8-10.8a2.1 2.1 0 0 1 3 0l2 2a2.1 2.1 0 0 1 0 3L9 20H4Z" />
+                <path d="m13.5 5.5 5 5" />
+              </svg>
+            </button>
+            <button class="char-info-character-library-settings-action" type="button" aria-label="查看器设置" title="设置" @click="onOpenSettings">
               <svg aria-hidden="true" viewBox="0 0 24 24">
                 <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" />
                 <path
@@ -119,7 +131,7 @@
             :theme-mode="state.settings.themeMode"
             @close="closeCharacterLibrary"
             @open-current-chat="onOpenCurrentChatLibrary"
-            @edit-library="worldbookName => onEditWorldbookCharacter(worldbookName)"
+            @selection-changed="worldbookName => (activeWorldbookEditorTarget = worldbookName)"
             @edit="onEditWorldbookCharacter"
           />
 
@@ -231,24 +243,13 @@
             </svg>
             <span>刷新</span>
           </button>
-          <div class="char-info-library-mobile-more">
-            <button
-              type="button"
-              aria-label="更多角色资料库操作"
-              :aria-expanded="currentMobileMoreOpen"
-              @click="currentMobileMoreOpen = !currentMobileMoreOpen"
-            >
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <circle cx="5" cy="12" r="1.5" />
-                <circle cx="12" cy="12" r="1.5" />
-                <circle cx="19" cy="12" r="1.5" />
-              </svg>
-              <span>更多</span>
-            </button>
-            <div v-if="currentMobileMoreOpen" class="char-info-library-mobile-more-menu" role="menu">
-              <button type="button" role="menuitem" @click="openSettingsFromCurrentMobileMore">设置</button>
-            </div>
-          </div>
+          <button type="button" aria-label="打开查看器设置" @click="onOpenSettings">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" />
+              <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.42 1.42-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20h-2v-.08A1.7 1.7 0 0 0 12.34 18a1.7 1.7 0 0 0-1.88.34l-.06.06-1.42-1.42.06-.06A1.7 1.7 0 0 0 9.38 15a1.7 1.7 0 0 0-1.56-1.03H7v-2h.82a1.7 1.7 0 0 0 1.56-1.03 1.7 1.7 0 0 0-.34-1.88L8.98 9l1.42-1.42.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 13.37 6.4V6h2v.4a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.76 9l-.06.06a1.7 1.7 0 0 0-.34 1.88A1.7 1.7 0 0 0 20.92 12H21v2h-.08A1.7 1.7 0 0 0 19.4 15Z" />
+            </svg>
+            <span>设置</span>
+          </button>
         </nav>
       </section>
     </div>
@@ -595,7 +596,7 @@ const props = defineProps<{
 const searchText = ref('');
 const activeFilter = ref<LibraryFilter>('all');
 const mobileFiltersExpanded = ref(false);
-const currentMobileMoreOpen = ref(false);
+const activeWorldbookEditorTarget = ref('');
 const selectedCharacterName = ref('');
 const failedAvatarUrls = ref(new Set<string>());
 const dragPosition = ref<{ left: number; top: number } | null>(null);
@@ -655,13 +656,17 @@ function openCharacter(name: string): void {
 
 function closeCharacterLibrary(): void {
   mobileFiltersExpanded.value = false;
-  currentMobileMoreOpen.value = false;
   props.onCloseLibrary();
 }
 
-function openSettingsFromCurrentMobileMore(): void {
-  currentMobileMoreOpen.value = false;
-  props.onOpenSettings();
+function editCharacterProfileFromHeader(): void {
+  if (props.state.library?.worldbookOpen) {
+    props.onEditWorldbookCharacter(activeWorldbookEditorTarget.value);
+    return;
+  }
+
+  const characterName = props.state.library?.viewerOpen ? selectedCharacter.value?.name ?? '' : '';
+  props.onEditCurrentChatCharacterProfile(characterName);
 }
 
 function focusLibrarySearch(): void {
@@ -2811,37 +2816,6 @@ onBeforeUnmount(() => {
   animation: char-info-library-content-in 140ms ease-out;
 }
 
-.char-info-library-mobile-more {
-  position: relative;
-  min-width: 0;
-}
-
-.char-info-library-mobile-more > button {
-  width: 100%;
-}
-
-.char-info-library-mobile-more-menu {
-  position: absolute;
-  z-index: 8;
-  right: 0;
-  bottom: calc(100% + 10px);
-  display: grid;
-  min-width: 140px;
-  padding: 6px;
-  border: 1px solid var(--ci-border-strong);
-  border-radius: 12px;
-  background: var(--ci-surface-raised);
-  box-shadow: 0 14px 36px var(--ci-shadow);
-}
-
-.char-info-library-mobile-more-menu button {
-  min-height: 42px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--ci-text-secondary);
-}
-
 @keyframes char-info-library-content-in {
   from {
     opacity: 0;
@@ -2882,7 +2856,7 @@ onBeforeUnmount(() => {
     grid-row: 1;
   }
 
-  .char-info-character-library-actions button:first-child {
+  .char-info-character-library-actions .char-info-character-library-settings-action {
     display: none;
   }
 
@@ -2937,7 +2911,7 @@ onBeforeUnmount(() => {
   grid-row: 1;
 }
 
-.char-info-character-library.force-mobile-layout .char-info-character-library-actions button:first-child {
+.char-info-character-library.force-mobile-layout .char-info-character-library-actions .char-info-character-library-settings-action {
   display: none;
 }
 

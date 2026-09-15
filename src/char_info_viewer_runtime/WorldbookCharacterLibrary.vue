@@ -41,20 +41,6 @@
         </div>
 
         <div class="header-actions">
-          <div class="manager-view-switch" role="group" aria-label="切换角色管理工具">
-            <button type="button" class="active" aria-pressed="true">
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M4 5h6v6H4V5Zm10 0h6v6h-6V5ZM4 15h6v4H4v-4Zm10 0h6v4h-6v-4Z" />
-              </svg>
-              <span>角色库</span>
-            </button>
-            <button type="button" aria-pressed="false" @click="emit('editLibrary', selectedEditableWorldbookName)">
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="m4 16 9.8-9.8 4 4L8 20H4v-4Zm11.2-11.2 1.4-1.4a1.4 1.4 0 0 1 2 0l2 2a1.4 1.4 0 0 1 0 2l-1.4 1.4-4-4Z" />
-              </svg>
-              <span>编辑角色档案</span>
-            </button>
-          </div>
           <button class="close-button" type="button" aria-label="关闭" @click="emit('close')">×</button>
         </div>
       </header>
@@ -271,7 +257,6 @@
         <button
           v-if="showBackToTop && !detailCharacter"
           class="mobile-library-back-to-top"
-          :class="{ 'menu-open': mobileMoreOpen }"
           type="button"
           aria-label="返回角色库顶部"
           @click="scrollLibraryToTop"
@@ -299,22 +284,15 @@
             </svg>
             <span>视图</span>
           </button>
-          <div class="mobile-library-more">
-            <button type="button" aria-label="更多角色库操作" :aria-expanded="mobileMoreOpen" @click="mobileMoreOpen = !mobileMoreOpen">
-              <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
-              <span>更多</span>
-            </button>
-            <div v-if="mobileMoreOpen" class="mobile-library-more-menu" role="menu">
-              <button
-                type="button"
-                role="menuitem"
-                @click="mobileMoreOpen = false; emit('editLibrary', selectedEditableWorldbookName)"
-              >
-                编辑角色档案
-              </button>
-              <button type="button" role="menuitem" @click="loadWorldbooks">重新读取角色库</button>
-            </div>
-          </div>
+          <button
+            type="button"
+            aria-label="重新读取角色库"
+            :disabled="loadingWorldbooks || loadingEntries"
+            @click="loadWorldbooks"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.34 5.66" /><path d="M20 5v6h-6" /></svg>
+            <span>刷新</span>
+          </button>
         </nav>
       </section>
     </main>
@@ -501,7 +479,7 @@ withDefaults(defineProps<{ forceMobileLayout?: boolean; themeMode?: CharInfoThem
 const emit = defineEmits<{
   close: [];
   openCurrentChat: [];
-  editLibrary: [worldbookName: string];
+  selectionChanged: [worldbookName: string];
   edit: [worldbookName: string, entryUid: number];
 }>();
 
@@ -526,7 +504,6 @@ const layout = ref<'list' | 'cards'>('list');
 const cardColumns = ref<'auto' | number>('auto');
 const cardColumnOptions = [2, 3, 4, 5, 6];
 const mobileFilterOpen = ref(false);
-const mobileMoreOpen = ref(false);
 const encounteredCharacters = ref<EncounteredCharacterRecord[]>([]);
 const togglingKeys = reactive(new Set<string>());
 const coverIndexes = reactive<Record<string, number>>({});
@@ -1096,9 +1073,9 @@ watch(selectedWorldbookName, () => {
   raceFilter.value = 'all';
   sortOrder.value = 'original';
   mobileFilterOpen.value = false;
-  mobileMoreOpen.value = false;
   closeDetails();
 });
+watch(selectedEditableWorldbookName, worldbookName => emit('selectionChanged', worldbookName), { immediate: true });
 watch(layout, () => {
   Object.keys(coverIndexes).forEach(key => delete coverIndexes[key]);
 });
@@ -1157,11 +1134,6 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
 .library-header-worldbook label > span { color: var(--text-muted); font-size: 12px; font-weight: 800; }
 .library-header-worldbook select { width: 100%; min-height: 40px; padding: 7px 10px; font-size: 13px; font-weight: 700; }
 .header-actions { display: flex; grid-column: 3; grid-row: 1; align-items: center; justify-content: flex-end; gap: 10px; }
-.manager-view-switch { display: flex; padding: 3px; gap: 3px; background: var(--ci-input); border: 1px solid var(--border); border-radius: 12px; }
-.manager-view-switch button { display: inline-flex; min-width: 112px; min-height: 40px; padding: 6px 10px; align-items: center; justify-content: center; gap: 6px; color: var(--text-muted); background: transparent; border: 0; border-radius: 9px; font-size: 13px; font-weight: 800; }
-.manager-view-switch button:hover, .manager-view-switch button.active { color: var(--text); background: var(--primary-soft); }
-.manager-view-switch button.active { box-shadow: inset 0 0 0 1px rgb(var(--ci-primary-rgb) / 34%); }
-.manager-view-switch svg { width: 16px; height: 16px; fill: currentcolor; }
 .close-button, .icon-button { display: grid; width: 42px; height: 42px; padding: 0; place-items: center; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 10px; }
 .close-button { font-size: 25px; line-height: 1; }
 .library-page { width: 100%; min-width: 0; min-height: 0; padding: 12px 22px 28px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--border-strong) var(--surface); scrollbar-width: thin; }
@@ -1183,7 +1155,6 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
   box-shadow: 0 8px 24px rgb(0 0 0 / 28%);
   transition: bottom 120ms ease;
 }
-.mobile-library-back-to-top.menu-open { bottom: calc(198px + var(--ci-mobile-safe-bottom)); }
 .mobile-library-back-to-top svg { width: 21px; height: 21px; fill: none; stroke: currentcolor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
 .character-library-toolbar { position: sticky; z-index: 2; top: 0; display: flex; margin: -12px 0 18px; padding: 12px 0 18px; flex-direction: column; gap: 18px; background: var(--bg); }
 .library-search-field { display: flex; min-height: 48px; padding: 0 13px; align-items: center; gap: 10px; background: linear-gradient(90deg, var(--surface-raised), var(--surface)); border: 1px solid var(--border-strong); border-radius: 10px; }
@@ -1282,7 +1253,6 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
   .manager-root { padding: 10px; }
   .manager-dialog { height: calc(100% - 2px); }
   .library-header { grid-template-columns: minmax(170px, 1fr) minmax(230px, 330px) auto; gap: 14px; }
-  .manager-view-switch button { min-width: auto; }
   .character-library-control-row { grid-template-columns: minmax(300px, 1fr) minmax(310px, 360px) auto; gap: 12px; }
   .character-library-summary { grid-column: 1 / -1; }
   .character-library-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -1314,13 +1284,9 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
   .character-cover-button { width: 58px; height: 64px; border-radius: 8px; }
   .mobile-library-dock { position: absolute; z-index: 5; right: 0; bottom: 0; left: 0; display: grid; min-height: calc(76px + var(--ci-mobile-safe-bottom)); padding: 7px 7px calc(8px + var(--ci-mobile-safe-bottom)); grid-template-columns: 1fr 1fr 1.18fr 1fr 1fr; align-items: end; gap: 3px; background: var(--ci-header); border-top: 1px solid var(--border); }
   .mobile-library-back-to-top { display: grid; }
-  .mobile-library-dock > button, .mobile-library-more > button { display: grid; min-height: 50px; padding: 5px 2px; place-items: center; gap: 3px; color: var(--text-secondary); background: transparent; border: 0; border-radius: 11px; font-size: 11px; font-weight: 800; }
+  .mobile-library-dock > button { display: grid; min-height: 50px; padding: 5px 2px; place-items: center; gap: 3px; color: var(--text-secondary); background: transparent; border: 0; border-radius: 11px; font-size: 11px; font-weight: 800; }
   .mobile-library-dock svg { width: 23px; height: 23px; fill: none; stroke: currentcolor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
   .mobile-library-dock-home { color: var(--primary) !important; }
-  .mobile-library-more { position: relative; }
-  .mobile-library-more > button { width: 100%; }
-  .mobile-library-more-menu { position: absolute; right: 0; bottom: calc(100% + 10px); display: grid; min-width: 156px; padding: 6px; background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: 12px; }
-  .mobile-library-more-menu button { min-height: 44px; color: var(--text-secondary); background: transparent; border: 0; }
   .character-detail-layer { padding: 0; }
   .character-detail-dialog { width: 100%; height: 100%; min-width: 0; min-height: 0; max-width: none; max-height: none; box-sizing: border-box; border: 0; border-radius: 0; }
   .manager-root:not(.embedded) .character-detail-header {
@@ -1366,14 +1332,9 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
 .force-mobile-layout .character-cover-button { width: 58px; height: 64px; border-radius: 8px; }
 .force-mobile-layout .mobile-library-dock { position: absolute; z-index: 5; right: 0; bottom: 0; left: 0; display: grid; min-height: calc(76px + var(--ci-mobile-safe-bottom)); padding: 7px 7px calc(8px + var(--ci-mobile-safe-bottom)); grid-template-columns: 1fr 1fr 1.18fr 1fr 1fr; align-items: end; gap: 3px; background: var(--ci-header); border-top: 1px solid var(--border); }
 .force-mobile-layout .mobile-library-back-to-top { display: grid; }
-.force-mobile-layout .mobile-library-dock > button,
-.force-mobile-layout .mobile-library-more > button { display: grid; min-height: 50px; padding: 5px 2px; place-items: center; gap: 3px; color: var(--text-secondary); background: transparent; border: 0; border-radius: 11px; font-size: 11px; font-weight: 800; }
+.force-mobile-layout .mobile-library-dock > button { display: grid; min-height: 50px; padding: 5px 2px; place-items: center; gap: 3px; color: var(--text-secondary); background: transparent; border: 0; border-radius: 11px; font-size: 11px; font-weight: 800; }
 .force-mobile-layout .mobile-library-dock svg { width: 23px; height: 23px; fill: none; stroke: currentcolor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
 .force-mobile-layout .mobile-library-dock-home { color: var(--primary) !important; }
-.force-mobile-layout .mobile-library-more { position: relative; }
-.force-mobile-layout .mobile-library-more > button { width: 100%; }
-.force-mobile-layout .mobile-library-more-menu { position: absolute; right: 0; bottom: calc(100% + 10px); display: grid; min-width: 156px; padding: 6px; background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: 12px; }
-.force-mobile-layout .mobile-library-more-menu button { min-height: 44px; color: var(--text-secondary); background: transparent; border: 0; }
 .force-mobile-layout .character-detail-layer { padding: 0; }
 .force-mobile-layout .character-detail-dialog { width: 100%; height: 100%; min-width: 0; min-height: 0; max-width: none; max-height: none; box-sizing: border-box; border: 0; border-radius: 0; }
 .force-mobile-layout:not(.embedded) .character-detail-header {
