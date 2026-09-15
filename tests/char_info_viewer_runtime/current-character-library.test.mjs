@@ -192,8 +192,8 @@ test('角色档案编辑器即时写入当前 draft 时强校验 CharInfo、状�
   assert.match(appSource, /toastr\.warning/u);
   assert.match(appSource, /状态栏相簿目前仅支援/u);
   assert.match(appSource, /await props\.onForceRefresh\?\.\(\)/);
-  assert.match(appSource, /即时写入变量及状态栏/u);
-  assert.match(appSource, /当前聊天变量未修改/u);
+  assert.match(appSource, /保存并立即生效/u);
+  assert.match(appSource, /世界书中的保存内容不会丢失/u);
 });
 
 test('世界书角色库与当前聊天角色库共用角色档案编辑器入口与返回回调', async () => {

@@ -4,14 +4,16 @@ import test from 'node:test';
 
 const appSource = readFileSync(new URL('../../src/char_info_profile_editor/App.vue', import.meta.url), 'utf8');
 
-test('角色档案编辑器 Step 5 separates worldbook save from immediate chat/status write', () => {
+test('角色档案编辑器 Step 5 用一个主 Save 完成持久化、即时同步与刷新', () => {
   assert.match(appSource, /<form\s+v-if="proMode"\s+v-show="activeStep !== 1"[\s\S]*@submit\.prevent="saveToEntry"/u);
   assert.match(appSource, /id="manager-step-5"[\s\S]*class="save-bar"[\s\S]*type="submit"/u);
-  assert.match(appSource, /保存到世界书/u);
-  assert.match(appSource, /即时写入变量及状态栏/u);
-  assert.match(appSource, /@click="applyCurrentProfileToCurrentChat"/u);
-  assert.match(appSource, /title="仅保存到世界书条目，不修改当前聊天变量"/u);
-  assert.match(appSource, /title="立即写入当前聊天的 CharInfo 变量、状态栏头像与状态栏相簿"/u);
+  assert.match(appSource, /保存并立即生效/u);
+  assert.match(appSource, /title="保存角色档案，并立即同步当前聊天变量、状态栏与角色卡"/u);
+  assert.doesNotMatch(appSource, />即时写入变量及状态栏</u);
+  assert.match(appSource, /async function saveToEntry\(\)[\s\S]*?saveFlashProfileToCurrentChatWorldbook\(normalizedProfile\)/u);
+  assert.match(appSource, /async function saveToEntry\(\)[\s\S]*?const applied = await applyCurrentProfileToCurrentChat\(\)/u);
+  assert.match(appSource, /await props\.onForceRefresh\?\.\(\)/u);
+  assert.match(appSource, /世界书中的保存内容不会丢失/u);
   assert.match(appSource, /:disabled="!canSave"/u);
 });
 
