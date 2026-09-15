@@ -306,6 +306,7 @@ import {
 } from '../galleryEditor';
 
 const props = defineProps<{
+  gallery: EditableGalleryImage[];
   avatarUrl: string;
   coverUrl: string;
   useExtendedGallery: boolean;
@@ -320,9 +321,8 @@ const props = defineProps<{
   debugEnabled: boolean;
 }>();
 
-const gallery = defineModel<EditableGalleryImage[]>('gallery', { required: true });
-
 const emit = defineEmits<{
+  'update:gallery': [value: EditableGalleryImage[]];
   'update:avatarUrl': [value: string];
   'update:coverUrl': [value: string];
   'update:useExtendedGallery': [value: boolean];
@@ -333,6 +333,11 @@ const emit = defineEmits<{
   previous: [];
   next: [];
 }>();
+
+const gallery = computed({
+  get: () => props.gallery,
+  set: value => emit('update:gallery', value),
+});
 
 const avatarSelection = ref('');
 const coverSelection = ref('');

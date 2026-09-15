@@ -137,6 +137,18 @@ test('Viewer 玩家角色库保留紧凑列表与自适应图片卡片', () => {
   assert.match(librarySource, /\.character-library-grid \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/u);
 });
 
+test('相册步骤避免依赖宿主 Vue 的 defineModel 运行时 helper', () => {
+  const galleryStepSource = readFileSync(
+    new URL('../../src/char_info_creator_manager/components/GalleryStep.vue', import.meta.url),
+    'utf8',
+  );
+
+  assert.doesNotMatch(galleryStepSource, /defineModel/u);
+  assert.match(galleryStepSource, /gallery: EditableGalleryImage\[\]/u);
+  assert.match(galleryStepSource, /'update:gallery': \[value: EditableGalleryImage\[\]\]/u);
+  assert.match(galleryStepSource, /get: \(\) => props\.gallery/u);
+});
+
 test('相册步骤只提供外部图床快捷入口，不实现自动上传', () => {
   const galleryStepSource = readFileSync(
     new URL('../../src/char_info_creator_manager/components/GalleryStep.vue', import.meta.url),
