@@ -150,6 +150,26 @@ test('手机当前角色列表的少量卡片保持内容高度并贴顶部排�
   );
 });
 
+test('手机当前聊天角色导航直接显示设置，不再保留更多二级菜单', async () => {
+  const source = await readFile(new URL('../../src/char_info_viewer_runtime/RuntimeRoot.vue', import.meta.url), 'utf8');
+
+  assert.match(
+    source,
+    /<nav class="char-info-library-mobile-dock"[\s\S]*?aria-label="打开查看器设置"[\s\S]*?<span>设置<\/span>[\s\S]*?<\/nav>/u,
+  );
+  assert.doesNotMatch(source, /<span>更多<\/span>|mobileMoreOpen|more-menu/u);
+});
+
+test('角色档案编辑器的步骤阻挡提示渲染在编辑器 iframe 内，不依赖宿主 toastr', async () => {
+  const source = await readFile(new URL('../../src/char_info_profile_editor/App.vue', import.meta.url), 'utf8');
+
+  assert.match(source, /v-if="editorNotice" class="editor-notice" role="alert" aria-live="assertive"/u);
+  assert.match(source, /function showEditorNotice\(message: string\)/u);
+  assert.match(source, /!profile\.characterName\.trim\(\)\) showEditorNotice\('请先填写角色全名。'\)/u);
+  assert.match(source, /step === 5\) showEditorNotice\('请先添加至少一张有效图片/u);
+  assert.doesNotMatch(source, /toastr\.warning/u);
+});
+
 test('当前角色库先显示基础资料，再异步逐个补远程 avatarThumbnail', async () => {
   const source = await readFile(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
   const baseRenderIndex = source.indexOf('library.characters = baseCharacters;');
@@ -165,12 +185,16 @@ test('当前角色库先显示基础资料，再异步逐个补远程 avatarThum
 
 test('手动刷新会重读变量并强制重挂当前 CharInfo floors', async () => {
   const source = await readFile(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
+  const rootSource = await readFile(new URL('../../src/char_info_viewer_runtime/RuntimeRoot.vue', import.meta.url), 'utf8');
 
   assert.match(source, /const forceRefreshCharInfo = async \(\) => \{/);
   assert.match(source, /await refreshLibrary\(\)/);
+  assert.match(source, /visualRevision: 0/);
+  assert.match(source, /state\.visualRevision \+= 1/);
   assert.match(source, /const messageIds = Array\.from\(activeFloorIds\)/);
   assert.match(source, /removeMessage\(messageId\)/);
   assert.match(source, /renderMessage\(messageId, 'force-refresh'\)/);
+  assert.match(rootSource, /:key="`\$\{card\.renderKey\}:\$\{state\.visualRevision\}`"/u);
   assert.match(source, /onRefreshLibrary: \(\) => void forceRefreshCharInfo\(\)/);
 });
 
@@ -189,11 +213,11 @@ test('角色档案编辑器即时写入当前 draft 时强校验 CharInfo、状�
   assert.match(appSource, /JSON\.stringify\(appliedRecord\.gallery \?\? null\) !== JSON\.stringify\(expectedGallery\)/u);
   assert.match(appSource, /status\.externalGalleries 中的状态栏相簿没有正确写入/u);
   assert.match(appSource, /status\.externalAvatars 中的状态栏头像没有正确写入/u);
-  assert.match(appSource, /toastr\.warning/u);
+  assert.match(appSource, /showEditorNotice/u);
   assert.match(appSource, /状态栏相簿目前仅支援/u);
   assert.match(appSource, /await props\.onForceRefresh\?\.\(\)/);
-  assert.match(appSource, /即时写入变量及状态栏/u);
-  assert.match(appSource, /当前聊天变量未修改/u);
+  assert.match(appSource, /保存并立即生效/u);
+  assert.match(appSource, /世界书中的保存内容不会丢失/u);
 });
 
 test('世界书角色库与当前聊天角色库共用角色档案编辑器入口与返回回调', async () => {

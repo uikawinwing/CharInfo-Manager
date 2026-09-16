@@ -81,8 +81,11 @@
 
     <div class="image-host-links">
       <div>
-        <strong>需要上传图片？</strong>
-        <small>在图片托管网站上传后，请复制 HTTPS 原图直链并粘贴到下方。</small>
+        <strong>什么是图片直链？</strong>
+        <small>
+          直链会直接打开图片本身，最常见会以 .png / .jpg / .jpeg / .webp / .avif 结尾，例如
+          https://example.com/image.png；图床的相册页或分享页不是直链。
+        </small>
       </div>
       <a href="https://catbox.moe/" target="_blank" rel="noopener noreferrer">打开 Catbox</a>
       <a href="https://imgbb.com/" target="_blank" rel="noopener noreferrer">打开 ImgBB</a>
@@ -154,8 +157,6 @@
           />
           <span v-else aria-hidden="true">▧</span>
           <span v-if="galleryPreviewMediaKind(image) === 'video'" class="gallery-media-kind" aria-hidden="true">▶</span>
-          <span v-if="isExtendedGalleryImage(index)" class="storage-pill extension">扩展图库</span>
-          <span v-else-if="useExtendedGallery" class="storage-pill embedded">随角色保存</span>
         </div>
 
         <div class="gallery-content">
@@ -272,6 +273,7 @@ import {
 
 const props = withDefaults(
   defineProps<{
+    gallery: EditableGalleryImage[];
     avatarUrl: string;
     coverUrl: string;
     remoteGalleryUrl: string;
@@ -284,15 +286,19 @@ const props = withDefaults(
   },
 );
 
-const gallery = defineModel<EditableGalleryImage[]>('gallery', { required: true });
-
 const emit = defineEmits<{
+  'update:gallery': [value: EditableGalleryImage[]];
   'update:avatarUrl': [value: string];
   'update:coverUrl': [value: string];
   'update:remoteGalleryUrl': [value: string];
   previous: [];
   next: [];
 }>();
+
+const gallery = computed({
+  get: () => props.gallery,
+  set: value => emit('update:gallery', value),
+});
 
 const avatarSelection = ref('');
 const coverSelection = ref('');
@@ -1007,8 +1013,7 @@ select:focus {
   outline-offset: -2px;
 }
 
-.gallery-media-kind,
-.storage-pill {
+.gallery-media-kind {
   position: absolute;
   z-index: 2;
   padding: 3px 6px;
@@ -1033,15 +1038,6 @@ select:focus {
   line-height: 1;
 }
 
-.storage-pill {
-  left: 6px;
-  bottom: 6px;
-}
-
-.storage-pill.extension {
-  color: #071310;
-  background: var(--primary);
-}
 
 .gallery-content {
   display: grid;

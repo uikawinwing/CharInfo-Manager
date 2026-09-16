@@ -106,6 +106,7 @@ function traceMount(
 export function createCharInfoRuntime(): CharInfoRuntime {
   const state = reactive<RuntimeViewState>({
     messages: [],
+    visualRevision: 0,
     library: null,
     settings: readRuntimeSettings(getVariables({ type: 'script' })),
     settingsView: null,
@@ -396,17 +397,17 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
   const editCurrentChatCharacterProfile = (characterName: string) => {
     const name = characterName.trim();
-    if (!name) return;
     try {
       openProfileEditor({
-        initialCharacterName: name,
+        ...(name ? { initialCharacterName: name } : {}),
         forceMobileLayout: state.settings.forceMobileLayout,
         themeMode: state.settings.themeMode,
         debugEnabled: state.settings.debugEnabled,
         onForceRefresh: forceRefreshCharInfo,
         onReturnToLibrary: () => {
           closeProfileEditor();
-          openLibraryCharacter(name);
+          if (name) openLibraryCharacter(name);
+          else openCurrentChatLibrary();
         },
       });
       closeLibrary();
@@ -612,6 +613,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   const refreshMountedCharInfoCards = () => {
     if (!started) return;
 
+    state.visualRevision += 1;
     const messageIds = Array.from(activeFloorIds);
     messageIds.forEach(messageId => {
       remountAttempts.delete(messageId);

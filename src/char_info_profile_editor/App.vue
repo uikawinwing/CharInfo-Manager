@@ -2,6 +2,10 @@
   <div class="manager-root" :class="managerThemeClass(props.themeMode)" @keydown.esc="onEscape">
     <button class="backdrop" type="button" aria-label="关闭管理器" @click="emit('close')"></button>
 
+    <div v-if="editorNotice" class="editor-notice" role="alert" aria-live="assertive">
+      {{ editorNotice }}
+    </div>
+
     <main class="manager-dialog" role="dialog" aria-modal="true" aria-labelledby="manager-title">
       <header class="dialog-header">
         <div class="header-title">
@@ -17,7 +21,7 @@
           <div class="header-title-copy">
             <h1 id="manager-title">角色档案编辑器</h1>
             <span v-if="editorMode" class="phase-badge">
-              {{ flashMode ? '快速模式' : `专业模式 · ${activeStep}/${steps.length}` }}
+              {{ flashMode ? '快速建立' : `完整编辑 · ${activeStep}/${steps.length}` }}
             </span>
           </div>
         </div>
@@ -68,11 +72,11 @@
                 <span class="mode-choice-icon">⚡</span>
               </span>
               <span class="mode-choice-copy">
-                <strong>快速模式</strong>
-                <small>角色全名 + 一张图片，立即建立最小角色档案。</small>
-                <span class="mode-choice-fields">角色全名 · 图片 URL</span>
+                <strong>快速建立</strong>
+                <small>第一次使用推荐。只需要确认角色和一张图片，其余由系统自动处理。</small>
+                <span class="mode-choice-fields">找角色 · 图片直链 · 完成</span>
               </span>
-              <span class="mode-choice-action">快速建立 <span aria-hidden="true">→</span></span>
+              <span class="mode-choice-action">跟着做就好 <span aria-hidden="true">→</span></span>
             </button>
 
             <button
@@ -86,8 +90,8 @@
                 <span class="mode-choice-icon">✦</span>
               </span>
               <span class="mode-choice-copy">
-                <strong>专业模式</strong>
-                <small>完整编辑档案，并把 CharInfo 管理 EJS 写入目标世界书。</small>
+                <strong>完整编辑</strong>
+                <small>编辑完整档案、配色、图库与作者资料；适合想自己控制细节的作者。</small>
                 <span class="mode-choice-fields">档案 · 配色 · 相册 · Metadata · 远程图库</span>
               </span>
               <span class="mode-choice-action">打开完整编辑器 <span aria-hidden="true">→</span></span>
@@ -96,21 +100,92 @@
         </section>
 
         <form v-else-if="flashMode" class="flash-mode-editor" novalidate @submit.prevent="saveFlashProfile">
-          <div class="flash-mode-gallery">
-            <div class="flash-mode-heading">
-              <span class="mode-eyebrow">{{ editorContextSource }}</span>
-              <h2>两项就够了</h2>
-              <p>填写角色完整姓名和一张 HTTPS 图片直链。第一张静态图会自动作为主立绘、头像与角色库封面。</p>
+          <div class="flash-mode-gallery flash-onboarding">
+            <div class="flash-progress" aria-label="快速建立进度">
+              <span :class="{ active: flashStep === 1, complete: flashStep > 1 }">1 · 角色</span>
+              <span :class="{ active: flashStep === 2, complete: flashStep > 2 }">2 · 图片</span>
+              <span :class="{ active: flashStep === 3 }">3 · 完成</span>
             </div>
 
-            <div class="flash-mode-form">
-              <label class="flash-mode-url-field">
-                <span>角色全名</span>
-                <input v-model="profile.characterName" type="text" maxlength="80" autocomplete="off" placeholder="例如：傲雪" />
-              </label>
+            <section v-if="flashStep === 1" class="flash-tutorial-step">
+              <div class="flash-mode-heading">
+                <span class="mode-eyebrow">快速建立 · 1 / 3</span>
+                <h2>这个角色是谁？</h2>
+                <p>知道角色在哪就直接选；懒得找也没关系，输入名字就能继续。</p>
+              </div>
+
+              <div class="flash-source-grid">
+                <button type="button" :class="{ active: flashSource === 'worldbook' }" @click="chooseCharacterSource('worldbook')">
+                  <strong>从世界书找</strong><small>选择已有角色条目</small>
+                </button>
+                <button type="button" :class="{ active: flashSource === 'current-chat' }" @click="chooseCharacterSource('current-chat')">
+                  <strong>当前聊天</strong><small>从已遇到角色中选择</small>
+                </button>
+                <button type="button" :class="{ active: flashSource === 'manual' }" @click="chooseCharacterSource('manual')">
+                  <strong>没有 / 我懒得找</strong><small>直接输入角色名字</small>
+                </button>
+              </div>
+
+              <div v-if="flashSource === 'worldbook'" class="flash-source-panel">
+                <label class="flash-mode-url-field">
+                  <span>世界书</span>
+                  <select v-model="selectedWorldbookName" :disabled="loadingWorldbooks || worldbooks.length === 0">
+                    <option value="">选择世界书</option>
+                    <option v-for="worldbook in worldbooks" :key="worldbook" :value="worldbook">{{ worldbook }}</option>
+                  </select>
+                </label>
+                <label class="flash-mode-url-field">
+                  <span>角色条目</span>
+                  <select v-model.number="selectedEntryUid" :disabled="loadingEntries || !selectedWorldbookName">
+                    <option :value="null">选择角色条目</option>
+                    <option v-for="entry in filteredEntries" :key="entry.uid" :value="entry.uid">
+                      {{ entry.name || `未命名条目 #${entry.uid}` }}
+                    </option>
+                  </select>
+                </label>
+              </div>
+
+              <div v-else-if="flashSource === 'current-chat'" class="flash-source-panel">
+                <label class="flash-mode-url-field">
+                  <span>搜索当前聊天角色</span>
+                  <input v-model="currentChatCharacterSearch" type="search" autocomplete="off" placeholder="输入角色名" />
+                </label>
+                <div class="flash-character-results">
+                  <button
+                    v-for="character in filteredCurrentChatCharacters"
+                    :key="character.name"
+                    type="button"
+                    @click="chooseCurrentChatCharacter(character)"
+                  >
+                    <strong>{{ character.name }}</strong>
+                    <small>{{ character.race || '点击选择' }}</small>
+                  </button>
+                  <p v-if="filteredCurrentChatCharacters.length === 0">当前聊天没有可读取的角色；可以改用「直接输入」。</p>
+                </div>
+              </div>
+
+              <div v-else-if="flashSource === 'manual'" class="flash-source-panel">
+                <label class="flash-mode-url-field">
+                  <span>角色全名</span>
+                  <input v-model="profile.characterName" type="text" maxlength="80" autocomplete="off" placeholder="例如：傲雪" />
+                </label>
+              </div>
+
+              <div class="flash-step-actions">
+                <span></span>
+                <button type="button" class="primary-button" @click="continueFlashIdentity">下一步：添加图片</button>
+              </div>
+            </section>
+
+            <section v-else-if="flashStep === 2" class="flash-tutorial-step">
+              <div class="flash-mode-heading">
+                <span class="mode-eyebrow">快速建立 · 2 / 3</span>
+                <h2>给「{{ profile.characterName }}」一张图片</h2>
+                <p>这里只要一张图片。现有的作者资料、配色和其他图库内容都会保留，不会因为快速模式被清掉。</p>
+              </div>
 
               <label class="flash-mode-url-field">
-                <span>图片 URL</span>
+                <span>图片直链</span>
                 <input
                   :value="primaryFlashImageUrl"
                   type="url"
@@ -121,36 +196,79 @@
                 />
               </label>
 
-              <div class="flash-target-note">
-                <span>写入位置</span>
-                <strong>{{ flashTargetLabel }}</strong>
+              <div class="flash-direct-link-tip">
+                <strong>什么是图片直链？</strong>
+                <p>打开这个网址时会直接看到图片本身。常见结尾是 <code>.png</code>、<code>.jpg</code>、<code>.jpeg</code>、<code>.webp</code> 或 <code>.avif</code>。</p>
+                <small>✅ https://example.com/portrait.png · ❌ 图床的相册页 / 分享页</small>
               </div>
-            </div>
-          </div>
 
-          <footer class="flash-mode-save-bar">
-            <div class="save-feedback" aria-live="polite">
-              <strong :class="{ success: saveState === 'success', error: saveState === 'error' }">{{ saveMessage }}</strong>
-              <span v-if="validationErrors.length">{{ validationErrors[0] }}</span>
-              <span v-else-if="applyMessage && saveState !== 'success'">{{ applyMessage }}</span>
-            </div>
-            <button
-              class="primary-button flash-save-button"
-              :class="{ 'save-success': flashSaveCelebrating }"
-              type="submit"
-              :disabled="!canFlashSave || flashSaveCelebrating"
-            >
-              {{
-                flashSaveCelebrating
-                  ? '✓ 已保存'
-                  : saving || applyingSavedProfile
-                    ? '正在保存…'
-                    : flashProfileExists
-                      ? '保存角色档案'
-                      : '建立角色档案'
-              }}
-            </button>
-          </footer>
+              <div class="flash-image-preview" :class="{ ready: flashImageReady }">
+                <img v-if="flashImageReady" :src="primaryFlashImageUrl" alt="角色图片预览" />
+                <span v-else>{{ primaryFlashImageUrl.trim() ? '这个网址还不是可用的图片直链' : '贴上图片直链后会在这里预览' }}</span>
+              </div>
+
+              <div class="flash-step-actions">
+                <button
+                  v-if="!hasInitialWorldbookTarget && !props.initialCharacterName.trim()"
+                  type="button"
+                  class="secondary-button"
+                  @click="flashStep = 1"
+                >
+                  上一步
+                </button>
+                <span v-else></span>
+                <button type="button" class="primary-button" @click="continueFlashImage">下一步：确认</button>
+              </div>
+            </section>
+
+            <section v-else class="flash-tutorial-step">
+              <div class="flash-mode-heading">
+                <span class="mode-eyebrow">快速建立 · 3 / 3</span>
+                <h2>准备好了</h2>
+                <p>保存后会自动处理持久化、当前聊天即时生效和 CharInfo 刷新；不需要再理解世界书或变量。</p>
+              </div>
+
+              <div class="flash-confirm-card">
+                <img v-if="flashImageReady" :src="primaryFlashImageUrl" alt="角色图片预览" />
+                <div>
+                  <strong>{{ profile.characterName }}</strong>
+                  <span>{{ flashTargetLabel }}</span>
+                </div>
+              </div>
+
+              <div class="flash-auto-checklist">
+                <span>✓ 保存角色档案</span>
+                <span>✓ 当前聊天立即生效</span>
+                <span>✓ 自动刷新角色卡</span>
+              </div>
+
+              <div class="save-feedback flash-save-feedback" aria-live="polite">
+                <strong :class="{ success: saveState === 'success', error: saveState === 'error' }">{{ saveMessage }}</strong>
+                <span v-if="validationErrors.length">{{ validationErrors[0] }}</span>
+                <span v-else-if="applyMessage && saveState !== 'success'">{{ applyMessage }}</span>
+              </div>
+
+              <div class="flash-step-actions">
+                <button type="button" class="secondary-button" @click="flashStep = 2">上一步</button>
+                <button
+                  class="primary-button flash-save-button"
+                  :class="{ 'save-success': flashSaveCelebrating }"
+                  type="submit"
+                  :disabled="!canFlashSave || flashSaveCelebrating"
+                >
+                  {{
+                    flashSaveCelebrating
+                      ? '✓ 已保存'
+                      : saving || applyingSavedProfile
+                        ? '正在保存…'
+                        : flashProfileExists
+                          ? '保存并立即生效'
+                          : '建立并立即生效'
+                  }}
+                </button>
+              </div>
+            </section>
+          </div>
         </form>
 
         <nav v-else-if="proMode" class="wizard-step-nav" aria-label="角色档案编辑步骤">
@@ -189,8 +307,8 @@
           <div class="mobile-section-toggle mobile-target-toggle">
             <span class="step-number">1</span>
             <span class="mobile-section-copy">
-              <strong>选择写入目标</strong>
-              <small>{{ selectedEntry?.name || '尚未选择角色条目' }}</small>
+              <strong>这个角色在哪里？</strong>
+              <small>{{ selectedEntry?.name || (proAutoTarget ? '稍后自动建立保存位置' : '尚未选择角色') }}</small>
             </span>
           </div>
 
@@ -199,7 +317,7 @@
               <div class="section-title-row">
                 <div>
                   <span class="step-label">步骤 1</span>
-                  <h2>选择写入目标</h2>
+                  <h2>这个角色在哪里？</h2>
                 </div>
                 <button
                   class="icon-button"
@@ -216,6 +334,36 @@
                 <span>当前角色卡</span>
                 <strong>{{ currentCharacterName || '未打开角色卡' }}</strong>
               </div>
+
+              <div class="pro-source-shortcuts">
+                <button type="button" class="secondary-button" @click="toggleProCurrentChatPicker">
+                  从当前聊天选角色
+                </button>
+                <button type="button" class="secondary-button" @click="useAutomaticProfileTarget">
+                  没有 / 我懒得找 → 自动建立
+                </button>
+              </div>
+
+              <div v-if="proCurrentChatPickerOpen" class="pro-current-chat-picker">
+                <label class="field">
+                  <span class="field-label">当前聊天角色</span>
+                  <input v-model="currentChatCharacterSearch" type="search" autocomplete="off" placeholder="搜索角色名" />
+                </label>
+                <div class="flash-character-results">
+                  <button
+                    v-for="character in filteredCurrentChatCharacters"
+                    :key="character.name"
+                    type="button"
+                    @click="chooseCurrentChatCharacter(character)"
+                  >
+                    <strong>{{ character.name }}</strong>
+                    <small>{{ character.race || '点击选择并自动预填' }}</small>
+                  </button>
+                  <p v-if="filteredCurrentChatCharacters.length === 0">当前聊天没有可读取的角色关系资料。</p>
+                </div>
+              </div>
+
+              <div class="target-divider"><span>或选择已有世界书角色</span></div>
 
               <div class="field">
                 <span class="field-label">搜索并选择世界书</span>
@@ -345,7 +493,7 @@
 
             <div class="wizard-step-actions">
               <span></span>
-              <button type="button" class="primary-button" :disabled="!selectedEntry" @click="goToStep(2)">
+              <button type="button" class="primary-button" @click="goToStep(2)">
                 下一步：角色档案
               </button>
             </div>
@@ -523,7 +671,6 @@
                 <button
                   type="button"
                   class="primary-button"
-                  :disabled="!profile.characterName.trim()"
                   @click="goToStep(3)"
                 >
                   下一步：主题颜色
@@ -665,26 +812,17 @@
               </div>
               <div class="save-actions">
                 <button
-                  class="secondary-button"
-                  type="button"
-                  :disabled="!canApplyCurrentProfile || applyingSavedProfile"
-                  title="立即写入当前聊天的 CharInfo 变量、状态栏头像与状态栏相簿"
-                  @click="applyCurrentProfileToCurrentChat"
-                >
-                  {{ applyingSavedProfile ? '正在写入…' : '即时写入变量及状态栏' }}
-                </button>
-                <button
                   class="primary-button"
                   type="submit"
                   :disabled="!canSave"
-                  title="仅保存到世界书条目，不修改当前聊天变量"
+                  title="保存角色档案，并立即同步当前聊天变量、状态栏与角色卡"
                 >
                   {{
-                    saving
-                      ? '正在保存…'
+                    saving || applyingSavedProfile
+                      ? '正在保存并应用…'
                       : legacyVisualInspection.state === 'importable'
-                        ? '升级并保存到世界书'
-                        : '保存到世界书'
+                        ? '升级、保存并立即生效'
+                        : '保存并立即生效'
                   }}
                 </button>
               </div>
@@ -749,8 +887,11 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 
 import {
+  collectEncounteredCharacters,
   parseWorldbookCharacterDisplayName,
   parseWorldbookCharacterEntryTitle,
+  readStaticCharacterFields,
+  type EncounteredCharacterRecord,
 } from '../char_info_shared/characterEntryLibrary';
 import { DEFAULT_CHAR_INFO_THEME_MODE, managerThemeClass, type CharInfoThemeMode } from '../char_info_shared/managerTheme';
 import { copyTextWithDocumentSelection, copyTextWithFallback } from './clipboard';
@@ -778,6 +919,7 @@ import {
   inspectLegacyVisualProfile,
   upsertManagedEjsBlockWithLegacyMigration,
 } from '../char_info_shared/legacyVisualProfile';
+import { isSupportedRemoteImageUrl, isSupportedRemoteMediaUrl } from '../char_info_shared/remoteMediaUrl';
 import { buildCurrentWorldbookList, buildWorldbookList } from '../char_info_shared/worldbookList';
 import ViewerApp from '../char_info_viewer/App.vue';
 import { evaluateManagedEjs } from './ejsRuntime';
@@ -814,6 +956,8 @@ interface EditableProfile extends Omit<CharacterProfile, 'gallery' | 'metadata'>
 
 type StepId = 1 | 2 | 3 | 4 | 5;
 type EditorMode = 'flash' | 'pro';
+type FlashStep = 1 | 2 | 3;
+type CharacterSource = 'worldbook' | 'current-chat' | 'manual';
 
 const props = withDefaults(
   defineProps<{
@@ -837,17 +981,23 @@ const props = withDefaults(
 );
 const emit = defineEmits<{ close: [] }>();
 const steps: { id: StepId; shortLabel: string; title: string }[] = [
-  { id: 1, shortLabel: '目标', title: '选择写入目标' },
+  { id: 1, shortLabel: '来源', title: '选择角色来源' },
   { id: 2, shortLabel: '档案', title: '填写角色档案' },
   { id: 3, shortLabel: '配色', title: '设置主题颜色' },
   { id: 4, shortLabel: '相册', title: '整理相册与头像' },
-  { id: 5, shortLabel: '生成', title: '生成并写入' },
+  { id: 5, shortLabel: '保存', title: '确认并保存' },
 ];
 const editorMode = ref<EditorMode | null>(null);
 const modeSelection = computed(() => editorMode.value === null);
 const flashMode = computed(() => editorMode.value === 'flash');
 const proMode = computed(() => editorMode.value === 'pro');
 const flashProfileExists = ref(false);
+const flashStep = ref<FlashStep>(1);
+const flashSource = ref<CharacterSource | null>(null);
+const currentChatCharacters = ref<EncounteredCharacterRecord[]>([]);
+const currentChatCharacterSearch = ref('');
+const proAutoTarget = ref(false);
+const proCurrentChatPickerOpen = ref(false);
 const currentCharacterName = ref('');
 const worldbooks = ref<string[]>([]);
 const characterWorldbooks = ref<string[]>([]);
@@ -873,7 +1023,9 @@ const flashSaveCelebrating = ref(false);
 const saveState = ref<'idle' | 'success' | 'error'>('idle');
 const saveMessage = ref('选择世界书条目后即可写入。');
 const applyMessage = ref('');
+const editorNotice = ref('');
 let flashSaveSuccessTimer: number | null = null;
+let editorNoticeTimer: number | null = null;
 let nextImageId = 1;
 let nextStorySectionId = 1;
 const loadError = ref('');
@@ -1010,28 +1162,43 @@ const editorContextDescription = computed(() =>
       : '选择模式后再指定世界书与角色条目。',
 );
 const primaryFlashImageUrl = computed(() => profile.gallery[0]?.sources[0] ?? '');
+const flashImageReady = computed(() => {
+  const url = primaryFlashImageUrl.value.trim();
+  return isHttpsUrl(url) && isSupportedRemoteImageUrl(url);
+});
+const hasSelectedWorldbookTarget = computed(() => !!selectedWorldbookName.value && !!selectedEntry.value);
+const filteredCurrentChatCharacters = computed(() => {
+  const query = currentChatCharacterSearch.value.trim().toLocaleLowerCase();
+  if (!query) return currentChatCharacters.value;
+  return currentChatCharacters.value.filter(character => character.name.toLocaleLowerCase().includes(query));
+});
+const hasValidProfileMedia = computed(
+  () =>
+    profile.gallery.some(image => image.sources.some(source => isSupportedRemoteMediaUrl(source))) ||
+    (!!profile.remoteGalleryUrl?.trim() && isHttpsUrl(profile.remoteGalleryUrl)),
+);
 const flashTargetLabel = computed(() => {
-  if (hasInitialWorldbookTarget.value) {
+  if (hasSelectedWorldbookTarget.value) {
     const entry = selectedEntry.value;
     return entry
       ? `${selectedWorldbookName.value} · ${entry.name || `#${entry.uid}`}`
-      : `${props.initialWorldbookName.trim()} · 正在读取条目`;
+      : `${selectedWorldbookName.value} · 正在读取条目`;
   }
-  return '当前聊天世界书 · 自动建立或更新 CharInfo 档案条目';
+  return '当前聊天角色档案 · 自动建立保存位置';
 });
 const canApplyCurrentProfile = computed(() => validationErrors.value.length === 0 && !applyingSavedProfile.value);
 const canFlashSave = computed(
   () =>
     flashMode.value &&
-    (!hasInitialWorldbookTarget.value || !!selectedEntry.value) &&
+    flashStep.value === 3 &&
+    flashImageReady.value &&
+    (flashSource.value !== 'worldbook' || hasSelectedWorldbookTarget.value) &&
     validationErrors.value.length === 0 &&
     !saving.value &&
     !applyingSavedProfile.value &&
     !flashSaveCelebrating.value,
 );
-const canPreviewViewer = computed(
-  () => proMode.value && profile.characterName.trim().length > 0 && !!selectedEntry.value,
-);
+const canPreviewViewer = computed(() => proMode.value && profile.characterName.trim().length > 0);
 const viewerPreviewProfile = computed(() => toFullSerializableProfile());
 const viewerPreviewSampleData = computed(() => buildProfileEditorViewerPreviewData(viewerPreviewProfile.value));
 const viewerPreviewYaml = computed(() =>
@@ -1154,11 +1321,11 @@ const writeBlocked = computed(
 
 const canSave = computed(
   () =>
-    !!selectedWorldbookName.value &&
-    !!selectedEntry.value &&
+    (proAutoTarget.value || hasSelectedWorldbookTarget.value) &&
     !writeBlocked.value &&
     validationErrors.value.length === 0 &&
-    !saving.value,
+    !saving.value &&
+    !applyingSavedProfile.value,
 );
 
 function isCharacterWorldbook(worldbookName: string): boolean {
@@ -1243,6 +1410,7 @@ function selectEntry(entry: WorldbookEntry) {
   selectedEntryUid.value = entry.uid;
   entrySearch.value = entry.name || `未命名条目 #${entry.uid}`;
   entryPickerOpen.value = false;
+  if (proMode.value) proAutoTarget.value = false;
 }
 
 function moveEntryHighlight(offset: -1 | 1) {
@@ -1300,11 +1468,102 @@ function updatePrimaryFlashImageUrl(value: string) {
   syncFlashRoleUrls(previousUrl);
 }
 
+function refreshCurrentChatCharacters() {
+  currentChatCharacters.value = collectEncounteredCharacters(getVariables({ type: 'chat' }));
+}
+
+function toggleProCurrentChatPicker() {
+  refreshCurrentChatCharacters();
+  proCurrentChatPickerOpen.value = !proCurrentChatPickerOpen.value;
+}
+
+function loadProfileFromCurrentChat(characterName: string): boolean {
+  const name = characterName.trim();
+  if (!name) return false;
+  const existingProfile = readFlashProfileFromChatVariables(name, getVariables({ type: 'chat' }));
+  replaceProfile(existingProfile ?? createEmptyProfile(name));
+  profile.characterName = name;
+  flashProfileExists.value = !!existingProfile;
+  return !!existingProfile;
+}
+
+async function chooseCharacterSource(source: CharacterSource) {
+  flashSource.value = source;
+  saveState.value = 'idle';
+  saveMessage.value = '';
+  if (source !== 'worldbook') {
+    selectedEntryUid.value = null;
+    selectedWorldbookName.value = '';
+  }
+  if (source === 'worldbook' && worldbooks.value.length === 0) await loadWorldbooks();
+  if (source === 'current-chat') refreshCurrentChatCharacters();
+  if (source === 'manual') replaceProfile(createEmptyProfile(profile.characterName.trim()));
+}
+
+function chooseCurrentChatCharacter(character: EncounteredCharacterRecord) {
+  flashSource.value = 'current-chat';
+  proAutoTarget.value = true;
+  proCurrentChatPickerOpen.value = false;
+  selectedEntryUid.value = null;
+  selectedWorldbookName.value = '';
+  loadProfileFromCurrentChat(character.name);
+  ensureFlashRows();
+  syncFlashRoleUrls();
+  if (flashMode.value) {
+    flashStep.value = 2;
+    return;
+  }
+  furthestStep.value = Math.max(furthestStep.value, 2) as StepId;
+  goToStep(2);
+}
+
+function useAutomaticProfileTarget() {
+  proAutoTarget.value = true;
+  selectedEntryUid.value = null;
+  selectedWorldbookName.value = '';
+  if (!profile.characterName.trim()) replaceProfile(createEmptyProfile());
+  furthestStep.value = Math.max(furthestStep.value, 2) as StepId;
+  goToStep(2);
+}
+
+async function continueFlashIdentity() {
+  if (flashSource.value === 'worldbook') {
+    if (!selectedEntry.value) {
+      showEditorNotice('请先选择一个角色条目。');
+      return;
+    }
+    await loadSelectedEntryProfile();
+    flashProfileExists.value = entryInspection.value.state === 'valid';
+  }
+
+  const characterName = profile.characterName.trim();
+  if (!characterName) {
+    showEditorNotice('请先填写角色全名。');
+    return;
+  }
+  if (flashSource.value === 'manual') loadProfileFromCurrentChat(characterName);
+  ensureFlashRows();
+  syncFlashRoleUrls();
+  flashStep.value = 2;
+}
+
+function continueFlashImage() {
+  if (!flashImageReady.value) {
+    showEditorNotice('请填写有效的 HTTPS 图片直链，例如以 .png、.jpg 或 .webp 结尾的网址。');
+    return;
+  }
+  flashStep.value = 3;
+}
+
 async function initializeFlashMode() {
   saveState.value = 'idle';
   applyMessage.value = '';
+  flashStep.value = 1;
+  flashSource.value = null;
+  refreshCurrentChatCharacters();
 
   if (hasInitialWorldbookTarget.value) {
+    flashSource.value = 'worldbook';
     if (!selectedEntry.value) await loadWorldbooks();
     if (!selectedEntry.value) {
       saveState.value = 'error';
@@ -1315,24 +1574,27 @@ async function initializeFlashMode() {
     flashProfileExists.value = entryInspection.value.state === 'valid';
     ensureFlashRows();
     syncFlashRoleUrls();
+    flashStep.value = 2;
     saveMessage.value = flashProfileExists.value
       ? `已读取「${profile.characterName || editorContextName.value}」现有角色档案。`
-      : '目标条目已锁定；填写角色全名和图片 URL 即可建立档案。';
+      : `已找到「${profile.characterName || editorContextName.value}」，现在只需要一张图片。`;
     return;
   }
 
   const characterName = props.initialCharacterName.trim();
-  const existingProfile = characterName
-    ? readFlashProfileFromChatVariables(characterName, getVariables({ type: 'chat' }))
-    : null;
-  flashProfileExists.value = !!existingProfile;
-  replaceProfile(existingProfile ?? createEmptyProfile(characterName));
+  if (characterName) {
+    flashSource.value = 'current-chat';
+    loadProfileFromCurrentChat(characterName);
+    ensureFlashRows();
+    syncFlashRoleUrls();
+    flashStep.value = 2;
+    saveMessage.value = `已找到「${characterName}」，现在只需要确认图片。`;
+    return;
+  }
+
+  replaceProfile(createEmptyProfile());
   ensureFlashRows();
-  syncFlashRoleUrls();
-  profile.characterName = characterName;
-  saveMessage.value = existingProfile
-    ? `已读取「${characterName}」现有角色档案。`
-    : '填写角色全名和图片 URL 即可建立档案。';
+  saveMessage.value = '先告诉我这个角色是谁；不知道世界书在哪也没关系。';
 }
 
 async function selectEditorMode(mode: EditorMode) {
@@ -1342,13 +1604,35 @@ async function selectEditorMode(mode: EditorMode) {
     return;
   }
 
-  if (worldbooks.value.length === 0) await loadWorldbooks();
-  if (hasInitialWorldbookTarget.value && selectedEntry.value) {
-    await loadSelectedEntryProfile();
+  proAutoTarget.value = false;
+  refreshCurrentChatCharacters();
+  if (hasInitialWorldbookTarget.value) {
+    if (worldbooks.value.length === 0 || !selectedEntry.value) await loadWorldbooks();
+    if (selectedEntry.value) {
+      await loadSelectedEntryProfile();
+      furthestStep.value = Math.max(furthestStep.value, 2) as StepId;
+      goToStep(2);
+      return;
+    }
+  }
+
+  const characterName = props.initialCharacterName.trim();
+  if (characterName) {
+    proAutoTarget.value = true;
+    loadProfileFromCurrentChat(characterName);
     furthestStep.value = Math.max(furthestStep.value, 2) as StepId;
     goToStep(2);
     return;
   }
+
+  if (profile.characterName.trim() && (hasSelectedWorldbookTarget.value || flashSource.value)) {
+    proAutoTarget.value = !hasSelectedWorldbookTarget.value;
+    furthestStep.value = Math.max(furthestStep.value, 2) as StepId;
+    goToStep(2);
+    return;
+  }
+
+  if (worldbooks.value.length === 0) await loadWorldbooks();
   goToStep(1);
 }
 
@@ -1462,7 +1746,16 @@ async function loadSelectedEntryProfile() {
     return;
   }
 
-  replaceProfile(createEmptyProfile(parseWorldbookCharacterDisplayName(entry.name)));
+  const title = parseWorldbookCharacterEntryTitle(entry.name, { content: entry.content });
+  const staticFields = readStaticCharacterFields(entry.content);
+  const fallbackProfile = createEmptyProfile(title.displayName ?? staticFields.姓名 ?? parseWorldbookCharacterDisplayName(entry.name));
+  fallbackProfile.metadata = {
+    ...(staticFields.性别 ? { sex: staticFields.性别 } : {}),
+    ...(staticFields.种族 || title.raceText ? { race: staticFields.种族 || title.raceText || '' } : {}),
+    ...(title.authorText ? { author: title.authorText } : {}),
+    ...(title.descriptionText ? { author_note: title.descriptionText } : {}),
+  };
+  replaceProfile(fallbackProfile);
   saveMessage.value =
     inspection.state === 'malformed' || inspection.state === 'multiple'
       ? inspection.reason
@@ -1551,23 +1844,37 @@ function onEscape() {
 
 function canVisitStep(step: StepId): boolean {
   if (step === 1) return true;
-  if (!selectedEntry.value) return false;
-  if (step === 2) return true;
-  return profile.characterName.trim().length > 0;
+  if (step === 2) return hasSelectedWorldbookTarget.value || proAutoTarget.value;
+  if (!profile.characterName.trim()) return false;
+  if (step === 5) return hasValidProfileMedia.value;
+  return true;
 }
 
 function isStepComplete(step: StepId): boolean {
-  if (step === 1) return !!selectedEntry.value;
+  if (step === 1) return hasSelectedWorldbookTarget.value || proAutoTarget.value;
   if (step === 2) return profile.characterName.trim().length > 0;
   if (step === 3) return furthestStep.value > 3;
-  if (step === 4) {
-    return (configuredGalleryCount.value > 0 || isHttpsUrl(profile.remoteGalleryUrl ?? '')) && furthestStep.value > 4;
-  }
+  if (step === 4) return hasValidProfileMedia.value && furthestStep.value > 4;
   return saveState.value === 'success';
 }
 
+function showEditorNotice(message: string) {
+  editorNotice.value = message;
+  if (editorNoticeTimer !== null) window.clearTimeout(editorNoticeTimer);
+  editorNoticeTimer = window.setTimeout(() => {
+    editorNotice.value = '';
+    editorNoticeTimer = null;
+  }, 3600);
+}
+
 function goToStep(step: StepId) {
-  if (!canVisitStep(step)) return;
+  if (!canVisitStep(step)) {
+    if (step === 2) showEditorNotice('请选择一个角色来源，或选择“没有 / 我懒得找”让系统自动建立保存位置。');
+    else if (!profile.characterName.trim()) showEditorNotice('请先填写角色全名。');
+    else if (step === 5) showEditorNotice('请先添加至少一张有效图片，或填写有效的远程图库 URL。');
+    return;
+  }
+  editorNotice.value = '';
   activeStep.value = step;
   furthestStep.value = Math.max(furthestStep.value, step) as StepId;
   if (!isNarrowViewport()) return;
@@ -1649,17 +1956,18 @@ async function saveFlashProfile() {
 
   saving.value = true;
   saveState.value = 'idle';
-  saveMessage.value = hasInitialWorldbookTarget.value
-    ? '正在把角色档案写入目标世界书条目…'
-    : '正在保存角色档案到当前聊天世界书…';
+  saveMessage.value = hasSelectedWorldbookTarget.value
+    ? '正在保存到原角色条目…'
+    : '正在自动建立角色档案保存位置…';
   applyMessage.value = '';
 
   try {
     ensureFlashRows();
     syncFlashRoleUrls();
     const normalizedProfile = normalizeProfile(toFullSerializableProfile());
+    let persistenceSummary = '';
 
-    if (hasInitialWorldbookTarget.value) {
+    if (hasSelectedWorldbookTarget.value) {
       const worldbookName = selectedWorldbookName.value;
       const entry = selectedEntry.value;
       if (!worldbookName || !entry) throw new Error('目标世界书角色条目尚未读取完成。');
@@ -1685,25 +1993,23 @@ async function saveFlashProfile() {
       if (inspection.state !== 'valid' || inspection.profile.characterName !== normalizedProfile.characterName) {
         throw new Error('角色档案写入后的 CharInfo EJS 读回验证失败。');
       }
+      persistenceSummary = '已更新原世界书角色条目';
+    } else {
+      const result = await saveFlashProfileToCurrentChatWorldbook(normalizedProfile);
+      persistenceSummary = result.created ? '已建立角色档案条目' : '已更新角色档案条目';
+    }
 
-      await props.onForceRefresh?.();
-      flashProfileExists.value = true;
-      saveState.value = 'success';
-      saveMessage.value = `✓ 已更新「${normalizedProfile.characterName}」角色档案；原世界书条目其他内容保持不变。`;
-      scheduleFlashReturn();
+    saveMessage.value = `${persistenceSummary}，正在让当前聊天立即生效…`;
+    const applied = await applyCurrentProfileToCurrentChat();
+    flashProfileExists.value = true;
+    saveState.value = 'success';
+    if (!applied) {
+      saveMessage.value = `✓ ${persistenceSummary}，但当前聊天即时应用失败；保存内容不会丢失。`;
+      showEditorNotice('角色档案已经保存，但当前聊天没有即时刷新。可以重新打开编辑器后再次保存。');
       return;
     }
 
-    const result = await saveFlashProfileToCurrentChatWorldbook(normalizedProfile);
-    saveMessage.value = '世界书已保存，正在同步当前聊天角色档案…';
-    const applied = await applyCurrentProfileToCurrentChat();
-    if (!applied) {
-      throw new Error(applyMessage.value.replace(/^即时写入失败：\s*/u, '') || '当前聊天角色档案同步失败。');
-    }
-
-    flashProfileExists.value = true;
-    saveState.value = 'success';
-    saveMessage.value = `✓ 已${result.created ? '添加' : '更新'}「${normalizedProfile.characterName}」角色档案，并同步到当前聊天。`;
+    saveMessage.value = `✓ 「${normalizedProfile.characterName}」角色档案已保存并立即生效。`;
     scheduleFlashReturn();
   } catch (error) {
     console.error('[CharInfo Profile Editor] Failed to save profile in flash mode:', error);
@@ -1715,66 +2021,81 @@ async function saveFlashProfile() {
 }
 
 async function saveToEntry() {
+  if (!canSave.value) return;
   const worldbookName = selectedWorldbookName.value;
   const entry = selectedEntry.value;
-  if (!canSave.value || !entry) return;
+  const hasExistingTarget = hasSelectedWorldbookTarget.value && !!entry;
 
   const legacyMigrationSource =
-    legacyVisualInspection.value.state === 'importable' ? legacyVisualInspection.value.sourceRoot : null;
-  const migrationNotice = legacyMigrationSource
-    ? `\n\n旧版 ${legacyMigrationSource} 写入将被精确移除，并升级为 char_info.profiles v2。`
-    : '';
-  const confirmed = window.confirm(
-    `确定将角色档案写入以下条目？\n\n世界书：${worldbookName}\n条目：${entry.name || `#${entry.uid}`}${migrationNotice}`,
-  );
-  if (!confirmed) return;
+    hasExistingTarget && legacyVisualInspection.value.state === 'importable' ? legacyVisualInspection.value.sourceRoot : null;
+  if (hasExistingTarget && entry) {
+    const migrationNotice = legacyMigrationSource
+      ? `\n\n旧版 ${legacyMigrationSource} 写入将被精确移除，并升级为 char_info.profiles v2。`
+      : '';
+    const confirmed = window.confirm(
+      `确定更新这个角色条目？\n\n世界书：${worldbookName}\n条目：${entry.name || `#${entry.uid}`}${migrationNotice}`,
+    );
+    if (!confirmed) return;
+  }
 
   saving.value = true;
   saveState.value = 'idle';
-  saveMessage.value = '正在读取条目并安全写入…';
+  applyMessage.value = '';
+  saveMessage.value = hasExistingTarget ? '正在安全更新角色条目…' : '正在自动建立角色档案保存位置…';
 
   try {
     const normalizedProfile = normalizeProfile(toSerializableProfile());
-    const latestEntries = await getWorldbook(worldbookName);
-    const latestEntry = latestEntries.find(item => item.uid === entry.uid);
-    if (!latestEntry) throw new Error(`找不到世界书条目 #${entry.uid}。`);
-    upsertManagedEjsBlockWithLegacyMigration(latestEntry.content, normalizedProfile);
+    let persistenceSummary = '';
 
-    saveMessage.value = '正在读取角色条目并安全写入…';
-    const updatedWorldbook = await updateWorldbookWith(
-      worldbookName,
-      entries => {
-        const target = entries.find(item => item.uid === entry.uid);
-        if (!target) throw new Error(`找不到世界书条目 #${entry.uid}。`);
-        return entries.map(item =>
-          item.uid === entry.uid
-            ? { ...item, content: upsertManagedEjsBlockWithLegacyMigration(item.content, normalizedProfile) }
-            : item,
-        );
-      },
-      { render: 'immediate' },
-    );
+    if (hasExistingTarget && entry) {
+      const latestEntries = await getWorldbook(worldbookName);
+      const latestEntry = latestEntries.find(item => item.uid === entry.uid);
+      if (!latestEntry) throw new Error(`找不到世界书条目 #${entry.uid}。`);
+      upsertManagedEjsBlockWithLegacyMigration(latestEntry.content, normalizedProfile);
 
-    entries.value = updatedWorldbook;
-    const savedEntry = updatedWorldbook.find(item => item.uid === entry.uid);
-    if (!savedEntry || inspectManagedBlock(savedEntry.content).state !== 'valid') {
-      throw new Error('写入后的读回验证失败。');
+      const updatedWorldbook = await updateWorldbookWith(
+        worldbookName,
+        entries => {
+          const target = entries.find(item => item.uid === entry.uid);
+          if (!target) throw new Error(`找不到世界书条目 #${entry.uid}。`);
+          return entries.map(item =>
+            item.uid === entry.uid
+              ? { ...item, content: upsertManagedEjsBlockWithLegacyMigration(item.content, normalizedProfile) }
+              : item,
+          );
+        },
+        { render: 'immediate' },
+      );
+
+      entries.value = updatedWorldbook;
+      const savedEntry = updatedWorldbook.find(item => item.uid === entry.uid);
+      const savedInspection = savedEntry ? inspectManagedBlock(savedEntry.content) : { state: 'absent' as const };
+      if (savedInspection.state !== 'valid' || savedInspection.profile.characterName !== normalizedProfile.characterName) {
+        throw new Error('写入后的角色档案读回验证失败。');
+      }
+      persistenceSummary = legacyMigrationSource
+        ? `旧版 ${legacyMigrationSource} 已升级；原条目其他内容保持不变`
+        : '角色档案已写入原世界书条目；原条目其他内容保持不变';
+      console.info('[CharInfo Profile Editor] Managed EJS saved', {
+        worldbook: worldbookName,
+        entryUid: entry.uid,
+        entryName: entry.name,
+      });
+    } else {
+      const result = await saveFlashProfileToCurrentChatWorldbook(normalizedProfile);
+      persistenceSummary = result.created ? '已自动建立角色档案条目' : '已更新自动角色档案条目';
     }
 
+    saveMessage.value = `${persistenceSummary}，正在同步当前聊天…`;
+    const applied = await applyCurrentProfileToCurrentChat();
     saveState.value = 'success';
-    const migrationSummary = legacyMigrationSource
-      ? `旧版 ${legacyMigrationSource} 已升级为 char_info.profiles v2；`
-      : '';
-    saveMessage.value = `${
-      legacyMigrationSource
-        ? `升级成功：${migrationSummary}原条目其余内容保持不变。`
-        : '保存成功：角色档案已写入世界书条目，原条目其余内容保持不变。'
-    } 当前聊天变量未修改；如需立即生效，请点击「即时写入变量及状态栏」。`;
-    console.info('[CharInfo Profile Editor] Managed EJS saved', {
-      worldbook: worldbookName,
-      entryUid: entry.uid,
-      entryName: entry.name,
-    });
+    if (!applied) {
+      saveMessage.value = `✓ ${persistenceSummary}，但当前聊天即时应用失败；世界书中的保存内容不会丢失。`;
+      showEditorNotice('角色档案已经保存，但当前聊天没有即时刷新。再次保存即可重试即时应用。');
+      return;
+    }
+
+    saveMessage.value = `✓ ${persistenceSummary}，并已立即同步当前聊天与角色卡。`;
   } catch (error) {
     console.error('[CharInfo Profile Editor] Failed to save managed EJS:', error);
     saveState.value = 'error';
@@ -1846,7 +2167,7 @@ async function applyCurrentProfileToCurrentChat(): Promise<boolean> {
 
     if (unsupportedStatusGalleryItems > 0) {
       const supportedFormats = STATUS_GALLERY_IMAGE_EXTENSIONS.map(extension => extension.slice(1)).join(' / ');
-      toastr.warning(
+      showEditorNotice(
         `即时写入成功，但状态栏相簿目前仅支援 ${supportedFormats}。${unsupportedStatusGalleryItems} 个其他格式媒体不会进入状态栏相簿；CharInfo 相簿仍已完整写入。`,
       );
     }
@@ -1876,12 +2197,14 @@ watch(selectedWorldbookName, worldbookName => {
 });
 watch(selectedEntryUid, uid => {
   if (uid === null) {
+    if (proAutoTarget.value || (flashMode.value && flashSource.value !== 'worldbook')) return;
     void loadSelectedEntryProfile();
     furthestStep.value = 1;
     if (proMode.value) goToStep(1);
     return;
   }
 
+  if (proMode.value) proAutoTarget.value = false;
   void loadSelectedEntryProfile();
   furthestStep.value = 2;
   if (proMode.value) goToStep(2);
@@ -1903,6 +2226,10 @@ onBeforeUnmount(() => {
   if (flashSaveSuccessTimer !== null) {
     window.clearTimeout(flashSaveSuccessTimer);
     flashSaveSuccessTimer = null;
+  }
+  if (editorNoticeTimer !== null) {
+    window.clearTimeout(editorNoticeTimer);
+    editorNoticeTimer = null;
   }
 });
 </script>
@@ -1982,6 +2309,27 @@ button {
   backdrop-filter: blur(9px);
   cursor: default;
 }
+
+.editor-notice {
+  position: fixed;
+  z-index: 20;
+  top: max(calc(env(safe-area-inset-top, 0px) + 14px), 18px);
+  left: 50%;
+  width: min(560px, calc(100% - 32px));
+  padding: 11px 14px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--warning) 18%, var(--surface-raised));
+  border: 1px solid color-mix(in srgb, var(--warning) 58%, var(--border));
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgb(0 0 0 / 28%);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.5;
+  text-align: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
 .manager-dialog {
   position: relative;
   z-index: 1;
@@ -2479,9 +2827,111 @@ button {
   gap: 8px;
 }
 
-.flash-mode-form {
+.flash-mode-form,
+.flash-tutorial-step {
   display: grid;
   gap: 16px;
+}
+
+.flash-onboarding {
+  align-content: start;
+}
+
+.flash-progress {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.flash-progress span {
+  padding: 8px 10px;
+  color: var(--text-muted);
+  text-align: center;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.flash-progress span.active {
+  color: var(--ci-on-primary);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.flash-progress span.complete {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 40%, var(--border));
+}
+
+.flash-source-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.flash-source-grid button,
+.flash-character-results button {
+  display: grid;
+  min-width: 0;
+  padding: 13px 14px;
+  gap: 4px;
+  color: var(--text-secondary);
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.flash-source-grid button:hover,
+.flash-source-grid button.active,
+.flash-character-results button:hover {
+  color: var(--text);
+  background: var(--primary-soft);
+  border-color: var(--primary-strong);
+}
+
+.flash-source-grid button strong,
+.flash-character-results button strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flash-source-grid button small,
+.flash-character-results button small {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.flash-source-panel,
+.pro-current-chat-picker {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.flash-character-results {
+  display: grid;
+  max-height: 260px;
+  overflow-y: auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.flash-character-results p {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 14px;
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 11px;
 }
 
 .flash-mode-url-field {
@@ -2496,7 +2946,8 @@ button {
   font-weight: 800;
 }
 
-.flash-mode-url-field input {
+.flash-mode-url-field input,
+.flash-mode-url-field select {
   width: 100%;
   min-height: 50px;
   padding: 11px 13px;
@@ -2507,9 +2958,152 @@ button {
   outline: none;
 }
 
-.flash-mode-url-field input:focus {
+.flash-mode-url-field input:focus,
+.flash-mode-url-field select:focus {
   border-color: rgb(var(--ci-primary-rgb) / 68%);
   box-shadow: 0 0 0 3px rgb(var(--ci-primary-rgb) / 10%);
+}
+
+.flash-direct-link-tip {
+  display: grid;
+  gap: 6px;
+  padding: 13px 14px;
+  background: var(--primary-soft);
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--border));
+  border-radius: 12px;
+}
+
+.flash-direct-link-tip p,
+.flash-direct-link-tip small {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.flash-image-preview {
+  display: grid;
+  min-height: 260px;
+  overflow: hidden;
+  place-items: center;
+  color: var(--text-muted);
+  background: var(--surface-soft);
+  border: 1px dashed var(--border-strong);
+  border-radius: 16px;
+  text-align: center;
+}
+
+.flash-image-preview.ready {
+  border-style: solid;
+}
+
+.flash-image-preview img {
+  display: block;
+  width: 100%;
+  height: min(48vh, 420px);
+  object-fit: contain;
+}
+
+.flash-step-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.flash-step-actions > span {
+  flex: 1;
+}
+
+.flash-confirm-card {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.flash-confirm-card img {
+  width: 104px;
+  height: 132px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.flash-confirm-card > div {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.flash-confirm-card strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flash-confirm-card span {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.flash-auto-checklist {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.flash-auto-checklist span {
+  padding: 10px;
+  color: var(--success);
+  text-align: center;
+  background: color-mix(in srgb, var(--success) 8%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--success) 28%, var(--border));
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.flash-save-feedback {
+  padding: 12px 14px;
+  background: var(--surface-soft);
+  border-radius: 10px;
+}
+
+.pro-source-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-bottom: 16px;
+}
+
+.pro-source-shortcuts .secondary-button {
+  width: 100%;
+}
+
+.target-divider {
+  display: flex;
+  margin: 18px 0 14px;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.target-divider::before,
+.target-divider::after {
+  height: 1px;
+  flex: 1;
+  content: '';
+  background: var(--border);
 }
 
 .flash-target-note {
@@ -3924,6 +4518,43 @@ pre {
     -webkit-overflow-scrolling: touch;
   }
 
+  .flash-source-grid,
+  .flash-character-results,
+  .flash-auto-checklist,
+  .pro-source-shortcuts {
+    grid-template-columns: 1fr;
+  }
+
+  .flash-character-results {
+    max-height: 220px;
+  }
+
+  .flash-image-preview {
+    min-height: 220px;
+  }
+
+  .flash-image-preview img {
+    height: min(42vh, 360px);
+  }
+
+  .flash-step-actions {
+    align-items: stretch;
+  }
+
+  .flash-step-actions .primary-button,
+  .flash-step-actions .secondary-button {
+    min-height: 46px;
+  }
+
+  .flash-confirm-card {
+    grid-template-columns: 82px minmax(0, 1fr);
+  }
+
+  .flash-confirm-card img {
+    width: 82px;
+    height: 104px;
+  }
+
   .flash-mode-save-bar {
     position: sticky;
     z-index: 6;
@@ -4278,6 +4909,39 @@ pre {
     padding: 24px 18px 20px;
     align-content: start;
   }
+
+  .flash-source-grid,
+  .flash-character-results,
+  .flash-auto-checklist,
+  .pro-source-shortcuts {
+    grid-template-columns: 1fr;
+  }
+
+  .flash-character-results {
+    max-height: 220px;
+  }
+
+  .flash-image-preview {
+    min-height: 220px;
+  }
+
+  .flash-image-preview img {
+    height: min(42vh, 360px);
+  }
+
+  .flash-step-actions {
+    align-items: stretch;
+  }
+
+  .flash-confirm-card {
+    grid-template-columns: 82px minmax(0, 1fr);
+  }
+
+  .flash-confirm-card img {
+    width: 82px;
+    height: 104px;
+  }
+
   .field-grid,
   .metadata-field-grid,
   .color-grid,

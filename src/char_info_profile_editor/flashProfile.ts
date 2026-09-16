@@ -8,7 +8,7 @@ import {
   type CharacterProfile,
 } from '../char_info_shared/characterProfile';
 
-export const FLASH_PROFILE_ENTRY_PREFIX = '[CharInfo][视觉] ';
+export const FLASH_PROFILE_ENTRY_PREFIX = '[DLC][角色]';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -36,9 +36,12 @@ export function readFlashProfileFromChatVariables(
   const charInfo = isRecord(chatVariables.char_info) ? chatVariables.char_info : null;
   const profiles = charInfo && isRecord(charInfo.profiles) ? charInfo.profiles : null;
   const stored = profiles && isRecord(profiles[name]) ? profiles[name] : null;
-  if (!stored) return null;
+  const statData = isRecord(chatVariables.stat_data) ? chatVariables.stat_data : null;
+  const relationships = statData && isRecord(statData.关系列表) ? statData.关系列表 : null;
+  const relationship = relationships && isRecord(relationships[name]) ? relationships[name] : null;
+  if (!stored && !relationship) return null;
 
-  const gallery = Array.isArray(stored.gallery)
+  const gallery = Array.isArray(stored?.gallery)
     ? stored.gallery.flatMap((value, index) => {
         if (!isRecord(value)) return [];
         const sources = Array.isArray(value.sources)
@@ -57,16 +60,25 @@ export function readFlashProfileFromChatVariables(
       })
     : [];
 
+  const storedMetadata = isRecord(stored?.metadata) ? (stored.metadata as CharacterProfileMetadata) : undefined;
+  const relationshipSex = readString(relationship?.性别);
+  const relationshipRace = readString(relationship?.种族);
+  const metadata = {
+    ...(storedMetadata ?? {}),
+    ...(!readString(storedMetadata?.sex) && relationshipSex ? { sex: relationshipSex } : {}),
+    ...(!readString(storedMetadata?.race) && relationshipRace ? { race: relationshipRace } : {}),
+  };
+
   const profile = normalizeProfile({
     characterName: name,
     avatarUrl: readAvatarUrl(chatVariables, name),
-    coverUrl: readString(stored.cover_url),
-    raceColor: readString(stored.custom_racecolor),
-    tierColor: readString(stored.custom_tiercolor),
-    entranceQuote: readString(stored['登场台词']),
-    ...(readString(stored.gallery_pack_url) ? { remoteGalleryUrl: readString(stored.gallery_pack_url) } : {}),
+    coverUrl: readString(stored?.cover_url),
+    raceColor: readString(stored?.custom_racecolor),
+    tierColor: readString(stored?.custom_tiercolor),
+    entranceQuote: readString(stored?.['登场台词']),
+    ...(readString(stored?.gallery_pack_url) ? { remoteGalleryUrl: readString(stored?.gallery_pack_url) } : {}),
     gallery,
-    ...(isRecord(stored.metadata) ? { metadata: stored.metadata as CharacterProfileMetadata } : {}),
+    ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
   });
 
   if (profile.gallery.length === 0 && !profile.remoteGalleryUrl) {
@@ -76,7 +88,8 @@ export function readFlashProfileFromChatVariables(
 }
 
 export function flashEntryName(characterName: string): string {
-  return `${FLASH_PROFILE_ENTRY_PREFIX}${characterName.trim()}`;
+  const name = characterName.trim();
+  return `${FLASH_PROFILE_ENTRY_PREFIX}[${name}]${name}角色档案`;
 }
 
 export function buildFlashWorldbookEntry(profile: CharacterProfile) {
@@ -87,7 +100,7 @@ export function buildFlashWorldbookEntry(profile: CharacterProfile) {
   return {
     name: flashEntryName(normalized.characterName),
     enabled: true,
-    strategy: { type: 'selective' as const, keys: [normalized.characterName] },
+    strategy: { type: 'constant' as const },
     position: { type: 'after_character_definition' as const, order: 601 },
     recursion: { prevent_incoming: true, prevent_outgoing: true, delay_until: null },
     content: buildManagedEjsBlock(normalized),
@@ -99,9 +112,10 @@ export async function saveFlashProfileToCurrentChatWorldbook(
 ): Promise<{ worldbookName: string; entryUid: number; created: boolean }> {
   const normalized = normalizeProfile(profile);
   const entryInput = buildFlashWorldbookEntry(normalized);
+  const legacyEntryName = `[CharInfo][视觉] ${normalized.characterName}`;
   const worldbookName = getChatWorldbookName('current') ?? (await getOrCreateChatWorldbook('current'));
   const existingEntries = await getWorldbook(worldbookName);
-  const existingMatches = existingEntries.filter(entry => entry.name === entryInput.name);
+  const existingMatches = existingEntries.filter(entry => entry.name === entryInput.name || entry.name === legacyEntryName);
   if (existingMatches.length > 1) {
     throw new Error(`当前聊天世界书里存在多个“${entryInput.name}”条目，请先保留一份再保存。`);
   }

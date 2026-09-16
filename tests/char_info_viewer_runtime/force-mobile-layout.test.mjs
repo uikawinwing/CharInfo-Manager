@@ -67,7 +67,7 @@ test('设置开关和角色库强制移动布局沿用 720px 布局契约', () =
   );
   assert.match(
     runtimeRootSource,
-    /class="char-info-library-mobile-dock"[\s\S]*?搜索[\s\S]*?筛选[\s\S]*?返回游戏[\s\S]*?刷新[\s\S]*?更多/u,
+    /class="char-info-library-mobile-dock"[\s\S]*?搜索[\s\S]*?筛选[\s\S]*?返回游戏[\s\S]*?刷新[\s\S]*?设置/u,
   );
   assert.match(
     runtimeRootSource,
