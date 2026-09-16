@@ -2,6 +2,10 @@
   <div class="manager-root" :class="managerThemeClass(props.themeMode)" @keydown.esc="onEscape">
     <button class="backdrop" type="button" aria-label="关闭管理器" @click="emit('close')"></button>
 
+    <div v-if="editorNotice" class="editor-notice" role="alert" aria-live="assertive">
+      {{ editorNotice }}
+    </div>
+
     <main class="manager-dialog" role="dialog" aria-modal="true" aria-labelledby="manager-title">
       <header class="dialog-header">
         <div class="header-title">
@@ -1019,7 +1023,9 @@ const flashSaveCelebrating = ref(false);
 const saveState = ref<'idle' | 'success' | 'error'>('idle');
 const saveMessage = ref('选择世界书条目后即可写入。');
 const applyMessage = ref('');
+const editorNotice = ref('');
 let flashSaveSuccessTimer: number | null = null;
+let editorNoticeTimer: number | null = null;
 let nextImageId = 1;
 let nextStorySectionId = 1;
 const loadError = ref('');
@@ -1523,7 +1529,7 @@ function useAutomaticProfileTarget() {
 async function continueFlashIdentity() {
   if (flashSource.value === 'worldbook') {
     if (!selectedEntry.value) {
-      toastr.warning('请先选择一个角色条目。');
+      showEditorNotice('请先选择一个角色条目。');
       return;
     }
     await loadSelectedEntryProfile();
@@ -1532,7 +1538,7 @@ async function continueFlashIdentity() {
 
   const characterName = profile.characterName.trim();
   if (!characterName) {
-    toastr.warning('请先填写角色全名。');
+    showEditorNotice('请先填写角色全名。');
     return;
   }
   if (flashSource.value === 'manual') loadProfileFromCurrentChat(characterName);
@@ -1543,7 +1549,7 @@ async function continueFlashIdentity() {
 
 function continueFlashImage() {
   if (!flashImageReady.value) {
-    toastr.warning('请填写有效的 HTTPS 图片直链，例如以 .png、.jpg 或 .webp 结尾的网址。');
+    showEditorNotice('请填写有效的 HTTPS 图片直链，例如以 .png、.jpg 或 .webp 结尾的网址。');
     return;
   }
   flashStep.value = 3;
@@ -1852,13 +1858,23 @@ function isStepComplete(step: StepId): boolean {
   return saveState.value === 'success';
 }
 
+function showEditorNotice(message: string) {
+  editorNotice.value = message;
+  if (editorNoticeTimer !== null) window.clearTimeout(editorNoticeTimer);
+  editorNoticeTimer = window.setTimeout(() => {
+    editorNotice.value = '';
+    editorNoticeTimer = null;
+  }, 3600);
+}
+
 function goToStep(step: StepId) {
   if (!canVisitStep(step)) {
-    if (step === 2) toastr.warning('请选择一个角色来源，或选择“没有 / 我懒得找”让系统自动建立保存位置。');
-    else if (!profile.characterName.trim()) toastr.warning('请先填写角色全名。');
-    else if (step === 5) toastr.warning('请先添加至少一张有效图片，或填写有效的远程图库 URL。');
+    if (step === 2) showEditorNotice('请选择一个角色来源，或选择“没有 / 我懒得找”让系统自动建立保存位置。');
+    else if (!profile.characterName.trim()) showEditorNotice('请先填写角色全名。');
+    else if (step === 5) showEditorNotice('请先添加至少一张有效图片，或填写有效的远程图库 URL。');
     return;
   }
+  editorNotice.value = '';
   activeStep.value = step;
   furthestStep.value = Math.max(furthestStep.value, step) as StepId;
   if (!isNarrowViewport()) return;
@@ -1989,7 +2005,7 @@ async function saveFlashProfile() {
     saveState.value = 'success';
     if (!applied) {
       saveMessage.value = `✓ ${persistenceSummary}，但当前聊天即时应用失败；保存内容不会丢失。`;
-      toastr.warning('角色档案已经保存，但当前聊天没有即时刷新。可以重新打开编辑器后再次保存。');
+      showEditorNotice('角色档案已经保存，但当前聊天没有即时刷新。可以重新打开编辑器后再次保存。');
       return;
     }
 
@@ -2075,7 +2091,7 @@ async function saveToEntry() {
     saveState.value = 'success';
     if (!applied) {
       saveMessage.value = `✓ ${persistenceSummary}，但当前聊天即时应用失败；世界书中的保存内容不会丢失。`;
-      toastr.warning('角色档案已经保存，但当前聊天没有即时刷新。再次保存即可重试即时应用。');
+      showEditorNotice('角色档案已经保存，但当前聊天没有即时刷新。再次保存即可重试即时应用。');
       return;
     }
 
@@ -2151,7 +2167,7 @@ async function applyCurrentProfileToCurrentChat(): Promise<boolean> {
 
     if (unsupportedStatusGalleryItems > 0) {
       const supportedFormats = STATUS_GALLERY_IMAGE_EXTENSIONS.map(extension => extension.slice(1)).join(' / ');
-      toastr.warning(
+      showEditorNotice(
         `即时写入成功，但状态栏相簿目前仅支援 ${supportedFormats}。${unsupportedStatusGalleryItems} 个其他格式媒体不会进入状态栏相簿；CharInfo 相簿仍已完整写入。`,
       );
     }
@@ -2210,6 +2226,10 @@ onBeforeUnmount(() => {
   if (flashSaveSuccessTimer !== null) {
     window.clearTimeout(flashSaveSuccessTimer);
     flashSaveSuccessTimer = null;
+  }
+  if (editorNoticeTimer !== null) {
+    window.clearTimeout(editorNoticeTimer);
+    editorNoticeTimer = null;
   }
 });
 </script>
@@ -2289,6 +2309,27 @@ button {
   backdrop-filter: blur(9px);
   cursor: default;
 }
+
+.editor-notice {
+  position: fixed;
+  z-index: 20;
+  top: max(calc(env(safe-area-inset-top, 0px) + 14px), 18px);
+  left: 50%;
+  width: min(560px, calc(100% - 32px));
+  padding: 11px 14px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--warning) 18%, var(--surface-raised));
+  border: 1px solid color-mix(in srgb, var(--warning) 58%, var(--border));
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgb(0 0 0 / 28%);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.5;
+  text-align: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
 .manager-dialog {
   position: relative;
   z-index: 1;
