@@ -888,6 +888,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 
 import {
   collectEncounteredCharacters,
+  isWorldbookCharacterEntryName,
   parseWorldbookCharacterDisplayName,
   parseWorldbookCharacterEntryTitle,
   readStaticCharacterFields,
@@ -1246,7 +1247,7 @@ const filteredEntries = computed(() => {
     .map((entry, originalIndex) => ({
       entry,
       originalIndex,
-      preferred: /^\s*\[DLC\]\[角色\]/i.test(entry.name || ''),
+      preferred: isWorldbookCharacterEntryName(entry.name || ''),
     }))
     .sort((left, right) => Number(right.preferred) - Number(left.preferred) || left.originalIndex - right.originalIndex)
     .map(item => item.entry);
