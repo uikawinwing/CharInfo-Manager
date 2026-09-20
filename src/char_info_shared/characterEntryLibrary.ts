@@ -14,7 +14,7 @@ export type WorldbookCharacterEntry<T extends CharacterEntryLike, TProfile> = {
   title: CharacterEntryTitle;
 };
 
-const worldbookCharacterEntryPrefix = /^\s*\[DLC\]\[角色\]\s*/iu;
+const worldbookCharacterEntryPrefix = /^\s*(?:\[WS\]\s*)?\[DLC\]\s*\[角色\](?:\s*\[WS\])?\s*/iu;
 const staticNameFieldPattern = /^\uFEFF?姓名[ \t]*:[ \t]*(.*?)\s*$/u;
 const supplementTitlePattern = /(部分补充|补充设定|补充资料|角色合集|角色集|设定集|资料集|索引|目录|群像)/u;
 const staticCharacterFieldNames = ['姓名', '种族', '性别', '身份', '活跃区域'] as const;
@@ -187,7 +187,12 @@ function splitWorldbookCharacterEntryName(
   }
 
   const trailingBrackets = readTrailingBracketSegments(trimmedName);
-  if (trailingBrackets.segments[0] !== 'DLC' || trailingBrackets.segments[1] !== '角色') return null;
+  const hasTrailingCharacterTags =
+    (trailingBrackets.segments[0] === 'DLC' && trailingBrackets.segments[1] === '角色') ||
+    (trailingBrackets.segments[0] === 'WS' &&
+      trailingBrackets.segments[1] === 'DLC' &&
+      trailingBrackets.segments[2] === '角色');
+  if (!hasTrailingCharacterTags) return null;
   return {
     titleSource: trimmedName.slice(0, trailingBrackets.startIndex).trim(),
     bracketSegments: trailingBrackets.segments,
