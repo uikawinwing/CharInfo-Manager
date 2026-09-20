@@ -145,6 +145,27 @@ test('澪条目可从前置或尾置角色标签、嵌套括号元数据与正�
   assert.equal(inferCharacterRace(body, leading.displayName), '神造人');
 });
 
+test('世界书角色库兼容 WS 标签位于 DLC/角色标签组前后', () => {
+  const taggedEntries = [
+    { uid: 101, name: '[WS][DLC][角色]前置WS', enabled: true, content: '姓名: 前置WS' },
+    { uid: 102, name: '[DLC][角色][WS]后置WS', enabled: true, content: '姓名: 后置WS' },
+    { uid: 103, name: '[DLC][角色][WS][莉利亚]莉利亚', enabled: true, content: '' },
+  ];
+
+  const characters = collectWorldbookCharacterEntries(
+    taggedEntries,
+    () => null,
+    entry => createEmptyProfile(parseWorldbookCharacterDisplayName(entry.name)),
+  );
+
+  assert.deepEqual(
+    characters.map(character => character.title.displayName),
+    ['前置WS', '后置WS', '莉利亚'],
+  );
+  assert.deepEqual(characters[0].title.bracketSegments, ['WS', 'DLC', '角色']);
+  assert.deepEqual(characters[1].title.bracketSegments, ['DLC', '角色', 'WS']);
+});
+
 test('真实世界书标题不会把分类标签、编者注、旧名或数字误判为姓名和种族', () => {
   const alicia = parseWorldbookCharacterEntryTitle(
     '[DLC][角色][雌小鬼与熟女与龙]艾莉希雅(Spaceperson-新增角色：艾莉希雅和奥希莉雅·骸响龙姬)',

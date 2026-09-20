@@ -749,6 +749,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 
 import {
+  isWorldbookCharacterEntryName,
   parseWorldbookCharacterDisplayName,
   parseWorldbookCharacterEntryTitle,
 } from '../char_info_shared/characterEntryLibrary';
@@ -1079,7 +1080,7 @@ const filteredEntries = computed(() => {
     .map((entry, originalIndex) => ({
       entry,
       originalIndex,
-      preferred: /^\s*\[DLC\]\[角色\]/i.test(entry.name || ''),
+      preferred: isWorldbookCharacterEntryName(entry.name || ''),
     }))
     .sort((left, right) => Number(right.preferred) - Number(left.preferred) || left.originalIndex - right.originalIndex)
     .map(item => item.entry);
