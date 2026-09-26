@@ -472,6 +472,75 @@
             <input v-model="debugEnabledDraft" type="checkbox" @change="applySettings" />
           </label>
 
+          <section class="char-info-settings-diagnostics" aria-labelledby="char-info-diagnostics-label">
+            <div class="char-info-settings-diagnostics-head">
+              <span>
+                <strong id="char-info-diagnostics-label">故障诊断</strong>
+                <small>检查最近一条包含 CharInfo 的 assistant 消息、角色档案和图片来源。</small>
+              </span>
+              <button type="button" :disabled="diagnosticRunning" @click="runDiagnostics">
+                {{ diagnosticRunning ? '检查中…' : '运行诊断' }}
+              </button>
+            </div>
+
+            <p v-if="diagnosticError" class="char-info-diagnostic-error">{{ diagnosticError }}</p>
+
+            <div v-if="diagnosticReport" class="char-info-diagnostic-report">
+              <div class="char-info-diagnostic-report-title">
+                <strong>消息 #{{ diagnosticReport.messageId }}</strong>
+                <small>只读检查，不会修改聊天变量或世界书。</small>
+              </div>
+
+              <div class="char-info-diagnostic-list">
+                <article
+                  v-for="check in diagnosticReport.checks"
+                  :key="`${check.status}:${check.title}:${check.detail}`"
+                  class="char-info-diagnostic-item"
+                  :class="`is-${check.status}`"
+                >
+                  <span class="char-info-diagnostic-status">{{ diagnosticStatusLabel(check.status) }}</span>
+                  <div>
+                    <strong>{{ check.title }}</strong>
+                    <p>{{ check.detail }}</p>
+                  </div>
+                </article>
+              </div>
+
+              <section
+                v-for="character in diagnosticReport.characters"
+                :key="character.name"
+                class="char-info-diagnostic-character"
+              >
+                <h3>{{ character.name }}</h3>
+                <div class="char-info-diagnostic-list">
+                  <article
+                    v-for="check in character.checks"
+                    :key="`${check.status}:${check.title}:${check.detail}`"
+                    class="char-info-diagnostic-item"
+                    :class="`is-${check.status}`"
+                  >
+                    <span class="char-info-diagnostic-status">{{ diagnosticStatusLabel(check.status) }}</span>
+                    <div>
+                      <strong>{{ check.title }}</strong>
+                      <p>{{ check.detail }}</p>
+                    </div>
+                  </article>
+                </div>
+
+                <details v-if="character.media.length" class="char-info-diagnostic-media">
+                  <summary>图片来源实测 · {{ character.media.length }} 个</summary>
+                  <div>
+                    <p v-for="source in character.media" :key="source.url" :class="`is-${source.status}`">
+                      <strong>{{ source.status === 'pass' ? '可读取' : '失败' }}</strong>
+                      <code>{{ source.url }}</code>
+                      <span>{{ source.detail }}</span>
+                    </p>
+                  </div>
+                </details>
+              </section>
+            </div>
+          </section>
+
           <section class="char-info-settings-priority char-info-collapse-settings" aria-labelledby="char-info-collapse-mode-label">
             <label class="char-info-settings-switch char-info-settings-priority-switch">
               <span>
@@ -642,6 +711,7 @@ import type { ViewerSaveFeedback } from '../char_info_viewer/types';
 import WorldbookCharacterLibrary from './WorldbookCharacterLibrary.vue';
 import { normalizeImageSourcePriorityEntries } from '../char_info_viewer/services/imageSourcePriority';
 import { buildCurrentCharacterViewerData } from './currentCharacterLibrary';
+import { runCharInfoDiagnostics, type CharInfoDiagnosticReport, type DiagnosticStatus } from './diagnostics';
 import {
   DEFAULT_IMAGE_SOURCE_PRIORITY,
   MAX_ACTIVE_FLOOR_LIMIT,
@@ -701,6 +771,9 @@ const levelGapCollapseThresholdDraft = ref(props.state.settings.levelGapCollapse
 const imageSourcePriorityEnabledDraft = ref(props.state.settings.imageSourcePriorityEnabled);
 const imageSourcePriorityDraft = ref([...props.state.settings.imageSourcePriority]);
 const settingsMessage = ref('');
+const diagnosticRunning = ref(false);
+const diagnosticError = ref('');
+const diagnosticReport = ref<CharInfoDiagnosticReport | null>(null);
 const characterLibraryOpen = computed(() => {
   const library = props.state.library;
   return Boolean(library && (library.listOpen || library.viewerOpen || library.worldbookOpen));
@@ -1029,6 +1102,67 @@ function removeImageSourcePriority(index: number): void {
 function resetSettings(): void {
   replaceSettingsDraft(props.onResetSettings());
   settingsMessage.value = '已恢复默认设置。';
+}
+
+function diagnosticStatusLabel(status: DiagnosticStatus): string {
+  if (status === 'pass') return '正常';
+  if (status === 'warn') return '注意';
+  if (status === 'fail') return '异常';
+  return '信息';
+}
+
+async function runDiagnostics(): Promise<void> {
+  if (diagnosticRunning.value) return;
+  diagnosticRunning.value = true;
+  diagnosticError.value = '';
+  diagnosticReport.value = null;
+
+  try {
+    const loadedMessageIds = Array.from(window.parent.document.querySelectorAll<HTMLElement>('#chat > .mes'))
+      .map(element => Number(element.getAttribute('mesid')))
+      .filter(Number.isInteger)
+      .sort((left, right) => left - right);
+    const activeMessageIds = new Set(loadedMessageIds.slice(-props.state.settings.activeFloorLimit));
+
+    let candidate: { messageId: number; message: ChatMessage; swipeId: number } | null = null;
+    for (const messageId of [...loadedMessageIds].reverse()) {
+      const message = getChatMessages(messageId)[0];
+      if (!message || message.role !== 'assistant' || message.is_hidden || typeof message.message !== 'string') continue;
+      if (!/<char_info\b|<\/char_info\s*>/i.test(message.message)) continue;
+      const swipeMessage = getChatMessages(messageId, { include_swipes: true })[0];
+      const swipeId = swipeMessage && 'swipe_id' in swipeMessage ? swipeMessage.swipe_id : 0;
+      candidate = { messageId, message, swipeId };
+      break;
+    }
+
+    if (!candidate) {
+      diagnosticError.value = '当前已加载聊天中没有找到包含 <char_info> 的 assistant 消息。';
+      return;
+    }
+
+    const rawVariables = getVariables({ type: 'chat' });
+    const chatVariables =
+      rawVariables && typeof rawVariables === 'object' && !Array.isArray(rawVariables)
+        ? (rawVariables as Record<string, unknown>)
+        : {};
+
+    diagnosticReport.value = await runCharInfoDiagnostics({
+      messageId: candidate.messageId,
+      swipeId: candidate.swipeId,
+      text: candidate.message.message,
+      maxCards: props.state.settings.unlimitedCardsPerMessage
+        ? Number.MAX_SAFE_INTEGER
+        : props.state.settings.maxCardsPerMessage,
+      active: activeMessageIds.has(candidate.messageId),
+      mounted: props.state.messages.some(message => message.messageId === candidate!.messageId),
+      chatVariables,
+      mountDiagnostics: props.state.mountDiagnostics,
+    });
+  } catch (error) {
+    diagnosticError.value = `诊断失败：${error instanceof Error ? error.message : String(error)}`;
+  } finally {
+    diagnosticRunning.value = false;
+  }
 }
 
 const filteredCharacters = computed(() => {
@@ -1373,6 +1507,175 @@ onBeforeUnmount(() => {
 .char-info-settings-fields .char-info-collapse-level-gap {
   min-height: 58px;
   padding: 10px 12px;
+}
+
+.char-info-settings-diagnostics {
+  display: grid;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--ci-border);
+  border-radius: 12px;
+  background: var(--ci-surface);
+}
+
+.char-info-settings-diagnostics-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.char-info-settings-diagnostics-head > span {
+  display: grid;
+  gap: 4px;
+}
+
+.char-info-settings-diagnostics-head button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.char-info-diagnostic-error {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--ci-danger) 52%, var(--ci-border));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--ci-danger) 10%, transparent);
+  color: var(--ci-danger);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.char-info-diagnostic-report {
+  display: grid;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(232, 210, 171, 0.13);
+}
+
+.char-info-diagnostic-report-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.char-info-diagnostic-list {
+  display: grid;
+  gap: 7px;
+}
+
+.char-info-diagnostic-item {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--ci-border);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--ci-surface-raised) 72%, transparent);
+}
+
+.char-info-diagnostic-item > div {
+  min-width: 0;
+}
+
+.char-info-diagnostic-item strong {
+  font-size: 0.78rem;
+}
+
+.char-info-diagnostic-item p {
+  margin: 3px 0 0;
+  color: var(--ci-text-muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.char-info-diagnostic-status {
+  align-self: start;
+  padding: 3px 6px;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 0.66rem;
+  font-weight: 750;
+}
+
+.char-info-diagnostic-item.is-pass .char-info-diagnostic-status {
+  background: color-mix(in srgb, var(--ci-success) 16%, transparent);
+  color: var(--ci-success);
+}
+
+.char-info-diagnostic-item.is-warn .char-info-diagnostic-status {
+  background: color-mix(in srgb, var(--ci-warning) 16%, transparent);
+  color: var(--ci-warning);
+}
+
+.char-info-diagnostic-item.is-fail .char-info-diagnostic-status {
+  background: color-mix(in srgb, var(--ci-danger) 16%, transparent);
+  color: var(--ci-danger);
+}
+
+.char-info-diagnostic-item.is-info .char-info-diagnostic-status {
+  background: rgb(var(--ci-primary-rgb) / 14%);
+  color: var(--ci-primary);
+}
+
+.char-info-diagnostic-character {
+  display: grid;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.char-info-diagnostic-character h3 {
+  margin: 0;
+  color: var(--ci-primary);
+  font-size: 0.86rem;
+}
+
+.char-info-diagnostic-media {
+  border: 1px solid var(--ci-border);
+  border-radius: 9px;
+  background: var(--ci-input);
+}
+
+.char-info-diagnostic-media summary {
+  padding: 9px 10px;
+  cursor: pointer;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.char-info-diagnostic-media > div {
+  display: grid;
+  gap: 1px;
+  padding: 0 10px 9px;
+}
+
+.char-info-diagnostic-media p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 7px 0;
+  border-top: 1px solid var(--ci-border);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.char-info-diagnostic-media p > strong {
+  color: var(--ci-success);
+}
+
+.char-info-diagnostic-media p.is-fail > strong {
+  color: var(--ci-danger);
+}
+
+.char-info-diagnostic-media code {
+  overflow-wrap: anywhere;
+  color: var(--ci-text-secondary);
+  font-size: 0.68rem;
+}
+
+.char-info-diagnostic-media span {
+  color: var(--ci-text-muted);
 }
 
 .char-info-settings-priority {

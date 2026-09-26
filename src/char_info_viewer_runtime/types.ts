@@ -38,6 +38,14 @@ export type RuntimeSaveState = {
   label: string;
 };
 
+export type RuntimeMountDiagnosticEntry = {
+  time: number;
+  messageId: number;
+  level: 'info' | 'warn' | 'error';
+  code: string;
+  details: Record<string, unknown>;
+};
+
 export type RuntimeViewState = {
   messages: RuntimeMessageView[];
   visualRevision: number;
@@ -45,4 +53,5 @@ export type RuntimeViewState = {
   settings: CharInfoUiSettings;
   settingsView: RuntimeSettingsView | null;
   saveStateByCard: Record<string, RuntimeSaveState>;
+  mountDiagnostics: RuntimeMountDiagnosticEntry[];
 };
