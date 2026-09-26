@@ -20,6 +20,11 @@ test('运行时设置使用稳定默认值并修复越界输入', () => {
     forceMobileLayout: false,
     themeMode: 'dark',
     debugEnabled: false,
+    collapseModeEnabled: false,
+    alwaysExpandRules: '',
+    autoCollapseRules: '',
+    levelGapCollapseEnabled: false,
+    levelGapCollapseThreshold: 5,
     imageSourcePriorityEnabled: false,
     imageSourcePriority: ['files.catbox.moe', 'i.ibb.co'],
   });
@@ -36,6 +41,11 @@ test('运行时设置使用稳定默认值并修复越界输入', () => {
       forceMobileLayout: false,
       themeMode: 'dark',
       debugEnabled: false,
+      collapseModeEnabled: false,
+      alwaysExpandRules: '',
+      autoCollapseRules: '',
+      levelGapCollapseEnabled: false,
+      levelGapCollapseThreshold: 5,
       imageSourcePriorityEnabled: false,
       imageSourcePriority: ['files.catbox.moe', 'i.ibb.co'],
     },
@@ -54,6 +64,11 @@ test('运行时设置使用稳定默认值并修复越界输入', () => {
       forceMobileLayout: false,
       themeMode: 'light',
       debugEnabled: false,
+      collapseModeEnabled: false,
+      alwaysExpandRules: '',
+      autoCollapseRules: '',
+      levelGapCollapseEnabled: false,
+      levelGapCollapseThreshold: 5,
       imageSourcePriorityEnabled: false,
       imageSourcePriority: ['files.catbox.moe', 'i.ibb.co'],
     },
@@ -104,6 +119,11 @@ test('运行时设置只读写脚本变量命名空间，并保留其他脚本�
     forceMobileLayout: false,
     themeMode: 'dark',
     debugEnabled: false,
+    collapseModeEnabled: false,
+    alwaysExpandRules: '',
+    autoCollapseRules: '',
+    levelGapCollapseEnabled: false,
+    levelGapCollapseThreshold: 5,
     imageSourcePriorityEnabled: false,
     imageSourcePriority: ['files.catbox.moe', 'i.ibb.co'],
   });
@@ -124,10 +144,38 @@ test('运行时设置只读写脚本变量命名空间，并保留其他脚本�
           forceMobileLayout: false,
           themeMode: 'dark',
           debugEnabled: false,
+          collapseModeEnabled: false,
+          alwaysExpandRules: '',
+          autoCollapseRules: '',
+          levelGapCollapseEnabled: false,
+          levelGapCollapseThreshold: 5,
           imageSourcePriorityEnabled: false,
           imageSourcePriority: ['files.catbox.moe', 'i.ibb.co'],
         },
       },
     },
   );
+});
+
+test('折叠设置会规范化、保存并限制借过一下的等级差', () => {
+  const settings = normalizeRuntimeSettings({
+    collapseModeEnabled: true,
+    alwaysExpandRules: '种族: 精灵',
+    autoCollapseRules: '身份: 魔物',
+    levelGapCollapseEnabled: true,
+    levelGapCollapseThreshold: '8',
+  });
+
+  assert.equal(settings.collapseModeEnabled, true);
+  assert.equal(settings.alwaysExpandRules, '种族: 精灵');
+  assert.equal(settings.autoCollapseRules, '身份: 魔物');
+  assert.equal(settings.levelGapCollapseEnabled, true);
+  assert.equal(settings.levelGapCollapseThreshold, 8);
+
+  assert.equal(normalizeRuntimeSettings({ levelGapCollapseThreshold: 0 }).levelGapCollapseThreshold, 5);
+  assert.equal(normalizeRuntimeSettings({ levelGapCollapseThreshold: 100 }).levelGapCollapseThreshold, 5);
+
+  const merged = mergeRuntimeSettings({}, settings);
+  assert.equal(readRuntimeSettings(merged).alwaysExpandRules, '种族: 精灵');
+  assert.equal(readRuntimeSettings(merged).autoCollapseRules, '身份: 魔物');
 });
