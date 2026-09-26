@@ -348,6 +348,11 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     state.settings.forceMobileLayout = nextSettings.forceMobileLayout;
     state.settings.themeMode = nextSettings.themeMode;
     state.settings.debugEnabled = nextSettings.debugEnabled;
+    state.settings.collapseModeEnabled = nextSettings.collapseModeEnabled;
+    state.settings.alwaysExpandRules = nextSettings.alwaysExpandRules;
+    state.settings.autoCollapseRules = nextSettings.autoCollapseRules;
+    state.settings.levelGapCollapseEnabled = nextSettings.levelGapCollapseEnabled;
+    state.settings.levelGapCollapseThreshold = nextSettings.levelGapCollapseThreshold;
     state.settings.imageSourcePriorityEnabled = nextSettings.imageSourcePriorityEnabled;
     state.settings.imageSourcePriority = nextSettings.imageSourcePriority;
     replaceVariables(mergeRuntimeSettings(getVariables({ type: 'script' }), nextSettings), { type: 'script' });

@@ -14,6 +14,12 @@
           :force-mobile-layout="state.settings.forceMobileLayout"
           :debug-enabled="state.settings.debugEnabled"
           :image-source-priority="activeImageSourcePriority"
+          :collapse-mode-enabled="state.settings.collapseModeEnabled"
+          :always-expand-rules="state.settings.alwaysExpandRules"
+          :auto-collapse-rules="state.settings.autoCollapseRules"
+          :level-gap-collapse-enabled="state.settings.levelGapCollapseEnabled"
+          :level-gap-collapse-threshold="state.settings.levelGapCollapseThreshold"
+          :player-level="readPlayerLevel(message.messageId)"
           :save-state="state.saveStateByCard[card.key]"
           :save-feedback="feedback => props.saveFeedbackHandler(card.key, feedback)"
           embedded
@@ -466,6 +472,81 @@
             <input v-model="debugEnabledDraft" type="checkbox" @change="applySettings" />
           </label>
 
+          <section class="char-info-settings-priority char-info-collapse-settings" aria-labelledby="char-info-collapse-mode-label">
+            <label class="char-info-settings-switch char-info-settings-priority-switch">
+              <span>
+                <strong id="char-info-collapse-mode-label">折叠模式</strong>
+                <small>普通角色卡可按字段规则或等级差自动显示紧凑卡；立绘角色卡不受影响。</small>
+              </span>
+              <span class="char-info-settings-priority-toggle-wrap">
+                <small>{{ collapseModeEnabledDraft ? '已开启' : '已关闭' }}</small>
+                <input
+                  v-model="collapseModeEnabledDraft"
+                  class="char-info-settings-priority-toggle"
+                  type="checkbox"
+                  role="switch"
+                  aria-label="启用角色卡折叠模式"
+                  @change="applySettings"
+                />
+              </span>
+            </label>
+
+            <div v-if="collapseModeEnabledDraft" class="char-info-settings-priority-editor char-info-collapse-settings-editor">
+              <p>每行一个 <code>key: value</code>。先按 key 定位角色字段，只匹配该字段的 value；value 可用 <code>*</code> 通配，多行条件任意一条命中即可。</p>
+
+              <label class="char-info-collapse-rule-field">
+                <span>
+                  <strong>始终展开</strong>
+                  <small>优先级最高。适合想一直看到完整资料的种族、身份或角色。</small>
+                </span>
+                <textarea
+                  v-model="alwaysExpandRulesDraft"
+                  rows="3"
+                  :placeholder="'种族: *精灵\n身份: 重要NPC'"
+                  spellcheck="false"
+                  @change="applySettings"
+                ></textarea>
+              </label>
+
+              <label class="char-info-collapse-rule-field">
+                <span>
+                  <strong>自动折叠</strong>
+                  <small>适合普通魔物类型；不需要逐个填写怪物姓名。</small>
+                </span>
+                <textarea
+                  v-model="autoCollapseRulesDraft"
+                  rows="3"
+                  :placeholder="'种族: 魔物*\n种族: 哥布林*\n种族: 史莱姆*'"
+                  spellcheck="false"
+                  @change="applySettings"
+                ></textarea>
+              </label>
+
+              <label class="char-info-settings-switch char-info-collapse-level-rule">
+                <span>
+                  <strong>借过一下</strong>
+                  <small>角色比主角低指定等级以上时自动折叠；「始终展开」仍优先。</small>
+                </span>
+                <input v-model="levelGapCollapseEnabledDraft" type="checkbox" @change="applySettings" />
+              </label>
+
+              <label v-if="levelGapCollapseEnabledDraft" class="char-info-collapse-level-gap">
+                <span>
+                  <strong>等级差</strong>
+                  <small>主角等级读取自消息变量 <code>stat_data.主角.等级</code>。</small>
+                </span>
+                <input
+                  v-model.number="levelGapCollapseThresholdDraft"
+                  type="number"
+                  :min="MIN_COLLAPSE_LEVEL_GAP"
+                  :max="MAX_COLLAPSE_LEVEL_GAP"
+                  inputmode="numeric"
+                  @change="applySettings"
+                />
+              </label>
+            </div>
+          </section>
+
           <section class="char-info-settings-priority" aria-labelledby="char-info-image-source-priority-label">
             <label class="char-info-settings-switch char-info-settings-priority-switch">
               <span>
@@ -564,8 +645,10 @@ import { buildCurrentCharacterViewerData } from './currentCharacterLibrary';
 import {
   DEFAULT_IMAGE_SOURCE_PRIORITY,
   MAX_ACTIVE_FLOOR_LIMIT,
+  MAX_COLLAPSE_LEVEL_GAP,
   MAX_MAX_CARDS_PER_MESSAGE,
   MIN_ACTIVE_FLOOR_LIMIT,
+  MIN_COLLAPSE_LEVEL_GAP,
   MIN_MAX_CARDS_PER_MESSAGE,
   type CharInfoUiSettings,
 } from './runtimeSettings';
@@ -610,6 +693,11 @@ const effectsEnabledDraft = ref(props.state.settings.effectsEnabled);
 const forceMobileLayoutDraft = ref(props.state.settings.forceMobileLayout);
 const themeModeDraft = ref(props.state.settings.themeMode);
 const debugEnabledDraft = ref(props.state.settings.debugEnabled);
+const collapseModeEnabledDraft = ref(props.state.settings.collapseModeEnabled);
+const alwaysExpandRulesDraft = ref(props.state.settings.alwaysExpandRules);
+const autoCollapseRulesDraft = ref(props.state.settings.autoCollapseRules);
+const levelGapCollapseEnabledDraft = ref(props.state.settings.levelGapCollapseEnabled);
+const levelGapCollapseThresholdDraft = ref(props.state.settings.levelGapCollapseThreshold);
 const imageSourcePriorityEnabledDraft = ref(props.state.settings.imageSourcePriorityEnabled);
 const imageSourcePriorityDraft = ref([...props.state.settings.imageSourcePriority]);
 const settingsMessage = ref('');
@@ -620,6 +708,17 @@ const characterLibraryOpen = computed(() => {
 const activeImageSourcePriority = computed(() =>
   props.state.settings.imageSourcePriorityEnabled ? props.state.settings.imageSourcePriority : [],
 );
+
+function readPlayerLevel(messageId: number): number | null {
+  try {
+    const value = _.get(Mvu.getMvuData({ type: 'message', message_id: messageId }), 'stat_data.主角.等级');
+    const level = Number(value);
+    return Number.isFinite(level) ? level : null;
+  } catch {
+    return null;
+  }
+}
+
 const filterOptions: Array<{ value: LibraryFilter; label: string }> = [
   { value: 'all', label: '全部' },
   { value: 'present', label: '在场' },
@@ -855,6 +954,11 @@ function replaceSettingsDraft(settings: CharInfoUiSettings): void {
   forceMobileLayoutDraft.value = settings.forceMobileLayout;
   themeModeDraft.value = settings.themeMode;
   debugEnabledDraft.value = settings.debugEnabled;
+  collapseModeEnabledDraft.value = settings.collapseModeEnabled;
+  alwaysExpandRulesDraft.value = settings.alwaysExpandRules;
+  autoCollapseRulesDraft.value = settings.autoCollapseRules;
+  levelGapCollapseEnabledDraft.value = settings.levelGapCollapseEnabled;
+  levelGapCollapseThresholdDraft.value = settings.levelGapCollapseThreshold;
   imageSourcePriorityEnabledDraft.value = settings.imageSourcePriorityEnabled;
   imageSourcePriorityDraft.value = [...settings.imageSourcePriority];
 }
@@ -877,6 +981,11 @@ function applySettings(): void {
     forceMobileLayout: forceMobileLayoutDraft.value,
     themeMode: themeModeDraft.value,
     debugEnabled: debugEnabledDraft.value,
+    collapseModeEnabled: collapseModeEnabledDraft.value,
+    alwaysExpandRules: alwaysExpandRulesDraft.value,
+    autoCollapseRules: autoCollapseRulesDraft.value,
+    levelGapCollapseEnabled: levelGapCollapseEnabledDraft.value,
+    levelGapCollapseThreshold: Number(levelGapCollapseThresholdDraft.value),
     imageSourcePriorityEnabled: imageSourcePriorityEnabledDraft.value,
     imageSourcePriority: priorityNormalization.priorities,
   });
@@ -1224,6 +1333,46 @@ onBeforeUnmount(() => {
 
 .char-info-settings-fields select {
   width: 112px;
+}
+
+.char-info-collapse-settings-editor code {
+  color: var(--ci-primary);
+  font-family: ui-monospace, 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.92em;
+}
+
+.char-info-settings-fields .char-info-collapse-rule-field {
+  display: grid;
+  align-items: stretch;
+  gap: 8px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.char-info-collapse-rule-field textarea {
+  width: 100%;
+  min-height: 82px;
+  resize: vertical;
+  padding: 9px 10px;
+  border: 1px solid var(--ci-border);
+  border-radius: 9px;
+  background: var(--ci-input);
+  color: var(--ci-text);
+  font: inherit;
+  line-height: 1.45;
+}
+
+.char-info-collapse-rule-field textarea:focus {
+  border-color: var(--ci-primary);
+  outline: none;
+}
+
+.char-info-settings-fields .char-info-collapse-level-rule,
+.char-info-settings-fields .char-info-collapse-level-gap {
+  min-height: 58px;
+  padding: 10px 12px;
 }
 
 .char-info-settings-priority {
