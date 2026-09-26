@@ -242,7 +242,7 @@
     <button class="add-image-button" type="button" @click="addImage">＋ 添加一张图片</button>
 
     <div v-if="!props.flashMode" class="step-actions">
-      <button type="button" class="secondary-button" @click="emit('previous')">上一步</button>
+      <button type="button" class="secondary-button wizard-back-button" @click="emit('previous')">上一步</button>
       <button type="button" class="primary-button" @click="emit('next')">下一步：确认写入</button>
     </div>
   </div>
@@ -1219,6 +1219,25 @@ select:focus {
   .gallery-actions button {
     width: 44px;
     min-height: 40px;
+  }
+
+  .step-actions {
+    display: grid;
+    grid-template-columns: minmax(104px, auto) minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .step-actions .wizard-back-button {
+    min-width: 104px;
+    width: auto;
+    padding-inline: 16px;
+    white-space: nowrap;
+    word-break: keep-all;
+  }
+
+  .step-actions .primary-button {
+    min-width: 0;
+    width: 100%;
   }
 }
 </style>

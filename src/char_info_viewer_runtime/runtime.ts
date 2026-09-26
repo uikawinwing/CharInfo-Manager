@@ -89,20 +89,6 @@ function readMessage(messageId: number): { message: ChatMessage; swipeId: number
   return { message, swipeId };
 }
 
-function traceMount(
-  level: MountTraceLevel,
-  messageId: number,
-  code: string,
-  details: Record<string, unknown> = {},
-): void {
-  console[level](`${MOUNT_LOG_PREFIX} #${messageId} ${code}`, {
-    time: new Date().toISOString(),
-    messageId,
-    code,
-    ...details,
-  });
-}
-
 export function createCharInfoRuntime(): CharInfoRuntime {
   const state = reactive<RuntimeViewState>({
     messages: [],
@@ -111,7 +97,26 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     settings: readRuntimeSettings(getVariables({ type: 'script' })),
     settingsView: null,
     saveStateByCard: {},
+    mountDiagnostics: [],
   });
+
+  const traceMount = (
+    level: MountTraceLevel,
+    messageId: number,
+    code: string,
+    details: Record<string, unknown> = {},
+  ): void => {
+    state.mountDiagnostics.push({ time: Date.now(), messageId, level, code, details });
+    if (state.mountDiagnostics.length > 60) {
+      state.mountDiagnostics.splice(0, state.mountDiagnostics.length - 60);
+    }
+    console[level](`${MOUNT_LOG_PREFIX} #${messageId} ${code}`, {
+      time: new Date().toISOString(),
+      messageId,
+      code,
+      ...details,
+    });
+  };
   const mountedMessages = new Map<number, MountedMessage>();
   const remountAttempts = new Map<number, RemountAttempt>();
   const overflowWarnings = new Map<number, string>();
@@ -791,6 +796,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       resetLibraryForChat();
       closeSettings();
       clearMessages();
+      state.mountDiagnostics = [];
       scheduleRecentScan();
       void refreshLibrary();
     });
