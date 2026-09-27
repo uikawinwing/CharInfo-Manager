@@ -22,7 +22,7 @@ test('立绘角色卡 沿用有立绘页面，并将导航作为桌面右侧栏�
   assert.match(sheet, /v-if="specialNpc"[\s\S]*?:show-import-action="!readOnly"/);
   assert.match(sheet, /'is-special-npc': specialNpc/);
   assert.match(navigation, /\.illustrated-tabs\.is-side-rail/);
-  assert.match(navigation, /@media \(min-width: 901px\)/);
+  assert.match(navigation, /@container char-info-viewer \(min-width: 901px\)/);
   assert.match(navigation, /flex:\s*0 0 72px/);
   assert.match(navigation, /illustrated-tab-icon/);
   assert.match(navigation, /\.illustrated-tabs\.is-side-rail \.illustrated-tab-navigation-group\s*\{[\s\S]*?flex:\s*1 1 auto;[\s\S]*?justify-content:\s*center/);
@@ -31,6 +31,18 @@ test('立绘角色卡 沿用有立绘页面，并将导航作为桌面右侧栏�
   assert.match(navigation, /grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\)/);
   assert.match(navigation, /\.illustrated-tabs\.is-side-rail \.illustrated-tab-scroll\s*\{[\s\S]*?display:\s*contents/);
   assert.doesNotMatch(navigation, /\b(?:d)?vh\b/);
+});
+
+test('立绘角色卡 按实际容器宽度在 901 到 1200 之间等比缩放，900 以下切换移动布局', async () => {
+  const [sheet, app] = await Promise.all([readFile(shellPath, 'utf8'), readFile(appPath, 'utf8')]);
+  assert.match(app, /container-name:\s*char-info-viewer/);
+  assert.match(sheet, /const DESKTOP_REFERENCE_WIDTH = 1200/);
+  assert.match(sheet, /const MOBILE_LAYOUT_BREAKPOINT = 900/);
+  assert.match(sheet, /layoutResizeObserver = new ResizeObserver/);
+  assert.match(sheet, /availableLayoutWidth\.value \/ DESKTOP_REFERENCE_WIDTH/);
+  assert.match(sheet, /'is-scaled-desktop': isScaledDesktop/);
+  assert.match(sheet, /\.illustrated-wrapper\.is-scaled-desktop \.illustrated-shell\s*\{[\s\S]*?width:\s*1200px;[\s\S]*?height:\s*800px !important;[\s\S]*?transform:\s*scale\(var\(--illustrated-desktop-scale\)\)/);
+  assert.match(sheet, /@container char-info-viewer \(max-width: 900px\)/);
 });
 
 test('立绘角色卡 手机卡片使用 2:3 固定比例，技能沿用紧凑但可读的移动排版', async () => {
@@ -54,7 +66,7 @@ test('立绘角色卡 手机卡片使用 2:3 固定比例，技能沿用紧凑�
   assert.match(itemCard, /\.illustrated-list-item\.is-compact-row\s*\{[\s\S]*?background:\s*transparent/);
   assert.match(
     itemCard,
-    /@media \(max-width: 640px\)[\s\S]*?\.illustrated-list-item\.is-compact-skill h3\s*\{[\s\S]*?font-size:\s*16px/,
+    /@container char-info-viewer \(max-width: 640px\)[\s\S]*?\.illustrated-list-item\.is-compact-skill h3\s*\{[\s\S]*?font-size:\s*16px/,
   );
   assert.match(itemCard, /if \(type\.includes\('主动'\)\) return 'active'/);
   assert.match(itemCard, /if \(type\.includes\('被动'\)\) return 'passive'/);
@@ -116,7 +128,7 @@ test('立绘角色卡 档案隐藏属性与资源，持有沿用技能的紧凑�
   );
   assert.match(
     itemCard,
-    /@media \(max-width: 640px\)[\s\S]*?\.illustrated-list-item\.is-compact-holding\s*\{[\s\S]*?margin:\s*0 8px;[\s\S]*?padding:\s*14px 14px 15px/,
+    /@container char-info-viewer \(max-width: 640px\)[\s\S]*?\.illustrated-list-item\.is-compact-holding\s*\{[\s\S]*?margin:\s*0 8px;[\s\S]*?padding:\s*14px 14px 15px/,
   );
   assert.match(
     itemCard,

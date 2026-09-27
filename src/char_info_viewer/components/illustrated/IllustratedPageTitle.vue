@@ -54,7 +54,7 @@ defineProps<{
   line-height: 1;
 }
 
-@media (max-width: 640px) {
+@container char-info-viewer (max-width: 640px) {
   .illustrated-page-title {
     gap: 10px;
     margin-bottom: 18px;

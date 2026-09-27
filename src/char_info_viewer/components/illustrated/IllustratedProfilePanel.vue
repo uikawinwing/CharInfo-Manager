@@ -200,7 +200,7 @@ const blocks = computed(() =>
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
-@media (max-width: 900px) {
+@container char-info-viewer (max-width: 900px) {
   .illustrated-mobile-profile-stats {
     display: flex;
   }
@@ -262,7 +262,7 @@ const blocks = computed(() =>
   }
 }
 
-@media (max-width: 640px) {
+@container char-info-viewer (max-width: 640px) {
   .illustrated-text-block {
     padding: 22px 20px;
   }

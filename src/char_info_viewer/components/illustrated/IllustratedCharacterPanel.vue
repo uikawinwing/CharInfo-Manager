@@ -189,7 +189,7 @@ const radarValuePoints = computed(() =>
   letter-spacing: 0.1em;
 }
 
-@media (max-width: 900px) {
+@container char-info-viewer (max-width: 900px) {
   .illustrated-character-panel {
     gap: 14px;
   }

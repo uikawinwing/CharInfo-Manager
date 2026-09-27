@@ -1157,6 +1157,8 @@ onBeforeUnmount(() => {
 
 .viewer-root.special-npc-viewer-root {
   min-height: 0;
+  container-type: inline-size;
+  container-name: char-info-viewer;
 }
 
 .viewer-root.viewer-root-embedded {

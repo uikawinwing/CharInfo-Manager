@@ -1,7 +1,13 @@
 <template>
   <div
+    ref="wrapperElement"
     class="illustrated-wrapper"
-    :class="{ 'is-special-npc': specialNpc, 'force-mobile-layout': forceMobileLayout }"
+    :class="{
+      'is-special-npc': specialNpc,
+      'force-mobile-layout': forceMobileLayout,
+      'is-scaled-desktop': isScaledDesktop,
+    }"
+    :style="illustratedWrapperStyle"
   >
     <main
       ref="shellElement"
@@ -386,6 +392,10 @@ const props = defineProps<{
   specialNpc: boolean;
 }>();
 
+const DESKTOP_REFERENCE_WIDTH = 1200;
+const DESKTOP_REFERENCE_HEIGHT = 800;
+const MOBILE_LAYOUT_BREAKPOINT = 900;
+
 defineEmits<{
   toggleAttributeFormula: [key: string];
   toggleImportMenu: [];
@@ -441,6 +451,7 @@ watch(
 
 const activeSpecialTab = ref<IllustratedTabKey>('overview');
 const activeProfileSubview = ref<'info' | 'story'>('info');
+const wrapperElement = ref<HTMLElement | null>(null);
 const shellElement = ref<HTMLElement | null>(null);
 const panelsElement = ref<HTMLElement | null>(null);
 const portraitImageElement = ref<HTMLImageElement | null>(null);
@@ -454,6 +465,21 @@ const quoteDialogCloseButton = ref<HTMLButtonElement | null>(null);
 let entranceQuoteTriggerElement: HTMLElement | null = null;
 let overviewDensityFrame: number | undefined;
 let overviewResizeObserver: ResizeObserver | undefined;
+let layoutResizeObserver: ResizeObserver | undefined;
+const availableLayoutWidth = ref(DESKTOP_REFERENCE_WIDTH);
+const desktopScale = computed(() => {
+  if (props.forceMobileLayout || availableLayoutWidth.value <= MOBILE_LAYOUT_BREAKPOINT) return 1;
+  return Math.min(1, availableLayoutWidth.value / DESKTOP_REFERENCE_WIDTH);
+});
+const isScaledDesktop = computed(() => desktopScale.value < 1);
+const illustratedWrapperStyle = computed(() =>
+  isScaledDesktop.value
+    ? {
+        '--illustrated-desktop-scale': String(desktopScale.value),
+        '--illustrated-scaled-height': `${DESKTOP_REFERENCE_HEIGHT * desktopScale.value}px`,
+      }
+    : undefined,
+);
 const portraitLoadFailed = ref(false);
 const portraitLoaded = ref(false);
 const portraitRetryAttempt = ref(0);
@@ -714,6 +740,15 @@ function updateOverviewDensity(): void {
 }
 
 onMounted(() => {
+  if (wrapperElement.value) {
+    availableLayoutWidth.value = wrapperElement.value.clientWidth;
+    layoutResizeObserver = new ResizeObserver(entries => {
+      const width = entries[0]?.contentRect.width;
+      if (width !== undefined) availableLayoutWidth.value = width;
+    });
+    layoutResizeObserver.observe(wrapperElement.value);
+  }
+
   overviewResizeObserver = new ResizeObserver(updateOverviewDensity);
   if (shellElement.value) overviewResizeObserver.observe(shellElement.value);
   updateOverviewDensity();
@@ -721,6 +756,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (overviewDensityFrame !== undefined) cancelAnimationFrame(overviewDensityFrame);
+  layoutResizeObserver?.disconnect();
   overviewResizeObserver?.disconnect();
   portraitLoadTimeout.dispose();
 });
@@ -782,6 +818,20 @@ watchEffect(() => {
   --illustrated-resource-gap: 16px;
   --illustrated-header-min-height: 148px;
   --illustrated-tabs-height: 52px;
+}
+
+.illustrated-wrapper.is-scaled-desktop {
+  height: var(--illustrated-scaled-height) !important;
+  overflow: hidden;
+}
+
+.illustrated-wrapper.is-scaled-desktop .illustrated-shell {
+  width: 1200px;
+  height: 800px !important;
+  min-height: 0;
+  container-type: inline-size;
+  transform: scale(var(--illustrated-desktop-scale));
+  transform-origin: top left;
 }
 
 .illustrated-shell {
@@ -1150,7 +1200,7 @@ watchEffect(() => {
   overflow-y: auto;
 }
 
-@media (min-width: 901px) {
+@container char-info-viewer (min-width: 901px) {
   .illustrated-shell.is-special-npc.is-overview-tab .illustrated-data-pane {
     padding-top: 72px;
   }
@@ -1596,7 +1646,7 @@ watchEffect(() => {
   display: none;
 }
 
-@media (min-width: 901px) {
+@container char-info-viewer (min-width: 901px) {
   .illustrated-wrapper.is-special-npc .illustrated-shell.is-overview-tab .illustrated-panels {
     overflow-y: auto;
   }
@@ -1936,7 +1986,7 @@ watchEffect(() => {
   }
 }
 
-@media (max-width: 900px) {
+@container char-info-viewer (max-width: 900px) {
   .illustrated-wrapper {
     max-width: min(100%, 480px);
   }
@@ -2056,7 +2106,7 @@ watchEffect(() => {
   }
 }
 
-@media (max-width: 640px) {
+@container char-info-viewer (max-width: 640px) {
   @include illustrated-compact-mobile-content;
 }
 

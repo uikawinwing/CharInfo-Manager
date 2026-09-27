@@ -369,7 +369,7 @@ const emit = defineEmits<{
   background: linear-gradient(90deg, transparent, rgba(var(--illustrated-race-accent-rgb), 0.34), transparent);
 }
 
-@media (min-width: 901px) {
+@container char-info-viewer (min-width: 901px) {
   .illustrated-overview.overview-density-compact {
     gap: 14px;
   }
@@ -465,7 +465,7 @@ const emit = defineEmits<{
   }
 }
 
-@media (max-width: 900px) {
+@container char-info-viewer (max-width: 900px) {
   .illustrated-attributes {
     --flag-width: calc((100% - 16px) / 3);
     --flag-min-height: 104px;

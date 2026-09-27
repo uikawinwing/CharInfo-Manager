@@ -228,7 +228,7 @@ function tabIcon(key: IllustratedTabKey): string {
   opacity: 0.42;
 }
 
-@media (min-width: 901px) {
+@container char-info-viewer (min-width: 901px) {
   .illustrated-tabs.is-side-rail {
     align-self: stretch;
     flex: 0 0 72px;
@@ -502,11 +502,11 @@ function tabIcon(key: IllustratedTabKey): string {
   }
 }
 
-@media (max-width: 900px) {
+@container char-info-viewer (max-width: 900px) {
   @include illustrated-mobile-side-rail;
 }
 
-@media (max-width: 640px) {
+@container char-info-viewer (max-width: 640px) {
   @include illustrated-compact-tabs;
 }
 

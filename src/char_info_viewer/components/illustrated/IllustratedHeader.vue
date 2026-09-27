@@ -214,7 +214,7 @@ watch(() => props.vm.nameText, updateNameLayout, { flush: 'post' });
   transform: scale(0.8) rotate(45deg);
 }
 
-@media (min-width: 901px) {
+@container char-info-viewer (min-width: 901px) {
   .illustrated-header.overview-density-compact:not(.compact) {
     gap: 6px;
     min-height: 128px;
@@ -249,7 +249,7 @@ watch(() => props.vm.nameText, updateNameLayout, { flush: 'post' });
   }
 }
 
-@media (max-width: 640px) {
+@container char-info-viewer (max-width: 640px) {
   .illustrated-header {
     margin-bottom: 20px;
   }

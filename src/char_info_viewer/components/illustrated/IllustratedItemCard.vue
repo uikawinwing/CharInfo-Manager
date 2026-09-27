@@ -398,7 +398,7 @@ const statusLines = computed(() => {
   line-height: 1.5 !important;
 }
 
-@media (max-width: 640px) {
+@container char-info-viewer (max-width: 640px) {
   .illustrated-list-item {
     padding: 20px;
   }

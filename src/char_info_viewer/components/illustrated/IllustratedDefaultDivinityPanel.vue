@@ -158,7 +158,7 @@ const sections = computed(() => buildDivinitySections(props.vm));
   font-weight: 800;
 }
 
-@media (max-width: 900px) {
+@container char-info-viewer (max-width: 900px) {
   .illustrated-default-divinity.is-compact {
     gap: 0;
     padding-bottom: 0;
