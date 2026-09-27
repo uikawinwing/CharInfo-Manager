@@ -84,7 +84,7 @@ function describeMountFailure(entry: RuntimeMountDiagnosticEntry): string {
     TH_RENDER_COUNT_MISMATCH: 'Tavern Helper 前端渲染节点数量和格式化结果不一致。',
     ROOT_REPLACE_FAILED: '替换正文挂载内容时发生异常。',
     HOST_COLLECTION_FAILED: '格式化完成后没有收集到预期的 Viewer Host。',
-    REMOUNT_LOOP_GUARD: '挂载点连续被外部 DOM 更新移除，已停止自动重挂载。',
+    REMOUNT_LOOP_GUARD: '挂载点连续被外部 DOM 更新移除，已进入冷却并会自动重试。',
     HOST_DISCONNECTED: '已经挂载的 Viewer Host 被外部 DOM 更新移除。',
     RENDER_THROWN: 'Viewer runtime 渲染过程抛出异常。',
   };

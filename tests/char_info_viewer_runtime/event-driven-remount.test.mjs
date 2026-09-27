@@ -25,6 +25,13 @@ test('SillyTavern lifecycle events are allowed to remount repeatedly', () => {
   );
 });
 
+test('remount guard cools down and retries instead of leaving the Viewer permanently absent', () => {
+  assert.match(runtimeSource, /const remountRetryTimers = new Map<number, ReturnType<typeof setTimeout>>\(\)/);
+  assert.match(runtimeSource, /scheduleRemountRetry\(messageId, retryInMs\)/);
+  assert.match(runtimeSource, /enqueueMessage\(messageId, 'remount-guard-cooldown'\)/);
+  assert.match(runtimeSource, /remountRetryTimers\.forEach\(timer => clearTimeout\(timer\)\)/);
+});
+
 test('MutationObserver remains a guarded fallback instead of a lifecycle source', () => {
   const observerStart = runtimeSource.indexOf('const observeMessageDom = () => {');
   const eventStart = runtimeSource.indexOf('const bindEvents = () => {');

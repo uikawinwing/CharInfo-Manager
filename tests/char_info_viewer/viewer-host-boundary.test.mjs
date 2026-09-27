@@ -85,7 +85,7 @@ test('runtime guards observer remount loops while trusting SillyTavern lifecycle
   assert.match(runtimeSource, /if \(!lifecycleDriven\) \{/);
   assert.match(runtimeSource, /previousAttempt\?\.signature === sourceSignature/);
   assert.match(runtimeSource, /now - previousAttempt\.attemptedAt < REMOUNT_LOOP_GUARD_MS/);
-  assert.match(runtimeSource, /已停止 DOM 观察器自动重挂载以避免渲染循环/);
+  assert.match(runtimeSource, /将在冷却后重试以避免渲染循环/);
   assert.match(runtimeSource, /else \{\s*remountAttempts\.delete\(messageId\);\s*\}/);
   assert.match(
     runtimeSource,
