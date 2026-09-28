@@ -26,6 +26,7 @@ export default (env, argv) => {
   configuration.output = {
     ...configuration.output,
     asyncChunks: false,
+    clean: false,
   };
   configuration.optimization = {
     ...configuration.optimization,
