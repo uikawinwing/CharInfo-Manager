@@ -220,10 +220,15 @@ test('立绘角色卡 手机登神页使用紧凑分隔行', async () => {
   assert.match(defaultDivinity, /\.illustrated-default-divinity\.is-compact \.default-divinity-card p\s*\{[\s\S]*?font-size:\s*calc\(11px \+ var\(--ci-font-size-adjust, 0px\)\) !important/);
 });
 
-test('App 在 立绘角色卡 分支复用有立绘页面，而不是挂载独立空壳', async () => {
-  const source = await readFile(appPath, 'utf8');
-  assert.match(source, /<IllustratedCharacterSheet[\s\S]*?v-if="shouldShowSpecialNpcLayout && vm"/);
+test('App 在 立绘角色卡 分支通过 V2 入口复用成熟页面，而不是挂载独立空壳', async () => {
+  const [source, v2] = await Promise.all([
+    readFile(appPath, 'utf8'),
+    readFile(new URL('../../src/char_info_viewer/components/illustrated/IllustratedV2Sheet.vue', import.meta.url), 'utf8'),
+  ]);
+  assert.match(source, /<IllustratedV2Sheet[\s\S]*?v-if="shouldShowSpecialNpcLayout && vm"/);
   assert.match(source, /:special-npc="shouldShowSpecialNpcLayout"/);
+  assert.match(v2, /<IllustratedCharacterSheet v-bind="\$attrs" \/>/);
+  assert.match(v2, /import IllustratedCharacterSheet from '\.\/IllustratedCharacterSheet\.vue';/);
   assert.doesNotMatch(source, /SpecialNpcShell/);
   assert.match(source, /vm\.value\?\.layoutKind === 'special_npc' && !illustratedFallbackActive\.value/);
   assert.match(source, /'special-npc-viewer-root': shouldShowSpecialNpcLayout/);
