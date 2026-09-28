@@ -883,6 +883,7 @@
                 :yaml-text="viewerPreviewYaml"
                 :preview-data="viewerPreviewSource === 'sample' ? viewerPreviewSampleData : undefined"
                 :message-id="-1"
+                :font-size-adjustment="props.fontSizeAdjustment"
                 :debug-enabled="props.debugEnabled"
                 :visual-config-override="viewerPreviewVisualOverride"
                 embedded
@@ -980,6 +981,7 @@ const props = withDefaults(
     initialEntryUid?: number;
     initialCharacterName?: string;
     themeMode?: CharInfoThemeMode;
+    fontSizeAdjustment?: number;
     debugEnabled?: boolean;
     onForceRefresh?: () => void | Promise<void>;
     onReturnToLibrary?: () => void;
@@ -989,6 +991,7 @@ const props = withDefaults(
     initialEntryUid: undefined,
     initialCharacterName: '',
     themeMode: DEFAULT_CHAR_INFO_THEME_MODE,
+    fontSizeAdjustment: 0,
     debugEnabled: false,
     onForceRefresh: undefined,
     onReturnToLibrary: undefined,

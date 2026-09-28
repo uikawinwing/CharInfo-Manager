@@ -18,5 +18,5 @@ test('the illustrated character mobile overview keeps the entrance quote above i
   );
   assert.match(source, /\.illustrated-mobile-overview-overlay\s*\{[\s\S]*?display:\s*flex;/);
   assert.match(source, /\.illustrated-mobile-entrance-quote\s*\{[\s\S]*?background:\s*rgba\([^;]+\);/);
-  assert.match(source, /font-size:\s*clamp\(12px,[^;]+14px\)/);
+  assert.match(source, /font-size:\s*calc\(clamp\(12px,[^;]+14px\) \+ var\(--ci-font-size-adjust, 0px\)\)/);
 });

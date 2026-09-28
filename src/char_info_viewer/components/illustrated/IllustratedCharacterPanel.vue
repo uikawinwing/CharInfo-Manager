@@ -139,7 +139,7 @@ const radarValuePoints = computed(() =>
 
 .illustrated-radar-label {
   fill: var(--illustrated-fg, #e8edf3);
-  font-size: 11px;
+  font-size: calc(11px + var(--ci-font-size-adjust, 0px));
   text-anchor: middle;
 }
 
@@ -165,7 +165,7 @@ const radarValuePoints = computed(() =>
 .illustrated-panel-resources span {
   display: block;
   color: var(--illustrated-race-accent);
-  font-size: 11px;
+  font-size: calc(11px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   letter-spacing: 0.08em;
 }
@@ -174,7 +174,7 @@ const radarValuePoints = computed(() =>
   display: block;
   margin-top: 6px;
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
-  font-size: 20px;
+  font-size: calc(20px + var(--ci-font-size-adjust, 0px));
 }
 
 .illustrated-panel-statuses {
@@ -185,7 +185,7 @@ const radarValuePoints = computed(() =>
 .illustrated-panel-statuses h3 {
   margin: 0;
   color: var(--illustrated-race-accent);
-  font-size: 14px;
+  font-size: calc(14px + var(--ci-font-size-adjust, 0px));
   letter-spacing: 0.1em;
 }
 
@@ -234,13 +234,13 @@ const radarValuePoints = computed(() =>
 
   .illustrated-mobile-character-summary dt {
     color: var(--illustrated-race-accent);
-    font-size: 13px;
+    font-size: calc(13px + var(--ci-font-size-adjust, 0px));
     font-weight: 700;
   }
 
   .illustrated-mobile-character-summary dd {
     color: var(--illustrated-fg, #eef3f7);
-    font-size: 13px;
+    font-size: calc(13px + var(--ci-font-size-adjust, 0px));
     font-weight: 600;
     line-height: 1.45;
     text-align: right;

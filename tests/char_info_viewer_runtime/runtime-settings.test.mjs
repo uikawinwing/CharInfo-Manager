@@ -19,6 +19,7 @@ test('运行时设置使用稳定默认值并修复越界输入', () => {
     effectsEnabled: true,
     forceMobileLayout: false,
     themeMode: 'dark',
+    fontSizeAdjustment: 0,
     debugEnabled: false,
     collapseModeEnabled: false,
     alwaysExpandRules: '',
@@ -40,6 +41,7 @@ test('运行时设置使用稳定默认值并修复越界输入', () => {
       effectsEnabled: true,
       forceMobileLayout: false,
       themeMode: 'dark',
+      fontSizeAdjustment: 0,
       debugEnabled: false,
       collapseModeEnabled: false,
       alwaysExpandRules: '',
@@ -63,6 +65,7 @@ test('运行时设置使用稳定默认值并修复越界输入', () => {
       effectsEnabled: false,
       forceMobileLayout: false,
       themeMode: 'light',
+      fontSizeAdjustment: 0,
       debugEnabled: false,
       collapseModeEnabled: false,
       alwaysExpandRules: '',
@@ -79,6 +82,22 @@ test('切换界面主题会同步当前运行时 reactive state，避免浅色�
   const runtimeSource = await readFile(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
 
   assert.match(runtimeSource, /state\.settings\.themeMode = nextSettings\.themeMode;/u);
+});
+
+test('文字大小设置可持久化，并限制在安全的角色卡字号范围', async () => {
+  assert.equal(normalizeRuntimeSettings({ fontSizeAdjustment: '4' }).fontSizeAdjustment, 4);
+  assert.equal(normalizeRuntimeSettings({ fontSizeAdjustment: -1 }).fontSizeAdjustment, -1);
+  assert.equal(normalizeRuntimeSettings({ fontSizeAdjustment: 5 }).fontSizeAdjustment, 0);
+
+  const [runtimeSource, runtimeRootSource, viewerSource] = await Promise.all([
+    readFile(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8'),
+    readFile(new URL('../../src/char_info_viewer_runtime/RuntimeRoot.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../../src/char_info_viewer/App.vue', import.meta.url), 'utf8'),
+  ]);
+  assert.match(runtimeSource, /state\.settings\.fontSizeAdjustment = nextSettings\.fontSizeAdjustment;/u);
+  assert.match(runtimeRootSource, /v-model\.number="fontSizeAdjustmentDraft"/u);
+  assert.match(runtimeRootSource, /:font-size-adjustment="state\.settings\.fontSizeAdjustment"/u);
+  assert.match(viewerSource, /--ci-font-size-adjust/u);
 });
 
 test('悬浮角色按钮位置作为脚本 UI 偏好独立保存', () => {
@@ -118,6 +137,7 @@ test('运行时设置只读写脚本变量命名空间，并保留其他脚本�
     effectsEnabled: false,
     forceMobileLayout: false,
     themeMode: 'dark',
+    fontSizeAdjustment: 0,
     debugEnabled: false,
     collapseModeEnabled: false,
     alwaysExpandRules: '',
@@ -143,6 +163,7 @@ test('运行时设置只读写脚本变量命名空间，并保留其他脚本�
           effectsEnabled: true,
           forceMobileLayout: false,
           themeMode: 'dark',
+          fontSizeAdjustment: 0,
           debugEnabled: false,
           collapseModeEnabled: false,
           alwaysExpandRules: '',

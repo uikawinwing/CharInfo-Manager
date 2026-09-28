@@ -353,6 +353,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     state.settings.effectsEnabled = nextSettings.effectsEnabled;
     state.settings.forceMobileLayout = nextSettings.forceMobileLayout;
     state.settings.themeMode = nextSettings.themeMode;
+    state.settings.fontSizeAdjustment = nextSettings.fontSizeAdjustment;
     state.settings.debugEnabled = nextSettings.debugEnabled;
     state.settings.collapseModeEnabled = nextSettings.collapseModeEnabled;
     state.settings.alwaysExpandRules = nextSettings.alwaysExpandRules;
@@ -392,6 +393,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         entryUid,
         forceMobileLayout: state.settings.forceMobileLayout,
         themeMode: state.settings.themeMode,
+        fontSizeAdjustment: state.settings.fontSizeAdjustment,
         debugEnabled: state.settings.debugEnabled,
         onForceRefresh: forceRefreshCharInfo,
         onReturnToLibrary: () => {
@@ -413,6 +415,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         ...(name ? { initialCharacterName: name } : {}),
         forceMobileLayout: state.settings.forceMobileLayout,
         themeMode: state.settings.themeMode,
+        fontSizeAdjustment: state.settings.fontSizeAdjustment,
         debugEnabled: state.settings.debugEnabled,
         onForceRefresh: forceRefreshCharInfo,
         onReturnToLibrary: () => {

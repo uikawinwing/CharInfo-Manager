@@ -12,6 +12,7 @@
           :message-id="message.messageId"
           :effects-enabled="state.settings.effectsEnabled"
           :force-mobile-layout="state.settings.forceMobileLayout"
+          :font-size-adjustment="state.settings.fontSizeAdjustment"
           :debug-enabled="state.settings.debugEnabled"
           :image-source-priority="activeImageSourcePriority"
           :collapse-mode-enabled="state.settings.collapseModeEnabled"
@@ -318,6 +319,7 @@
           :message-id="state.library.messageId"
           :effects-enabled="state.settings.effectsEnabled"
           :force-mobile-layout="state.settings.forceMobileLayout"
+          :font-size-adjustment="state.settings.fontSizeAdjustment"
           :debug-enabled="state.settings.debugEnabled"
           :image-source-priority="activeImageSourcePriority"
           :entrance-quote-override="selectedCharacter.innerThought"
@@ -453,6 +455,19 @@
             <select v-model="themeModeDraft" @change="applySettings">
               <option value="dark">深色</option>
               <option value="light">浅色</option>
+            </select>
+          </label>
+
+          <label>
+            <span>
+              <strong>文字大小</strong>
+              <small>只调整角色卡文字，不放大立绘或卡片尺寸。</small>
+            </span>
+            <select v-model.number="fontSizeAdjustmentDraft" @change="applySettings">
+              <option :value="-1">较小</option>
+              <option :value="0">标准</option>
+              <option :value="2">较大</option>
+              <option :value="4">特大</option>
             </select>
           </label>
 
@@ -762,6 +777,7 @@ const unlimitedCardsPerMessageDraft = ref(props.state.settings.unlimitedCardsPer
 const effectsEnabledDraft = ref(props.state.settings.effectsEnabled);
 const forceMobileLayoutDraft = ref(props.state.settings.forceMobileLayout);
 const themeModeDraft = ref(props.state.settings.themeMode);
+const fontSizeAdjustmentDraft = ref(props.state.settings.fontSizeAdjustment);
 const debugEnabledDraft = ref(props.state.settings.debugEnabled);
 const collapseModeEnabledDraft = ref(props.state.settings.collapseModeEnabled);
 const alwaysExpandRulesDraft = ref(props.state.settings.alwaysExpandRules);
@@ -1026,6 +1042,7 @@ function replaceSettingsDraft(settings: CharInfoUiSettings): void {
   effectsEnabledDraft.value = settings.effectsEnabled;
   forceMobileLayoutDraft.value = settings.forceMobileLayout;
   themeModeDraft.value = settings.themeMode;
+  fontSizeAdjustmentDraft.value = settings.fontSizeAdjustment;
   debugEnabledDraft.value = settings.debugEnabled;
   collapseModeEnabledDraft.value = settings.collapseModeEnabled;
   alwaysExpandRulesDraft.value = settings.alwaysExpandRules;
@@ -1053,6 +1070,7 @@ function applySettings(): void {
     effectsEnabled: effectsEnabledDraft.value,
     forceMobileLayout: forceMobileLayoutDraft.value,
     themeMode: themeModeDraft.value,
+    fontSizeAdjustment: Number(fontSizeAdjustmentDraft.value),
     debugEnabled: debugEnabledDraft.value,
     collapseModeEnabled: collapseModeEnabledDraft.value,
     alwaysExpandRules: alwaysExpandRulesDraft.value,

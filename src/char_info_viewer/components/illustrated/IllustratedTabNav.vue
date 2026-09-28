@@ -134,7 +134,7 @@ function tabIcon(key: IllustratedTabKey): string {
   color: #a0a5b5;
   cursor: pointer;
   font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
-  font-size: 15px;
+  font-size: calc(15px + var(--ci-font-size-adjust, 0px));
   font-weight: 500;
   text-align: center;
   white-space: nowrap;
@@ -193,7 +193,7 @@ function tabIcon(key: IllustratedTabKey): string {
   color: #a0a5b5;
   cursor: pointer;
   font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
-  font-size: 15px;
+  font-size: calc(15px + var(--ci-font-size-adjust, 0px));
   font-weight: 500;
   white-space: nowrap;
   transition:
@@ -281,7 +281,7 @@ function tabIcon(key: IllustratedTabKey): string {
     background: rgba(var(--illustrated-race-accent-rgb), 0.1);
     border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.26);
     border-radius: 10px;
-    font-size: 9px;
+    font-size: calc(9px + var(--ci-font-size-adjust, 0px));
     font-weight: 700;
   }
 
@@ -292,7 +292,7 @@ function tabIcon(key: IllustratedTabKey): string {
 
   .illustrated-tabs.is-side-rail .illustrated-save-icon {
     display: block;
-    font-size: 15px;
+    font-size: calc(15px + var(--ci-font-size-adjust, 0px));
     line-height: 1;
   }
 
@@ -309,11 +309,11 @@ function tabIcon(key: IllustratedTabKey): string {
     flex-direction: column;
     gap: 4px;
     padding: 7px 3px;
-    font-size: 9px;
+    font-size: calc(9px + var(--ci-font-size-adjust, 0px));
   }
 
   .illustrated-tabs.is-side-rail .illustrated-tab-icon {
-    font-size: 15px;
+    font-size: calc(15px + var(--ci-font-size-adjust, 0px));
     line-height: 1;
   }
 
@@ -371,11 +371,11 @@ function tabIcon(key: IllustratedTabKey): string {
     flex-direction: column;
     gap: 4px;
     padding: 0 2px;
-    font-size: 10px;
+    font-size: calc(10px + var(--ci-font-size-adjust, 0px));
   }
 
   #{$root} .illustrated-tab-icon {
-    font-size: 15px;
+    font-size: calc(15px + var(--ci-font-size-adjust, 0px));
     line-height: 1;
   }
 
@@ -423,7 +423,7 @@ function tabIcon(key: IllustratedTabKey): string {
 
   #{$root} .illustrated-save-icon {
     display: block;
-    font-size: 18px;
+    font-size: calc(18px + var(--ci-font-size-adjust, 0px));
     line-height: 1;
   }
 
@@ -455,7 +455,7 @@ function tabIcon(key: IllustratedTabKey): string {
     flex: 0 0 auto;
     width: auto;
     min-width: 58px;
-    font-size: 15px;
+    font-size: calc(15px + var(--ci-font-size-adjust, 0px));
   }
 
   #{$root} .illustrated-tab-button,
@@ -493,7 +493,7 @@ function tabIcon(key: IllustratedTabKey): string {
     min-width: 0;
     min-height: 58px;
     padding: 0 2px;
-    font-size: 10px;
+    font-size: calc(10px + var(--ci-font-size-adjust, 0px));
   }
 
   #{$root}.is-side-rail .illustrated-home-button {

@@ -17,6 +17,7 @@ export type ProfileEditorOverlay = {
 export type ProfileEditorOverlayOptions = {
   forceMobileLayout?: boolean;
   themeMode?: CharInfoThemeMode;
+  fontSizeAdjustment?: number;
   debugEnabled?: boolean;
   worldbookName?: string;
   entryUid?: number;
@@ -143,6 +144,7 @@ export function createProfileEditorOverlay(
           initialEntryUid: options.entryUid,
           initialCharacterName: options.initialCharacterName,
           themeMode: options.themeMode ?? DEFAULT_CHAR_INFO_THEME_MODE,
+          fontSizeAdjustment: options.fontSizeAdjustment ?? 0,
           debugEnabled: options.debugEnabled ?? false,
           onForceRefresh: options.onForceRefresh,
           onReturnToLibrary: options.onReturnToLibrary,

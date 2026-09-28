@@ -66,7 +66,7 @@ test('立绘角色卡 手机卡片使用 2:3 固定比例，技能沿用紧凑�
   assert.match(itemCard, /\.illustrated-list-item\.is-compact-row\s*\{[\s\S]*?background:\s*transparent/);
   assert.match(
     itemCard,
-    /@container char-info-viewer \(max-width: 640px\)[\s\S]*?\.illustrated-list-item\.is-compact-skill h3\s*\{[\s\S]*?font-size:\s*16px/,
+    /@container char-info-viewer \(max-width: 640px\)[\s\S]*?\.illustrated-list-item\.is-compact-skill h3\s*\{[\s\S]*?font-size:\s*calc\(16px \+ var\(--ci-font-size-adjust, 0px\)\)/,
   );
   assert.match(itemCard, /if \(type\.includes\('主动'\)\) return 'active'/);
   assert.match(itemCard, /if \(type\.includes\('被动'\)\) return 'passive'/);
@@ -78,11 +78,11 @@ test('立绘角色卡 手机卡片使用 2:3 固定比例，技能沿用紧凑�
   assert.match(itemCard, /\.illustrated-list-item\.is-compact-skill h3::before\s*\{[\s\S]*?content:\s*none/);
   assert.match(
     itemCard,
-    /\.illustrated-list-item\.is-compact-skill \.illustrated-effect-item\s*\{[\s\S]*?font-size:\s*12\.5px !important;[\s\S]*?line-height:\s*1\.58 !important/,
+    /\.illustrated-list-item\.is-compact-skill \.illustrated-effect-item\s*\{[\s\S]*?font-size:\s*calc\(12\.5px \+ var\(--ci-font-size-adjust, 0px\)\) !important;[\s\S]*?line-height:\s*1\.58 !important/,
   );
   assert.match(
     itemCard,
-    /\.illustrated-list-item\.is-compact-skill \.illustrated-description\s*\{[\s\S]*?color:\s*#9ca4ad;[\s\S]*?font-size:\s*10\.5px !important/,
+    /\.illustrated-list-item\.is-compact-skill \.illustrated-description\s*\{[\s\S]*?color:\s*#9ca4ad;[\s\S]*?font-size:\s*calc\(10\.5px \+ var\(--ci-font-size-adjust, 0px\)\) !important/,
   );
   assert.match(sheet, /\.illustrated-shell\.is-special-npc\.is-skills-tab \.illustrated-data-pane\s*\{[\s\S]*?66%/);
 });
@@ -112,7 +112,7 @@ test('立绘角色卡 档案隐藏属性与资源，持有沿用技能的紧凑�
   assert.match(sheet, /\.illustrated-detail-title-spacer\s*\{[\s\S]*?border-bottom:\s*1px solid rgba\(255, 255, 255, 0\.08\)/);
   assert.match(sheet, /\.illustrated-group-panel\s*\{[\s\S]*?overflow:\s*hidden;[\s\S]*?margin-inline:\s*10px 14px;[\s\S]*?border:\s*1px solid rgba\(var\(--illustrated-tier-accent-rgb\), 0\.2\)/);
   assert.match(sheet, /\.illustrated-group-body\s*\{[\s\S]*?padding:\s*2px 10px 8px/);
-  assert.match(sheet, /\.illustrated-group-toggle\s*\{[\s\S]*?grid-template-columns:\s*13px minmax\(0, 1fr\) 18px;[\s\S]*?padding:\s*8px 14px 8px 10px;[\s\S]*?font-size:\s*14px/);
+  assert.match(sheet, /\.illustrated-group-toggle\s*\{[\s\S]*?grid-template-columns:\s*13px minmax\(0, 1fr\) 18px;[\s\S]*?padding:\s*8px 14px 8px 10px;[\s\S]*?font-size:\s*calc\(14px \+ var\(--ci-font-size-adjust, 0px\)\)/);
   assert.match(sheet, /class="illustrated-group-chevron" aria-hidden="true"><\/span>/);
   assert.match(sheet, /\.illustrated-group-chevron::before,[\s\S]*?\.illustrated-group-chevron::after\s*\{[\s\S]*?background:\s*currentColor/);
   assert.match(sheet, /\.illustrated-group-panel\.is-collapsed \.illustrated-group-chevron\s*\{[\s\S]*?rotate\(-90deg\)/);
@@ -124,7 +124,7 @@ test('立绘角色卡 档案隐藏属性与资源，持有沿用技能的紧凑�
   );
   assert.match(
     sheet,
-    /@mixin illustrated-compact-mobile-content[\s\S]*?\.illustrated-group-toggle\s*\{[\s\S]*?padding:\s*7px 12px 7px 28px;[\s\S]*?font-size:\s*12px/,
+    /@mixin illustrated-compact-mobile-content[\s\S]*?\.illustrated-group-toggle\s*\{[\s\S]*?padding:\s*7px 12px 7px 28px;[\s\S]*?font-size:\s*calc\(12px \+ var\(--ci-font-size-adjust, 0px\)\)/,
   );
   assert.match(
     itemCard,
@@ -132,11 +132,11 @@ test('立绘角色卡 档案隐藏属性与资源，持有沿用技能的紧凑�
   );
   assert.match(
     itemCard,
-    /\.illustrated-list-item\.is-compact-holding \.illustrated-effect-item\s*\{[\s\S]*?font-size:\s*12\.5px !important;[\s\S]*?line-height:\s*1\.58 !important/,
+    /\.illustrated-list-item\.is-compact-holding \.illustrated-effect-item\s*\{[\s\S]*?font-size:\s*calc\(12\.5px \+ var\(--ci-font-size-adjust, 0px\)\) !important;[\s\S]*?line-height:\s*1\.58 !important/,
   );
   assert.match(
     itemCard,
-    /\.illustrated-list-item\.is-compact-holding \.illustrated-description\s*\{[\s\S]*?font-size:\s*10\.5px !important;[\s\S]*?font-style:\s*normal/,
+    /\.illustrated-list-item\.is-compact-holding \.illustrated-description\s*\{[\s\S]*?font-size:\s*calc\(10\.5px \+ var\(--ci-font-size-adjust, 0px\)\) !important;[\s\S]*?font-style:\s*normal/,
   );
 });
 
@@ -217,7 +217,7 @@ test('立绘角色卡 手机登神页使用紧凑分隔行', async () => {
     defaultDivinity,
     /\.illustrated-default-divinity\.is-compact \.default-divinity-card\s*\{[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none/,
   );
-  assert.match(defaultDivinity, /\.illustrated-default-divinity\.is-compact \.default-divinity-card p\s*\{[\s\S]*?font-size:\s*11px !important/);
+  assert.match(defaultDivinity, /\.illustrated-default-divinity\.is-compact \.default-divinity-card p\s*\{[\s\S]*?font-size:\s*calc\(11px \+ var\(--ci-font-size-adjust, 0px\)\) !important/);
 });
 
 test('App 在 立绘角色卡 分支复用有立绘页面，而不是挂载独立空壳', async () => {

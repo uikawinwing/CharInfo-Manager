@@ -13,6 +13,9 @@ export const DEFAULT_IMAGE_SOURCE_PRIORITY = ['files.catbox.moe', 'i.ibb.co'];
 export const DEFAULT_COLLAPSE_LEVEL_GAP = 5;
 export const MIN_COLLAPSE_LEVEL_GAP = 1;
 export const MAX_COLLAPSE_LEVEL_GAP = 99;
+export const DEFAULT_FONT_SIZE_ADJUSTMENT = 0;
+export const MIN_FONT_SIZE_ADJUSTMENT = -1;
+export const MAX_FONT_SIZE_ADJUSTMENT = 4;
 
 export type CharInfoUiSettings = {
   activeFloorLimit: number;
@@ -21,6 +24,7 @@ export type CharInfoUiSettings = {
   effectsEnabled: boolean;
   forceMobileLayout: boolean;
   themeMode: CharInfoThemeMode;
+  fontSizeAdjustment: number;
   debugEnabled: boolean;
   collapseModeEnabled: boolean;
   alwaysExpandRules: string;
@@ -43,6 +47,7 @@ const DEFAULT_SETTINGS: CharInfoUiSettings = {
   effectsEnabled: true,
   forceMobileLayout: false,
   themeMode: DEFAULT_CHAR_INFO_THEME_MODE,
+  fontSizeAdjustment: DEFAULT_FONT_SIZE_ADJUSTMENT,
   debugEnabled: false,
   collapseModeEnabled: false,
   alwaysExpandRules: '',
@@ -71,6 +76,12 @@ const SettingsSchema = z
     effectsEnabled: z.boolean().catch(DEFAULT_SETTINGS.effectsEnabled),
     forceMobileLayout: z.boolean().catch(DEFAULT_SETTINGS.forceMobileLayout),
     themeMode: z.enum(CHAR_INFO_THEME_MODES).catch(DEFAULT_SETTINGS.themeMode),
+    fontSizeAdjustment: z.coerce
+      .number()
+      .int()
+      .min(MIN_FONT_SIZE_ADJUSTMENT)
+      .max(MAX_FONT_SIZE_ADJUSTMENT)
+      .catch(DEFAULT_SETTINGS.fontSizeAdjustment),
     debugEnabled: z.boolean().catch(DEFAULT_SETTINGS.debugEnabled),
     collapseModeEnabled: z.boolean().catch(DEFAULT_SETTINGS.collapseModeEnabled),
     alwaysExpandRules: z.string().catch(DEFAULT_SETTINGS.alwaysExpandRules),

@@ -8,6 +8,7 @@
       'force-mobile-layout': props.forceMobileLayout,
       'viewer-effects-disabled': !props.effectsEnabled,
     }"
+    :style="{ '--ci-font-size-adjust': `${props.fontSizeAdjustment}px` }"
   >
     <div v-if="parseError" class="error-card">
       <h3>⚠️ 资料暂时无法显示</h3>
@@ -597,6 +598,7 @@ const props = withDefaults(
     readOnly?: boolean;
     effectsEnabled?: boolean;
     forceMobileLayout?: boolean;
+    fontSizeAdjustment?: number;
     debugEnabled?: boolean;
     imageSourcePriority?: string[];
     collapseModeEnabled?: boolean;
@@ -617,6 +619,7 @@ const props = withDefaults(
     readOnly: false,
     effectsEnabled: true,
     forceMobileLayout: false,
+    fontSizeAdjustment: 0,
     debugEnabled: false,
     imageSourcePriority: () => [],
     collapseModeEnabled: false,
@@ -1220,7 +1223,7 @@ onBeforeUnmount(() => {
 
 .viewer-loading-snowflake {
   color: rgba(157, 226, 226, 0.72);
-  font-size: clamp(34px, 6cqw, 72px);
+  font-size: calc(clamp(34px, 6cqw, 72px) + var(--ci-font-size-adjust, 0px));
   text-shadow: 0 0 26px rgba(132, 213, 220, 0.48);
   animation: viewer-loading-pulse 1.2s ease-in-out infinite alternate;
 }
@@ -1236,7 +1239,7 @@ onBeforeUnmount(() => {
 
 .viewer-loading-kicker {
   color: rgba(155, 224, 224, 0.72);
-  font-size: 11px;
+  font-size: calc(11px + var(--ci-font-size-adjust, 0px));
   font-weight: 800;
   letter-spacing: 0.18em;
 }
@@ -1296,7 +1299,7 @@ onBeforeUnmount(() => {
 .viewer-loading-data p {
   margin: 42px 0 0;
   color: rgba(226, 241, 244, 0.66);
-  font-size: 13px;
+  font-size: calc(13px + var(--ci-font-size-adjust, 0px));
   letter-spacing: 0.08em;
 }
 
@@ -1357,7 +1360,7 @@ onBeforeUnmount(() => {
 
 .error-body {
   margin-top: 10px;
-  font-size: 0.9rem;
+  font-size: calc(0.9rem + var(--ci-font-size-adjust, 0px));
 }
 
 .yaml-error-row {
@@ -1429,7 +1432,7 @@ onBeforeUnmount(() => {
 .parse-warning-card {
   max-width: 920px;
   margin: 0 auto 14px;
-  font-size: 13px;
+  font-size: calc(13px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
 }
 
@@ -1552,7 +1555,7 @@ onBeforeUnmount(() => {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 0 10px rgba(var(--tier-color-rgb), 0.18);
-  font-size: 12px;
+  font-size: calc(12px + var(--ci-font-size-adjust, 0px));
   font-weight: 800;
   line-height: 1;
   white-space: nowrap;
@@ -1564,7 +1567,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   color: #fff;
   font-family: var(--name-font-stack);
-  font-size: clamp(22px, 3vw, 28px);
+  font-size: calc(clamp(22px, 3vw, 28px) + var(--ci-font-size-adjust, 0px));
   font-weight: 800;
   line-height: 1.12;
   text-overflow: ellipsis;
@@ -1587,7 +1590,7 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.22);
   color: rgba(255, 255, 255, 0.78);
-  font-size: 15px;
+  font-size: calc(15px + var(--ci-font-size-adjust, 0px));
 }
 
 .compact-card-data {
@@ -1639,7 +1642,7 @@ onBeforeUnmount(() => {
 
 .compact-resource-label {
   color: rgba(255, 255, 255, 0.8);
-  font-size: 11px;
+  font-size: calc(11px + var(--ci-font-size-adjust, 0px));
   font-weight: 800;
   letter-spacing: 0.06em;
   line-height: 1;
@@ -1649,7 +1652,7 @@ onBeforeUnmount(() => {
   margin-top: 5px;
   color: #fff;
   font-family: Inter, 'Noto Sans', system-ui, sans-serif;
-  font-size: 23px;
+  font-size: calc(23px + var(--ci-font-size-adjust, 0px));
   font-weight: 800;
   line-height: 1.05;
   text-shadow: 0 0 10px rgba(var(--tier-color-rgb), 0.18);
@@ -1745,7 +1748,7 @@ onBeforeUnmount(() => {
   display: inline-block;
   margin: 0;
   color: rgba(248, 250, 252, 0.92);
-  font-size: 12px;
+  font-size: calc(12px + var(--ci-font-size-adjust, 0px));
   font-weight: 800;
   line-height: 1;
 }
@@ -1754,7 +1757,7 @@ onBeforeUnmount(() => {
   display: block;
   color: #fff;
   font-family: Inter, 'Noto Sans', system-ui, sans-serif;
-  font-size: 24px;
+  font-size: calc(24px + var(--ci-font-size-adjust, 0px));
   font-weight: 800;
   line-height: 1.04;
   text-shadow: 0 0 10px rgba(var(--tier-color-rgb), 0.26);
@@ -1938,7 +1941,7 @@ onBeforeUnmount(() => {
 
 .char-name {
   margin: 0 0 10px;
-  font-size: 3rem;
+  font-size: calc(3rem + var(--ci-font-size-adjust, 0px));
   color: #ffffff;
   font-family: var(--name-font-stack);
   font-weight: 700;
@@ -1955,7 +1958,7 @@ onBeforeUnmount(() => {
   gap: 10px;
   justify-content: center;
   align-items: center;
-  font-size: 0.95rem;
+  font-size: calc(0.95rem + var(--ci-font-size-adjust, 0px));
 }
 
 .meta-separator {
@@ -2043,12 +2046,12 @@ onBeforeUnmount(() => {
 
 .portrait-name {
   margin-bottom: 8px;
-  font-size: 2.2rem;
+  font-size: calc(2.2rem + var(--ci-font-size-adjust, 0px));
 }
 
 .portrait-meta-row {
   justify-content: flex-start;
-  font-size: 0.86rem;
+  font-size: calc(0.86rem + var(--ci-font-size-adjust, 0px));
 }
 
 .portrait-compact-stats,
@@ -2057,7 +2060,7 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
-  font-size: 0.86rem;
+  font-size: calc(0.86rem + var(--ci-font-size-adjust, 0px));
   color: rgba(245, 255, 250, 0.92);
 }
 
@@ -2159,7 +2162,7 @@ onBeforeUnmount(() => {
 }
 
 .resource-name {
-  font-size: 0.8rem;
+  font-size: calc(0.8rem + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   letter-spacing: 0.08em;
   color: rgba(255, 255, 255, 0.82);
@@ -2167,7 +2170,7 @@ onBeforeUnmount(() => {
 
 .resource-value {
   font-family: 'Cinzel', 'Times New Roman', serif;
-  font-size: 1.25rem;
+  font-size: calc(1.25rem + var(--ci-font-size-adjust, 0px));
   line-height: 1;
   font-weight: 700;
   color: #ffffff;
@@ -2218,7 +2221,7 @@ onBeforeUnmount(() => {
 
 .attribute-name {
   display: block;
-  font-size: var(--flag-name-size);
+  font-size: calc(var(--flag-name-size) + var(--ci-font-size-adjust, 0px));
   color: #fff;
   margin-bottom: 6px;
   font-weight: 700;
@@ -2230,7 +2233,7 @@ onBeforeUnmount(() => {
   display: block;
   margin-top: var(--flag-total-offset, 0px);
   font-family: 'Cinzel', 'Times New Roman', serif;
-  font-size: var(--flag-total-size);
+  font-size: calc(var(--flag-total-size) + var(--ci-font-size-adjust, 0px));
   line-height: 1;
   font-weight: 700;
   text-shadow: 0 2px 15px rgba(var(--race-color-rgb), 0.45);
@@ -2244,7 +2247,7 @@ onBeforeUnmount(() => {
 .attribute-formula {
   display: none;
   margin-top: 6px;
-  font-size: var(--flag-formula-size);
+  font-size: calc(var(--flag-formula-size) + var(--ci-font-size-adjust, 0px));
   color: var(--race-color);
   font-weight: 700;
   line-height: 1.2;
@@ -2334,7 +2337,7 @@ onBeforeUnmount(() => {
 }
 
 .subsection-title {
-  font-size: 1.08rem;
+  font-size: calc(1.08rem + var(--ci-font-size-adjust, 0px));
   margin: 0 0 8px;
   padding-left: 8px;
   border-left: 3px solid var(--race-color);
@@ -2393,13 +2396,13 @@ onBeforeUnmount(() => {
 
 .card-title {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: calc(1.05rem + var(--ci-font-size-adjust, 0px));
   color: #fff;
   font-weight: 700;
 }
 
 .card-subtitle {
-  font-size: 0.85rem;
+  font-size: calc(0.85rem + var(--ci-font-size-adjust, 0px));
   color: #bbb;
 }
 
@@ -2499,7 +2502,7 @@ onBeforeUnmount(() => {
   background: rgba(var(--race-color-rgb), 0.12);
   color: var(--race-color);
   font-weight: 700;
-  font-size: 0.78rem;
+  font-size: calc(0.78rem + var(--ci-font-size-adjust, 0px));
   line-height: 1;
   padding: 3px 8px;
 }
@@ -2529,7 +2532,7 @@ onBeforeUnmount(() => {
   display: inline-block;
   border-radius: 999px;
   padding: 4px 10px;
-  font-size: 0.82rem;
+  font-size: calc(0.82rem + var(--ci-font-size-adjust, 0px));
   border: 1px solid rgba(255, 255, 255, 0.15);
   background: rgba(255, 255, 255, 0.05);
 }
@@ -2546,7 +2549,7 @@ onBeforeUnmount(() => {
   border-radius: 6px;
   cursor: pointer;
   z-index: 60;
-  font-size: 1.2rem;
+  font-size: calc(1.2rem + var(--ci-font-size-adjust, 0px));
   transition: all 0.2s;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
 }
@@ -2592,7 +2595,7 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   cursor: pointer;
   text-align: left;
-  font-size: 0.95rem;
+  font-size: calc(0.95rem + var(--ci-font-size-adjust, 0px));
 }
 
 .import-action-menu button:disabled {
@@ -2673,7 +2676,7 @@ onBeforeUnmount(() => {
   }
 
   .char-name {
-    font-size: 2.2rem;
+    font-size: calc(2.2rem + var(--ci-font-size-adjust, 0px));
     letter-spacing: 0.2px;
     text-shadow:
       0 1px 2px var(--name-shadow),
@@ -2715,11 +2718,11 @@ onBeforeUnmount(() => {
   .compact-level-tier {
     min-height: 25px;
     padding: 3px 8px;
-    font-size: 11px;
+    font-size: calc(11px + var(--ci-font-size-adjust, 0px));
   }
 
   .compact-character-name {
-    font-size: 20px;
+    font-size: calc(20px + var(--ci-font-size-adjust, 0px));
   }
 
   .compact-card-data,
@@ -2745,11 +2748,11 @@ onBeforeUnmount(() => {
   }
 
   .compact-attribute-name {
-    font-size: 11.5px;
+    font-size: calc(11.5px + var(--ci-font-size-adjust, 0px));
   }
 
   .compact-attribute-value {
-    font-size: 22px;
+    font-size: calc(22px + var(--ci-font-size-adjust, 0px));
   }
 
   .compact-resource {
@@ -2760,12 +2763,12 @@ onBeforeUnmount(() => {
   }
 
   .compact-resource-label {
-    font-size: 10px;
+    font-size: calc(10px + var(--ci-font-size-adjust, 0px));
   }
 
   .compact-resource-value {
     margin-top: 0;
-    font-size: 17px;
+    font-size: calc(17px + var(--ci-font-size-adjust, 0px));
   }
 
   .card-collapse-button {
@@ -2783,11 +2786,11 @@ onBeforeUnmount(() => {
   .level-badge {
     margin-bottom: 10px;
     padding: 3px 12px;
-    font-size: 0.9rem;
+    font-size: calc(0.9rem + var(--ci-font-size-adjust, 0px));
   }
 
   .char-name {
-    font-size: 1.8rem;
+    font-size: calc(1.8rem + var(--ci-font-size-adjust, 0px));
     margin-bottom: 8px;
     letter-spacing: 0.1px;
     text-shadow:
@@ -2797,7 +2800,7 @@ onBeforeUnmount(() => {
 
   .char-meta-row {
     gap: 6px;
-    font-size: 0.82rem;
+    font-size: calc(0.82rem + var(--ci-font-size-adjust, 0px));
   }
 
   .tier-name {
@@ -2817,7 +2820,7 @@ onBeforeUnmount(() => {
   }
 
   .portrait-name {
-    font-size: 1.65rem;
+    font-size: calc(1.65rem + var(--ci-font-size-adjust, 0px));
   }
 
   .portrait-info-panel {
@@ -2851,7 +2854,7 @@ onBeforeUnmount(() => {
   }
 
   .subsection-title {
-    font-size: 1rem;
+    font-size: calc(1rem + var(--ci-font-size-adjust, 0px));
   }
 
   .story,
@@ -2862,7 +2865,7 @@ onBeforeUnmount(() => {
 
   .import-action-btn {
     bottom: 10px;
-    font-size: 1.05rem;
+    font-size: calc(1.05rem + var(--ci-font-size-adjust, 0px));
     padding: 7px 10px;
   }
 
@@ -2873,7 +2876,7 @@ onBeforeUnmount(() => {
 
   .import-action-menu button {
     padding: 8px;
-    font-size: 0.9rem;
+    font-size: calc(0.9rem + var(--ci-font-size-adjust, 0px));
   }
 }
 </style>

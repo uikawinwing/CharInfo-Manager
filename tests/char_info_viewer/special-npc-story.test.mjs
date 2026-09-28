@@ -73,7 +73,7 @@ test('立绘角色卡 故事页复用 detail panels 整页滚动，并提供 mob
   );
   assert.match(
     sheetSource,
-    /@mixin illustrated-mobile-content[\s\S]*?\.illustrated-profile-story-section p\s*\{[\s\S]*?font-size:\s*12px;[\s\S]*?line-height:\s*1\.78;/u,
+    /@mixin illustrated-mobile-content[\s\S]*?\.illustrated-profile-story-section p\s*\{[\s\S]*?font-size:\s*calc\(12px \+ var\(--ci-font-size-adjust, 0px\)\);[\s\S]*?line-height:\s*1\.78;/u,
   );
   assert.doesNotMatch(sheetSource, /\.illustrated-profile-story-section\s*\{[^}]*overflow-y:\s*(auto|scroll)/u);
 });
