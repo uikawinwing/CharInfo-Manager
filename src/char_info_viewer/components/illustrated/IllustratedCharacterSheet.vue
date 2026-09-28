@@ -4,6 +4,7 @@
     class="illustrated-wrapper"
     :class="{
       'is-special-npc': specialNpc,
+      'uses-v2-navigation': useSideRailNavigation,
       'force-mobile-layout': forceMobileLayout,
       'is-scaled-desktop': isScaledDesktop,
     }"
@@ -300,7 +301,7 @@
         </div>
 
         <IllustratedTabNav
-          v-if="!specialNpc"
+          v-if="!useSideRailNavigation"
           :tabs="tabs"
           :active-tab="activeSpecialTab"
           :importing="importing"
@@ -313,7 +314,7 @@
       </section>
 
       <IllustratedTabNav
-        v-if="specialNpc"
+        v-if="useSideRailNavigation"
         side-rail
         :tabs="tabs"
         :active-tab="activeSpecialTab"
@@ -390,7 +391,10 @@ const props = defineProps<{
   debugEnabled: boolean;
   forceMobileLayout: boolean;
   specialNpc: boolean;
+  sideRailNavigation?: boolean;
 }>();
+
+const useSideRailNavigation = computed(() => props.specialNpc || props.sideRailNavigation === true);
 
 const DESKTOP_REFERENCE_WIDTH = 1200;
 const DESKTOP_REFERENCE_HEIGHT = 800;
