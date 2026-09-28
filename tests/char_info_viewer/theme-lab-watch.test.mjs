@@ -16,8 +16,8 @@ test('Theme Lab has a quiet standalone watch entry', async () => {
   ]);
 
   const packageJson = JSON.parse(packageSource);
-  assert.match(packageJson.scripts['watch:theme-lab'], /theme-lab\.webpack\.config\.mjs/);
-  assert.match(packageJson.scripts['watch:theme-lab'], /--watch/);
+  assert.match(packageJson.scripts['watch:theme-lab'], /theme-lab-build\.mjs watch/);
+  assert.match(configSource, /theme-lab\.webpack\.config\.mjs/);
   assert.match(configSource, /src\/char_info_v2_theme_lab\/index\.ts/);
   assert.match(configSource, /watch_tavern_helper/);
   assert.match(configSource, /schema_dump/);
