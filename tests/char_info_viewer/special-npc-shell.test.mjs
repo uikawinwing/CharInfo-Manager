@@ -227,7 +227,7 @@ test('App 在 立绘角色卡 分支通过 V2 入口复用成熟页面，而不�
   ]);
   assert.match(source, /<IllustratedV2Sheet[\s\S]*?v-if="shouldShowSpecialNpcLayout && vm"/);
   assert.match(source, /:special-npc="shouldShowSpecialNpcLayout"/);
-  assert.match(v2, /<IllustratedCharacterSheet v-bind="\$attrs" \/>/);
+  assert.match(v2, /<IllustratedCharacterSheet v-bind="\$attrs" side-rail-navigation \/>/);
   assert.match(v2, /import IllustratedCharacterSheet from '\.\/IllustratedCharacterSheet\.vue';/);
   assert.doesNotMatch(source, /SpecialNpcShell/);
   assert.match(source, /vm\.value\?\.layoutKind === 'special_npc' && !illustratedFallbackActive\.value/);
