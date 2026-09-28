@@ -9,6 +9,9 @@ const projectRoot = path.resolve(scriptDir, '..');
 const toolchainRoot = path.resolve(projectRoot, '../../Toolchain');
 const webpackCli = path.join(toolchainRoot, 'node_modules', 'webpack-cli', 'bin', 'cli.js');
 const configFile = path.join(projectRoot, 'scripts', 'theme-lab.webpack.config.mjs');
+const sourceHtml = path.join(projectRoot, 'src', 'char_info_v2_theme_lab', 'index.html');
+const outputDir = path.join(projectRoot, 'dist', 'char_info_v2_theme_lab');
+const outputHtml = path.join(outputDir, 'index.html');
 const action = process.argv[2] ?? 'build';
 
 if (!['build', 'watch'].includes(action)) {
@@ -23,7 +26,16 @@ if (!fs.existsSync(webpackCli)) {
 const args = ['--config', configFile, '--mode', 'development', '--stats', 'errors-warnings'];
 if (action === 'watch') args.push('--watch');
 
+const html = fs.readFileSync(sourceHtml, 'utf8').replace(
+  '</body>',
+  '  <script type="module" src="./index.js"></script>\n</body>',
+);
+fs.rmSync(outputDir, { recursive: true, force: true });
+fs.mkdirSync(outputDir, { recursive: true });
+fs.writeFileSync(outputHtml, html);
+
 console.info(`[theme-lab] ${action}: ${projectRoot}`);
+console.info(`[theme-lab] preview: ${outputHtml}`);
 
 const child = spawn(process.execPath, [webpackCli, ...args], {
   cwd: toolchainRoot,
