@@ -11,7 +11,7 @@
     "lint": "node ../../Toolchain/node_modules/eslint/bin/eslint.js",
     "lint:fix": "node ../../Toolchain/node_modules/eslint/bin/eslint.js --fix",
     "test": "node --import ./tests/register-toolchain-esm.mjs --require ./tests/register-ts-node.cjs --test",
-    "build:theme-lab": "node ../../Toolchain/node_modules/webpack-cli/bin/cli.js --config scripts/theme-lab.webpack.config.mjs --mode development --stats errors-warnings",
-    "watch:theme-lab": "node ../../Toolchain/node_modules/webpack-cli/bin/cli.js --config scripts/theme-lab.webpack.config.mjs --mode development --watch --stats errors-warnings"
+    "build:theme-lab": "node scripts/theme-lab-build.mjs build",
+    "watch:theme-lab": "node scripts/theme-lab-build.mjs watch"
   }
 }
