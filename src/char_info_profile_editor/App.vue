@@ -802,8 +802,14 @@
                 <h2>写入预览</h2>
                 <p>{{ generatedCode ? `${generatedCode.split('\n').length} 行内容` : '填写完整后生成' }}</p>
               </div>
-              <button type="button" class="secondary-button" :disabled="!generatedCode" @click="copyEjs">
-                复制写入内容
+              <button
+                type="button"
+                class="secondary-button"
+                :class="{ 'copy-success': copyState === 'success' }"
+                :disabled="!generatedCode"
+                @click="copyEjs"
+              >
+                {{ copyState === 'success' ? '✓ 已复制' : '复制写入内容' }}
               </button>
             </div>
 
@@ -1039,10 +1045,12 @@ const saving = ref(false);
 const applyingSavedProfile = ref(false);
 const flashSaveCelebrating = ref(false);
 const saveState = ref<'idle' | 'success' | 'error'>('idle');
+const copyState = ref<'idle' | 'success'>('idle');
 const saveMessage = ref('选择世界书条目后即可写入。');
 const applyMessage = ref('');
 const editorNotice = ref('');
 let flashSaveSuccessTimer: number | null = null;
+let copyFeedbackTimer: number | null = null;
 let editorNoticeTimer: number | null = null;
 let nextImageId = 1;
 let nextStorySectionId = 1;
@@ -1927,15 +1935,19 @@ function moveStorySection(index: number, offset: -1 | 1) {
 async function copyEjs() {
   if (!generatedCode.value) return;
   try {
-    const method = await copyTextWithFallback(generatedCode.value, {
+    await copyTextWithFallback(generatedCode.value, {
       writeText: text => navigator.clipboard.writeText(text),
       fallbackCopy: copyTextWithDocumentSelection,
     });
-    saveState.value = 'success';
-    saveMessage.value = method === 'fallback' ? '写入内容已复制。' : '写入内容已复制到剪贴板。';
+    copyState.value = 'success';
+    if (copyFeedbackTimer !== null) window.clearTimeout(copyFeedbackTimer);
+    copyFeedbackTimer = window.setTimeout(() => {
+      copyState.value = 'idle';
+      copyFeedbackTimer = null;
+    }, 1800);
   } catch {
-    saveState.value = 'error';
-    saveMessage.value = '浏览器阻止了自动复制，请展开上方内容后手动复制，或直接保存。';
+    copyState.value = 'idle';
+    showEditorNotice('浏览器阻止了自动复制，请展开上方内容后手动复制，或直接保存。');
   }
 }
 
@@ -2244,6 +2256,10 @@ onBeforeUnmount(() => {
   if (flashSaveSuccessTimer !== null) {
     window.clearTimeout(flashSaveSuccessTimer);
     flashSaveSuccessTimer = null;
+  }
+  if (copyFeedbackTimer !== null) {
+    window.clearTimeout(copyFeedbackTimer);
+    copyFeedbackTimer = null;
   }
   if (editorNoticeTimer !== null) {
     window.clearTimeout(editorNoticeTimer);
