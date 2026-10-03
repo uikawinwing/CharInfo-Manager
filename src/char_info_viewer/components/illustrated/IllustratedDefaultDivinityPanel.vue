@@ -65,9 +65,7 @@ const sections = computed(() => buildDivinitySections(props.vm));
   padding: 26px 22px;
   border-top: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.62);
   border-bottom: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.32);
-  background:
-    radial-gradient(ellipse at 50% 0, rgba(var(--illustrated-tier-accent-rgb), 0.18), transparent 62%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 0, 0, 0.12));
+  background: var(--illustrated-divinity-hero-overlay);
   text-align: center;
 }
 
@@ -82,16 +80,16 @@ const sections = computed(() => buildDivinitySections(props.vm));
 
 .default-divinity-hero h3 {
   margin: 0;
-  color: #fffdf5;
+  color: var(--illustrated-divinity-fg);
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
   font-size: calc(clamp(26px, 4vw, 34px) + var(--ci-font-size-adjust, 0px));
   letter-spacing: 0.08em;
-  text-shadow: 0 3px 14px rgba(0, 0, 0, 0.55);
+  text-shadow: var(--illustrated-divinity-heading-shadow);
 }
 
 .default-divinity-hero p {
   margin: 0;
-  color: rgba(255, 252, 242, 0.72);
+  color: var(--illustrated-divinity-fg-soft);
   font-size: calc(13px + var(--ci-font-size-adjust, 0px));
 }
 
@@ -105,8 +103,8 @@ const sections = computed(() => buildDivinitySections(props.vm));
   gap: 10px;
   padding: 18px 20px;
   border: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.2);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.01)), rgba(5, 15, 32, 0.44);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: var(--illustrated-divinity-card-overlay), var(--illustrated-divinity-surface);
+  box-shadow: inset 0 1px 0 var(--illustrated-divinity-inset-highlight);
 }
 
 .default-divinity-card-head {
@@ -127,7 +125,7 @@ const sections = computed(() => buildDivinitySections(props.vm));
 }
 
 .default-divinity-card strong {
-  color: #fffdf5;
+  color: var(--illustrated-divinity-fg);
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
   font-size: calc(18px + var(--ci-font-size-adjust, 0px));
   letter-spacing: 0.04em;

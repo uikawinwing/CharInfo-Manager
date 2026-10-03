@@ -241,6 +241,7 @@ function tabIcon(key: IllustratedTabKey): string {
     border-left: 1px solid rgba(255, 255, 255, 0.08);
     padding: 14px 6px;
     background: var(--illustrated-side-rail-background);
+    box-shadow: var(--illustrated-side-rail-shadow);
   }
 
   .illustrated-tabs.is-side-rail .illustrated-tab-navigation-group {

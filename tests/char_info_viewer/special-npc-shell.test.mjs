@@ -34,19 +34,26 @@ test('立绘角色卡 沿用有立绘页面，并将导航作为桌面右侧栏�
 });
 
 test('立绘角色卡 exposes a reusable visual token contract without changing layout ownership', async () => {
-  const [sheet, header, navigation, itemCard] = await Promise.all([
+  const [sheet, header, navigation, itemCard, profilePanel, defaultDivinity] = await Promise.all([
     readFile(shellPath, 'utf8'),
     readFile(new URL('../../src/char_info_viewer/components/illustrated/IllustratedHeader.vue', import.meta.url), 'utf8'),
     readFile(navigationPath, 'utf8'),
     readFile(itemCardPath, 'utf8'),
+    readFile(profilePanelPath, 'utf8'),
+    readFile(defaultDivinityPath, 'utf8'),
   ]);
 
   assert.match(sheet, /--illustrated-soft-accent-rgb:\s*var\(--illustrated-race-accent-rgb\)/);
   assert.match(sheet, /--illustrated-shell-background:\s*var\(--illustrated-bg\)/);
   assert.match(sheet, /\.illustrated-shell\s*\{[\s\S]*?background:\s*var\(--illustrated-shell-background\)/);
+  assert.match(sheet, /\.illustrated-portrait-pane\s*\{[\s\S]*?background:\s*var\(--illustrated-portrait-pane-background\)/);
+  assert.match(sheet, /\.illustrated-data-pane\s*\{[\s\S]*?background:\s*var\(--illustrated-data-pane-background\)/);
+  assert.match(sheet, /\.import-action-menu\s*\{[\s\S]*?background:\s*var\(--illustrated-import-menu-background\)/);
   assert.match(header, /\.illustrated-name\s*\{[\s\S]*?color:\s*var\(--illustrated-fg\)/);
   assert.match(navigation, /\.illustrated-tabs\s*\{[\s\S]*?background:\s*var\(--illustrated-nav-background\)/);
   assert.match(itemCard, /\.illustrated-list-item\s*\{[\s\S]*?background:\s*var\(--illustrated-surface-card\)/);
+  assert.match(profilePanel, /\.illustrated-text-block\s*\{[\s\S]*?var\(--illustrated-text-block-background\)/);
+  assert.match(defaultDivinity, /\.default-divinity-card\s*\{[\s\S]*?var\(--illustrated-divinity-card-overlay\)/);
 });
 
 test('立绘角色卡 按实际容器宽度在 901 到 1200 之间等比缩放，900 以下切换移动布局', async () => {
@@ -163,7 +170,7 @@ test('立绘角色卡 手机首页将台词与资料直接叠在立绘渐变上�
   const sheet = await readFile(shellPath, 'utf8');
   assert.match(
     sheet,
-    /\.illustrated-shell\.is-special-npc\.is-overview-tab \.illustrated-portrait-pane::after\s*\{[\s\S]*?linear-gradient/,
+    /\.illustrated-shell\.is-special-npc\.is-overview-tab \.illustrated-portrait-pane::after\s*\{[\s\S]*?background:\s*var\(--illustrated-mobile-portrait-overlay\)/,
   );
   assert.match(
     sheet,

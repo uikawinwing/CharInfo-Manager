@@ -814,6 +814,15 @@ watchEffect(() => {
   --illustrated-surface-muted: rgba(5, 7, 10, 0.28);
   --illustrated-surface-card: rgba(12, 14, 18, 0.85);
   --illustrated-surface-tag: rgba(0, 0, 0, 0.4);
+  --illustrated-portrait-pane-background: transparent;
+  --illustrated-data-pane-background: transparent;
+  --illustrated-detail-pane-background: color-mix(in srgb, var(--illustrated-bg) 58%, transparent);
+  --illustrated-text-block-background: radial-gradient(
+    ellipse at center,
+    rgba(30, 34, 42, 0.4) 0%,
+    rgba(10, 12, 16, 0.8) 100%
+  );
+  --illustrated-panel-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   --illustrated-race-accent: var(--race-color, #d4af37);
   --illustrated-race-accent-rgb: var(--race-color-rgb, 212, 175, 55);
   --illustrated-tier-accent: var(--tier-color, #d4af37);
@@ -852,6 +861,13 @@ watchEffect(() => {
   --illustrated-nav-background: linear-gradient(180deg, rgba(20, 22, 30, 0.2) 0%, rgba(20, 22, 30, 0.96) 35%);
   --illustrated-mobile-nav-background: color-mix(in srgb, var(--illustrated-bg) 94%, transparent);
   --illustrated-side-rail-background: rgba(4, 5, 9, 0.82);
+  --illustrated-side-rail-shadow: none;
+  --illustrated-import-menu-background: rgba(20, 20, 20, 0.92);
+  --illustrated-import-menu-border: rgba(255, 255, 255, 0.18);
+  --illustrated-import-menu-fg: #eee;
+  --illustrated-import-menu-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+  --illustrated-import-menu-hover-background: rgba(255, 255, 255, 0.08);
+  --illustrated-import-menu-hover-border: rgba(255, 255, 255, 0.12);
   --illustrated-name-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
   --illustrated-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
   --illustrated-heading-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
@@ -866,6 +882,26 @@ watchEffect(() => {
   --illustrated-nav-shadow: 0 -8px 24px rgba(0, 0, 0, 0.22);
   --illustrated-detail-wallpaper-filter: saturate(0.82) brightness(0.72);
   --illustrated-detail-wallpaper-opacity: 0.34;
+  --illustrated-mobile-portrait-overlay: linear-gradient(
+    180deg,
+    transparent 42%,
+    rgba(8, 10, 14, 0.14) 56%,
+    rgba(8, 10, 14, 0.76) 80%,
+    var(--illustrated-bg) 100%
+  );
+  --illustrated-divinity-fg: #fffdf5;
+  --illustrated-divinity-fg-soft: rgba(255, 252, 242, 0.72);
+  --illustrated-divinity-surface: rgba(5, 15, 32, 0.44);
+  --illustrated-divinity-hero-overlay:
+    radial-gradient(ellipse at 50% 0, rgba(var(--illustrated-tier-accent-rgb), 0.18), transparent 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 0, 0, 0.12));
+  --illustrated-divinity-card-overlay: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.045),
+    rgba(255, 255, 255, 0.01)
+  );
+  --illustrated-divinity-inset-highlight: rgba(255, 255, 255, 0.06);
+  --illustrated-divinity-heading-shadow: 0 3px 14px rgba(0, 0, 0, 0.55);
   --illustrated-overview-width: 540px;
   --illustrated-flag-width: 128px;
   --illustrated-flag-height: 156px;
@@ -1029,6 +1065,7 @@ watchEffect(() => {
   position: relative;
   flex: 0 0 45%;
   min-width: 0;
+  background: var(--illustrated-portrait-pane-background);
 }
 
 .illustrated-portrait-pane::after {
@@ -1225,6 +1262,8 @@ watchEffect(() => {
   max-height: 100%;
   padding: 56px 50px 34px;
   overflow: hidden;
+  color: var(--illustrated-fg);
+  background: var(--illustrated-data-pane-background);
 }
 
 .illustrated-panels::-webkit-scrollbar {
@@ -1658,10 +1697,10 @@ watchEffect(() => {
   display: none;
   min-width: 190px;
   padding: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--illustrated-import-menu-border);
   border-radius: 10px;
-  background: rgba(20, 20, 20, 0.92);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+  background: var(--illustrated-import-menu-background);
+  box-shadow: var(--illustrated-import-menu-shadow);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -1676,7 +1715,7 @@ watchEffect(() => {
   border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
-  color: #eee;
+  color: var(--illustrated-import-menu-fg);
   cursor: pointer;
   font-size: calc(0.95rem + var(--ci-font-size-adjust, 0px));
   text-align: left;
@@ -1688,8 +1727,8 @@ watchEffect(() => {
 }
 
 .import-action-menu button:hover:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--illustrated-import-menu-hover-border);
+  background: var(--illustrated-import-menu-hover-background);
 }
 
 .illustrated-mobile-detail-wallpaper {
@@ -1764,7 +1803,7 @@ watchEffect(() => {
 
   .illustrated-shell.is-detail-tab .illustrated-data-pane {
     padding: 18px 24px 14px;
-    background: color-mix(in srgb, var(--illustrated-bg) 58%, transparent);
+    background: var(--illustrated-detail-pane-background);
     backdrop-filter: blur(1.5px);
     -webkit-backdrop-filter: blur(1.5px);
   }
@@ -1789,13 +1828,7 @@ watchEffect(() => {
   }
 
   .illustrated-shell.is-special-npc.is-overview-tab .illustrated-portrait-pane::after {
-    background: linear-gradient(
-      180deg,
-      transparent 42%,
-      rgba(8, 10, 14, 0.14) 56%,
-      rgba(8, 10, 14, 0.76) 80%,
-      var(--illustrated-bg) 100%
-    );
+    background: var(--illustrated-mobile-portrait-overlay);
   }
 
   .illustrated-shell.is-special-npc.is-overview-tab .illustrated-mobile-overview-overlay {
