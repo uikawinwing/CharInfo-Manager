@@ -801,14 +801,71 @@ watchEffect(() => {
   max-width: 1200px;
   margin: 0 auto;
   container-type: inline-size;
-  color: #f8f9fa;
+  color: var(--illustrated-fg);
   font-family: 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif;
   --illustrated-bg: #14161e;
   --illustrated-panel: rgba(20, 22, 30, 0.78);
+  --illustrated-fg: #f8f9fa;
+  --illustrated-fg-soft: #e2e8f0;
+  --illustrated-fg-muted: #a0a5b5;
+  --illustrated-border-soft: rgba(255, 255, 255, 0.08);
+  --illustrated-border-faint: rgba(255, 255, 255, 0.05);
+  --illustrated-surface-subtle: rgba(0, 0, 0, 0.2);
+  --illustrated-surface-muted: rgba(5, 7, 10, 0.28);
+  --illustrated-surface-card: rgba(12, 14, 18, 0.85);
+  --illustrated-surface-tag: rgba(0, 0, 0, 0.4);
   --illustrated-race-accent: var(--race-color, #d4af37);
   --illustrated-race-accent-rgb: var(--race-color-rgb, 212, 175, 55);
   --illustrated-tier-accent: var(--tier-color, #d4af37);
   --illustrated-tier-accent-rgb: var(--tier-color-rgb, 212, 175, 55);
+  --illustrated-soft-accent-rgb: var(--illustrated-race-accent-rgb);
+  --illustrated-shell-border-color: var(--illustrated-border-soft);
+  --illustrated-shell-background: var(--illustrated-bg);
+  --illustrated-shell-shadow:
+    0 0 0 1px rgba(var(--illustrated-tier-accent-rgb), 0.35),
+    0 0 26px rgba(var(--illustrated-tier-accent-rgb), 0.32),
+    0 0 54px rgba(var(--illustrated-tier-accent-rgb), 0.18),
+    0 24px 64px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --illustrated-group-panel-background: rgba(5, 9, 14, 0.2);
+  --illustrated-group-panel-collapsed-background: rgba(5, 9, 14, 0.12);
+  --illustrated-group-panel-highlight: rgba(255, 255, 255, 0.025);
+  --illustrated-group-toggle-background: linear-gradient(
+    90deg,
+    rgba(var(--illustrated-tier-accent-rgb), 0.08),
+    rgba(5, 9, 14, 0.08)
+  );
+  --illustrated-group-toggle-hover-background: linear-gradient(
+    90deg,
+    rgba(var(--illustrated-tier-accent-rgb), 0.13),
+    rgba(5, 9, 14, 0.1)
+  );
+  --illustrated-profile-subnav-background: rgba(4, 8, 13, 0.38);
+  --illustrated-profile-story-background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 46%), rgba(5, 9, 14, 0.34);
+  --illustrated-profile-story-highlight: rgba(255, 255, 255, 0.025);
+  --illustrated-profile-story-mobile-background: rgba(7, 10, 15, 0.46);
+  --illustrated-mobile-summary-background: var(--illustrated-surface-muted);
+  --illustrated-compact-row-background: transparent;
+  --illustrated-dialog-backdrop: rgba(3, 6, 12, 0.72);
+  --illustrated-dialog-depth-shadow: 0 24px 70px rgba(0, 0, 0, 0.58);
+  --illustrated-nav-background: linear-gradient(180deg, rgba(20, 22, 30, 0.2) 0%, rgba(20, 22, 30, 0.96) 35%);
+  --illustrated-mobile-nav-background: color-mix(in srgb, var(--illustrated-bg) 94%, transparent);
+  --illustrated-side-rail-background: rgba(4, 5, 9, 0.82);
+  --illustrated-name-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  --illustrated-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  --illustrated-heading-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  --illustrated-page-title-fg: var(--illustrated-race-accent);
+  --illustrated-page-title-shadow:
+    0 0 8px rgba(var(--illustrated-race-accent-rgb), 0.55),
+    0 2px 10px rgba(0, 0, 0, 0.8);
+  --illustrated-attribute-value-shadow: 0 2px 15px rgba(var(--illustrated-race-accent-rgb), 0.45);
+  --illustrated-item-shadow:
+    inset 0 0 40px rgba(0, 0, 0, 0.8),
+    0 10px 20px rgba(0, 0, 0, 0.5);
+  --illustrated-nav-shadow: 0 -8px 24px rgba(0, 0, 0, 0.22);
+  --illustrated-detail-wallpaper-filter: saturate(0.82) brightness(0.72);
+  --illustrated-detail-wallpaper-opacity: 0.34;
   --illustrated-overview-width: 540px;
   --illustrated-flag-width: 128px;
   --illustrated-flag-height: 156px;
@@ -840,15 +897,10 @@ watchEffect(() => {
   height: min(800px, 80cqw);
   min-height: 680px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--illustrated-shell-border-color);
   border-radius: 16px;
-  background: var(--illustrated-bg);
-  box-shadow:
-    0 0 0 1px rgba(var(--illustrated-tier-accent-rgb), 0.35),
-    0 0 26px rgba(var(--illustrated-tier-accent-rgb), 0.32),
-    0 0 54px rgba(var(--illustrated-tier-accent-rgb), 0.18),
-    0 24px 64px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background: var(--illustrated-shell-background);
+  box-shadow: var(--illustrated-shell-shadow);
 }
 
 .illustrated-quote-dialog-backdrop {
@@ -859,7 +911,7 @@ watchEffect(() => {
   align-items: center;
   justify-content: center;
   padding: 24px 20px;
-  background: rgba(3, 6, 12, 0.72);
+  background: var(--illustrated-dialog-backdrop);
   backdrop-filter: blur(9px);
   -webkit-backdrop-filter: blur(9px);
 }
@@ -888,7 +940,7 @@ watchEffect(() => {
     var(--illustrated-bg);
   box-shadow:
     0 0 0 1px rgba(var(--illustrated-race-accent-rgb), 0.2),
-    0 24px 70px rgba(0, 0, 0, 0.58);
+    var(--illustrated-dialog-depth-shadow);
   text-align: center;
 }
 
@@ -1304,12 +1356,12 @@ watchEffect(() => {
   margin-inline: 10px 14px;
   border: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.2);
   border-radius: 4px;
-  background: rgba(5, 9, 14, 0.2);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  background: var(--illustrated-group-panel-background);
+  box-shadow: inset 0 1px 0 var(--illustrated-group-panel-highlight);
 }
 
 .illustrated-group-panel.is-collapsed {
-  background: rgba(5, 9, 14, 0.12);
+  background: var(--illustrated-group-panel-collapsed-background);
 }
 
 .illustrated-group-body {
@@ -1337,7 +1389,7 @@ watchEffect(() => {
   padding: 8px 14px 8px 10px;
   border: 0;
   border-bottom: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.18);
-  background: linear-gradient(90deg, rgba(var(--illustrated-tier-accent-rgb), 0.08), rgba(5, 9, 14, 0.08));
+  background: var(--illustrated-group-toggle-background);
   color: color-mix(in srgb, var(--illustrated-race-accent) 68%, #d7e0e5);
   font: inherit;
   font-size: calc(14px + var(--ci-font-size-adjust, 0px));
@@ -1351,7 +1403,7 @@ watchEffect(() => {
 
 .illustrated-group-toggle:hover,
 .illustrated-group-toggle:focus-visible {
-  background: linear-gradient(90deg, rgba(var(--illustrated-tier-accent-rgb), 0.13), rgba(5, 9, 14, 0.1));
+  background: var(--illustrated-group-toggle-hover-background);
   outline: none;
 }
 
@@ -1434,7 +1486,7 @@ watchEffect(() => {
   gap: 4px;
   border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.22);
   border-radius: 999px;
-  background: rgba(4, 8, 13, 0.38);
+  background: var(--illustrated-profile-subnav-background);
 }
 
 .illustrated-profile-subnav button {
@@ -1481,10 +1533,8 @@ watchEffect(() => {
   padding: 24px 28px;
   border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.16);
   border-radius: 6px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 46%),
-    rgba(5, 9, 14, 0.34);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  background: var(--illustrated-profile-story-background);
+  box-shadow: inset 0 1px 0 var(--illustrated-profile-story-highlight);
 }
 
 .illustrated-profile-story-section h3 {
@@ -1682,12 +1732,12 @@ watchEffect(() => {
     height: 100%;
     opacity: 0;
     pointer-events: none;
-    filter: saturate(0.82) brightness(0.72);
+    filter: var(--illustrated-detail-wallpaper-filter);
     transition: opacity 0.18s ease;
   }
 
   .illustrated-mobile-detail-wallpaper.is-visible {
-    opacity: 0.34;
+    opacity: var(--illustrated-detail-wallpaper-opacity);
   }
 
   .illustrated-portrait-pane::after {
@@ -1964,7 +2014,7 @@ watchEffect(() => {
   .illustrated-profile-story-section {
     padding: 15px 14px;
     border-radius: 4px;
-    background: rgba(7, 10, 15, 0.46);
+    background: var(--illustrated-profile-story-mobile-background);
   }
 
   .illustrated-profile-story-section h3 {

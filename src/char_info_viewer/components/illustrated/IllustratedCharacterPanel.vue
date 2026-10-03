@@ -114,7 +114,7 @@ const radarValuePoints = computed(() =>
 .illustrated-radar-card {
   padding: 18px;
   border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.22);
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--illustrated-surface-subtle);
 }
 
 .illustrated-radar {
@@ -210,7 +210,7 @@ const radarValuePoints = computed(() =>
     padding: 12px 16px;
     border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.22);
     border-radius: 8px;
-    background: rgba(5, 7, 10, 0.28);
+    background: var(--illustrated-mobile-summary-background);
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
   }

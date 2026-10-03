@@ -33,6 +33,22 @@ test('立绘角色卡 沿用有立绘页面，并将导航作为桌面右侧栏�
   assert.doesNotMatch(navigation, /\b(?:d)?vh\b/);
 });
 
+test('立绘角色卡 exposes a reusable visual token contract without changing layout ownership', async () => {
+  const [sheet, header, navigation, itemCard] = await Promise.all([
+    readFile(shellPath, 'utf8'),
+    readFile(new URL('../../src/char_info_viewer/components/illustrated/IllustratedHeader.vue', import.meta.url), 'utf8'),
+    readFile(navigationPath, 'utf8'),
+    readFile(itemCardPath, 'utf8'),
+  ]);
+
+  assert.match(sheet, /--illustrated-soft-accent-rgb:\s*var\(--illustrated-race-accent-rgb\)/);
+  assert.match(sheet, /--illustrated-shell-background:\s*var\(--illustrated-bg\)/);
+  assert.match(sheet, /\.illustrated-shell\s*\{[\s\S]*?background:\s*var\(--illustrated-shell-background\)/);
+  assert.match(header, /\.illustrated-name\s*\{[\s\S]*?color:\s*var\(--illustrated-fg\)/);
+  assert.match(navigation, /\.illustrated-tabs\s*\{[\s\S]*?background:\s*var\(--illustrated-nav-background\)/);
+  assert.match(itemCard, /\.illustrated-list-item\s*\{[\s\S]*?background:\s*var\(--illustrated-surface-card\)/);
+});
+
 test('立绘角色卡 按实际容器宽度在 901 到 1200 之间等比缩放，900 以下切换移动布局', async () => {
   const [sheet, app] = await Promise.all([readFile(shellPath, 'utf8'), readFile(appPath, 'utf8')]);
   assert.match(app, /container-name:\s*char-info-viewer/);
@@ -63,7 +79,10 @@ test('立绘角色卡 手机卡片使用 2:3 固定比例，技能沿用紧凑�
   assert.match(sheet, /v-if="hideRedundantDetailTitle" class="illustrated-detail-title-spacer"/);
   assert.match(sheet, /hideRedundantDetailTitle = computed\(\(\) => props\.specialNpc && !isOverviewTab\.value\)/);
   assert.match(itemCard, /'is-compact-skill': isSkillVariant/);
-  assert.match(itemCard, /\.illustrated-list-item\.is-compact-row\s*\{[\s\S]*?background:\s*transparent/);
+  assert.match(
+    itemCard,
+    /\.illustrated-list-item\.is-compact-row\s*\{[\s\S]*?background:\s*var\(--illustrated-compact-row-background\)/,
+  );
   assert.match(
     itemCard,
     /@container char-info-viewer \(max-width: 640px\)[\s\S]*?\.illustrated-list-item\.is-compact-skill h3\s*\{[\s\S]*?font-size:\s*calc\(16px \+ var\(--ci-font-size-adjust, 0px\)\)/,

@@ -197,7 +197,7 @@ const blocks = computed(() =>
   font-size: calc(15px + var(--ci-font-size-adjust, 0px));
   line-height: 1.8;
   white-space: pre-line;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  text-shadow: var(--illustrated-text-shadow);
 }
 
 @container char-info-viewer (max-width: 900px) {
