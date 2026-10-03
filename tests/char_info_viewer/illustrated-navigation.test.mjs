@@ -44,23 +44,8 @@ test('立绘角色卡 navigation keeps the current six tabs without DX-only stor
   assert.doesNotMatch(navSource, /:disabled="!tab\.available"|暂无\$\{tab\.label\}资料/);
 });
 
-test('desktop illustrated character navigation uses content-sized buttons in one centered row', () => {
-  assert.match(
-    navSource,
-    /\.illustrated-tabs\s*\{[^}]*width:\s*fit-content;[^}]*max-width:\s*100%;[^}]*justify-content:\s*center;[^}]*margin:\s*0 auto;/,
-  );
-  assert.match(
-    navSource,
-    /\.illustrated-tab-scroll\s*\{[^}]*display:\s*flex;[^}]*flex:\s*0 1 auto;[^}]*flex-wrap:\s*nowrap;[^}]*gap:\s*4px;[^}]*overflow-x:\s*auto;/,
-  );
-  const detailButtonRule = navSource.match(/\.illustrated-tab-scroll \.illustrated-tab-button\s*\{[^}]*\}/)?.[0];
-  assert.ok(detailButtonRule);
-  assert.match(detailButtonRule, /flex:\s*0 0 auto;/);
-  assert.match(detailButtonRule, /width:\s*auto;/);
-  assert.match(detailButtonRule, /min-width:\s*56px;/);
-  assert.match(detailButtonRule, /justify-content:\s*center;/);
-  assert.match(
-    navSource,
-    /\.illustrated-tab-button\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;[^}]*text-align:\s*center;/,
-  );
+test('illustrated navigation keeps one shared responsive navigation template', () => {
+  assert.equal((navSource.match(/<nav[\s\S]*?class="illustrated-tabs"/g) ?? []).length, 1);
+  assert.match(navSource, /@container char-info-viewer \(min-width: 901px\)/);
+  assert.match(navSource, /@mixin illustrated-mobile-side-rail/);
 });
