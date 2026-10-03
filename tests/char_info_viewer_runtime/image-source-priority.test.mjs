@@ -80,7 +80,13 @@ test('图片源优先级随既有 char_info_runtime.settings 持久化，且保�
     effectsEnabled: false,
     forceMobileLayout: false,
     themeMode: 'dark',
+    fontSizeAdjustment: 0,
     debugEnabled: false,
+    collapseModeEnabled: false,
+    alwaysExpandRules: '',
+    autoCollapseRules: '',
+    levelGapCollapseEnabled: false,
+    levelGapCollapseThreshold: 5,
     imageSourcePriorityEnabled: true,
     imageSourcePriority: ['files.catbox.moe'],
   });

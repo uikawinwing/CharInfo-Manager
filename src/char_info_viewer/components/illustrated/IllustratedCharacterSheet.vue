@@ -1,7 +1,13 @@
 <template>
   <div
+    ref="wrapperElement"
     class="illustrated-wrapper"
-    :class="{ 'is-special-npc': specialNpc, 'force-mobile-layout': forceMobileLayout }"
+    :class="{
+      'is-special-npc': specialNpc,
+      'force-mobile-layout': forceMobileLayout,
+      'is-scaled-desktop': isScaledDesktop,
+    }"
+    :style="illustratedWrapperStyle"
   >
     <main
       ref="shellElement"
@@ -386,6 +392,10 @@ const props = defineProps<{
   specialNpc: boolean;
 }>();
 
+const DESKTOP_REFERENCE_WIDTH = 1200;
+const DESKTOP_REFERENCE_HEIGHT = 800;
+const MOBILE_LAYOUT_BREAKPOINT = 900;
+
 defineEmits<{
   toggleAttributeFormula: [key: string];
   toggleImportMenu: [];
@@ -441,6 +451,7 @@ watch(
 
 const activeSpecialTab = ref<IllustratedTabKey>('overview');
 const activeProfileSubview = ref<'info' | 'story'>('info');
+const wrapperElement = ref<HTMLElement | null>(null);
 const shellElement = ref<HTMLElement | null>(null);
 const panelsElement = ref<HTMLElement | null>(null);
 const portraitImageElement = ref<HTMLImageElement | null>(null);
@@ -454,6 +465,21 @@ const quoteDialogCloseButton = ref<HTMLButtonElement | null>(null);
 let entranceQuoteTriggerElement: HTMLElement | null = null;
 let overviewDensityFrame: number | undefined;
 let overviewResizeObserver: ResizeObserver | undefined;
+let layoutResizeObserver: ResizeObserver | undefined;
+const availableLayoutWidth = ref(DESKTOP_REFERENCE_WIDTH);
+const desktopScale = computed(() => {
+  if (props.forceMobileLayout || availableLayoutWidth.value <= MOBILE_LAYOUT_BREAKPOINT) return 1;
+  return Math.min(1, availableLayoutWidth.value / DESKTOP_REFERENCE_WIDTH);
+});
+const isScaledDesktop = computed(() => desktopScale.value < 1);
+const illustratedWrapperStyle = computed(() =>
+  isScaledDesktop.value
+    ? {
+        '--illustrated-desktop-scale': String(desktopScale.value),
+        '--illustrated-scaled-height': `${DESKTOP_REFERENCE_HEIGHT * desktopScale.value}px`,
+      }
+    : undefined,
+);
 const portraitLoadFailed = ref(false);
 const portraitLoaded = ref(false);
 const portraitRetryAttempt = ref(0);
@@ -714,6 +740,15 @@ function updateOverviewDensity(): void {
 }
 
 onMounted(() => {
+  if (wrapperElement.value) {
+    availableLayoutWidth.value = wrapperElement.value.clientWidth;
+    layoutResizeObserver = new ResizeObserver(entries => {
+      const width = entries[0]?.contentRect.width;
+      if (width !== undefined) availableLayoutWidth.value = width;
+    });
+    layoutResizeObserver.observe(wrapperElement.value);
+  }
+
   overviewResizeObserver = new ResizeObserver(updateOverviewDensity);
   if (shellElement.value) overviewResizeObserver.observe(shellElement.value);
   updateOverviewDensity();
@@ -721,6 +756,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (overviewDensityFrame !== undefined) cancelAnimationFrame(overviewDensityFrame);
+  layoutResizeObserver?.disconnect();
   overviewResizeObserver?.disconnect();
   portraitLoadTimeout.dispose();
 });
@@ -784,6 +820,20 @@ watchEffect(() => {
   --illustrated-tabs-height: 52px;
 }
 
+.illustrated-wrapper.is-scaled-desktop {
+  height: var(--illustrated-scaled-height) !important;
+  overflow: hidden;
+}
+
+.illustrated-wrapper.is-scaled-desktop .illustrated-shell {
+  width: 1200px;
+  height: 800px !important;
+  min-height: 0;
+  container-type: inline-size;
+  transform: scale(var(--illustrated-desktop-scale));
+  transform-origin: top left;
+}
+
 .illustrated-shell {
   position: relative;
   display: flex;
@@ -845,7 +895,7 @@ watchEffect(() => {
 .illustrated-quote-dialog-kicker {
   color: var(--illustrated-tier-accent);
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 11px;
+  font-size: calc(11px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   letter-spacing: 0.18em;
 }
@@ -854,7 +904,7 @@ watchEffect(() => {
   margin: 8px 0 0;
   color: inherit;
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
-  font-size: clamp(23px, 4cqw, 30px);
+  font-size: calc(clamp(23px, 4cqw, 30px) + var(--ci-font-size-adjust, 0px));
 }
 
 .illustrated-quote-dialog-ornament {
@@ -892,7 +942,7 @@ watchEffect(() => {
   overflow-y: auto;
   color: inherit;
   font-family: 'LXGW WenKai Mono', 'Noto Serif SC', 'Songti SC', serif;
-  font-size: clamp(16px, 3cqw, 19px);
+  font-size: calc(clamp(16px, 3cqw, 19px) + var(--ci-font-size-adjust, 0px));
   line-height: 1.8;
   overflow-wrap: anywhere;
   text-align: left;
@@ -977,13 +1027,13 @@ watchEffect(() => {
 }
 
 .illustrated-portrait-loading span {
-  font-size: clamp(28px, 5cqw, 54px);
+  font-size: calc(clamp(28px, 5cqw, 54px) + var(--ci-font-size-adjust, 0px));
   text-shadow: 0 0 20px rgba(var(--illustrated-soft-accent-rgb), 0.38);
   animation: illustrated-portrait-pulse 1.2s ease-in-out infinite alternate;
 }
 
 .illustrated-portrait-loading small {
-  font-size: 12px;
+  font-size: calc(12px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   letter-spacing: 0.12em;
 }
@@ -1029,14 +1079,14 @@ watchEffect(() => {
 
 .illustrated-portrait-failure strong {
   color: var(--illustrated-tier-accent);
-  font-size: 20px;
+  font-size: calc(20px + var(--ci-font-size-adjust, 0px));
 }
 
 .illustrated-portrait-failure p {
   max-width: 22em;
   margin: 10px 0 20px;
   color: rgba(248, 249, 250, 0.76);
-  font-size: 14px;
+  font-size: calc(14px + var(--ci-font-size-adjust, 0px));
   line-height: 1.6;
 }
 
@@ -1150,7 +1200,7 @@ watchEffect(() => {
   overflow-y: auto;
 }
 
-@media (min-width: 901px) {
+@container char-info-viewer (min-width: 901px) {
   .illustrated-shell.is-special-npc.is-overview-tab .illustrated-data-pane {
     padding-top: 72px;
   }
@@ -1164,7 +1214,7 @@ watchEffect(() => {
     max-height: 1.5em;
     flex-wrap: nowrap;
     gap: 5px;
-    font-size: clamp(11px, 2.8cqw, 13px);
+    font-size: calc(clamp(11px, 2.8cqw, 13px) + var(--ci-font-size-adjust, 0px));
     white-space: nowrap;
   }
 
@@ -1240,7 +1290,7 @@ watchEffect(() => {
 .illustrated-section-title {
   margin: 0 0 16px;
   color: var(--illustrated-race-accent);
-  font-size: 18px;
+  font-size: calc(18px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
 }
 
@@ -1290,7 +1340,7 @@ watchEffect(() => {
   background: linear-gradient(90deg, rgba(var(--illustrated-tier-accent-rgb), 0.08), rgba(5, 9, 14, 0.08));
   color: color-mix(in srgb, var(--illustrated-race-accent) 68%, #d7e0e5);
   font: inherit;
-  font-size: 14px;
+  font-size: calc(14px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   letter-spacing: 0.08em;
   line-height: 1.35;
@@ -1311,7 +1361,7 @@ watchEffect(() => {
 
 .illustrated-group-icon {
   color: var(--illustrated-race-accent);
-  font-size: 13px;
+  font-size: calc(13px + var(--ci-font-size-adjust, 0px));
   text-align: center;
 }
 
@@ -1369,7 +1419,7 @@ watchEffect(() => {
 }
 
 .illustrated-shell.is-special-npc.is-detail-tab :deep(.illustrated-page-title h2) {
-  font-size: 18px;
+  font-size: calc(18px + var(--ci-font-size-adjust, 0px));
   letter-spacing: 0.04em;
   text-shadow: none;
   white-space: nowrap;
@@ -1395,7 +1445,7 @@ watchEffect(() => {
   background: transparent;
   color: rgba(226, 232, 240, 0.66);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   letter-spacing: 0.08em;
   cursor: pointer;
@@ -1422,7 +1472,7 @@ watchEffect(() => {
 .illustrated-profile-story-author {
   margin: -2px 4px 0;
   color: rgba(226, 232, 240, 0.52);
-  font-size: 12px;
+  font-size: calc(12px + var(--ci-font-size-adjust, 0px));
   letter-spacing: 0.08em;
   text-align: right;
 }
@@ -1441,7 +1491,7 @@ watchEffect(() => {
   margin: 0 0 13px;
   color: var(--illustrated-race-accent);
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
-  font-size: 17px;
+  font-size: calc(17px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   letter-spacing: 0.08em;
 }
@@ -1449,7 +1499,7 @@ watchEffect(() => {
 .illustrated-profile-story-section p {
   margin: 0;
   color: #d7dce3;
-  font-size: 14px;
+  font-size: calc(14px + var(--ci-font-size-adjust, 0px));
   line-height: 1.9;
   overflow-wrap: anywhere;
   white-space: pre-line;
@@ -1470,7 +1520,7 @@ watchEffect(() => {
   margin: 0 0 16px;
   color: var(--illustrated-tier-accent);
   font-family: 'Noto Serif SC', 'SimSun', serif;
-  font-size: 22px;
+  font-size: calc(22px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   text-align: center;
   text-shadow: 0 0 12px rgba(var(--illustrated-tier-accent-rgb), 0.26);
@@ -1505,7 +1555,7 @@ watchEffect(() => {
 
 .illustrated-story-kicker {
   color: var(--illustrated-race-accent);
-  font-size: 13px;
+  font-size: calc(13px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   letter-spacing: 0.08em;
 }
@@ -1514,7 +1564,7 @@ watchEffect(() => {
   margin: 0;
   color: #fff8da;
   font-family: 'Noto Serif SC', 'SimSun', serif;
-  font-size: 28px;
+  font-size: calc(28px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   text-shadow: 0 0 14px rgba(var(--illustrated-tier-accent-rgb), 0.36);
 }
@@ -1578,7 +1628,7 @@ watchEffect(() => {
   background: transparent;
   color: #eee;
   cursor: pointer;
-  font-size: 0.95rem;
+  font-size: calc(0.95rem + var(--ci-font-size-adjust, 0px));
   text-align: left;
 }
 
@@ -1596,7 +1646,7 @@ watchEffect(() => {
   display: none;
 }
 
-@media (min-width: 901px) {
+@container char-info-viewer (min-width: 901px) {
   .illustrated-wrapper.is-special-npc .illustrated-shell.is-overview-tab .illustrated-panels {
     overflow-y: auto;
   }
@@ -1723,7 +1773,7 @@ watchEffect(() => {
     color: rgba(255, 255, 255, 0.96);
     cursor: pointer;
     font-family: 'LXGW WenKai Mono', 'Noto Serif SC', 'Songti SC', serif;
-    font-size: clamp(12px, 3.4cqw, 14px);
+    font-size: calc(clamp(12px, 3.4cqw, 14px) + var(--ci-font-size-adjust, 0px));
     font-style: normal;
     font-weight: 400;
     letter-spacing: 0.04em;
@@ -1740,7 +1790,7 @@ watchEffect(() => {
     border-radius: 0;
     background: transparent;
     box-shadow: none;
-    font-size: 11px;
+    font-size: calc(11px + var(--ci-font-size-adjust, 0px));
     line-height: 1.5;
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
   }
@@ -1762,7 +1812,7 @@ watchEffect(() => {
     flex: 0 0 auto;
     color: rgba(var(--illustrated-race-accent-rgb), 0.92);
     font-family: Georgia, 'Times New Roman', serif;
-    font-size: 18px;
+    font-size: calc(18px + var(--ci-font-size-adjust, 0px));
     line-height: 1;
   }
 
@@ -1809,7 +1859,7 @@ watchEffect(() => {
     :deep(.illustrated-name:not(.illustrated-name-measure)) {
     order: 1;
     margin: 0 !important;
-    font-size: clamp(24px, 8cqw, 28px);
+    font-size: calc(clamp(24px, 8cqw, 28px) + var(--ci-font-size-adjust, 0px));
     line-height: 1.12;
     text-shadow: 0 3px 16px rgba(0, 0, 0, 0.94);
   }
@@ -1828,7 +1878,7 @@ watchEffect(() => {
     :deep(.illustrated-subtitle) {
     order: 2;
     gap: 5px;
-    font-size: 10px;
+    font-size: calc(10px + var(--ci-font-size-adjust, 0px));
     line-height: 1.35;
     text-shadow: 0 2px 7px rgba(0, 0, 0, 0.95);
   }
@@ -1847,7 +1897,7 @@ watchEffect(() => {
   .illustrated-shell.is-special-npc.is-overview-tab
     .illustrated-mobile-header-overlay
     :deep(.illustrated-tier) {
-    font-size: 10px;
+    font-size: calc(10px + var(--ci-font-size-adjust, 0px));
   }
 
   .illustrated-shell.is-special-npc.is-overview-tab
@@ -1898,7 +1948,7 @@ watchEffect(() => {
   .illustrated-profile-subnav button {
     min-height: 42px;
     padding: 8px 12px;
-    font-size: 12px;
+    font-size: calc(12px + var(--ci-font-size-adjust, 0px));
   }
 
   .illustrated-profile-story-view {
@@ -1908,7 +1958,7 @@ watchEffect(() => {
 
   .illustrated-profile-story-author {
     margin-right: 2px;
-    font-size: 10px;
+    font-size: calc(10px + var(--ci-font-size-adjust, 0px));
   }
 
   .illustrated-profile-story-section {
@@ -1919,11 +1969,11 @@ watchEffect(() => {
 
   .illustrated-profile-story-section h3 {
     margin-bottom: 9px;
-    font-size: 14px;
+    font-size: calc(14px + var(--ci-font-size-adjust, 0px));
   }
 
   .illustrated-profile-story-section p {
-    font-size: 12px;
+    font-size: calc(12px + var(--ci-font-size-adjust, 0px));
     line-height: 1.78;
   }
 
@@ -1936,7 +1986,7 @@ watchEffect(() => {
   }
 }
 
-@media (max-width: 900px) {
+@container char-info-viewer (max-width: 900px) {
   .illustrated-wrapper {
     max-width: min(100%, 480px);
   }
@@ -1962,7 +2012,7 @@ watchEffect(() => {
   }
 
   .illustrated-quote-dialog-text {
-    font-size: 16px;
+    font-size: calc(16px + var(--ci-font-size-adjust, 0px));
     line-height: 1.72;
   }
 
@@ -2000,7 +2050,7 @@ watchEffect(() => {
 
   .illustrated-shell.is-special-npc.is-detail-tab :deep(.illustrated-page-title h2) {
     font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
-    font-size: 13px;
+    font-size: calc(13px + var(--ci-font-size-adjust, 0px));
     letter-spacing: 0.08em;
     text-shadow: none;
   }
@@ -2030,7 +2080,7 @@ watchEffect(() => {
     gap: 7px;
     min-height: 34px;
     padding: 7px 12px 7px 28px;
-    font-size: 12px;
+    font-size: calc(12px + var(--ci-font-size-adjust, 0px));
     letter-spacing: 0.07em;
   }
 
@@ -2056,7 +2106,7 @@ watchEffect(() => {
   }
 }
 
-@media (max-width: 640px) {
+@container char-info-viewer (max-width: 640px) {
   @include illustrated-compact-mobile-content;
 }
 

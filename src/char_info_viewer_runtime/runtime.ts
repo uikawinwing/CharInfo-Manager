@@ -89,20 +89,6 @@ function readMessage(messageId: number): { message: ChatMessage; swipeId: number
   return { message, swipeId };
 }
 
-function traceMount(
-  level: MountTraceLevel,
-  messageId: number,
-  code: string,
-  details: Record<string, unknown> = {},
-): void {
-  console[level](`${MOUNT_LOG_PREFIX} #${messageId} ${code}`, {
-    time: new Date().toISOString(),
-    messageId,
-    code,
-    ...details,
-  });
-}
-
 export function createCharInfoRuntime(): CharInfoRuntime {
   const state = reactive<RuntimeViewState>({
     messages: [],
@@ -111,9 +97,29 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     settings: readRuntimeSettings(getVariables({ type: 'script' })),
     settingsView: null,
     saveStateByCard: {},
+    mountDiagnostics: [],
   });
+
+  const traceMount = (
+    level: MountTraceLevel,
+    messageId: number,
+    code: string,
+    details: Record<string, unknown> = {},
+  ): void => {
+    state.mountDiagnostics.push({ time: Date.now(), messageId, level, code, details });
+    if (state.mountDiagnostics.length > 60) {
+      state.mountDiagnostics.splice(0, state.mountDiagnostics.length - 60);
+    }
+    console[level](`${MOUNT_LOG_PREFIX} #${messageId} ${code}`, {
+      time: new Date().toISOString(),
+      messageId,
+      code,
+      ...details,
+    });
+  };
   const mountedMessages = new Map<number, MountedMessage>();
   const remountAttempts = new Map<number, RemountAttempt>();
+  const remountRetryTimers = new Map<number, ReturnType<typeof setTimeout>>();
   const overflowWarnings = new Map<number, string>();
   const activeFloorIds = new Set<number>();
   const dirtyMessageIds = new Set<number>();
@@ -347,7 +353,13 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     state.settings.effectsEnabled = nextSettings.effectsEnabled;
     state.settings.forceMobileLayout = nextSettings.forceMobileLayout;
     state.settings.themeMode = nextSettings.themeMode;
+    state.settings.fontSizeAdjustment = nextSettings.fontSizeAdjustment;
     state.settings.debugEnabled = nextSettings.debugEnabled;
+    state.settings.collapseModeEnabled = nextSettings.collapseModeEnabled;
+    state.settings.alwaysExpandRules = nextSettings.alwaysExpandRules;
+    state.settings.autoCollapseRules = nextSettings.autoCollapseRules;
+    state.settings.levelGapCollapseEnabled = nextSettings.levelGapCollapseEnabled;
+    state.settings.levelGapCollapseThreshold = nextSettings.levelGapCollapseThreshold;
     state.settings.imageSourcePriorityEnabled = nextSettings.imageSourcePriorityEnabled;
     state.settings.imageSourcePriority = nextSettings.imageSourcePriority;
     replaceVariables(mergeRuntimeSettings(getVariables({ type: 'script' }), nextSettings), { type: 'script' });
@@ -381,6 +393,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         entryUid,
         forceMobileLayout: state.settings.forceMobileLayout,
         themeMode: state.settings.themeMode,
+        fontSizeAdjustment: state.settings.fontSizeAdjustment,
         debugEnabled: state.settings.debugEnabled,
         onForceRefresh: forceRefreshCharInfo,
         onReturnToLibrary: () => {
@@ -402,6 +415,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         ...(name ? { initialCharacterName: name } : {}),
         forceMobileLayout: state.settings.forceMobileLayout,
         themeMode: state.settings.themeMode,
+        fontSizeAdjustment: state.settings.fontSizeAdjustment,
         debugEnabled: state.settings.debugEnabled,
         onForceRefresh: forceRefreshCharInfo,
         onReturnToLibrary: () => {
@@ -430,7 +444,15 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     state.settingsView = { host: markRaw(host) };
   };
 
+  const cancelRemountRetry = (messageId: number) => {
+    const timer = remountRetryTimers.get(messageId);
+    if (!timer) return;
+    clearTimeout(timer);
+    remountRetryTimers.delete(messageId);
+  };
+
   const removeMessage = (messageId: number) => {
+    cancelRemountRetry(messageId);
     const mounted = mountedMessages.get(messageId);
     if (mounted) {
       mountedMessages.delete(messageId);
@@ -446,6 +468,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
   const clearMessages = () => {
     Array.from(mountedMessages.keys()).forEach(removeMessage);
+    remountRetryTimers.forEach(timer => clearTimeout(timer));
+    remountRetryTimers.clear();
     remountAttempts.clear();
     overflowWarnings.clear();
     activeFloorIds.clear();
@@ -476,6 +500,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   };
 
   const renderMessage = (messageId: number, trigger = 'unknown', lifecycleDriven = false) => {
+    cancelRemountRetry(messageId);
     if (!activeFloorIds.has(messageId)) {
       removeMessage(messageId);
       return;
@@ -555,15 +580,18 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         const previousAttempt = remountAttempts.get(messageId);
         const now = Date.now();
         if (previousAttempt?.signature === sourceSignature && now - previousAttempt.attemptedAt < REMOUNT_LOOP_GUARD_MS) {
+          const retryInMs = REMOUNT_LOOP_GUARD_MS - (now - previousAttempt.attemptedAt);
           traceMount('warn', messageId, 'REMOUNT_LOOP_GUARD', {
             trigger,
             elapsedMs: now - previousAttempt.attemptedAt,
             guardMs: REMOUNT_LOOP_GUARD_MS,
+            retryInMs,
           });
           console.warn(
-            `[CharInfo Runtime] 第 ${messageId} 楼在没有新的 SillyTavern 渲染事件时连续失去挂载点，已停止 DOM 观察器自动重挂载以避免渲染循环。`,
+            `[CharInfo Runtime] 第 ${messageId} 楼在没有新的 SillyTavern 渲染事件时连续失去挂载点，将在冷却后重试以避免渲染循环。`,
           );
           removeMessage(messageId);
+          scheduleRemountRetry(messageId, retryInMs);
           return;
         }
         remountAttempts.set(messageId, { signature: sourceSignature, attemptedAt: now });
@@ -684,6 +712,17 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     }
   };
 
+  const scheduleRemountRetry = (messageId: number, delayMs: number) => {
+    if (remountRetryTimers.has(messageId)) return;
+    const timer = setTimeout(() => {
+      remountRetryTimers.delete(messageId);
+      if (!started || !activeFloorIds.has(messageId)) return;
+      remountAttempts.delete(messageId);
+      enqueueMessage(messageId, 'remount-guard-cooldown');
+    }, Math.max(0, delayMs));
+    remountRetryTimers.set(messageId, timer);
+  };
+
   const applyRecentFloorIds = (messageIds: readonly number[]) => {
     const recentIds = selectRecentMessageIds(messageIds, state.settings.activeFloorLimit);
     activeFloorIds.clear();
@@ -786,6 +825,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       resetLibraryForChat();
       closeSettings();
       clearMessages();
+      state.mountDiagnostics = [];
       scheduleRecentScan();
       void refreshLibrary();
     });

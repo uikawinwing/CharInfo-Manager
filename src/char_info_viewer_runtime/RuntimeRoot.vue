@@ -12,8 +12,15 @@
           :message-id="message.messageId"
           :effects-enabled="state.settings.effectsEnabled"
           :force-mobile-layout="state.settings.forceMobileLayout"
+          :font-size-adjustment="state.settings.fontSizeAdjustment"
           :debug-enabled="state.settings.debugEnabled"
           :image-source-priority="activeImageSourcePriority"
+          :collapse-mode-enabled="state.settings.collapseModeEnabled"
+          :always-expand-rules="state.settings.alwaysExpandRules"
+          :auto-collapse-rules="state.settings.autoCollapseRules"
+          :level-gap-collapse-enabled="state.settings.levelGapCollapseEnabled"
+          :level-gap-collapse-threshold="state.settings.levelGapCollapseThreshold"
+          :player-level="readPlayerLevel(message.messageId)"
           :save-state="state.saveStateByCard[card.key]"
           :save-feedback="feedback => props.saveFeedbackHandler(card.key, feedback)"
           embedded
@@ -312,6 +319,7 @@
           :message-id="state.library.messageId"
           :effects-enabled="state.settings.effectsEnabled"
           :force-mobile-layout="state.settings.forceMobileLayout"
+          :font-size-adjustment="state.settings.fontSizeAdjustment"
           :debug-enabled="state.settings.debugEnabled"
           :image-source-priority="activeImageSourcePriority"
           :entrance-quote-override="selectedCharacter.innerThought"
@@ -450,6 +458,19 @@
             </select>
           </label>
 
+          <label>
+            <span>
+              <strong>文字大小</strong>
+              <small>只调整角色卡文字，不放大立绘或卡片尺寸。</small>
+            </span>
+            <select v-model.number="fontSizeAdjustmentDraft" @change="applySettings">
+              <option :value="-1">较小</option>
+              <option :value="0">标准</option>
+              <option :value="2">较大</option>
+              <option :value="4">特大</option>
+            </select>
+          </label>
+
           <label class="char-info-settings-switch">
             <span>
               <strong>强制使用移动布局</strong>
@@ -465,6 +486,150 @@
             </span>
             <input v-model="debugEnabledDraft" type="checkbox" @change="applySettings" />
           </label>
+
+          <section class="char-info-settings-diagnostics" aria-labelledby="char-info-diagnostics-label">
+            <div class="char-info-settings-diagnostics-head">
+              <span>
+                <strong id="char-info-diagnostics-label">故障诊断</strong>
+                <small>检查最近一条包含 CharInfo 的 assistant 消息、角色档案和图片来源。</small>
+              </span>
+              <button type="button" :disabled="diagnosticRunning" @click="runDiagnostics">
+                {{ diagnosticRunning ? '检查中…' : '运行诊断' }}
+              </button>
+            </div>
+
+            <p v-if="diagnosticError" class="char-info-diagnostic-error">{{ diagnosticError }}</p>
+
+            <div v-if="diagnosticReport" class="char-info-diagnostic-report">
+              <div class="char-info-diagnostic-report-title">
+                <strong>消息 #{{ diagnosticReport.messageId }}</strong>
+                <small>只读检查，不会修改聊天变量或世界书。</small>
+              </div>
+
+              <div class="char-info-diagnostic-list">
+                <article
+                  v-for="check in diagnosticReport.checks"
+                  :key="`${check.status}:${check.title}:${check.detail}`"
+                  class="char-info-diagnostic-item"
+                  :class="`is-${check.status}`"
+                >
+                  <span class="char-info-diagnostic-status">{{ diagnosticStatusLabel(check.status) }}</span>
+                  <div>
+                    <strong>{{ check.title }}</strong>
+                    <p>{{ check.detail }}</p>
+                  </div>
+                </article>
+              </div>
+
+              <section
+                v-for="character in diagnosticReport.characters"
+                :key="character.name"
+                class="char-info-diagnostic-character"
+              >
+                <h3>{{ character.name }}</h3>
+                <div class="char-info-diagnostic-list">
+                  <article
+                    v-for="check in character.checks"
+                    :key="`${check.status}:${check.title}:${check.detail}`"
+                    class="char-info-diagnostic-item"
+                    :class="`is-${check.status}`"
+                  >
+                    <span class="char-info-diagnostic-status">{{ diagnosticStatusLabel(check.status) }}</span>
+                    <div>
+                      <strong>{{ check.title }}</strong>
+                      <p>{{ check.detail }}</p>
+                    </div>
+                  </article>
+                </div>
+
+                <details v-if="character.media.length" class="char-info-diagnostic-media">
+                  <summary>图片来源实测 · {{ character.media.length }} 个</summary>
+                  <div>
+                    <p v-for="source in character.media" :key="source.url" :class="`is-${source.status}`">
+                      <strong>{{ source.status === 'pass' ? '可读取' : '失败' }}</strong>
+                      <code>{{ source.url }}</code>
+                      <span>{{ source.detail }}</span>
+                    </p>
+                  </div>
+                </details>
+              </section>
+            </div>
+          </section>
+
+          <section class="char-info-settings-priority char-info-collapse-settings" aria-labelledby="char-info-collapse-mode-label">
+            <label class="char-info-settings-switch char-info-settings-priority-switch">
+              <span>
+                <strong id="char-info-collapse-mode-label">折叠模式</strong>
+                <small>普通角色卡可按字段规则或等级差自动显示紧凑卡；立绘角色卡不受影响。</small>
+              </span>
+              <span class="char-info-settings-priority-toggle-wrap">
+                <small>{{ collapseModeEnabledDraft ? '已开启' : '已关闭' }}</small>
+                <input
+                  v-model="collapseModeEnabledDraft"
+                  class="char-info-settings-priority-toggle"
+                  type="checkbox"
+                  role="switch"
+                  aria-label="启用角色卡折叠模式"
+                  @change="applySettings"
+                />
+              </span>
+            </label>
+
+            <div v-if="collapseModeEnabledDraft" class="char-info-settings-priority-editor char-info-collapse-settings-editor">
+              <p>每行一个 <code>key: value</code>。先按 key 定位角色字段，只匹配该字段的 value；value 可用 <code>*</code> 通配，多行条件任意一条命中即可。</p>
+
+              <label class="char-info-collapse-rule-field">
+                <span>
+                  <strong>始终展开</strong>
+                  <small>优先级最高。适合想一直看到完整资料的种族、身份或角色。</small>
+                </span>
+                <textarea
+                  v-model="alwaysExpandRulesDraft"
+                  rows="3"
+                  :placeholder="'种族: *精灵\n身份: 重要NPC'"
+                  spellcheck="false"
+                  @change="applySettings"
+                ></textarea>
+              </label>
+
+              <label class="char-info-collapse-rule-field">
+                <span>
+                  <strong>自动折叠</strong>
+                  <small>适合普通魔物类型；不需要逐个填写怪物姓名。</small>
+                </span>
+                <textarea
+                  v-model="autoCollapseRulesDraft"
+                  rows="3"
+                  :placeholder="'种族: 魔物*\n种族: 哥布林*\n种族: 史莱姆*'"
+                  spellcheck="false"
+                  @change="applySettings"
+                ></textarea>
+              </label>
+
+              <label class="char-info-settings-switch char-info-collapse-level-rule">
+                <span>
+                  <strong>借过一下</strong>
+                  <small>角色比主角低指定等级以上时自动折叠；「始终展开」仍优先。</small>
+                </span>
+                <input v-model="levelGapCollapseEnabledDraft" type="checkbox" @change="applySettings" />
+              </label>
+
+              <label v-if="levelGapCollapseEnabledDraft" class="char-info-collapse-level-gap">
+                <span>
+                  <strong>等级差</strong>
+                  <small>主角等级读取自消息变量 <code>stat_data.主角.等级</code>。</small>
+                </span>
+                <input
+                  v-model.number="levelGapCollapseThresholdDraft"
+                  type="number"
+                  :min="MIN_COLLAPSE_LEVEL_GAP"
+                  :max="MAX_COLLAPSE_LEVEL_GAP"
+                  inputmode="numeric"
+                  @change="applySettings"
+                />
+              </label>
+            </div>
+          </section>
 
           <section class="char-info-settings-priority" aria-labelledby="char-info-image-source-priority-label">
             <label class="char-info-settings-switch char-info-settings-priority-switch">
@@ -561,11 +726,14 @@ import type { ViewerSaveFeedback } from '../char_info_viewer/types';
 import WorldbookCharacterLibrary from './WorldbookCharacterLibrary.vue';
 import { normalizeImageSourcePriorityEntries } from '../char_info_viewer/services/imageSourcePriority';
 import { buildCurrentCharacterViewerData } from './currentCharacterLibrary';
+import { runCharInfoDiagnostics, type CharInfoDiagnosticReport, type DiagnosticStatus } from './diagnostics';
 import {
   DEFAULT_IMAGE_SOURCE_PRIORITY,
   MAX_ACTIVE_FLOOR_LIMIT,
+  MAX_COLLAPSE_LEVEL_GAP,
   MAX_MAX_CARDS_PER_MESSAGE,
   MIN_ACTIVE_FLOOR_LIMIT,
+  MIN_COLLAPSE_LEVEL_GAP,
   MIN_MAX_CARDS_PER_MESSAGE,
   type CharInfoUiSettings,
 } from './runtimeSettings';
@@ -609,10 +777,19 @@ const unlimitedCardsPerMessageDraft = ref(props.state.settings.unlimitedCardsPer
 const effectsEnabledDraft = ref(props.state.settings.effectsEnabled);
 const forceMobileLayoutDraft = ref(props.state.settings.forceMobileLayout);
 const themeModeDraft = ref(props.state.settings.themeMode);
+const fontSizeAdjustmentDraft = ref(props.state.settings.fontSizeAdjustment);
 const debugEnabledDraft = ref(props.state.settings.debugEnabled);
+const collapseModeEnabledDraft = ref(props.state.settings.collapseModeEnabled);
+const alwaysExpandRulesDraft = ref(props.state.settings.alwaysExpandRules);
+const autoCollapseRulesDraft = ref(props.state.settings.autoCollapseRules);
+const levelGapCollapseEnabledDraft = ref(props.state.settings.levelGapCollapseEnabled);
+const levelGapCollapseThresholdDraft = ref(props.state.settings.levelGapCollapseThreshold);
 const imageSourcePriorityEnabledDraft = ref(props.state.settings.imageSourcePriorityEnabled);
 const imageSourcePriorityDraft = ref([...props.state.settings.imageSourcePriority]);
 const settingsMessage = ref('');
+const diagnosticRunning = ref(false);
+const diagnosticError = ref('');
+const diagnosticReport = ref<CharInfoDiagnosticReport | null>(null);
 const characterLibraryOpen = computed(() => {
   const library = props.state.library;
   return Boolean(library && (library.listOpen || library.viewerOpen || library.worldbookOpen));
@@ -620,6 +797,17 @@ const characterLibraryOpen = computed(() => {
 const activeImageSourcePriority = computed(() =>
   props.state.settings.imageSourcePriorityEnabled ? props.state.settings.imageSourcePriority : [],
 );
+
+function readPlayerLevel(messageId: number): number | null {
+  try {
+    const value = _.get(Mvu.getMvuData({ type: 'message', message_id: messageId }), 'stat_data.主角.等级');
+    const level = Number(value);
+    return Number.isFinite(level) ? level : null;
+  } catch {
+    return null;
+  }
+}
+
 const filterOptions: Array<{ value: LibraryFilter; label: string }> = [
   { value: 'all', label: '全部' },
   { value: 'present', label: '在场' },
@@ -854,7 +1042,13 @@ function replaceSettingsDraft(settings: CharInfoUiSettings): void {
   effectsEnabledDraft.value = settings.effectsEnabled;
   forceMobileLayoutDraft.value = settings.forceMobileLayout;
   themeModeDraft.value = settings.themeMode;
+  fontSizeAdjustmentDraft.value = settings.fontSizeAdjustment;
   debugEnabledDraft.value = settings.debugEnabled;
+  collapseModeEnabledDraft.value = settings.collapseModeEnabled;
+  alwaysExpandRulesDraft.value = settings.alwaysExpandRules;
+  autoCollapseRulesDraft.value = settings.autoCollapseRules;
+  levelGapCollapseEnabledDraft.value = settings.levelGapCollapseEnabled;
+  levelGapCollapseThresholdDraft.value = settings.levelGapCollapseThreshold;
   imageSourcePriorityEnabledDraft.value = settings.imageSourcePriorityEnabled;
   imageSourcePriorityDraft.value = [...settings.imageSourcePriority];
 }
@@ -876,7 +1070,13 @@ function applySettings(): void {
     effectsEnabled: effectsEnabledDraft.value,
     forceMobileLayout: forceMobileLayoutDraft.value,
     themeMode: themeModeDraft.value,
+    fontSizeAdjustment: Number(fontSizeAdjustmentDraft.value),
     debugEnabled: debugEnabledDraft.value,
+    collapseModeEnabled: collapseModeEnabledDraft.value,
+    alwaysExpandRules: alwaysExpandRulesDraft.value,
+    autoCollapseRules: autoCollapseRulesDraft.value,
+    levelGapCollapseEnabled: levelGapCollapseEnabledDraft.value,
+    levelGapCollapseThreshold: Number(levelGapCollapseThresholdDraft.value),
     imageSourcePriorityEnabled: imageSourcePriorityEnabledDraft.value,
     imageSourcePriority: priorityNormalization.priorities,
   });
@@ -920,6 +1120,67 @@ function removeImageSourcePriority(index: number): void {
 function resetSettings(): void {
   replaceSettingsDraft(props.onResetSettings());
   settingsMessage.value = '已恢复默认设置。';
+}
+
+function diagnosticStatusLabel(status: DiagnosticStatus): string {
+  if (status === 'pass') return '正常';
+  if (status === 'warn') return '注意';
+  if (status === 'fail') return '异常';
+  return '信息';
+}
+
+async function runDiagnostics(): Promise<void> {
+  if (diagnosticRunning.value) return;
+  diagnosticRunning.value = true;
+  diagnosticError.value = '';
+  diagnosticReport.value = null;
+
+  try {
+    const loadedMessageIds = Array.from(window.parent.document.querySelectorAll<HTMLElement>('#chat > .mes'))
+      .map(element => Number(element.getAttribute('mesid')))
+      .filter(Number.isInteger)
+      .sort((left, right) => left - right);
+    const activeMessageIds = new Set(loadedMessageIds.slice(-props.state.settings.activeFloorLimit));
+
+    let candidate: { messageId: number; message: ChatMessage; swipeId: number } | null = null;
+    for (const messageId of [...loadedMessageIds].reverse()) {
+      const message = getChatMessages(messageId)[0];
+      if (!message || message.role !== 'assistant' || message.is_hidden || typeof message.message !== 'string') continue;
+      if (!/<char_info\b|<\/char_info\s*>/i.test(message.message)) continue;
+      const swipeMessage = getChatMessages(messageId, { include_swipes: true })[0];
+      const swipeId = swipeMessage && 'swipe_id' in swipeMessage ? swipeMessage.swipe_id : 0;
+      candidate = { messageId, message, swipeId };
+      break;
+    }
+
+    if (!candidate) {
+      diagnosticError.value = '当前已加载聊天中没有找到包含 <char_info> 的 assistant 消息。';
+      return;
+    }
+
+    const rawVariables = getVariables({ type: 'chat' });
+    const chatVariables =
+      rawVariables && typeof rawVariables === 'object' && !Array.isArray(rawVariables)
+        ? (rawVariables as Record<string, unknown>)
+        : {};
+
+    diagnosticReport.value = await runCharInfoDiagnostics({
+      messageId: candidate.messageId,
+      swipeId: candidate.swipeId,
+      text: candidate.message.message,
+      maxCards: props.state.settings.unlimitedCardsPerMessage
+        ? Number.MAX_SAFE_INTEGER
+        : props.state.settings.maxCardsPerMessage,
+      active: activeMessageIds.has(candidate.messageId),
+      mounted: props.state.messages.some(message => message.messageId === candidate!.messageId),
+      chatVariables,
+      mountDiagnostics: props.state.mountDiagnostics,
+    });
+  } catch (error) {
+    diagnosticError.value = `诊断失败：${error instanceof Error ? error.message : String(error)}`;
+  } finally {
+    diagnosticRunning.value = false;
+  }
 }
 
 const filteredCharacters = computed(() => {
@@ -1224,6 +1485,215 @@ onBeforeUnmount(() => {
 
 .char-info-settings-fields select {
   width: 112px;
+}
+
+.char-info-collapse-settings-editor code {
+  color: var(--ci-primary);
+  font-family: ui-monospace, 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.92em;
+}
+
+.char-info-settings-fields .char-info-collapse-rule-field {
+  display: grid;
+  align-items: stretch;
+  gap: 8px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.char-info-collapse-rule-field textarea {
+  width: 100%;
+  min-height: 82px;
+  resize: vertical;
+  padding: 9px 10px;
+  border: 1px solid var(--ci-border);
+  border-radius: 9px;
+  background: var(--ci-input);
+  color: var(--ci-text);
+  font: inherit;
+  line-height: 1.45;
+}
+
+.char-info-collapse-rule-field textarea:focus {
+  border-color: var(--ci-primary);
+  outline: none;
+}
+
+.char-info-settings-fields .char-info-collapse-level-rule,
+.char-info-settings-fields .char-info-collapse-level-gap {
+  min-height: 58px;
+  padding: 10px 12px;
+}
+
+.char-info-settings-diagnostics {
+  display: grid;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--ci-border);
+  border-radius: 12px;
+  background: var(--ci-surface);
+}
+
+.char-info-settings-diagnostics-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.char-info-settings-diagnostics-head > span {
+  display: grid;
+  gap: 4px;
+}
+
+.char-info-settings-diagnostics-head button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.char-info-diagnostic-error {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--ci-danger) 52%, var(--ci-border));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--ci-danger) 10%, transparent);
+  color: var(--ci-danger);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.char-info-diagnostic-report {
+  display: grid;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(232, 210, 171, 0.13);
+}
+
+.char-info-diagnostic-report-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.char-info-diagnostic-list {
+  display: grid;
+  gap: 7px;
+}
+
+.char-info-diagnostic-item {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--ci-border);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--ci-surface-raised) 72%, transparent);
+}
+
+.char-info-diagnostic-item > div {
+  min-width: 0;
+}
+
+.char-info-diagnostic-item strong {
+  font-size: 0.78rem;
+}
+
+.char-info-diagnostic-item p {
+  margin: 3px 0 0;
+  color: var(--ci-text-muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.char-info-diagnostic-status {
+  align-self: start;
+  padding: 3px 6px;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 0.66rem;
+  font-weight: 750;
+}
+
+.char-info-diagnostic-item.is-pass .char-info-diagnostic-status {
+  background: color-mix(in srgb, var(--ci-success) 16%, transparent);
+  color: var(--ci-success);
+}
+
+.char-info-diagnostic-item.is-warn .char-info-diagnostic-status {
+  background: color-mix(in srgb, var(--ci-warning) 16%, transparent);
+  color: var(--ci-warning);
+}
+
+.char-info-diagnostic-item.is-fail .char-info-diagnostic-status {
+  background: color-mix(in srgb, var(--ci-danger) 16%, transparent);
+  color: var(--ci-danger);
+}
+
+.char-info-diagnostic-item.is-info .char-info-diagnostic-status {
+  background: rgb(var(--ci-primary-rgb) / 14%);
+  color: var(--ci-primary);
+}
+
+.char-info-diagnostic-character {
+  display: grid;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.char-info-diagnostic-character h3 {
+  margin: 0;
+  color: var(--ci-primary);
+  font-size: 0.86rem;
+}
+
+.char-info-diagnostic-media {
+  border: 1px solid var(--ci-border);
+  border-radius: 9px;
+  background: var(--ci-input);
+}
+
+.char-info-diagnostic-media summary {
+  padding: 9px 10px;
+  cursor: pointer;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.char-info-diagnostic-media > div {
+  display: grid;
+  gap: 1px;
+  padding: 0 10px 9px;
+}
+
+.char-info-diagnostic-media p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 7px 0;
+  border-top: 1px solid var(--ci-border);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.char-info-diagnostic-media p > strong {
+  color: var(--ci-success);
+}
+
+.char-info-diagnostic-media p.is-fail > strong {
+  color: var(--ci-danger);
+}
+
+.char-info-diagnostic-media code {
+  overflow-wrap: anywhere;
+  color: var(--ci-text-secondary);
+  font-size: 0.68rem;
+}
+
+.char-info-diagnostic-media span {
+  color: var(--ci-text-muted);
 }
 
 .char-info-settings-priority {

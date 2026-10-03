@@ -10,6 +10,12 @@ export const DEFAULT_MAX_CARDS_PER_MESSAGE = 4;
 export const MIN_MAX_CARDS_PER_MESSAGE = 1;
 export const MAX_MAX_CARDS_PER_MESSAGE = 20;
 export const DEFAULT_IMAGE_SOURCE_PRIORITY = ['files.catbox.moe', 'i.ibb.co'];
+export const DEFAULT_COLLAPSE_LEVEL_GAP = 5;
+export const MIN_COLLAPSE_LEVEL_GAP = 1;
+export const MAX_COLLAPSE_LEVEL_GAP = 99;
+export const DEFAULT_FONT_SIZE_ADJUSTMENT = 0;
+export const MIN_FONT_SIZE_ADJUSTMENT = -1;
+export const MAX_FONT_SIZE_ADJUSTMENT = 4;
 
 export type CharInfoUiSettings = {
   activeFloorLimit: number;
@@ -18,7 +24,13 @@ export type CharInfoUiSettings = {
   effectsEnabled: boolean;
   forceMobileLayout: boolean;
   themeMode: CharInfoThemeMode;
+  fontSizeAdjustment: number;
   debugEnabled: boolean;
+  collapseModeEnabled: boolean;
+  alwaysExpandRules: string;
+  autoCollapseRules: string;
+  levelGapCollapseEnabled: boolean;
+  levelGapCollapseThreshold: number;
   imageSourcePriorityEnabled: boolean;
   imageSourcePriority: string[];
 };
@@ -35,7 +47,13 @@ const DEFAULT_SETTINGS: CharInfoUiSettings = {
   effectsEnabled: true,
   forceMobileLayout: false,
   themeMode: DEFAULT_CHAR_INFO_THEME_MODE,
+  fontSizeAdjustment: DEFAULT_FONT_SIZE_ADJUSTMENT,
   debugEnabled: false,
+  collapseModeEnabled: false,
+  alwaysExpandRules: '',
+  autoCollapseRules: '',
+  levelGapCollapseEnabled: false,
+  levelGapCollapseThreshold: DEFAULT_COLLAPSE_LEVEL_GAP,
   imageSourcePriorityEnabled: false,
   imageSourcePriority: [...DEFAULT_IMAGE_SOURCE_PRIORITY],
 };
@@ -58,7 +76,23 @@ const SettingsSchema = z
     effectsEnabled: z.boolean().catch(DEFAULT_SETTINGS.effectsEnabled),
     forceMobileLayout: z.boolean().catch(DEFAULT_SETTINGS.forceMobileLayout),
     themeMode: z.enum(CHAR_INFO_THEME_MODES).catch(DEFAULT_SETTINGS.themeMode),
+    fontSizeAdjustment: z.coerce
+      .number()
+      .int()
+      .min(MIN_FONT_SIZE_ADJUSTMENT)
+      .max(MAX_FONT_SIZE_ADJUSTMENT)
+      .catch(DEFAULT_SETTINGS.fontSizeAdjustment),
     debugEnabled: z.boolean().catch(DEFAULT_SETTINGS.debugEnabled),
+    collapseModeEnabled: z.boolean().catch(DEFAULT_SETTINGS.collapseModeEnabled),
+    alwaysExpandRules: z.string().catch(DEFAULT_SETTINGS.alwaysExpandRules),
+    autoCollapseRules: z.string().catch(DEFAULT_SETTINGS.autoCollapseRules),
+    levelGapCollapseEnabled: z.boolean().catch(DEFAULT_SETTINGS.levelGapCollapseEnabled),
+    levelGapCollapseThreshold: z.coerce
+      .number()
+      .int()
+      .min(MIN_COLLAPSE_LEVEL_GAP)
+      .max(MAX_COLLAPSE_LEVEL_GAP)
+      .catch(DEFAULT_SETTINGS.levelGapCollapseThreshold),
     imageSourcePriorityEnabled: z.boolean().catch(DEFAULT_SETTINGS.imageSourcePriorityEnabled),
     imageSourcePriority: z
       .unknown()

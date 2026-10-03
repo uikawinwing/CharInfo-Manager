@@ -74,7 +74,7 @@ const sections = computed(() => buildDivinitySections(props.vm));
 .default-divinity-kicker {
   color: rgba(var(--illustrated-tier-accent-rgb), 0.86);
   font-family: Cinzel, Georgia, serif;
-  font-size: 11px;
+  font-size: calc(11px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -84,7 +84,7 @@ const sections = computed(() => buildDivinitySections(props.vm));
   margin: 0;
   color: #fffdf5;
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
-  font-size: clamp(26px, 4vw, 34px);
+  font-size: calc(clamp(26px, 4vw, 34px) + var(--ci-font-size-adjust, 0px));
   letter-spacing: 0.08em;
   text-shadow: 0 3px 14px rgba(0, 0, 0, 0.55);
 }
@@ -92,7 +92,7 @@ const sections = computed(() => buildDivinitySections(props.vm));
 .default-divinity-hero p {
   margin: 0;
   color: rgba(255, 252, 242, 0.72);
-  font-size: 13px;
+  font-size: calc(13px + var(--ci-font-size-adjust, 0px));
 }
 
 .default-divinity-list {
@@ -121,7 +121,7 @@ const sections = computed(() => buildDivinitySections(props.vm));
 .default-divinity-card-head small {
   color: rgba(216, 228, 236, 0.58);
   font-family: Cinzel, Georgia, serif;
-  font-size: 10px;
+  font-size: calc(10px + var(--ci-font-size-adjust, 0px));
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -129,14 +129,14 @@ const sections = computed(() => buildDivinitySections(props.vm));
 .default-divinity-card strong {
   color: #fffdf5;
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
-  font-size: 18px;
+  font-size: calc(18px + var(--ci-font-size-adjust, 0px));
   letter-spacing: 0.04em;
 }
 
 .default-divinity-card p {
   margin: 0;
   color: rgba(255, 252, 242, 0.88);
-  font-size: 14px;
+  font-size: calc(14px + var(--ci-font-size-adjust, 0px));
   font-weight: 600;
   line-height: 1.72;
   white-space: pre-line;
@@ -154,11 +154,11 @@ const sections = computed(() => buildDivinitySections(props.vm));
 
 .default-divinity-card-detail-label {
   color: rgba(var(--illustrated-tier-accent-rgb), 0.92);
-  font-size: 12px;
+  font-size: calc(12px + var(--ci-font-size-adjust, 0px));
   font-weight: 800;
 }
 
-@media (max-width: 900px) {
+@container char-info-viewer (max-width: 900px) {
   .illustrated-default-divinity.is-compact {
     gap: 0;
     padding-bottom: 0;
@@ -179,13 +179,13 @@ const sections = computed(() => buildDivinitySections(props.vm));
   }
 
   .illustrated-default-divinity.is-compact .default-divinity-hero h3 {
-    font-size: 15px;
+    font-size: calc(15px + var(--ci-font-size-adjust, 0px));
     letter-spacing: 0.06em;
     text-shadow: none;
   }
 
   .illustrated-default-divinity.is-compact .default-divinity-hero p {
-    font-size: 9px !important;
+    font-size: calc(9px + var(--ci-font-size-adjust, 0px)) !important;
   }
 
   .illustrated-default-divinity.is-compact .default-divinity-list {
@@ -203,19 +203,19 @@ const sections = computed(() => buildDivinitySections(props.vm));
 
   .illustrated-default-divinity.is-compact .default-divinity-card-head {
     gap: 8px;
-    font-size: 11px;
+    font-size: calc(11px + var(--ci-font-size-adjust, 0px));
   }
 
   .illustrated-default-divinity.is-compact .default-divinity-card-head small {
-    font-size: 8px;
+    font-size: calc(8px + var(--ci-font-size-adjust, 0px));
   }
 
   .illustrated-default-divinity.is-compact .default-divinity-card strong {
-    font-size: 14px;
+    font-size: calc(14px + var(--ci-font-size-adjust, 0px));
   }
 
   .illustrated-default-divinity.is-compact .default-divinity-card p {
-    font-size: 11px !important;
+    font-size: calc(11px + var(--ci-font-size-adjust, 0px)) !important;
     font-weight: 500;
     line-height: 1.6 !important;
   }
@@ -225,7 +225,7 @@ const sections = computed(() => buildDivinitySections(props.vm));
   }
 
   .illustrated-default-divinity.is-compact .default-divinity-card-detail-label {
-    font-size: 10px;
+    font-size: calc(10px + var(--ci-font-size-adjust, 0px));
   }
 }
 </style>

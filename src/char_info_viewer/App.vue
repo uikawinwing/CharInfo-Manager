@@ -8,6 +8,7 @@
       'force-mobile-layout': props.forceMobileLayout,
       'viewer-effects-disabled': !props.effectsEnabled,
     }"
+    :style="{ '--ci-font-size-adjust': `${props.fontSizeAdjustment}px` }"
   >
     <div v-if="parseError" class="error-card">
       <h3>⚠️ 资料暂时无法显示</h3>
@@ -97,7 +98,7 @@
         @fallback-to-default="useIllustratedFallback"
       />
 
-      <div v-else :class="[wrapperClasses, { 'portrait-mode': isPortraitLayout }]">
+      <div v-else :class="[wrapperClasses, { 'portrait-mode': isPortraitLayout, 'compact-card-active': isCardCollapsed }]">
         <div class="frame-layer" :class="{ show: tierNumber >= 5 }" aria-hidden="true">
           <svg class="frame-svg frame-top" viewBox="0 0 400 100" preserveAspectRatio="none">
             <path d="M 5,100 A 195,80 0 0,1 395,100" />
@@ -125,8 +126,59 @@
           <canvas v-if="props.effectsEnabled" ref="canvasRef" class="particle-canvas"></canvas>
         </div>
 
-        <div class="sheet-content-wrapper">
+        <button
+          v-if="isCardCollapsed"
+          class="compact-character-card"
+          type="button"
+          :aria-label="compactCardAriaLabel"
+          @click="expandCard"
+        >
+          <span class="compact-card-head">
+            <span class="compact-level-tier">Lv.{{ levelText }} · T{{ tierNumber }}</span>
+            <span class="compact-character-name">{{ nameText }}</span>
+            <span class="compact-expand-chevron" aria-hidden="true">⌄</span>
+          </span>
+
+          <span class="compact-card-data" :class="{ 'no-resources': resourceBoxes.length === 0 }">
+            <span v-if="resourceBoxes.length > 0" class="compact-resources" aria-label="资源值">
+              <span v-for="resource in resourceBoxes" :key="`compact-resource-${resource.key}`" class="compact-resource">
+                <span class="compact-resource-label">{{ resource.label }}</span>
+                <span class="compact-resource-value">{{ resource.value }}</span>
+              </span>
+            </span>
+
+            <span class="compact-attributes" aria-label="五维属性">
+              <span
+                v-for="attr in attributes"
+                :key="`compact-attribute-${attr.key}`"
+                class="compact-attribute"
+                :data-attribute="attr.key"
+                :title="`${attr.key} (${compactAttributeAbbreviationMap[attr.key] || attr.short})`"
+              >
+                <span class="compact-attribute-label" aria-hidden="true">
+                  <svg class="compact-attribute-icon" viewBox="0 0 24 24" focusable="false">
+                    <path :d="compactAttributeIconPathMap[attr.key] || compactAttributeIconPathMap.精神" />
+                  </svg>
+                  <span class="compact-attribute-name">{{ compactAttributeAbbreviationMap[attr.key] || attr.short }}</span>
+                </span>
+                <span class="compact-attribute-value">{{ attr.total }}</span>
+              </span>
+            </span>
+          </span>
+        </button>
+
+        <div v-if="!isCardCollapsed" class="sheet-content-wrapper">
           <header v-if="!isPortraitLayout" class="sheet-header">
+            <button
+              v-if="canUseCompactCard"
+              class="card-collapse-button"
+              type="button"
+              aria-label="收起角色卡"
+              title="收起"
+              @click.stop="collapseCard"
+            >
+              ⌃
+            </button>
             <span class="level-badge">Lv.{{ levelText }}</span>
             <h1 class="char-name">{{ nameText }}</h1>
             <div class="char-meta-row">
@@ -522,6 +574,7 @@ import {
   statusEffectType,
   type TabKey,
 } from './services/characterViewModel';
+import { evaluateCharacterCollapse } from './services/characterCollapse';
 import { resolveRemoteGalleryConfig } from './services/remoteGalleryService';
 import { importToMvuVariables, saveToChatWorldbook } from './services/importService';
 import { createParticleEngine, type ParticleEngine } from './services/particleEngine';
@@ -545,8 +598,15 @@ const props = withDefaults(
     readOnly?: boolean;
     effectsEnabled?: boolean;
     forceMobileLayout?: boolean;
+    fontSizeAdjustment?: number;
     debugEnabled?: boolean;
     imageSourcePriority?: string[];
+    collapseModeEnabled?: boolean;
+    alwaysExpandRules?: string;
+    autoCollapseRules?: string;
+    levelGapCollapseEnabled?: boolean;
+    levelGapCollapseThreshold?: number;
+    playerLevel?: number | null;
     entranceQuoteOverride?: string;
     previewMode?: boolean;
     previewData?: CharacterData;
@@ -559,8 +619,15 @@ const props = withDefaults(
     readOnly: false,
     effectsEnabled: true,
     forceMobileLayout: false,
+    fontSizeAdjustment: 0,
     debugEnabled: false,
     imageSourcePriority: () => [],
+    collapseModeEnabled: false,
+    alwaysExpandRules: '',
+    autoCollapseRules: '',
+    levelGapCollapseEnabled: false,
+    levelGapCollapseThreshold: 5,
+    playerLevel: null,
     entranceQuoteOverride: undefined,
     previewMode: false,
     previewData: undefined,
@@ -635,6 +702,24 @@ const attributeLabelMap: Record<string, string> = {
   精神: '精',
 };
 
+const compactAttributeAbbreviationMap: Record<string, string> = {
+  力量: 'STR',
+  敏捷: 'DEX',
+  体质: 'CON',
+  智力: 'INT',
+  精神: 'SPI',
+};
+
+const compactAttributeIconPathMap: Record<string, string> = {
+  力量: 'M7 9v6M17 9v6M4 10v4M20 10v4M7 12h10',
+  敏捷: 'M13 2 6 13h6l-1 9 7-12h-6l1-8',
+  体质: 'M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6l-7-3z',
+  智力:
+    'M9 4a3 3 0 0 0-3 3v1a3 3 0 0 0-2 3 3 3 0 0 0 2 3v1a3 3 0 0 0 3 3m6-13a3 3 0 0 1 3 3v1a3 3 0 0 1 2 3 3 3 0 0 1-2 3v1a3 3 0 0 1-3 3M9 4v14M15 4v14M9 8h3M12 14h3',
+  精神:
+    'M12 3l1.2 3.2L16 7.5l-2.8 1.3L12 12l-1.2-3.2L8 7.5l2.8-1.3L12 3zM6 14l.8 2.2L9 17l-2.2.8L6 20l-.8-2.2L3 17l2.2-.8L6 14zM18 13l.7 1.8 1.8.7-1.8.7L18 18l-.7-1.8-1.8-.7 1.8-.7L18 13z',
+};
+
 const tierNumber = computed(() => theme.value?.tier ?? 1);
 const wrapperClasses = computed(() => ({
   'card-wrapper': true,
@@ -649,6 +734,42 @@ const illustratedFallbackActive = ref(false);
 const shouldShowSpecialNpcLayout = computed(
   () => vm.value?.layoutKind === 'special_npc' && !illustratedFallbackActive.value,
 );
+const manualCollapseState = ref<boolean | null>(null);
+const automaticCollapseDecision = computed(() =>
+  sheetData.value
+    ? evaluateCharacterCollapse(sheetData.value, {
+        enabled: props.collapseModeEnabled,
+        alwaysExpandRules: props.alwaysExpandRules,
+        autoCollapseRules: props.autoCollapseRules,
+        levelGapEnabled: props.levelGapCollapseEnabled,
+        levelGap: props.levelGapCollapseThreshold,
+        playerLevel: props.playerLevel,
+      })
+    : { collapsed: false, reason: 'none' as const },
+);
+const canUseCompactCard = computed(
+  () => props.collapseModeEnabled && !!sheetData.value && !shouldShowSpecialNpcLayout.value,
+);
+const isCardCollapsed = computed(
+  () => canUseCompactCard.value && (manualCollapseState.value ?? automaticCollapseDecision.value.collapsed),
+);
+
+watch(
+  () => [props.yamlText, props.previewData],
+  () => {
+    manualCollapseState.value = null;
+  },
+);
+
+function expandCard(): void {
+  manualCollapseState.value = false;
+}
+
+function collapseCard(): void {
+  if (!canUseCompactCard.value) return;
+  manualCollapseState.value = true;
+}
+
 const isPortraitLayout = computed(() => false);
 const isPortraitDetailTab = computed(() => isPortraitLayout.value && activeTab.value !== 'profile');
 const portraitImageUrl = computed(() => vm.value?.imageUrl || '');
@@ -686,6 +807,17 @@ const attributes = computed(() => {
       showFormula: !!parsed.formula && !!attributeFormulaState.value[key],
     };
   });
+});
+
+const compactCardAriaLabel = computed(() => {
+  const parts = [`展开 ${nameText.value} 完整资料`];
+  if (resourceBoxes.value.length > 0) {
+    parts.push(resourceBoxes.value.map(resource => `${resource.label} ${resource.value}`).join('，'));
+  }
+  if (attributes.value.length > 0) {
+    parts.push(attributes.value.map(attribute => `${attribute.key} ${attribute.total}`).join('，'));
+  }
+  return parts.join('。');
 });
 
 function toggleAttributeFormula(key: string) {
@@ -1028,6 +1160,8 @@ onBeforeUnmount(() => {
 
 .viewer-root.special-npc-viewer-root {
   min-height: 0;
+  container-type: inline-size;
+  container-name: char-info-viewer;
 }
 
 .viewer-root.viewer-root-embedded {
@@ -1089,7 +1223,7 @@ onBeforeUnmount(() => {
 
 .viewer-loading-snowflake {
   color: rgba(157, 226, 226, 0.72);
-  font-size: clamp(34px, 6cqw, 72px);
+  font-size: calc(clamp(34px, 6cqw, 72px) + var(--ci-font-size-adjust, 0px));
   text-shadow: 0 0 26px rgba(132, 213, 220, 0.48);
   animation: viewer-loading-pulse 1.2s ease-in-out infinite alternate;
 }
@@ -1105,7 +1239,7 @@ onBeforeUnmount(() => {
 
 .viewer-loading-kicker {
   color: rgba(155, 224, 224, 0.72);
-  font-size: 11px;
+  font-size: calc(11px + var(--ci-font-size-adjust, 0px));
   font-weight: 800;
   letter-spacing: 0.18em;
 }
@@ -1165,7 +1299,7 @@ onBeforeUnmount(() => {
 .viewer-loading-data p {
   margin: 42px 0 0;
   color: rgba(226, 241, 244, 0.66);
-  font-size: 13px;
+  font-size: calc(13px + var(--ci-font-size-adjust, 0px));
   letter-spacing: 0.08em;
 }
 
@@ -1226,7 +1360,7 @@ onBeforeUnmount(() => {
 
 .error-body {
   margin-top: 10px;
-  font-size: 0.9rem;
+  font-size: calc(0.9rem + var(--ci-font-size-adjust, 0px));
 }
 
 .yaml-error-row {
@@ -1298,7 +1432,7 @@ onBeforeUnmount(() => {
 .parse-warning-card {
   max-width: 920px;
   margin: 0 auto 14px;
-  font-size: 13px;
+  font-size: calc(13px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
 }
 
@@ -1344,6 +1478,313 @@ onBeforeUnmount(() => {
     0 0 24px rgba(var(--tier-color-rgb), var(--edge-glow-outer-alpha));
   filter: blur(var(--edge-glow-blur));
   opacity: 1;
+}
+
+.card-wrapper.compact-card-active .frame-layer {
+  display: none;
+}
+
+.card-wrapper.compact-card-active .card-background-layer {
+  background:
+    radial-gradient(120% 150% at 50% -50%, rgba(var(--tier-color-rgb), 0.5) 0%, transparent 58%),
+    linear-gradient(135deg, rgba(var(--tier-color-rgb), 0.28) 0%, rgba(9, 14, 20, 0.96) 42%, rgba(6, 9, 15, 0.98) 100%);
+  border-color: rgba(var(--tier-color-rgb), 0.82);
+  border-top-color: var(--tier-color);
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.66),
+    0 0 24px rgba(var(--tier-color-rgb), 0.26),
+    inset 0 1px 0 rgba(var(--tier-color-rgb), 0.62),
+    inset 0 0 34px rgba(var(--tier-color-rgb), 0.08);
+}
+
+.card-wrapper.compact-card-active .card-background-layer::before {
+  background-image:
+    linear-gradient(
+      90deg,
+      rgba(var(--tier-color-rgb), 0.05),
+      transparent 24%,
+      transparent 76%,
+      rgba(var(--tier-color-rgb), 0.05)
+    ),
+    radial-gradient(90% 120% at 50% 0%, rgba(var(--tier-color-rgb), 0.22), transparent 68%);
+}
+
+.card-wrapper.compact-card-active .card-background-layer::after {
+  opacity: 1;
+  background-image: radial-gradient(circle at 50% 58%, transparent 50%, rgba(0, 0, 0, 0.3) 100%);
+}
+
+.compact-character-card {
+  position: relative;
+  z-index: 3;
+  display: block;
+  width: 100%;
+  padding: 16px 18px 17px;
+  border: 0;
+  border-radius: inherit;
+  outline: none;
+  background: transparent;
+  color: #f0f0f0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.compact-character-card:focus-visible {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.7);
+}
+
+.compact-card-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  margin-bottom: 12px;
+}
+
+.compact-level-tier {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 1px solid rgba(var(--tier-color-rgb), 0.88);
+  border-radius: 999px;
+  background: rgba(4, 10, 14, 0.58);
+  color: #effff5;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 10px rgba(var(--tier-color-rgb), 0.18);
+  font-size: calc(12px + var(--ci-font-size-adjust, 0px));
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.compact-character-name {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  color: #fff;
+  font-family: var(--name-font-stack);
+  font-size: calc(clamp(22px, 3vw, 28px) + var(--ci-font-size-adjust, 0px));
+  font-weight: 800;
+  line-height: 1.12;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  -webkit-text-stroke: 1.8px var(--race-color);
+  paint-order: stroke fill;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.95),
+    0 0 2px rgba(var(--race-color-rgb), 0.95),
+    0 0 8px rgba(var(--race-color-rgb), 0.45);
+}
+
+.compact-expand-chevron {
+  flex: 0 0 auto;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.22);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: calc(15px + var(--ci-font-size-adjust, 0px));
+}
+
+.compact-card-data {
+  display: grid;
+  grid-template-areas: 'resources attributes';
+  grid-template-columns: minmax(0, 0.98fr) minmax(0, 1.42fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+.compact-card-data.no-resources {
+  grid-template-areas: 'attributes';
+  grid-template-columns: 1fr;
+}
+
+.compact-resources,
+.compact-attributes {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    inset 0 0 18px rgba(var(--tier-color-rgb), 0.035);
+}
+
+.compact-resources {
+  grid-area: resources;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-color: rgba(var(--tier-color-rgb), 0.24);
+  background: rgba(var(--tier-color-rgb), 0.045);
+}
+
+.compact-resource {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 6px;
+  background: linear-gradient(180deg, rgba(var(--tier-color-rgb), 0.1), rgba(255, 255, 255, 0.01));
+}
+
+.compact-resource + .compact-resource {
+  border-left: 1px solid rgba(255, 255, 255, 0.11);
+}
+
+.compact-resource-label {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: calc(11px + var(--ci-font-size-adjust, 0px));
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+
+.compact-resource-value {
+  margin-top: 5px;
+  color: #fff;
+  font-family: Inter, 'Noto Sans', system-ui, sans-serif;
+  font-size: calc(23px + var(--ci-font-size-adjust, 0px));
+  font-weight: 800;
+  line-height: 1.05;
+  text-shadow: 0 0 10px rgba(var(--tier-color-rgb), 0.18);
+}
+
+.compact-attributes {
+  grid-area: attributes;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.compact-attribute {
+  --attr-accent-rgb: 160, 170, 182;
+
+  position: relative;
+  min-width: 0;
+  padding: 10px 4px 9px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.01));
+  text-align: center;
+}
+
+.compact-attribute[data-attribute='力量'] {
+  --attr-accent-rgb: 192, 126, 117;
+}
+
+.compact-attribute[data-attribute='敏捷'] {
+  --attr-accent-rgb: 120, 164, 145;
+}
+
+.compact-attribute[data-attribute='体质'] {
+  --attr-accent-rgb: 184, 157, 108;
+}
+
+.compact-attribute[data-attribute='智力'] {
+  --attr-accent-rgb: 116, 145, 180;
+}
+
+.compact-attribute[data-attribute='精神'] {
+  --attr-accent-rgb: 153, 130, 177;
+}
+
+.compact-attribute::after {
+  position: absolute;
+  top: 0;
+  right: 18%;
+  left: 18%;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(var(--attr-accent-rgb), 0.72) 24%,
+    rgba(var(--attr-accent-rgb), 0.72) 76%,
+    transparent
+  );
+  box-shadow: 0 0 7px rgba(var(--attr-accent-rgb), 0.18);
+  content: '';
+}
+
+.compact-attribute + .compact-attribute::before {
+  position: absolute;
+  top: 22%;
+  bottom: 22%;
+  left: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.11);
+  content: '';
+}
+
+.compact-attribute-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 4px;
+  color: rgba(242, 247, 255, 0.92);
+}
+
+.compact-attribute-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  color: rgb(var(--attr-accent-rgb));
+  filter: drop-shadow(0 0 4px rgba(var(--attr-accent-rgb), 0.28));
+}
+
+.compact-attribute-name {
+  display: inline-block;
+  margin: 0;
+  color: rgba(248, 250, 252, 0.92);
+  font-size: calc(12px + var(--ci-font-size-adjust, 0px));
+  font-weight: 800;
+  line-height: 1;
+}
+
+.compact-attribute-value {
+  display: block;
+  color: #fff;
+  font-family: Inter, 'Noto Sans', system-ui, sans-serif;
+  font-size: calc(24px + var(--ci-font-size-adjust, 0px));
+  font-weight: 800;
+  line-height: 1.04;
+  text-shadow: 0 0 10px rgba(var(--tier-color-rgb), 0.26);
+}
+
+.card-collapse-button {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  z-index: 2;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(var(--tier-color-rgb), 0.42);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.34);
+  color: rgba(255, 255, 255, 0.82);
+  cursor: pointer;
+}
+
+.card-collapse-button:hover,
+.card-collapse-button:focus-visible {
+  border-color: rgba(var(--tier-color-rgb), 0.78);
+  color: #fff;
+  outline: none;
 }
 
 .frame-layer {
@@ -1500,7 +1941,7 @@ onBeforeUnmount(() => {
 
 .char-name {
   margin: 0 0 10px;
-  font-size: 3rem;
+  font-size: calc(3rem + var(--ci-font-size-adjust, 0px));
   color: #ffffff;
   font-family: var(--name-font-stack);
   font-weight: 700;
@@ -1517,7 +1958,7 @@ onBeforeUnmount(() => {
   gap: 10px;
   justify-content: center;
   align-items: center;
-  font-size: 0.95rem;
+  font-size: calc(0.95rem + var(--ci-font-size-adjust, 0px));
 }
 
 .meta-separator {
@@ -1605,12 +2046,12 @@ onBeforeUnmount(() => {
 
 .portrait-name {
   margin-bottom: 8px;
-  font-size: 2.2rem;
+  font-size: calc(2.2rem + var(--ci-font-size-adjust, 0px));
 }
 
 .portrait-meta-row {
   justify-content: flex-start;
-  font-size: 0.86rem;
+  font-size: calc(0.86rem + var(--ci-font-size-adjust, 0px));
 }
 
 .portrait-compact-stats,
@@ -1619,7 +2060,7 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
-  font-size: 0.86rem;
+  font-size: calc(0.86rem + var(--ci-font-size-adjust, 0px));
   color: rgba(245, 255, 250, 0.92);
 }
 
@@ -1721,7 +2162,7 @@ onBeforeUnmount(() => {
 }
 
 .resource-name {
-  font-size: 0.8rem;
+  font-size: calc(0.8rem + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   letter-spacing: 0.08em;
   color: rgba(255, 255, 255, 0.82);
@@ -1729,7 +2170,7 @@ onBeforeUnmount(() => {
 
 .resource-value {
   font-family: 'Cinzel', 'Times New Roman', serif;
-  font-size: 1.25rem;
+  font-size: calc(1.25rem + var(--ci-font-size-adjust, 0px));
   line-height: 1;
   font-weight: 700;
   color: #ffffff;
@@ -1780,7 +2221,7 @@ onBeforeUnmount(() => {
 
 .attribute-name {
   display: block;
-  font-size: var(--flag-name-size);
+  font-size: calc(var(--flag-name-size) + var(--ci-font-size-adjust, 0px));
   color: #fff;
   margin-bottom: 6px;
   font-weight: 700;
@@ -1792,7 +2233,7 @@ onBeforeUnmount(() => {
   display: block;
   margin-top: var(--flag-total-offset, 0px);
   font-family: 'Cinzel', 'Times New Roman', serif;
-  font-size: var(--flag-total-size);
+  font-size: calc(var(--flag-total-size) + var(--ci-font-size-adjust, 0px));
   line-height: 1;
   font-weight: 700;
   text-shadow: 0 2px 15px rgba(var(--race-color-rgb), 0.45);
@@ -1806,7 +2247,7 @@ onBeforeUnmount(() => {
 .attribute-formula {
   display: none;
   margin-top: 6px;
-  font-size: var(--flag-formula-size);
+  font-size: calc(var(--flag-formula-size) + var(--ci-font-size-adjust, 0px));
   color: var(--race-color);
   font-weight: 700;
   line-height: 1.2;
@@ -1896,7 +2337,7 @@ onBeforeUnmount(() => {
 }
 
 .subsection-title {
-  font-size: 1.08rem;
+  font-size: calc(1.08rem + var(--ci-font-size-adjust, 0px));
   margin: 0 0 8px;
   padding-left: 8px;
   border-left: 3px solid var(--race-color);
@@ -1955,13 +2396,13 @@ onBeforeUnmount(() => {
 
 .card-title {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: calc(1.05rem + var(--ci-font-size-adjust, 0px));
   color: #fff;
   font-weight: 700;
 }
 
 .card-subtitle {
-  font-size: 0.85rem;
+  font-size: calc(0.85rem + var(--ci-font-size-adjust, 0px));
   color: #bbb;
 }
 
@@ -2061,7 +2502,7 @@ onBeforeUnmount(() => {
   background: rgba(var(--race-color-rgb), 0.12);
   color: var(--race-color);
   font-weight: 700;
-  font-size: 0.78rem;
+  font-size: calc(0.78rem + var(--ci-font-size-adjust, 0px));
   line-height: 1;
   padding: 3px 8px;
 }
@@ -2091,7 +2532,7 @@ onBeforeUnmount(() => {
   display: inline-block;
   border-radius: 999px;
   padding: 4px 10px;
-  font-size: 0.82rem;
+  font-size: calc(0.82rem + var(--ci-font-size-adjust, 0px));
   border: 1px solid rgba(255, 255, 255, 0.15);
   background: rgba(255, 255, 255, 0.05);
 }
@@ -2108,7 +2549,7 @@ onBeforeUnmount(() => {
   border-radius: 6px;
   cursor: pointer;
   z-index: 60;
-  font-size: 1.2rem;
+  font-size: calc(1.2rem + var(--ci-font-size-adjust, 0px));
   transition: all 0.2s;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
 }
@@ -2154,7 +2595,7 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   cursor: pointer;
   text-align: left;
-  font-size: 0.95rem;
+  font-size: calc(0.95rem + var(--ci-font-size-adjust, 0px));
 }
 
 .import-action-menu button:disabled {
@@ -2235,7 +2676,7 @@ onBeforeUnmount(() => {
   }
 
   .char-name {
-    font-size: 2.2rem;
+    font-size: calc(2.2rem + var(--ci-font-size-adjust, 0px));
     letter-spacing: 0.2px;
     text-shadow:
       0 1px 2px var(--name-shadow),
@@ -2265,6 +2706,78 @@ onBeforeUnmount(() => {
     content: none;
   }
 
+  .compact-character-card {
+    padding: 13px 12px 14px;
+  }
+
+  .compact-card-head {
+    gap: 7px;
+    margin-bottom: 10px;
+  }
+
+  .compact-level-tier {
+    min-height: 25px;
+    padding: 3px 8px;
+    font-size: calc(11px + var(--ci-font-size-adjust, 0px));
+  }
+
+  .compact-character-name {
+    font-size: calc(20px + var(--ci-font-size-adjust, 0px));
+  }
+
+  .compact-card-data,
+  .compact-card-data.no-resources {
+    grid-template-areas:
+      'attributes'
+      'resources';
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .compact-card-data.no-resources {
+    grid-template-areas: 'attributes';
+  }
+
+  .compact-attribute {
+    padding: 9px 3px 8px;
+  }
+
+  .compact-attribute-icon {
+    width: 15px;
+    height: 15px;
+  }
+
+  .compact-attribute-name {
+    font-size: calc(11.5px + var(--ci-font-size-adjust, 0px));
+  }
+
+  .compact-attribute-value {
+    font-size: calc(22px + var(--ci-font-size-adjust, 0px));
+  }
+
+  .compact-resource {
+    min-height: 32px;
+    flex-direction: row;
+    gap: 5px;
+    padding: 6px 3px;
+  }
+
+  .compact-resource-label {
+    font-size: calc(10px + var(--ci-font-size-adjust, 0px));
+  }
+
+  .compact-resource-value {
+    margin-top: 0;
+    font-size: calc(17px + var(--ci-font-size-adjust, 0px));
+  }
+
+  .card-collapse-button {
+    top: 10px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+  }
+
   .sheet-header {
     padding: 34px 12px 16px;
     margin-bottom: 6px;
@@ -2273,11 +2786,11 @@ onBeforeUnmount(() => {
   .level-badge {
     margin-bottom: 10px;
     padding: 3px 12px;
-    font-size: 0.9rem;
+    font-size: calc(0.9rem + var(--ci-font-size-adjust, 0px));
   }
 
   .char-name {
-    font-size: 1.8rem;
+    font-size: calc(1.8rem + var(--ci-font-size-adjust, 0px));
     margin-bottom: 8px;
     letter-spacing: 0.1px;
     text-shadow:
@@ -2287,7 +2800,7 @@ onBeforeUnmount(() => {
 
   .char-meta-row {
     gap: 6px;
-    font-size: 0.82rem;
+    font-size: calc(0.82rem + var(--ci-font-size-adjust, 0px));
   }
 
   .tier-name {
@@ -2307,7 +2820,7 @@ onBeforeUnmount(() => {
   }
 
   .portrait-name {
-    font-size: 1.65rem;
+    font-size: calc(1.65rem + var(--ci-font-size-adjust, 0px));
   }
 
   .portrait-info-panel {
@@ -2341,7 +2854,7 @@ onBeforeUnmount(() => {
   }
 
   .subsection-title {
-    font-size: 1rem;
+    font-size: calc(1rem + var(--ci-font-size-adjust, 0px));
   }
 
   .story,
@@ -2352,7 +2865,7 @@ onBeforeUnmount(() => {
 
   .import-action-btn {
     bottom: 10px;
-    font-size: 1.05rem;
+    font-size: calc(1.05rem + var(--ci-font-size-adjust, 0px));
     padding: 7px 10px;
   }
 
@@ -2363,7 +2876,7 @@ onBeforeUnmount(() => {
 
   .import-action-menu button {
     padding: 8px;
-    font-size: 0.9rem;
+    font-size: calc(0.9rem + var(--ci-font-size-adjust, 0px));
   }
 }
 </style>

@@ -173,7 +173,7 @@ const statusLines = computed(() => {
   align-items: center;
   margin: 0;
   color: #ffffff;
-  font-size: 20px;
+  font-size: calc(20px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
@@ -182,7 +182,7 @@ const statusLines = computed(() => {
   content: '✦';
   margin-right: 12px;
   color: var(--item-color);
-  font-size: 20px;
+  font-size: calc(20px + var(--ci-font-size-adjust, 0px));
   font-weight: 400;
   text-shadow: 0 0 12px var(--item-color);
 }
@@ -195,7 +195,7 @@ const statusLines = computed(() => {
   padding: 4px 20px;
   color: var(--item-color);
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
-  font-size: 13px;
+  font-size: calc(13px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   letter-spacing: 0.08em;
   white-space: nowrap;
@@ -234,7 +234,7 @@ const statusLines = computed(() => {
   border-radius: 2px;
   background: rgba(0, 0, 0, 0.4);
   color: #a0a5b5;
-  font-size: 12px;
+  font-size: calc(12px + var(--ci-font-size-adjust, 0px));
 }
 
 .illustrated-effect-list {
@@ -299,14 +299,14 @@ const statusLines = computed(() => {
 .illustrated-list-item.is-compact-row h3 {
   min-width: 0;
   margin: 0 !important;
-  font-size: 15px;
+  font-size: calc(15px + var(--ci-font-size-adjust, 0px));
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
 
 .illustrated-list-item.is-compact-row h3::before {
   margin-right: 7px;
-  font-size: 12px;
+  font-size: calc(12px + var(--ci-font-size-adjust, 0px));
 }
 
 .illustrated-list-item.is-compact-skill h3::before {
@@ -317,20 +317,20 @@ const statusLines = computed(() => {
   flex: 0 0 auto;
   margin-right: 7px;
   color: var(--item-color);
-  font-size: 13px;
+  font-size: calc(13px + var(--ci-font-size-adjust, 0px));
   font-weight: 600;
   line-height: 1;
   text-shadow: 0 0 10px color-mix(in srgb, var(--item-color) 70%, transparent);
 }
 
 .illustrated-skill-kind-marker.is-passive {
-  font-size: 14px;
+  font-size: calc(14px + var(--ci-font-size-adjust, 0px));
 }
 
 .illustrated-skill-cost {
   max-width: 130px;
   color: #a4a09a;
-  font-size: 9px;
+  font-size: calc(9px + var(--ci-font-size-adjust, 0px));
   line-height: 1.35;
   text-align: right;
 }
@@ -349,7 +349,7 @@ const statusLines = computed(() => {
 .illustrated-list-item.is-compact-holding .illustrated-list-item-type {
   justify-self: start;
   padding: 0 0 0 19px;
-  font-size: 9px;
+  font-size: calc(9px + var(--ci-font-size-adjust, 0px));
   letter-spacing: 0.06em;
 }
 
@@ -369,7 +369,7 @@ const statusLines = computed(() => {
 
 .illustrated-list-item.is-compact-row .illustrated-tag {
   padding: 2px 6px;
-  font-size: 8px;
+  font-size: calc(8px + var(--ci-font-size-adjust, 0px));
   line-height: 1.3 !important;
 }
 
@@ -379,7 +379,7 @@ const statusLines = computed(() => {
 
 .illustrated-list-item.is-compact-row .illustrated-effect-item {
   margin: 0 !important;
-  font-size: 11px !important;
+  font-size: calc(11px + var(--ci-font-size-adjust, 0px)) !important;
   line-height: 1.52 !important;
 }
 
@@ -393,12 +393,12 @@ const statusLines = computed(() => {
   margin: 8px 0 0 !important;
   color: #747980;
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
-  font-size: 9.3px !important;
+  font-size: calc(9.3px + var(--ci-font-size-adjust, 0px)) !important;
   font-style: italic;
   line-height: 1.5 !important;
 }
 
-@media (max-width: 640px) {
+@container char-info-viewer (max-width: 640px) {
   .illustrated-list-item {
     padding: 20px;
   }
@@ -427,24 +427,24 @@ const statusLines = computed(() => {
   }
 
   .illustrated-list-item.is-compact-skill h3 {
-    font-size: 16px;
+    font-size: calc(16px + var(--ci-font-size-adjust, 0px));
     line-height: 1.3;
   }
 
   .illustrated-list-item.is-compact-skill .illustrated-skill-kind-marker {
     margin-right: 7px;
-    font-size: 13px;
+    font-size: calc(13px + var(--ci-font-size-adjust, 0px));
   }
 
   .illustrated-list-item.is-compact-skill .illustrated-skill-kind-marker.is-passive {
-    font-size: 14px;
+    font-size: calc(14px + var(--ci-font-size-adjust, 0px));
   }
 
   .illustrated-list-item.is-compact-skill .illustrated-skill-cost {
     max-width: 112px;
     padding-top: 1px;
     color: #c7c3bd;
-    font-size: 10px;
+    font-size: calc(10px + var(--ci-font-size-adjust, 0px));
     line-height: 1.35;
   }
 
@@ -463,7 +463,7 @@ const statusLines = computed(() => {
     border-color: rgba(255, 255, 255, 0.08);
     background: rgba(3, 5, 8, 0.32);
     color: #aeb5bf;
-    font-size: 9.5px;
+    font-size: calc(9.5px + var(--ci-font-size-adjust, 0px));
     line-height: 1.35 !important;
   }
 
@@ -473,7 +473,7 @@ const statusLines = computed(() => {
 
   .illustrated-list-item.is-compact-skill .illustrated-effect-item {
     color: #f0f3f7;
-    font-size: 12.5px !important;
+    font-size: calc(12.5px + var(--ci-font-size-adjust, 0px)) !important;
     line-height: 1.58 !important;
   }
 
@@ -490,7 +490,7 @@ const statusLines = computed(() => {
   .illustrated-list-item.is-compact-skill .illustrated-description {
     margin: 9px 0 0 !important;
     color: #9ca4ad;
-    font-size: 10.5px !important;
+    font-size: calc(10.5px + var(--ci-font-size-adjust, 0px)) !important;
     font-style: normal;
     line-height: 1.58 !important;
     opacity: 0.9;
@@ -509,13 +509,13 @@ const statusLines = computed(() => {
   }
 
   .illustrated-list-item.is-compact-holding h3 {
-    font-size: 16px;
+    font-size: calc(16px + var(--ci-font-size-adjust, 0px));
     line-height: 1.3;
   }
 
   .illustrated-list-item.is-compact-holding h3::before {
     margin-right: 6px;
-    font-size: 13px;
+    font-size: calc(13px + var(--ci-font-size-adjust, 0px));
   }
 
   .illustrated-list-item.is-compact-holding .illustrated-list-item-type {
@@ -523,7 +523,7 @@ const statusLines = computed(() => {
     align-self: start;
     padding: 2px 0 0;
     color: color-mix(in srgb, var(--item-color) 86%, #ffffff);
-    font-size: 10px;
+    font-size: calc(10px + var(--ci-font-size-adjust, 0px));
     line-height: 1.35;
     letter-spacing: 0.04em;
     text-align: right;
@@ -539,7 +539,7 @@ const statusLines = computed(() => {
     border-color: rgba(255, 255, 255, 0.08);
     background: rgba(3, 5, 8, 0.32);
     color: #aeb5bf;
-    font-size: 9.5px;
+    font-size: calc(9.5px + var(--ci-font-size-adjust, 0px));
     line-height: 1.35 !important;
   }
 
@@ -549,7 +549,7 @@ const statusLines = computed(() => {
 
   .illustrated-list-item.is-compact-holding .illustrated-effect-item {
     color: #f0f3f7;
-    font-size: 12.5px !important;
+    font-size: calc(12.5px + var(--ci-font-size-adjust, 0px)) !important;
     line-height: 1.58 !important;
   }
 
@@ -566,7 +566,7 @@ const statusLines = computed(() => {
   .illustrated-list-item.is-compact-holding .illustrated-description {
     margin: 9px 0 0 !important;
     color: #9ca4ad;
-    font-size: 10.5px !important;
+    font-size: calc(10.5px + var(--ci-font-size-adjust, 0px)) !important;
     font-style: normal;
     line-height: 1.58 !important;
     opacity: 0.9;

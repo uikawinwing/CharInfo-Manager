@@ -149,7 +149,7 @@ const emit = defineEmits<{
 
 .illustrated-attribute-name {
   margin-bottom: 6px;
-  font-size: 1rem;
+  font-size: calc(1rem + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   line-height: 1.05;
 }
@@ -157,7 +157,7 @@ const emit = defineEmits<{
 .illustrated-attribute-total {
   color: var(--illustrated-race-accent);
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
-  font-size: 2rem;
+  font-size: calc(2rem + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   line-height: 1;
   text-shadow: 0 2px 15px rgba(var(--illustrated-race-accent-rgb), 0.45);
@@ -176,7 +176,7 @@ const emit = defineEmits<{
   gap: 2px;
   margin-top: 6px;
   color: var(--illustrated-race-accent);
-  font-size: 0.78rem;
+  font-size: calc(0.78rem + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   line-height: 1.2;
 }
@@ -244,7 +244,7 @@ const emit = defineEmits<{
 .illustrated-resource-name {
   color: var(--illustrated-race-accent);
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
-  font-size: 13px;
+  font-size: calc(13px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   letter-spacing: 0.15em;
   text-shadow: 0 0 10px currentColor;
@@ -253,7 +253,7 @@ const emit = defineEmits<{
 .illustrated-resource-value {
   color: #ffffff;
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
-  font-size: 22px;
+  font-size: calc(22px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
 }
@@ -278,7 +278,7 @@ const emit = defineEmits<{
   color: rgba(255, 255, 255, 0.96);
   cursor: pointer;
   font-family: 'LXGW WenKai Mono', 'Kaiti SC', STKaiti, serif;
-  font-size: clamp(17px, 1.7cqw, 20px);
+  font-size: calc(clamp(17px, 1.7cqw, 20px) + var(--ci-font-size-adjust, 0px));
   font-style: normal;
   font-weight: normal;
   letter-spacing: 0.06em;
@@ -348,7 +348,7 @@ const emit = defineEmits<{
 .illustrated-entrance-quote-text::before,
 .illustrated-entrance-quote-text::after {
   color: currentColor;
-  font-size: 0.94em;
+  font-size: calc(0.94em + var(--ci-font-size-adjust, 0px));
   opacity: 0.58;
 }
 
@@ -369,7 +369,7 @@ const emit = defineEmits<{
   background: linear-gradient(90deg, transparent, rgba(var(--illustrated-race-accent-rgb), 0.34), transparent);
 }
 
-@media (min-width: 901px) {
+@container char-info-viewer (min-width: 901px) {
   .illustrated-overview.overview-density-compact {
     gap: 14px;
   }
@@ -395,7 +395,7 @@ const emit = defineEmits<{
   .illustrated-overview.overview-density-compact .illustrated-entrance-quote {
     margin-bottom: 4px;
     padding: 2px 14px 6px;
-    font-size: clamp(16px, 1.5cqw, 18px);
+    font-size: calc(clamp(16px, 1.5cqw, 18px) + var(--ci-font-size-adjust, 0px));
     line-height: 1.5;
   }
 
@@ -423,11 +423,11 @@ const emit = defineEmits<{
 
   .illustrated-overview.overview-density-dense .illustrated-attribute-name {
     margin-bottom: 3px;
-    font-size: 0.9rem;
+    font-size: calc(0.9rem + var(--ci-font-size-adjust, 0px));
   }
 
   .illustrated-overview.overview-density-dense .illustrated-attribute-total {
-    font-size: 1.75rem;
+    font-size: calc(1.75rem + var(--ci-font-size-adjust, 0px));
   }
 
   .illustrated-overview.overview-density-dense .illustrated-resources {
@@ -441,17 +441,17 @@ const emit = defineEmits<{
   }
 
   .illustrated-overview.overview-density-dense .illustrated-resource-name {
-    font-size: 11px;
+    font-size: calc(11px + var(--ci-font-size-adjust, 0px));
   }
 
   .illustrated-overview.overview-density-dense .illustrated-resource-value {
-    font-size: 19px;
+    font-size: calc(19px + var(--ci-font-size-adjust, 0px));
   }
 
   .illustrated-overview.overview-density-dense .illustrated-entrance-quote {
     margin-bottom: 0;
     padding: 0 12px 4px;
-    font-size: clamp(15px, 1.35cqw, 16px);
+    font-size: calc(clamp(15px, 1.35cqw, 16px) + var(--ci-font-size-adjust, 0px));
     line-height: 1.42;
   }
 
@@ -465,7 +465,7 @@ const emit = defineEmits<{
   }
 }
 
-@media (max-width: 900px) {
+@container char-info-viewer (max-width: 900px) {
   .illustrated-attributes {
     --flag-width: calc((100% - 16px) / 3);
     --flag-min-height: 104px;
@@ -493,7 +493,7 @@ const emit = defineEmits<{
     width: 100%;
     margin-bottom: 6px;
     padding: 2px 12px 8px;
-    font-size: 16px;
+    font-size: calc(16px + var(--ci-font-size-adjust, 0px));
     letter-spacing: 0.04em;
   }
 

@@ -39,7 +39,7 @@ defineProps<{
   gap: 12px;
   margin: 0;
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
-  font-size: 18px;
+  font-size: calc(18px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   letter-spacing: 0.16em;
   text-align: center;
@@ -50,11 +50,11 @@ defineProps<{
 
 .illustrated-page-title h2 span {
   color: rgba(var(--illustrated-race-accent-rgb), 0.52);
-  font-size: 9px;
+  font-size: calc(9px + var(--ci-font-size-adjust, 0px));
   line-height: 1;
 }
 
-@media (max-width: 640px) {
+@container char-info-viewer (max-width: 640px) {
   .illustrated-page-title {
     gap: 10px;
     margin-bottom: 18px;
@@ -67,7 +67,7 @@ defineProps<{
 
   .illustrated-page-title h2 {
     gap: 10px;
-    font-size: 16px;
+    font-size: calc(16px + var(--ci-font-size-adjust, 0px));
   }
 }
 </style>

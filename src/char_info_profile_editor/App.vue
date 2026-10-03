@@ -211,7 +211,7 @@
                 <button
                   v-if="!hasInitialWorldbookTarget && !props.initialCharacterName.trim()"
                   type="button"
-                  class="secondary-button"
+                  class="secondary-button wizard-back-button"
                   @click="flashStep = 1"
                 >
                   上一步
@@ -249,7 +249,7 @@
               </div>
 
               <div class="flash-step-actions">
-                <button type="button" class="secondary-button" @click="flashStep = 2">上一步</button>
+                <button type="button" class="secondary-button wizard-back-button" @click="flashStep = 2">上一步</button>
                 <button
                   class="primary-button flash-save-button"
                   :class="{ 'save-success': flashSaveCelebrating }"
@@ -417,7 +417,15 @@
               </div>
 
               <div class="field">
-                <span class="field-label">搜索并选择角色条目</span>
+                <span class="field-label field-label-with-info">
+                  <span>搜索并选择角色条目</span>
+                  <span class="info-bubble">
+                    <button type="button" class="info-bubble-button" aria-label="角色条目搜索说明">ⓘ</button>
+                    <span class="info-bubble-panel" role="tooltip">
+                      这里会搜索所选世界书的全部条目；带 [DLC][角色]（也兼容 [WS] 形式）的角色条目会优先排在前面。若找不到，先确认世界书和搜索词。角色资料库只收录带角色标签的条目。
+                    </span>
+                  </span>
+                </span>
                 <div class="entry-combobox" @focusout="onEntryPickerFocusout">
                   <input
                     v-model="entrySearch"
@@ -532,7 +540,7 @@
                 <div class="metadata-field-grid">
                   <label class="field">
                     <span class="field-label">
-                      角色姓名 <b>*</b>
+                      <span class="field-label-main">角色姓名 <b>*</b></span>
                       <small :class="{ warning: profile.characterName.length > 12 }">
                         {{ profile.characterName.length }} 字
                       </small>
@@ -641,8 +649,14 @@
 
               <section class="metadata-editor-panel author-editor-panel">
                 <div class="metadata-editor-heading">
-                  <div>
+                  <div class="metadata-heading-with-info">
                     <h3>作者署名</h3>
+                    <span class="info-bubble">
+                      <button type="button" class="info-bubble-button" aria-label="作者资料说明">ⓘ</button>
+                      <span class="info-bubble-panel" role="tooltip">
+                        作者、版本和作者说明都可选，不影响角色卡显示。填写后会保存到角色档案 metadata；角色资料库会优先读取这里的作者和版本，再回退到可解析的世界书条目标题，因此比只依赖条目名更稳定。
+                      </span>
+                    </span>
                   </div>
                 </div>
 
@@ -667,7 +681,7 @@
               </section>
 
               <div class="wizard-step-actions">
-                <button type="button" class="secondary-button" @click="goToStep(1)">上一步</button>
+                <button type="button" class="secondary-button wizard-back-button" @click="goToStep(1)">上一步</button>
                 <button
                   type="button"
                   class="primary-button"
@@ -727,7 +741,7 @@
               </div>
 
               <div class="wizard-step-actions">
-                <button type="button" class="secondary-button" @click="goToStep(2)">上一步</button>
+                <button type="button" class="secondary-button wizard-back-button" @click="goToStep(2)">上一步</button>
                 <button type="button" class="primary-button" @click="goToStep(4)">下一步：相册与头像</button>
               </div>
             </div>
@@ -788,8 +802,14 @@
                 <h2>写入预览</h2>
                 <p>{{ generatedCode ? `${generatedCode.split('\n').length} 行内容` : '填写完整后生成' }}</p>
               </div>
-              <button type="button" class="secondary-button" :disabled="!generatedCode" @click="copyEjs">
-                复制写入内容
+              <button
+                type="button"
+                class="secondary-button"
+                :class="{ 'copy-success': copyState === 'success' }"
+                :disabled="!generatedCode"
+                @click="copyEjs"
+              >
+                {{ copyState === 'success' ? '✓ 已复制' : '复制写入内容' }}
               </button>
             </div>
 
@@ -799,7 +819,7 @@
             </details>
 
             <div class="wizard-step-actions wizard-step-actions-final">
-              <button type="button" class="secondary-button" @click="goToStep(4)">上一步</button>
+              <button type="button" class="secondary-button wizard-back-button" @click="goToStep(4)">上一步</button>
             </div>
 
             <div class="save-bar">
@@ -869,6 +889,7 @@
                 :yaml-text="viewerPreviewYaml"
                 :preview-data="viewerPreviewSource === 'sample' ? viewerPreviewSampleData : undefined"
                 :message-id="-1"
+                :font-size-adjustment="props.fontSizeAdjustment"
                 :debug-enabled="props.debugEnabled"
                 :visual-config-override="viewerPreviewVisualOverride"
                 embedded
@@ -966,6 +987,7 @@ const props = withDefaults(
     initialEntryUid?: number;
     initialCharacterName?: string;
     themeMode?: CharInfoThemeMode;
+    fontSizeAdjustment?: number;
     debugEnabled?: boolean;
     onForceRefresh?: () => void | Promise<void>;
     onReturnToLibrary?: () => void;
@@ -975,6 +997,7 @@ const props = withDefaults(
     initialEntryUid: undefined,
     initialCharacterName: '',
     themeMode: DEFAULT_CHAR_INFO_THEME_MODE,
+    fontSizeAdjustment: 0,
     debugEnabled: false,
     onForceRefresh: undefined,
     onReturnToLibrary: undefined,
@@ -1022,10 +1045,12 @@ const saving = ref(false);
 const applyingSavedProfile = ref(false);
 const flashSaveCelebrating = ref(false);
 const saveState = ref<'idle' | 'success' | 'error'>('idle');
+const copyState = ref<'idle' | 'success'>('idle');
 const saveMessage = ref('选择世界书条目后即可写入。');
 const applyMessage = ref('');
 const editorNotice = ref('');
 let flashSaveSuccessTimer: number | null = null;
+let copyFeedbackTimer: number | null = null;
 let editorNoticeTimer: number | null = null;
 let nextImageId = 1;
 let nextStorySectionId = 1;
@@ -1910,15 +1935,19 @@ function moveStorySection(index: number, offset: -1 | 1) {
 async function copyEjs() {
   if (!generatedCode.value) return;
   try {
-    const method = await copyTextWithFallback(generatedCode.value, {
+    await copyTextWithFallback(generatedCode.value, {
       writeText: text => navigator.clipboard.writeText(text),
       fallbackCopy: copyTextWithDocumentSelection,
     });
-    saveState.value = 'success';
-    saveMessage.value = method === 'fallback' ? '写入内容已复制。' : '写入内容已复制到剪贴板。';
+    copyState.value = 'success';
+    if (copyFeedbackTimer !== null) window.clearTimeout(copyFeedbackTimer);
+    copyFeedbackTimer = window.setTimeout(() => {
+      copyState.value = 'idle';
+      copyFeedbackTimer = null;
+    }, 1800);
   } catch {
-    saveState.value = 'error';
-    saveMessage.value = '浏览器阻止了自动复制，请展开上方内容后手动复制，或直接保存。';
+    copyState.value = 'idle';
+    showEditorNotice('浏览器阻止了自动复制，请展开上方内容后手动复制，或直接保存。');
   }
 }
 
@@ -2227,6 +2256,10 @@ onBeforeUnmount(() => {
   if (flashSaveSuccessTimer !== null) {
     window.clearTimeout(flashSaveSuccessTimer);
     flashSaveSuccessTimer = null;
+  }
+  if (copyFeedbackTimer !== null) {
+    window.clearTimeout(copyFeedbackTimer);
+    copyFeedbackTimer = null;
   }
   if (editorNoticeTimer !== null) {
     window.clearTimeout(editorNoticeTimer);
@@ -3444,6 +3477,18 @@ h2 {
   color: var(--danger);
 }
 
+.field-label-main {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.field-label-main b {
+  flex: 0 0 auto;
+  line-height: 1;
+}
+
 .field-label small {
   color: var(--text-muted);
   font-size: 11px;
@@ -3453,6 +3498,77 @@ h2 {
 .field-label small.warning,
 .field-guidance.warning {
   color: var(--warning);
+}
+
+.field-label-with-info,
+.metadata-heading-with-info {
+  justify-content: flex-start;
+}
+
+.metadata-heading-with-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-bubble {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.info-bubble-button {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  place-items: center;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--surface-soft) 78%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  font-size: 12px;
+  line-height: 1;
+  cursor: help;
+}
+
+.info-bubble-button:hover,
+.info-bubble-button:focus-visible {
+  color: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 48%, var(--border));
+  outline: none;
+}
+
+.info-bubble-panel {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 7px);
+  left: 0;
+  width: min(330px, calc(100vw - 56px));
+  padding: 10px 11px;
+  visibility: hidden;
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 12px 34px rgb(0 0 0 / 32%);
+  font-size: 11px;
+  font-weight: 550;
+  line-height: 1.55;
+  opacity: 0;
+  transform: translateY(-3px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease,
+    visibility 120ms ease;
+  pointer-events: none;
+}
+
+.info-bubble:hover .info-bubble-panel,
+.info-bubble:focus-within .info-bubble-panel {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .field-guidance {
@@ -4539,12 +4655,22 @@ pre {
   }
 
   .flash-step-actions {
+    display: grid;
+    grid-template-columns: minmax(104px, auto) minmax(0, 1fr);
     align-items: stretch;
   }
 
   .flash-step-actions .primary-button,
   .flash-step-actions .secondary-button {
     min-height: 46px;
+  }
+
+  .flash-step-actions .wizard-back-button {
+    min-width: 104px;
+    width: auto;
+    padding-inline: 16px;
+    white-space: nowrap;
+    word-break: keep-all;
   }
 
   .flash-confirm-card {
@@ -4741,10 +4867,10 @@ pre {
   }
 
   .wizard-step-actions {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(104px, auto) minmax(0, 1fr);
     margin-top: 22px;
     align-items: center;
-    justify-content: space-between;
     gap: 12px;
   }
 
@@ -4757,7 +4883,21 @@ pre {
     min-height: 44px;
   }
 
+  .wizard-step-actions .wizard-back-button {
+    min-width: 104px;
+    width: auto;
+    padding-inline: 16px;
+    white-space: nowrap;
+    word-break: keep-all;
+  }
+
+  .wizard-step-actions .primary-button {
+    min-width: 0;
+    width: 100%;
+  }
+
   .wizard-step-actions-final {
+    display: flex;
     margin: 20px 17px 0;
   }
 
@@ -4781,6 +4921,30 @@ pre {
     padding: 0;
     overflow: hidden;
   }
+
+  .info-bubble-panel {
+    position: fixed;
+    z-index: 60;
+    top: 50%;
+    right: calc(16px + var(--ci-mobile-safe-right));
+    left: calc(16px + var(--ci-mobile-safe-left));
+    width: auto;
+    max-width: none;
+    max-height: min(60dvh, 420px);
+    box-sizing: border-box;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    transform: translateY(calc(-50% - 3px));
+    pointer-events: auto;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .info-bubble:hover .info-bubble-panel,
+  .info-bubble:focus-within .info-bubble-panel {
+    transform: translateY(-50%);
+  }
+
   .manager-dialog {
     width: 100%;
     height: 100%;

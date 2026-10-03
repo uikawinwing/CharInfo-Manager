@@ -94,12 +94,12 @@ const blocks = computed(() =>
   align-items: baseline;
   gap: 7px;
   color: #e2e8f0;
-  font-size: 13px;
+  font-size: calc(13px + var(--ci-font-size-adjust, 0px));
 }
 
 .illustrated-creator-meta-line small {
   color: var(--illustrated-race-accent);
-  font-size: 10px;
+  font-size: calc(10px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   letter-spacing: 0.08em;
 }
@@ -107,7 +107,7 @@ const blocks = computed(() =>
 .illustrated-creator-metadata p {
   margin: 0;
   color: #cbd5e1;
-  font-size: 13px;
+  font-size: calc(13px + var(--ci-font-size-adjust, 0px));
   line-height: 1.75;
   white-space: pre-line;
 }
@@ -176,7 +176,7 @@ const blocks = computed(() =>
   margin: 0 0 18px;
   color: var(--illustrated-race-accent);
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
-  font-size: 18px;
+  font-size: calc(18px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   letter-spacing: 0.15em;
   text-align: center;
@@ -188,19 +188,19 @@ const blocks = computed(() =>
   content: '◆';
   margin: 0 16px;
   color: rgba(var(--illustrated-race-accent-rgb), 0.45);
-  font-size: 10px;
+  font-size: calc(10px + var(--ci-font-size-adjust, 0px));
 }
 
 .illustrated-text-block p {
   margin: 0;
   color: #e2e8f0;
-  font-size: 15px;
+  font-size: calc(15px + var(--ci-font-size-adjust, 0px));
   line-height: 1.8;
   white-space: pre-line;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
-@media (max-width: 900px) {
+@container char-info-viewer (max-width: 900px) {
   .illustrated-mobile-profile-stats {
     display: flex;
   }
@@ -220,7 +220,7 @@ const blocks = computed(() =>
 
   .illustrated-info-grid.is-compact-profile .illustrated-creator-meta-line span,
   .illustrated-info-grid.is-compact-profile .illustrated-creator-metadata p {
-    font-size: 11px;
+    font-size: calc(11px + var(--ci-font-size-adjust, 0px));
   }
 
   .illustrated-info-grid.is-compact-profile .illustrated-text-block {
@@ -239,7 +239,7 @@ const blocks = computed(() =>
   .illustrated-info-grid.is-compact-profile .illustrated-text-block h3 {
     justify-content: flex-start;
     margin-bottom: 7px;
-    font-size: 14px;
+    font-size: calc(14px + var(--ci-font-size-adjust, 0px));
     letter-spacing: 0.08em;
     text-align: left;
     text-shadow: none;
@@ -247,7 +247,7 @@ const blocks = computed(() =>
 
   .illustrated-info-grid.is-compact-profile .illustrated-text-block h3::before {
     margin: 0 7px 0 0;
-    font-size: 7px;
+    font-size: calc(7px + var(--ci-font-size-adjust, 0px));
   }
 
   .illustrated-info-grid.is-compact-profile .illustrated-text-block h3::after {
@@ -256,13 +256,13 @@ const blocks = computed(() =>
 
   .illustrated-info-grid.is-compact-profile .illustrated-text-block p {
     color: #c9cdd4;
-    font-size: 11px !important;
+    font-size: calc(11px + var(--ci-font-size-adjust, 0px)) !important;
     line-height: 1.65 !important;
     text-shadow: none;
   }
 }
 
-@media (max-width: 640px) {
+@container char-info-viewer (max-width: 640px) {
   .illustrated-text-block {
     padding: 22px 20px;
   }

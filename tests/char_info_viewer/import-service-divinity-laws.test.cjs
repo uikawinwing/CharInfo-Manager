@@ -9,6 +9,10 @@ const COMPLETE_CHARACTER_KEYS = [
   '身份',
   '职业',
   '生命层级',
+  '性格',
+  '喜爱',
+  '外貌',
+  '着装',
   '等级',
   '属性',
   '生命值',
@@ -20,10 +24,6 @@ const COMPLETE_CHARACTER_KEYS = [
   '技能',
   '资产',
   '登神长阶',
-  '性格',
-  '喜爱',
-  '外貌',
-  '着装',
   '命定契约',
   '好感度',
   '心里话',
@@ -210,4 +210,40 @@ test('从聊天角色资料导入时完整保留性格文本，不截断英文�
   );
 
   assert.equal(currentVars.stat_data.关系列表.瓦莉·希尔·奥古斯丁.性格, personality);
+});
+
+test('Viewer 导入后的标准字段顺序与实际 partners 变量顺序一致', () => {
+  const newVars = { stat_data: { 关系列表: {} } };
+  mergeCharacterIntoMvuData(
+    {
+      姓名: '顺序测试新角色',
+      性格: '性格应在等级与登神长阶之前',
+      资源: { HP: 100, MP: 80, SP: 60 },
+    },
+    newVars,
+  );
+
+  const newCharacter = newVars.stat_data.关系列表.顺序测试新角色;
+  assert.deepEqual(Object.keys(newCharacter), COMPLETE_CHARACTER_KEYS);
+  assert.ok(Object.keys(newCharacter).indexOf('性格') < Object.keys(newCharacter).indexOf('登神长阶'));
+
+  const existingVars = {
+    stat_data: {
+      关系列表: {
+        顺序测试旧角色: {
+          背景故事: '最先插入也应被重排',
+          登神长阶: { 是否开启: true },
+          _扩展字段: '保留但放在标准字段后',
+          性格: '旧性格',
+          在场: false,
+          等级: 7,
+        },
+      },
+    },
+  };
+
+  mergeCharacterIntoMvuData({ 姓名: '顺序测试旧角色' }, existingVars);
+  const existingCharacter = existingVars.stat_data.关系列表.顺序测试旧角色;
+  assert.deepEqual(Object.keys(existingCharacter).slice(0, COMPLETE_CHARACTER_KEYS.length), COMPLETE_CHARACTER_KEYS);
+  assert.deepEqual(Object.keys(existingCharacter).slice(COMPLETE_CHARACTER_KEYS.length), ['_扩展字段']);
 });

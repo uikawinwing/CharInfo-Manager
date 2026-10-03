@@ -27,7 +27,7 @@ test('entrance quote keeps one lead ornament, subtle quotation marks, and a quie
   assert.ok(quoteRule);
   assert.match(quoteRule, /font-family:\s*'LXGW WenKai Mono'/);
   assert.match(quoteRule, /font-style:\s*normal/);
-  assert.match(quoteRule, /font-size:\s*clamp\(17px,/);
+  assert.match(quoteRule, /font-size:\s*calc\(clamp\(17px,[^;]+\) \+ var\(--ci-font-size-adjust, 0px\)\)/);
   assert.match(quoteRule, /border:\s*0/);
   assert.match(quoteRule, /background:\s*none/);
   assert.match(
@@ -78,7 +78,7 @@ test('立绘角色卡 desktop header keeps one readable title scale', () => {
     headerSource,
     /\.illustrated-header:not\(\.compact\)\s*\{[^}]*min-height:\s*var\(--illustrated-header-min-height\);/,
   );
-  assert.match(headerSource, /\.illustrated-name\s*\{[^}]*font-size:\s*clamp\(30px, 4\.2cqw, 38px\);/);
+  assert.match(headerSource, /\.illustrated-name\s*\{[^}]*font-size:\s*calc\(clamp\(30px, 4\.2cqw, 38px\) \+ var\(--ci-font-size-adjust, 0px\)\);/);
 });
 
 test('overview stays screenshot-oriented, with a 立绘角色卡 scroll fallback only when content overflows', () => {
@@ -136,7 +136,7 @@ test('long overview copy uses whole-block limits instead of shrinking a single w
   assert.match(headerSource, /measurement\.scrollWidth > header\.clientWidth \+ 1/);
   assert.match(
     headerSource,
-    /\.illustrated-header\.has-wrapped-name \.illustrated-name-measure\s*\{[^}]*font-size:\s*clamp\(30px,/,
+    /\.illustrated-header\.has-wrapped-name \.illustrated-name-measure\s*\{[^}]*font-size:\s*calc\(clamp\(30px,/,
   );
   assert.match(
     headerSource,
@@ -148,7 +148,7 @@ test('long overview copy uses whole-block limits instead of shrinking a single w
   assert.match(headerSource, /\.illustrated-meta-item\s*\{[^}]*display:\s*inline-flex;[^}]*gap:\s*8px;/);
   assert.match(
     sheetSource,
-    /\.illustrated-shell\.is-special-npc\.is-overview-tab :deep\(\.illustrated-desktop-header \.illustrated-subtitle\)\s*\{[^}]*flex-wrap:\s*nowrap;[^}]*font-size:\s*clamp\(11px,\s*2\.8cqw,\s*13px\);[^}]*white-space:\s*nowrap;/,
+    /\.illustrated-shell\.is-special-npc\.is-overview-tab :deep\(\.illustrated-desktop-header \.illustrated-subtitle\)\s*\{[^}]*flex-wrap:\s*nowrap;[^}]*font-size:\s*calc\(clamp\(11px,\s*2\.8cqw,\s*13px\) \+ var\(--ci-font-size-adjust, 0px\)\);[^}]*white-space:\s*nowrap;/,
   );
   assert.match(
     sheetSource,
