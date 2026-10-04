@@ -454,38 +454,23 @@ type DefaultSheetAttribute = {
   showFormula: boolean;
 };
 
-const props = withDefaults(
-  defineProps<{
-    data: CharacterData;
-    vm: CharacterViewModel;
-    theme: ThemeResolved;
-    attributes: DefaultSheetAttribute[];
-    effectsEnabled?: boolean;
-    readOnly?: boolean;
-    saveBusy?: boolean;
-    saveButtonText?: string;
-    showImportMenu?: boolean;
-    collapseModeEnabled?: boolean;
-    alwaysExpandRules?: string;
-    autoCollapseRules?: string;
-    levelGapCollapseEnabled?: boolean;
-    levelGapCollapseThreshold?: number;
-    playerLevel?: number | null;
-  }>(),
-  {
-    effectsEnabled: true,
-    readOnly: false,
-    saveBusy: false,
-    saveButtonText: '📥',
-    showImportMenu: false,
-    collapseModeEnabled: false,
-    alwaysExpandRules: '',
-    autoCollapseRules: '',
-    levelGapCollapseEnabled: false,
-    levelGapCollapseThreshold: 5,
-    playerLevel: null,
-  },
-);
+const props = defineProps<{
+  data: CharacterData;
+  vm: CharacterViewModel;
+  theme: ThemeResolved;
+  attributes: DefaultSheetAttribute[];
+  effectsEnabled: boolean;
+  readOnly: boolean;
+  saveBusy: boolean;
+  saveButtonText: string;
+  showImportMenu: boolean;
+  collapseModeEnabled: boolean;
+  alwaysExpandRules: string;
+  autoCollapseRules: string;
+  levelGapCollapseEnabled: boolean;
+  levelGapCollapseThreshold: number;
+  playerLevel: number | null;
+}>();
 
 const emit = defineEmits<{
   toggleAttributeFormula: [key: string];

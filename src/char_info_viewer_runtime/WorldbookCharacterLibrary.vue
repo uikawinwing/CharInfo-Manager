@@ -446,6 +446,7 @@ import {
   type GalleryImage,
 } from '../char_info_shared/characterProfile';
 import { DEFAULT_CHAR_INFO_THEME_MODE, managerThemeClass, type CharInfoThemeMode } from '../char_info_shared/managerTheme';
+import { DEFAULT_VIEWER_FORCE_MOBILE_LAYOUT } from '../char_info_shared/viewerUiDefaults';
 import {
   buildCurrentWorldbookList,
   buildWorldbookList,
@@ -472,7 +473,7 @@ type SortOrder = 'original' | 'name' | 'race' | 'author' | 'encountered' | 'enab
 type Media = NonNullable<ReturnType<typeof normalizePortraitMediaUrlForBrowser>>;
 
 withDefaults(defineProps<{ forceMobileLayout?: boolean; themeMode?: CharInfoThemeMode; embedded?: boolean }>(), {
-  forceMobileLayout: false,
+  forceMobileLayout: DEFAULT_VIEWER_FORCE_MOBILE_LAYOUT,
   themeMode: DEFAULT_CHAR_INFO_THEME_MODE,
   embedded: false,
 });

@@ -130,6 +130,17 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import {
+  DEFAULT_VIEWER_ALWAYS_EXPAND_RULES,
+  DEFAULT_VIEWER_AUTO_COLLAPSE_RULES,
+  DEFAULT_VIEWER_COLLAPSE_MODE_ENABLED,
+  DEFAULT_VIEWER_DEBUG_ENABLED,
+  DEFAULT_VIEWER_EFFECTS_ENABLED,
+  DEFAULT_VIEWER_FONT_SIZE_ADJUSTMENT,
+  DEFAULT_VIEWER_FORCE_MOBILE_LAYOUT,
+  DEFAULT_VIEWER_LEVEL_GAP_COLLAPSE_ENABLED,
+  DEFAULT_VIEWER_LEVEL_GAP_COLLAPSE_THRESHOLD,
+} from '../char_info_shared/viewerUiDefaults';
+import {
   ATTRIBUTE_KEYS,
   buildAttributeWarningMap,
   getAttributeRawValue,
@@ -178,16 +189,16 @@ const props = withDefaults(
   {
     embedded: false,
     readOnly: false,
-    effectsEnabled: true,
-    forceMobileLayout: false,
-    fontSizeAdjustment: 0,
-    debugEnabled: false,
+    effectsEnabled: DEFAULT_VIEWER_EFFECTS_ENABLED,
+    forceMobileLayout: DEFAULT_VIEWER_FORCE_MOBILE_LAYOUT,
+    fontSizeAdjustment: DEFAULT_VIEWER_FONT_SIZE_ADJUSTMENT,
+    debugEnabled: DEFAULT_VIEWER_DEBUG_ENABLED,
     imageSourcePriority: () => [],
-    collapseModeEnabled: false,
-    alwaysExpandRules: '',
-    autoCollapseRules: '',
-    levelGapCollapseEnabled: false,
-    levelGapCollapseThreshold: 5,
+    collapseModeEnabled: DEFAULT_VIEWER_COLLAPSE_MODE_ENABLED,
+    alwaysExpandRules: DEFAULT_VIEWER_ALWAYS_EXPAND_RULES,
+    autoCollapseRules: DEFAULT_VIEWER_AUTO_COLLAPSE_RULES,
+    levelGapCollapseEnabled: DEFAULT_VIEWER_LEVEL_GAP_COLLAPSE_ENABLED,
+    levelGapCollapseThreshold: DEFAULT_VIEWER_LEVEL_GAP_COLLAPSE_THRESHOLD,
     playerLevel: null,
     entranceQuoteOverride: undefined,
     previewMode: false,
