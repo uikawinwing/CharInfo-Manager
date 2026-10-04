@@ -89,3 +89,17 @@ test('立绘视觉已从默认 renderer 迁出到独立面板，renderer 只组�
   assert.match(pane, /@include illustrated-portrait-mobile-content\('\.illustrated-portrait-pane\.force-mobile-layout'\)/);
   assert.match(pane, /@include illustrated-portrait-compact-content\('\.illustrated-portrait-pane\.force-mobile-layout'\)/);
 });
+
+test('renderer 使用的立绘状态必须在父级有声明，避免移动端快照抛 ReferenceError', () => {
+  const sheet = fs.readFileSync(componentPath, 'utf8');
+
+  // captureDetailWallpaper 在离开首页时被调用，若这两个 ref 未解构就会抛
+  // ReferenceError；webpack 的 transpile-only 构建与源码正则测试都抓不到。
+  assert.match(
+    sheet,
+    /const \{ portraitLoaded, portraitLoadFailed \} = portrait;/,
+    '父级必须从立绘 controller 解构加载状态，captureDetailWallpaper 依赖它',
+  );
+  assert.match(sheet, /!portraitLoaded\.value \|\| portraitLoadFailed\.value/);
+  assert.doesNotMatch(sheet, /^const portraitLoaded = ref\(/m, '加载状态已归 core controller 所有');
+});

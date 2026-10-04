@@ -7,7 +7,15 @@ const sheetPath = new URL(
   '../../src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue',
   import.meta.url,
 );
-const [navSource, sheetSource] = await Promise.all([readFile(navPath, 'utf8'), readFile(sheetPath, 'utf8')]);
+const controllerPath = new URL(
+  '../../src/char_info_viewer/components/illustrated/core/useIllustratedSheetController.ts',
+  import.meta.url,
+);
+const [navSource, sheetSource, controllerSource] = await Promise.all([
+  readFile(navPath, 'utf8'),
+  readFile(sheetPath, 'utf8'),
+  readFile(controllerPath, 'utf8'),
+]);
 
 test('mobile illustrated character navigation keeps the main page outside the scrolling detail tabs', () => {
   assert.match(navSource, /const homeTab = computed\(\(\) => props\.tabs\.find\(tab => tab\.key === 'overview'\)/);
@@ -36,10 +44,12 @@ test('mobile illustrated character navigation exposes active state and reliable 
 });
 
 test('立绘角色卡 navigation keeps the current six tabs without DX-only story tabs', () => {
+  // tab 列表已归 core controller 所有，renderer 只解构消费。
   assert.match(
-    sheetSource,
+    controllerSource,
     /const tabs = computed<IllustratedTab\[\]>\(\(\) => \[[\s\S]*?\{ key: 'overview', label: '首页' \},[\s\S]*?\{ key: 'characterPanel', label: '面板' \},[\s\S]*?\{ key: 'profile', label: '档案' \},[\s\S]*?\{ key: 'skills', label: '技能' \},[\s\S]*?\{ key: 'holdings', label: '持有' \},[\s\S]*?\{ key: 'divinity', label: '登神' \},[\s\S]*?\]\);/,
   );
+  assert.match(sheetSource, /^\s+tabs,$/m);
   assert.doesNotMatch(sheetSource, /mergedTabs|characterStory|illustratedTabOrder|availableKeys|available:/);
   assert.doesNotMatch(navSource, /:disabled="!tab\.available"|暂无\$\{tab\.label\}资料/);
 });

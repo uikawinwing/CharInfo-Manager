@@ -11,14 +11,22 @@
 
 | 事实 | 值 |
 | --- | --- |
-| `IllustratedCharacterSheet.vue` 总行数 | 2119 |
-| 其中 template | 1–364 |
-| 其中 script | 366–795（约 430 行） |
-| 其中 style | 797–2119（1323 行，**约 62%**） |
+| `IllustratedCharacterSheet.vue` 总行数 | 2119（重构前）→ **1515** |
+| 其中 template | 1–307 |
+| 其中 script | 309–523（约 215 行） |
+| 其中 style | 525–1515（990 行，仍是主体） |
+| `core/useIllustratedPortrait.ts` | 191（立绘行为） |
+| `core/useIllustratedSheetController.ts` | 165（tab / 子视图 / 折叠 / 台词弹窗） |
+| `IllustratedPortraitPane.vue` | 477（默认立绘视觉） |
 | 已存在的 panel 模块 | `IllustratedHeader` / `IllustratedOverviewPanel` / `IllustratedProfilePanel` / `IllustratedItemCard` / `IllustratedCharacterPanel` / `IllustratedDefaultDivinityPanel` / `IllustratedTabNav` |
 | 入口 | `src/char_info_viewer/App.vue:82`，条件 `shouldShowSpecialNpcLayout && vm` |
 
-**这个文件不是「还没拆」，而是「壳 + portrait 状态 + tab 状态 + 大半 CSS 还没拆」。** panel 层已经拆好了。所以后续工作的重点是状态与 CSS ownership 的搬迁，不是继续切组件。
+**这个文件不是「还没拆」，而是「壳 + 大半 CSS 还没拆」。** panel 层在重构前就已存在；本次已额外完成立绘行为（Phase 1）与 tab 状态（Phase 2）的迁出。当前剩余重量几乎全在 style 块，Phase 3 的重点是收薄与 CSS ownership 继续下移。
+
+### 已知的历史教训（Phase 1 踩过）
+
+1. **`scoped` 只给最后一个复合选择器打 `data-v-*`。** 因此 `.illustrated-shell.is-x .child` 搬进子组件后**仍然有效**，而父级里写成 `.shell .child[data-v-parent] :deep(...)` 的规则，在 `child` 移入子组件后**会静默失效**——`child` 只带 child 的 scope id。跨组件覆盖必须把整条后代链收进一个 `:deep()`。
+2. **源码正则测试和 transpile-only 构建都抓不到未定义标识符。** `captureDetailWallpaper` 曾在 Phase 1 漏了解构 `portraitLoaded` / `portraitLoadFailed`，build 与 355 条测试全绿，但真实运行时一离开首页 tab 就抛 `ReferenceError`。父级引用 controller 的任何字段，必须有对应断言守住。
 
 ### DX 代码当前不在 `dev` 上
 
@@ -207,17 +215,19 @@ tests/char_info_viewer/viewer-host-boundary.test.mjs
 
 每个 phase 一个 commit，可单独回滚。默认视觉、mobile / desktop 路由 contract 必须保持。
 
-| Phase | 内容 |
-| --- | --- |
-| 0 | 本文（不改功能） |
-| 1 | portrait seam：抽 `useIllustratedPortrait` + `IllustratedPortraitPane` |
-| 2 | sheet controller：抽 `useIllustratedSheetController` |
-| 3 | 默认 renderer 收薄为 `SpecialNpcIllustratedSheet`，旧文件名保留兼容 wrapper |
-| 4 | 剩余自然模块：Story panel、Quote dialog |
-| 5 | `IllustratedRendererOverrides`：Header / Overview / Portrait / ItemCard / Navigation，默认 fallback |
-| 6 | 把 DX 接入新 seam（本轮**不做**，见下） |
+| Phase | 内容 | 状态 |
+| --- | --- | --- |
+| 0 | 本文（不改功能） | 完成 `d3f0576` |
+| 1 | portrait seam：抽 `useIllustratedPortrait` + `IllustratedPortraitPane` | 完成 `9d6817f` / `f7ae986` |
+| 2 | sheet controller：抽 `useIllustratedSheetController` | 完成 |
+| 3 | 默认 renderer 收薄为 `SpecialNpcIllustratedSheet`，旧文件名保留兼容 wrapper | 未开始 |
+| 4 | 剩余自然模块：Story panel、Quote dialog | 未开始 |
+| 5 | `IllustratedRendererOverrides`：Header / Overview / Portrait / ItemCard / Navigation，默认 fallback | 未开始 |
+| 6 | 把 DX 接入新 seam（本轮**不做**，见下） | 不做 |
 
 每 phase 至少满足：行为测试通过、build 通过、lint 0 error、默认视觉无意外改变、mobile / desktop 路由 contract 保持。
+
+除自动化门禁外，**每次搬迁样式或状态都必须额外做一次 CSS 零差异比对**：编译所有 illustrated SFC 的 scoped style，剥掉 `data-v-*` 并归一化后与基线对比（基线 612 条规则）。这套比对能发现源码正则测试完全看不到的「规则被搬到组件外导致 scope 不匹配」。行为部分则需要用真实 `effectScope` 挂载 composable 断言，因为仓库测试跑不了 composable。
 
 **Phase 6 之前不 merge DX 分支。** 这样整个迁移过程零 DX 干扰，回归只可能来自本次改动本身。
 

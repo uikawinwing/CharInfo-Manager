@@ -19,6 +19,10 @@ const defaultDivinityPath = new URL(
   import.meta.url,
 );
 const appPath = new URL('../../src/char_info_viewer/App.vue', import.meta.url);
+const controllerPath = new URL(
+  '../../src/char_info_viewer/components/illustrated/core/useIllustratedSheetController.ts',
+  import.meta.url,
+);
 
 test('立绘角色卡 沿用有立绘页面，并将导航作为桌面右侧栏和移动底栏', async () => {
   const [sheet, navigation] = await Promise.all([readFile(shellPath, 'utf8'), readFile(navigationPath, 'utf8')]);
@@ -50,22 +54,37 @@ test('立绘角色卡 按实际容器宽度在 901 到 1200 之间等比缩放�
 });
 
 test('立绘角色卡 手机卡片使用 2:3 固定比例，技能沿用紧凑但可读的移动排版', async () => {
-  const [sheet, itemCard] = await Promise.all([readFile(shellPath, 'utf8'), readFile(itemCardPath, 'utf8')]);
+  const [sheet, itemCard, controller] = await Promise.all([
+    readFile(shellPath, 'utf8'),
+    readFile(itemCardPath, 'utf8'),
+    readFile(controllerPath, 'utf8'),
+  ]);
   assert.match(sheet, /\.illustrated-wrapper\.is-special-npc\s*\{[\s\S]*?max-width:\s*min\(100%, 414px\)/);
   assert.match(sheet, /\.illustrated-shell\.is-special-npc\s*\{[\s\S]*?aspect-ratio:\s*2 \/ 3/);
   assert.match(sheet, /:variant="specialNpc \? 'skill' : 'item'"/);
   assert.match(sheet, /v-for="group in groupedSkills"/);
-  assert.match(sheet, /\{ key: 'active', title: '主动技能', icon: '◆', items: \[\] \}[\s\S]*?\{ key: 'passive', title: '被动技能', icon: '◎', items: \[\] \}[\s\S]*?\{ key: 'other', title: '其他技能', icon: '✦', items: \[\] \}/);
-  assert.match(sheet, /if \(type\.includes\('主动'\) \|\| type\.includes\('主動'\)\) return 'active'/);
-  assert.match(sheet, /if \(type\.includes\('被动'\) \|\| type\.includes\('被動'\)\) return 'passive'/);
+  assert.match(sheet, /^\s+groupedSkills,$/m);
+  // 技能分组归 core controller 所有，renderer 不再重复实现规则与分组行为。
+  assert.match(
+    controller,
+    /\{ key: 'active', title: '主动技能', icon: '◆', items: \[\] \}[\s\S]*?\{ key: 'passive', title: '被动技能', icon: '◎', items: \[\] \}[\s\S]*?\{ key: 'other', title: '其他技能', icon: '✦', items: \[\] \}/,
+  );
+  assert.match(controller, /if \(type\.includes\('主动'\) \|\| type\.includes\('主動'\)\) return 'active'/);
+  assert.match(controller, /if \(type\.includes\('被动'\) \|\| type\.includes\('被動'\)\) return 'passive'/);
+  assert.match(controller, /const collapsedGroupKeys = ref<string\[\]>\(\[\]\)/);
+  assert.match(controller, /function toggleGroup\(key: string\): void/);
   assert.match(sheet, /class="illustrated-group-icon" aria-hidden="true">\{\{ group\.icon \}\}<\/span>/);
   assert.match(sheet, /class="illustrated-section illustrated-skill-group illustrated-group-panel"/);
   assert.match(sheet, /:aria-expanded="!isGroupCollapsed\(`skill:\$\{group\.key\}`\)"/);
   assert.match(sheet, /v-show="!isGroupCollapsed\(`skill:\$\{group\.key\}`\)" class="illustrated-group-body"/);
-  assert.match(sheet, /const collapsedGroupKeys = ref<string\[\]>\(\[\]\)/);
-  assert.match(sheet, /function toggleGroup\(key: string\): void/);
+  assert.match(sheet, /^\s+isGroupCollapsed,$/m);
+  assert.match(sheet, /^\s+toggleGroup,$/m);
+  assert.doesNotMatch(sheet, /const collapsedGroupKeys = ref<string\[\]>\(\[\]\)/);
   assert.match(sheet, /v-if="hideRedundantDetailTitle" class="illustrated-detail-title-spacer"/);
-  assert.match(sheet, /hideRedundantDetailTitle = computed\(\(\) => props\.specialNpc && !isOverviewTab\.value\)/);
+  assert.match(
+    controller,
+    /hideRedundantDetailTitle = computed\(\(\) => readSpecialNpc\(\) && !isOverviewTab\.value\)/,
+  );
   assert.match(itemCard, /'is-compact-skill': isSkillVariant/);
   assert.match(itemCard, /\.illustrated-list-item\.is-compact-row\s*\{[\s\S]*?background:\s*transparent/);
   assert.match(
@@ -169,11 +188,12 @@ test('立绘角色卡 手机首页将台词与资料直接叠在立绘渐变上�
 });
 
 test('立绘角色卡 手机详情沿用当前立绘静态快照，并把 Save 收进六项底栏右侧操作位', async () => {
-  const [sheet, navigation, panel, portraitPane] = await Promise.all([
+  const [sheet, navigation, panel, portraitPane, controller] = await Promise.all([
     readFile(shellPath, 'utf8'),
     readFile(navigationPath, 'utf8'),
     readFile(panelPath, 'utf8'),
     readFile(portraitPanePath, 'utf8'),
+    readFile(controllerPath, 'utf8'),
   ]);
   assert.match(sheet, /ref="detailWallpaperCanvas"/);
   assert.match(sheet, /\.illustrated-mobile-detail-wallpaper\s*\{\s*display:\s*none/);
@@ -182,7 +202,10 @@ test('立绘角色卡 手机详情沿用当前立绘静态快照，并把 Save �
     /@mixin illustrated-mobile-content[\s\S]*?\.illustrated-mobile-detail-wallpaper\s*\{[\s\S]*?display:\s*block/,
   );
   assert.match(sheet, /context\.drawImage\(source,/);
-  assert.match(sheet, /activeSpecialTab\.value === 'overview' && tab !== 'overview'/);
+  // 切换 tab 已归 core controller；离开首页的快照钩子仍由 renderer 传入，保持原有触发时机。
+  assert.match(controller, /activeSpecialTab\.value === 'overview' && tab !== 'overview'/);
+  assert.match(controller, /onLeaveOverview\?\.\(\)/);
+  assert.match(sheet, /onLeaveOverview:\s*captureDetailWallpaper,/);
   // 立绘媒体元素已归 child 所有，父级通过 expose 读取，避免跨组件边界的模板 ref。
   assert.match(sheet, /portraitPaneElement\.value\?\.mediaElement/);
   assert.match(portraitPane, /ref="imageElement"/);
@@ -200,11 +223,15 @@ test('立绘角色卡 手机详情沿用当前立绘静态快照，并把 Save �
 });
 
 test('立绘角色卡 把装备与背包合并为持有，并把资源集中到第二项角色面板', async () => {
-  const [sheet, panel] = await Promise.all([readFile(shellPath, 'utf8'), readFile(panelPath, 'utf8')]);
-  assert.match(sheet, /key: 'holdings', label: '持有'/);
+  const [sheet, panel, controller] = await Promise.all([
+    readFile(shellPath, 'utf8'),
+    readFile(panelPath, 'utf8'),
+    readFile(controllerPath, 'utf8'),
+  ]);
+  assert.match(controller, /key: 'holdings', label: '持有'/);
   assert.match(sheet, /activeSpecialTab === 'holdings'/);
   assert.match(
-    sheet,
+    controller,
     /\{ key: 'overview', label: '首页' \},\s*\{ key: 'characterPanel', label: '面板' \},\s*\{ key: 'profile', label: '档案' \}/,
   );
   assert.match(sheet, /IllustratedOverviewPanel[\s\S]*?:resource-boxes="\[\]"/);

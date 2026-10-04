@@ -5,11 +5,12 @@ import test from 'node:test';
 const repoRoot = new URL('../../', import.meta.url);
 const readSource = path => readFile(new URL(path, repoRoot), 'utf8');
 
-const [overviewSource, sheetSource, headerSource, portraitPaneSource] = await Promise.all([
+const [overviewSource, sheetSource, headerSource, portraitPaneSource, controllerSource] = await Promise.all([
   readSource('src/char_info_viewer/components/illustrated/IllustratedOverviewPanel.vue'),
   readSource('src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue'),
   readSource('src/char_info_viewer/components/illustrated/IllustratedHeader.vue'),
   readSource('src/char_info_viewer/components/illustrated/IllustratedPortraitPane.vue'),
+  readSource('src/char_info_viewer/components/illustrated/core/useIllustratedSheetController.ts'),
 ]);
 
 test('illustrated character overview renders the entrance quote only when display text exists', () => {
@@ -166,17 +167,18 @@ test('clamped entrance quotes open an accessible full-text dialog on desktop and
   assert.match(overviewSource, /openEntranceQuote:\s*\[\];/);
   // 移动端入口台词已随立绘面板迁到 child：child 只 emit，父级 renderer 独占 dialog。
   assert.match(portraitPaneSource, /class="illustrated-mobile-entrance-quote"[\s\S]*?@click="\$emit\('openEntranceQuote', \$event\)"/);
-  assert.match(sheetSource, /@open-entrance-quote="openEntranceQuoteDialog"/);
+  assert.match(sheetSource, /@open-entrance-quote="openQuote"/);
   assert.match(sheetSource, /class="illustrated-quote-dialog"[\s\S]*?role="dialog"[\s\S]*?aria-modal="true"/);
   assert.doesNotMatch(sheetSource, /<Teleport to="body">/);
   assert.match(sheetSource, /class="illustrated-quote-dialog-text">{{ vm\.entranceQuoteText }}/);
-  assert.match(sheetSource, /@click\.self="closeEntranceQuoteDialog"/);
-  assert.match(sheetSource, /@keydown\.esc\.stop\.prevent="closeEntranceQuoteDialog"/);
+  assert.match(sheetSource, /@click\.self="closeQuote"/);
+  assert.match(sheetSource, /@keydown\.esc\.stop\.prevent="closeQuote"/);
   assert.match(sheetSource, /:inert="isEntranceQuoteDialogOpen \? true : undefined"/);
-  assert.match(sheetSource, /@keydown\.tab\.prevent="keepEntranceQuoteDialogFocus"/);
+  assert.match(sheetSource, /@keydown\.tab\.prevent="keepQuoteDialogFocus"/);
+  assert.match(sheetSource, /^\s+keepQuoteDialogFocus,$/m);
   assert.match(
-    sheetSource,
-    /function keepEntranceQuoteDialogFocus\(\): void \{[\s\S]*?quoteDialogCloseButton\.value\?\.focus\(\)/,
+    controllerSource,
+    /function keepQuoteDialogFocus\(\): void \{[\s\S]*?quoteDialogCloseButton\.value\?\.focus\(\)/,
   );
   assert.match(
     sheetSource,

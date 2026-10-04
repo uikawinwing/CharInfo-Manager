@@ -10,6 +10,10 @@ const profileSource = await readFile(
   new URL('../../src/char_info_viewer/components/illustrated/IllustratedProfilePanel.vue', import.meta.url),
   'utf8',
 );
+const controllerSource = await readFile(
+  new URL('../../src/char_info_viewer/components/illustrated/core/useIllustratedSheetController.ts', import.meta.url),
+  'utf8',
+);
 
 function sectionBetween(source, start, end) {
   const startIndex = source.indexOf(start);
@@ -20,13 +24,17 @@ function sectionBetween(source, start, end) {
 }
 
 test('立绘角色卡 档案只在有自定义故事时显示资料/故事二级切换，并保持六项主导航', () => {
+  // tab 列表已归 core controller 所有，renderer 解构消费同一份六项主导航。
   assert.match(
-    sheetSource,
+    controllerSource,
     /const tabs = computed<IllustratedTab\[\]>\(\(\) => \[[\s\S]*?\{ key: 'overview', label: '首页' \},[\s\S]*?\{ key: 'characterPanel', label: '面板' \},[\s\S]*?\{ key: 'profile', label: '档案' \},[\s\S]*?\{ key: 'skills', label: '技能' \},[\s\S]*?\{ key: 'holdings', label: '持有' \},[\s\S]*?\{ key: 'divinity', label: '登神' \},[\s\S]*?\]\);/u,
   );
+  assert.match(sheetSource, /^\s+tabs,$/mu);
   assert.match(sheetSource, /v-if="specialNpc && hasCustomStorySections"[\s\S]*?资料[\s\S]*?故事/u);
-  assert.match(sheetSource, /const activeProfileSubview = ref<'info' \| 'story'>\('info'\)/u);
-  assert.match(sheetSource, /if \(tab === 'profile'\) activeProfileSubview\.value = 'info';/u);
+  assert.match(sheetSource, /@click="selectProfileSubview\('info'\)"/u);
+  assert.match(sheetSource, /@click="selectProfileSubview\('story'\)"/u);
+  assert.match(controllerSource, /const activeProfileSubview = ref<IllustratedProfileSubview>\('info'\)/u);
+  assert.match(controllerSource, /if \(tab === 'profile'\) activeProfileSubview\.value = 'info';/u);
 });
 
 test('自定义故事严格使用 metadata story sections 和作者署名，不在故事视图重复原始 backstory', () => {
@@ -57,9 +65,15 @@ test('作者、版本和作者说明在资料页使用独立作者信息块，�
 
 test('没有自定义故事时不显示二级切换，并把原始背景故事作为档案 fallback', () => {
   assert.match(
-    sheetSource,
-    /const profileFallbackBackstoryText = computed\(\(\) =>[\s\S]*?props\.specialNpc && !hasCustomStorySections\.value \? props\.vm\.backstoryText : ''/u,
+    controllerSource,
+    /const profileFallbackBackstoryText = computed\(\(\) =>[\s\S]*?readSpecialNpc\(\) && !hasCustomStorySections\.value \? readVm\(\)\.backstoryText : ''/u,
   );
+  assert.match(
+    controllerSource,
+    /hasCustomStorySections = computed\(\(\) => readSpecialNpc\(\) && readVm\(\)\.storySections\.length > 0\)/u,
+  );
+  assert.match(sheetSource, /^\s+profileFallbackBackstoryText,$/mu);
+  assert.match(sheetSource, /^\s+hasCustomStorySections,$/mu);
   assert.match(sheetSource, /:backstory-text="profileFallbackBackstoryText"/u);
   assert.match(profileSource, /backstoryText\?: string/u);
   assert.match(profileSource, /\{ title: '背景故事', text: props\.backstoryText \}/u);

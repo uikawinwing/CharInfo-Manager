@@ -39,7 +39,7 @@
         :is-overview-tab="isOverviewTab"
         :force-mobile-layout="forceMobileLayout"
         @fallback-to-default="$emit('fallbackToDefault')"
-        @open-entrance-quote="openEntranceQuoteDialog"
+        @open-entrance-quote="openQuote"
       />
 
       <section class="illustrated-data-pane">
@@ -61,7 +61,7 @@
             :resource-boxes="[]"
             :entrance-quote-text="vm.entranceQuoteText"
             @toggle-attribute-formula="$emit('toggleAttributeFormula', $event)"
-            @open-entrance-quote="openEntranceQuoteDialog"
+            @open-entrance-quote="openQuote"
           />
 
           <template v-else-if="activeSpecialTab === 'profile'">
@@ -74,7 +74,7 @@
                 type="button"
                 :class="{ active: activeProfileSubview === 'info' }"
                 :aria-pressed="activeProfileSubview === 'info'"
-                @click="activeProfileSubview = 'info'"
+                @click="selectProfileSubview('info')"
               >
                 资料
               </button>
@@ -82,7 +82,7 @@
                 type="button"
                 :class="{ active: activeProfileSubview === 'story' }"
                 :aria-pressed="activeProfileSubview === 'story'"
-                @click="activeProfileSubview = 'story'"
+                @click="selectProfileSubview('story')"
               >
                 故事
               </button>
@@ -250,7 +250,7 @@
           :import-button-text="importButtonText"
           :show-import-action="!readOnly"
           :force-mobile-layout="forceMobileLayout"
-          @set-tab="setActiveSpecialTab"
+          @set-tab="selectTab"
           @toggle-import-menu="$emit('toggleImportMenu')"
         />
       </section>
@@ -264,7 +264,7 @@
         :import-button-text="importButtonText"
         :show-import-action="!readOnly"
         :force-mobile-layout="forceMobileLayout"
-        @set-tab="setActiveSpecialTab"
+        @set-tab="selectTab"
         @toggle-import-menu="$emit('toggleImportMenu')"
       />
 
@@ -277,7 +277,7 @@
     <div
       v-if="isEntranceQuoteDialogOpen"
       class="illustrated-quote-dialog-backdrop"
-      @click.self="closeEntranceQuoteDialog"
+      @click.self="closeQuote"
     >
       <div class="illustrated-wrapper illustrated-quote-dialog-theme">
         <section
@@ -285,8 +285,8 @@
           role="dialog"
           aria-modal="true"
           :aria-label="`${vm.nameText}的完整台词`"
-          @keydown.esc.stop.prevent="closeEntranceQuoteDialog"
-          @keydown.tab.prevent="keepEntranceQuoteDialogFocus"
+          @keydown.esc.stop.prevent="closeQuote"
+          @keydown.tab.prevent="keepQuoteDialogFocus"
         >
           <span class="illustrated-quote-dialog-kicker">CHARACTER VOICE</span>
           <h2>{{ vm.nameText }}的话</h2>
@@ -296,7 +296,7 @@
             ref="quoteDialogCloseButton"
             class="illustrated-quote-dialog-close"
             type="button"
-            @click="closeEntranceQuoteDialog"
+            @click="closeQuote"
           >
             关闭
           </button>
@@ -307,11 +307,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import { itemType, type CharacterViewModel, type ItemObject } from '../../services/characterViewModel';
-import type { AttributeView, IllustratedTab, IllustratedTabKey } from './types';
+import type { CharacterViewModel } from '../../services/characterViewModel';
+import type { AttributeView } from './types';
 import { useIllustratedPortrait } from './core/useIllustratedPortrait';
+import { useIllustratedSheetController } from './core/useIllustratedSheetController';
 import IllustratedCharacterPanel from './IllustratedCharacterPanel.vue';
 import IllustratedDefaultDivinityPanel from './IllustratedDefaultDivinityPanel.vue';
 import IllustratedHeader from './IllustratedHeader.vue';
@@ -346,53 +347,6 @@ defineEmits<{
   fallbackToDefault: [];
 }>();
 
-type SkillGroupKey = 'active' | 'passive' | 'other';
-type SkillGroup = { key: SkillGroupKey; title: string; icon: string; items: ItemObject[] };
-
-function skillGroupKey(item: ItemObject): SkillGroupKey {
-  const type = itemType(item).trim();
-  if (type.includes('主动') || type.includes('主動')) return 'active';
-  if (type.includes('被动') || type.includes('被動')) return 'passive';
-  return 'other';
-}
-
-const groupedSkills = computed<SkillGroup[]>(() => {
-  const groups: SkillGroup[] = [
-    { key: 'active', title: '主动技能', icon: '◆', items: [] },
-    { key: 'passive', title: '被动技能', icon: '◎', items: [] },
-    { key: 'other', title: '其他技能', icon: '✦', items: [] },
-  ];
-
-  for (const skill of props.vm.skills) {
-    const group = groups.find(candidate => candidate.key === skillGroupKey(skill));
-    group?.items.push(skill);
-  }
-
-  return groups.filter(group => group.items.length > 0);
-});
-
-const collapsedGroupKeys = ref<string[]>([]);
-
-function isGroupCollapsed(key: string): boolean {
-  return collapsedGroupKeys.value.includes(key);
-}
-
-function toggleGroup(key: string): void {
-  collapsedGroupKeys.value = isGroupCollapsed(key)
-    ? collapsedGroupKeys.value.filter(candidate => candidate !== key)
-    : [...collapsedGroupKeys.value, key];
-}
-
-watch(
-  () => props.vm.nameText,
-  () => {
-    collapsedGroupKeys.value = [];
-    activeProfileSubview.value = 'info';
-  },
-);
-
-const activeSpecialTab = ref<IllustratedTabKey>('overview');
-const activeProfileSubview = ref<'info' | 'story'>('info');
 const wrapperElement = ref<HTMLElement | null>(null);
 const shellElement = ref<HTMLElement | null>(null);
 const panelsElement = ref<HTMLElement | null>(null);
@@ -401,9 +355,6 @@ const detailWallpaperCanvas = ref<HTMLCanvasElement | null>(null);
 const detailWallpaperReady = ref(false);
 const overviewDensity = ref<'normal' | 'compact' | 'dense'>('normal');
 const overviewDensityClass = computed(() => `overview-density-${overviewDensity.value}`);
-const isEntranceQuoteDialogOpen = ref(false);
-const quoteDialogCloseButton = ref<HTMLButtonElement | null>(null);
-let entranceQuoteTriggerElement: HTMLElement | null = null;
 let overviewDensityFrame: number | undefined;
 let overviewResizeObserver: ResizeObserver | undefined;
 let layoutResizeObserver: ResizeObserver | undefined;
@@ -426,25 +377,8 @@ const portrait = useIllustratedPortrait({
   debugEnabled: () => props.debugEnabled,
 });
 
-const tabs = computed<IllustratedTab[]>(() => [
-  { key: 'overview', label: '首页' },
-  { key: 'characterPanel', label: '面板' },
-  { key: 'profile', label: '档案' },
-  { key: 'skills', label: '技能' },
-  { key: 'holdings', label: '持有' },
-  { key: 'divinity', label: '登神' },
-]);
-const hasCustomStorySections = computed(() => props.specialNpc && props.vm.storySections.length > 0);
-const profileFallbackBackstoryText = computed(() =>
-  props.specialNpc && !hasCustomStorySections.value ? props.vm.backstoryText : '',
-);
-watch(hasCustomStorySections, hasCustomStory => {
-  if (!hasCustomStory) activeProfileSubview.value = 'info';
-});
-const isOverviewTab = computed(() => activeSpecialTab.value === 'overview');
-const isDivinityTab = computed(() => activeSpecialTab.value === 'divinity');
-const hideRedundantDetailTitle = computed(() => props.specialNpc && !isOverviewTab.value);
-const activeSpecialTabTitle = computed(() => tabs.value.find(tab => tab.key === activeSpecialTab.value)?.label ?? '');
+// 立绘面板自己消费其余状态，但移动端静态快照仍需判断立绘是否就绪。
+const { portraitLoaded, portraitLoadFailed } = portrait;
 
 function captureDetailWallpaper(): void {
   const canvas = detailWallpaperCanvas.value;
@@ -497,34 +431,31 @@ function captureDetailWallpaper(): void {
   }
 }
 
-function setActiveSpecialTab(tab: IllustratedTabKey): void {
-  if (tab === activeSpecialTab.value) return;
-  if (activeSpecialTab.value === 'overview' && tab !== 'overview') captureDetailWallpaper();
-  if (tab === 'profile') activeProfileSubview.value = 'info';
-  activeSpecialTab.value = tab;
-}
-
-function openEntranceQuoteDialog(event?: Event): void {
-  entranceQuoteTriggerElement =
-    event?.currentTarget instanceof HTMLElement
-      ? event.currentTarget
-      : document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
-  isEntranceQuoteDialogOpen.value = true;
-  void nextTick(() => quoteDialogCloseButton.value?.focus());
-}
-
-function closeEntranceQuoteDialog(): void {
-  isEntranceQuoteDialogOpen.value = false;
-  const trigger = entranceQuoteTriggerElement;
-  entranceQuoteTriggerElement = null;
-  void nextTick(() => trigger?.focus());
-}
-
-function keepEntranceQuoteDialogFocus(): void {
-  quoteDialogCloseButton.value?.focus();
-}
+const {
+  tabs,
+  activeSpecialTab,
+  activeProfileSubview,
+  isOverviewTab,
+  isDivinityTab,
+  activeSpecialTabTitle,
+  hideRedundantDetailTitle,
+  hasCustomStorySections,
+  profileFallbackBackstoryText,
+  selectTab,
+  selectProfileSubview,
+  groupedSkills,
+  isGroupCollapsed,
+  toggleGroup,
+  isEntranceQuoteDialogOpen,
+  quoteDialogCloseButton,
+  openQuote,
+  closeQuote,
+  keepQuoteDialogFocus,
+} = useIllustratedSheetController({
+  vm: () => props.vm,
+  specialNpc: () => props.specialNpc,
+  onLeaveOverview: captureDetailWallpaper,
+});
 
 function updateOverviewDensity(): void {
   if (overviewDensityFrame !== undefined) {
@@ -589,12 +520,6 @@ watch(
   updateOverviewDensity,
   { flush: 'post' },
 );
-
-watchEffect(() => {
-  if (!tabs.value.some(tab => tab.key === activeSpecialTab.value)) {
-    activeSpecialTab.value = 'overview';
-  }
-});
 </script>
 
 <style scoped lang="scss">
