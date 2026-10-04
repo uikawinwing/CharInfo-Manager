@@ -7,30 +7,37 @@
 
 ---
 
-## 1. 现状基线（`origin/dev` @ `640251e`）
+## 1. 当前状态
 
-| 事实 | 值 |
+Phase 0–3 已完成。默认 renderer 已从「单文件壳 + 大半 CSS」拆成 `core/` 行为层与 `default/` 视觉层，旧文件名只保留兼容 wrapper。
+
+### 当前 ownership 事实
+
+| 事实 | 位置 |
 | --- | --- |
-| `IllustratedCharacterSheet.vue` 总行数 | 2119（重构前）→ **1515** |
-| 其中 template | 1–307 |
-| 其中 script | 309–523（约 215 行） |
-| 其中 style | 525–1515（990 行，仍是主体） |
-| `core/useIllustratedPortrait.ts` | 191（立绘行为） |
-| `core/useIllustratedSheetController.ts` | 165（tab / 子视图 / 折叠 / 台词弹窗） |
-| `IllustratedPortraitPane.vue` | 477（默认立绘视觉） |
-| 已存在的 panel 模块 | `IllustratedHeader` / `IllustratedOverviewPanel` / `IllustratedProfilePanel` / `IllustratedItemCard` / `IllustratedCharacterPanel` / `IllustratedDefaultDivinityPanel` / `IllustratedTabNav` |
-| 入口 | `src/char_info_viewer/App.vue:82`，条件 `shouldShowSpecialNpcLayout && vm` |
+| 默认 renderer 实现 | `default/IllustratedDefaultSheet.vue` |
+| 兼容入口（只转发） | `illustrated/IllustratedCharacterSheet.vue` |
+| 立绘行为 | `core/useIllustratedPortrait.ts` |
+| tab / 子视图 / 折叠 / 台词弹窗 | `core/useIllustratedSheetController.ts` |
+| visual token 定义 | `default/IllustratedDefaultSheet.vue` 的 `.illustrated-wrapper` 块 |
+| Viewer 入口 | `src/char_info_viewer/App.vue`，条件 `shouldShowSpecialNpcLayout && vm` |
 
-**这个文件不是「还没拆」，而是「壳 + 大半 CSS 还没拆」。** panel 层在重构前就已存在；本次已额外完成立绘行为（Phase 1）与 tab 状态（Phase 2）的迁出。当前剩余重量几乎全在 style 块，Phase 3 的重点是收薄与 CSS ownership 继续下移。
+`IllustratedCharacterSheet.vue` 只做 props / events 转发，**不持有实现**。新增功能一律改 `default/` 内的文件，不要往 wrapper 里加逻辑。
+
+### 迁移历史（仅供追溯，不作为当前事实）
+
+重构前 `IllustratedCharacterSheet.vue` 是 2119 行的单文件（template 1–307、script 309–523、style 525–1515）。拆分过程见 §9 的 phase 表与对应 commit。**不要用旧行数判断当前结构**——行数只是迁移副产品，不是契约。
 
 ### 已知的历史教训（Phase 1 踩过）
 
 1. **`scoped` 只给最后一个复合选择器打 `data-v-*`。** 因此 `.illustrated-shell.is-x .child` 搬进子组件后**仍然有效**，而父级里写成 `.shell .child[data-v-parent] :deep(...)` 的规则，在 `child` 移入子组件后**会静默失效**——`child` 只带 child 的 scope id。跨组件覆盖必须把整条后代链收进一个 `:deep()`。
-2. **源码正则测试和 transpile-only 构建都抓不到未定义标识符。** `captureDetailWallpaper` 曾在 Phase 1 漏了解构 `portraitLoaded` / `portraitLoadFailed`，build 与 355 条测试全绿，但真实运行时一离开首页 tab 就抛 `ReferenceError`。父级引用 controller 的任何字段，必须有对应断言守住。
+2. **源码正则测试和 transpile-only 构建都抓不到未定义标识符。** `captureDetailWallpaper` 曾在 Phase 1 漏了解构 `portraitLoaded` / `portraitLoadFailed`，build 与全部测试全绿，但真实运行时一离开首页 tab 就抛 `ReferenceError`。父级引用 controller 的任何字段，必须有对应断言守住。
+3. **一个状态的旧契约可能只迁了一半。** Phase 3 把 renderer 搬进 `default/` 时，`App.vue` 已改传 `:save-phase`，wrapper 与 default sheet 仍声明 `importing` / `importButtonText`。搬迁时必须同时迁移 props 契约，并全链核对。
+
 
 ### DX 代码当前不在 `dev` 上
 
-DX 实现在 `origin/feat/dx-character-v2-dev-sync`。`IllustratedV2Sheet.vue` 是 690 行 wrapper：template 只有一行 `<IllustratedCharacterSheet v-bind="$attrs" side-rail-navigation />` 加一层装饰，script 5 行，style 654 行，其中约 82 个 selector 直接打在默认 renderer 私有 class 上（`.illustrated-shell`、`.illustrated-portrait-pane`、`.illustrated-data-pane`、`.illustrated-group-panel`、`.illustrated-tabs.is-side-rail`、`.illustrated-attribute-total` 等）。
+DX 实现在 `origin/feat/dx-character-v2-dev-sync` 与 `origin/DX-character-V2-remake`，**尚未合入本分支**。`IllustratedV2Sheet.vue` 是约 690 行 wrapper：template 只有一行 `<IllustratedCharacterSheet v-bind="$attrs" side-rail-navigation />` 加一层装饰，script 5 行，style 654 行，其中约 82 个 selector 直接打在默认 renderer 私有 class 上（`.illustrated-shell`、`.illustrated-portrait-pane`、`.illustrated-data-pane`、`.illustrated-group-panel`、`.illustrated-tabs.is-side-rail`、`.illustrated-attribute-total` 等）。
 
 这就是本平台存在的理由：**外部设计一旦依赖默认 renderer 的私有 DOM，默认 DOM 一动，外部一起坏。**
 
@@ -92,42 +99,49 @@ src/char_info_viewer/components/illustrated/
 
 禁止包含：`px`、`em`、`%` 宽度、`border-radius`、`gradient`、`object-fit`、断点值、任何「tab 在底栏还是侧栏」的信息。
 
-核心文件：
+核心文件（当前已存在）：
 
 ```text
 core/useIllustratedSheetController.ts
 core/useIllustratedPortrait.ts
-core/types.ts
-core/illustratedTabs.ts
 ```
+
+`core/types.ts` 与 `core/illustratedTabs.ts` 尚未建立；类型与 tab 定义目前仍在 `illustrated/types.ts`。Phase 4 之后再决定是否下沉，不要为了对齐本文提前搬。
 
 ### 3.2 default
 
 官方默认 Renderer 与它的可复用视觉模块。默认路径就是这一层，普通创作者只需要看到它。
 
 ```text
-default/SpecialNpcIllustratedSheet.vue   薄组合层
+default/IllustratedDefaultSheet.vue   薄组合层 + visual token 定义
 default/IllustratedPortraitPane.vue
 default/IllustratedHeader.vue
 default/IllustratedOverviewPanel.vue
 default/IllustratedProfilePanel.vue
-default/IllustratedStoryPanel.vue
 default/IllustratedItemCard.vue
 default/IllustratedDefaultDivinityPanel.vue
 default/IllustratedCharacterPanel.vue
+default/IllustratedPageTitle.vue
 default/IllustratedTabNav.vue
-default/IllustratedQuoteDialog.vue
+default/divinitySections.ts
 ```
 
-`SpecialNpcIllustratedSheet.vue` 只做组合、路由、layout 与跨模块布局协调，不做数据解析、不做 save 业务逻辑。
+`IllustratedDefaultSheet.vue` 只做组合、路由、layout 与跨模块布局协调，不做数据解析、不做 save 业务逻辑。
+
+**当前组件名不含 `SpecialNpc`**：它是「默认稳定 renderer」，不是「special_npc 版式」。`special_npc` 只作为 Viewer 内部路由值出现。
+
+Story panel 与 Quote dialog 仍是 sheet 内联的 DOM，尚未抽成独立模块——这是 Phase 4 的内容。
 
 ### 3.3 themes
 
 跨 Renderer 的**可选**共享语言（前景、表面、边框、强调色、阴影）。共享 token 是为了方便复用，不是视觉限制；DX full renderer 可以完全定义自己的 CSS。
 
+**当前 `themes/` 目录还不存在。** visual token 定义在 `default/IllustratedDefaultSheet.vue` 的 `.illustrated-wrapper` 块（commit `5476e34` 建立契约，`a008409` 让各 panel 消费）。等真正出现第二个 renderer 时再抽目录。
+
 ### 3.4 dx
 
-DX 专属实现。DX 分支尚未合入 `dev`，本层当前为空。
+DX 专属实现。DX 分支尚未合入，本层当前为空。
+
 
 ---
 
@@ -157,6 +171,18 @@ save phase                                                 → viewer core / run
 
 Renderer 只接收 `ViewModel` / `Controller` / module props，不在 UI 组件里重新解析 YAML / Worldbook / MVU。
 
+### save phase contract
+
+`savePhase` 是当前唯一的保存状态契约，定义在 `src/char_info_shared/viewerSaveUi.ts`：
+
+```ts
+type ViewerSavePhase = 'idle' | 'pending' | 'success' | 'error';
+```
+
+它取代了旧的 `importing: boolean` + `importButtonText: string`。按钮文案由 `VIEWER_SAVE_NAV_LABELS[savePhase]` 推导，**不允许再由调用方传入自由文本**。导入菜单的按钮文案同样来自 `VIEWER_IMPORT_MVU_LABEL` / `VIEWER_IMPORT_WORLDBOOK_LABEL` 常量。
+
+链路是 `viewer core`（持有真实 phase）→ `IllustratedCharacterSheet`（wrapper 转发）→ `IllustratedDefaultSheet` → `IllustratedTabNav`。wrapper 只透传，不解释、不转换。
+
 ---
 
 ## 6. 模块成熟度生命周期
@@ -177,7 +203,7 @@ Experimental  →  Reusable Internal  →  Creator-facing Stable
 
 ## 7. 禁止事项
 
-1. `SpecialNpcIllustratedSheet.vue` 不实现 domain detail。新 feature 超过一个完整 UI region 时，优先放进独立 module。
+1. `IllustratedDefaultSheet.vue` 不实现 domain detail。新 feature 超过一个完整 UI region 时，优先放进独立 module。
 2. 不为减少行数拆微型组件，除非出现真实复用或独立行为需求。
 3. 一个状态只允许一个 owner，禁止父子复制 ref + watch 互同步。
 4. Renderer 不做数据解析。
@@ -190,7 +216,7 @@ Experimental  →  Reusable Internal  →  Creator-facing Stable
 
 ## 8. 已知测试约束
 
-以下测试通过**正则匹配源码文本**断言 `IllustratedCharacterSheet.vue` 与 `IllustratedTabNav.vue` 的内部实现，不是行为测试。搬迁代码时必须同步迁移断言，否则会整片变红：
+以下测试通过**正则匹配源码文本**断言 illustrated 各组件的内部实现，不是行为测试。搬迁代码时必须同步迁移断言的**路径与断言内容**，否则会整片变红：
 
 ```text
 tests/char_info_viewer/image-preload.test.cjs
@@ -219,15 +245,17 @@ tests/char_info_viewer/viewer-host-boundary.test.mjs
 | --- | --- | --- |
 | 0 | 本文（不改功能） | 完成 `d3f0576` |
 | 1 | portrait seam：抽 `useIllustratedPortrait` + `IllustratedPortraitPane` | 完成 `9d6817f` / `f7ae986` |
-| 2 | sheet controller：抽 `useIllustratedSheetController` | 完成 |
-| 3 | 默认 renderer 收薄为 `SpecialNpcIllustratedSheet`，旧文件名保留兼容 wrapper | 未开始 |
+| 2 | sheet controller：抽 `useIllustratedSheetController` | 完成 `a301d7e` |
+| 3 | 默认 renderer 收薄为 `IllustratedDefaultSheet`，旧文件名保留兼容 wrapper | 完成 `80c0dc3` / `17efa45` |
 | 4 | 剩余自然模块：Story panel、Quote dialog | 未开始 |
 | 5 | `IllustratedRendererOverrides`：Header / Overview / Portrait / ItemCard / Navigation，默认 fallback | 未开始 |
 | 6 | 把 DX 接入新 seam（本轮**不做**，见下） | 不做 |
 
 每 phase 至少满足：行为测试通过、build 通过、lint 0 error、默认视觉无意外改变、mobile / desktop 路由 contract 保持。
 
-除自动化门禁外，**每次搬迁样式或状态都必须额外做一次 CSS 零差异比对**：编译所有 illustrated SFC 的 scoped style，剥掉 `data-v-*` 并归一化后与基线对比（基线 612 条规则）。这套比对能发现源码正则测试完全看不到的「规则被搬到组件外导致 scope 不匹配」。行为部分则需要用真实 `effectScope` 挂载 composable 断言，因为仓库测试跑不了 composable。
+除自动化门禁外，**每次搬迁样式或状态都必须额外做一次 CSS 零差异比对**：编译所有 illustrated SFC 的 scoped style，剥掉 `data-v-*` 并归一化后与基线对比。这套比对能发现源码正则测试完全看不到的「规则被搬到组件外导致 scope 不匹配」。行为部分则需要用真实 `effectScope` 挂载 composable 断言，因为仓库测试跑不了 composable。
+
+**当前测试数是 357。** 这不是回归：`c63a883`（dev）删除了锁定立绘审美实现细节的源码正则测试，属于有意清理。判断测试是否丢失，要比对**测试清单**而不是总数——本分支相对 `dev` 只多出 seam 断言，没有删除任何 dev 侧测试。
 
 **Phase 6 之前不 merge DX 分支。** 这样整个迁移过程零 DX 干扰，回归只可能来自本次改动本身。
 
@@ -243,6 +271,8 @@ tests/char_info_viewer/viewer-host-boundary.test.mjs
 改 portrait 加载行为          → core/useIllustratedPortrait
 改默认 portrait 外观          → default/IllustratedPortraitPane
 改默认导航                    → default/IllustratedTabNav
+改默认布局 / 组合              → default/IllustratedDefaultSheet
+改兼容入口签名                → illustrated/IllustratedCharacterSheet（只转发）
 给 DX 一个完全不同的导航       → dx/<该 dx>
 新增所有角色通用的 tab 行为    → core
 把成熟 DX 玩具开放给创作者     → 先 reusable module，再接创作者 preset
