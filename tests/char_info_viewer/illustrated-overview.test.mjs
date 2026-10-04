@@ -137,6 +137,12 @@ test('story 与 quote 的 domain markup 已迁出默认 renderer，且不自行�
   // 台词弹窗的 open state 与 focus ref 只有一个 owner：core controller。
   assert.match(controller, /const isEntranceQuoteDialogOpen = ref\(false\);/);
   assert.match(controller, /const quoteDialogCloseButton = ref<HTMLButtonElement \| null>\(null\);/);
+  // raw DOM ref 保持 controller 私有：对外只暴露 callback，避免 DX 把它当 platform contract。
+  const controllerReturn = controller.slice(controller.indexOf('return {'));
+  assert.doesNotMatch(controllerReturn, /^\s+quoteDialogCloseButton,$/m);
+  for (const fn of ['setQuoteDialogCloseButton', 'openQuote', 'closeQuote', 'keepQuoteDialogFocus']) {
+    assert.match(controllerReturn, new RegExp(`^\\s+${fn},$`, 'm'));
+  }
   // renderer 只消费 controller 传下来的字段，不得 import controller 或解析数据。
   // 注释里可以解释 ownership，所以只断言 import 语句与 props 形状。
   assert.doesNotMatch(quoteDialogSource, /^\s*import\s+.*(characterViewModel|useIllustratedSheetController)/m);

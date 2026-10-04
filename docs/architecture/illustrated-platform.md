@@ -9,7 +9,7 @@
 
 ## 1. 当前状态
 
-Phase 0–3 已完成。默认 renderer 已从「单文件壳 + 大半 CSS」拆成 `core/` 行为层与 `default/` 视觉层，旧文件名只保留兼容 wrapper。
+Phase 0–4 已完成。默认 renderer 已从「单文件壳 + 大半 CSS」拆成 `core/` 行为层与 `default/` 视觉层，旧文件名只保留兼容 wrapper。
 
 ### 当前 ownership 事实
 
@@ -107,7 +107,18 @@ core/useIllustratedSheetController.ts
 core/useIllustratedPortrait.ts
 ```
 
-`core/types.ts` 与 `core/illustratedTabs.ts` 尚未建立；类型与 tab 定义目前仍在 `illustrated/types.ts`。Phase 4 之后再决定是否下沉，不要为了对齐本文提前搬。
+`illustrated/types.ts` **继续作为 platform shared types 留在 root**，不为了对齐早期计划草图而提前移动。它目前同时被 core、default renderer、compatibility wrapper 消费，将来还会被 Phase 5 的 renderer override contracts 与 DX 消费——留在 `components/illustrated/` 根是当前最清楚的位置。
+
+Phase 5 建立 `IllustratedRendererOverrides` / renderer contracts 时，再按**真实 ownership** 判断每个类型该去哪里：
+
+```text
+behavior-only type          → core/
+platform-wide shared contract → 保留 root types.ts
+default-only presentation   → default/
+DX-only type                → dx/
+```
+
+如果结论是 root 就是最清楚的位置，就永久保留，不需要为了「完成计划」移动。
 
 ### 3.2 default
 

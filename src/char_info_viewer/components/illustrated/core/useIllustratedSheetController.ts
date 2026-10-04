@@ -95,6 +95,13 @@ export function useIllustratedSheetController(options: {
   });
 
   const isEntranceQuoteDialogOpen = ref(false);
+  /**
+   * 台词弹窗关闭按钮的 DOM 引用，**controller 私有**。
+   *
+   * 不从 return 里暴露：对外只给 `setQuoteDialogCloseButton` 这个 callback，
+   * 否则 DX / 新维护者会误以为 raw DOM ref 是 platform contract，
+   * 而 Ref 对象在 `<script setup>` 跨 component 传 prop 时会被 `_unref`（见下方注释）。
+   */
   const quoteDialogCloseButton = ref<HTMLButtonElement | null>(null);
   let entranceQuoteTriggerElement: HTMLElement | null = null;
 
@@ -170,7 +177,6 @@ export function useIllustratedSheetController(options: {
     isGroupCollapsed,
     toggleGroup,
     isEntranceQuoteDialogOpen,
-    quoteDialogCloseButton,
     setQuoteDialogCloseButton,
     openQuote,
     closeQuote,
