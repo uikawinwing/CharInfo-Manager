@@ -5,13 +5,15 @@ import test from 'node:test';
 const repoRoot = new URL('../../', import.meta.url);
 const readSource = path => readFile(new URL(path, repoRoot), 'utf8');
 
-const [overviewSource, sheetSource, headerSource, portraitPaneSource, controllerSource] = await Promise.all([
-  readSource('src/char_info_viewer/components/illustrated/default/IllustratedOverviewPanel.vue'),
-  readSource('src/char_info_viewer/components/illustrated/default/IllustratedDefaultSheet.vue'),
-  readSource('src/char_info_viewer/components/illustrated/default/IllustratedHeader.vue'),
-  readSource('src/char_info_viewer/components/illustrated/default/IllustratedPortraitPane.vue'),
-  readSource('src/char_info_viewer/components/illustrated/core/useIllustratedSheetController.ts'),
-]);
+const [overviewSource, sheetSource, headerSource, portraitPaneSource, controllerSource, quoteDialogSource] =
+  await Promise.all([
+    readSource('src/char_info_viewer/components/illustrated/default/IllustratedOverviewPanel.vue'),
+    readSource('src/char_info_viewer/components/illustrated/default/IllustratedDefaultSheet.vue'),
+    readSource('src/char_info_viewer/components/illustrated/default/IllustratedHeader.vue'),
+    readSource('src/char_info_viewer/components/illustrated/default/IllustratedPortraitPane.vue'),
+    readSource('src/char_info_viewer/components/illustrated/core/useIllustratedSheetController.ts'),
+    readSource('src/char_info_viewer/components/illustrated/default/IllustratedQuoteDialog.vue'),
+  ]);
 
 test('illustrated character overview renders the entrance quote only when display text exists', () => {
   assert.match(sheetSource, /:entrance-quote-text="vm\.entranceQuoteText"/);
@@ -79,21 +81,55 @@ test('clamped entrance quotes open an accessible full-text dialog on desktop and
   assert.match(overviewSource, /openEntranceQuote:\s*\[\];/);
   // 移动端入口台词已随立绘面板迁到 child：child 只 emit，父级 renderer 独占 dialog。
   assert.match(portraitPaneSource, /class="illustrated-mobile-entrance-quote"[\s\S]*?@click="\$emit\('openEntranceQuote', \$event\)"/);
+  // 台词弹窗已抽成独立 renderer，但 open / close / focus 仍由 sheet controller 独占：
+  // sheet 只透传 controller 字段与回调，dialog 自身不持有任何 open state。
   assert.match(sheetSource, /@open-entrance-quote="openQuote"/);
-  assert.match(sheetSource, /class="illustrated-quote-dialog"[\s\S]*?role="dialog"[\s\S]*?aria-modal="true"/);
-  assert.doesNotMatch(sheetSource, /<Teleport to="body">/);
-  assert.match(sheetSource, /class="illustrated-quote-dialog-text">{{ vm\.entranceQuoteText }}/);
-  assert.match(sheetSource, /@click\.self="closeQuote"/);
-  assert.match(sheetSource, /@keydown\.esc\.stop\.prevent="closeQuote"/);
+  assert.match(sheetSource, /<IllustratedQuoteDialog[\s\S]*?:is-open="isEntranceQuoteDialogOpen"/);
+  assert.match(sheetSource, /:close-button="quoteDialogCloseButton"/);
+  assert.match(sheetSource, /@close="closeQuote"/);
+  assert.match(sheetSource, /@keep-focus="keepQuoteDialogFocus"/);
+  assert.doesNotMatch(sheetSource, /class="illustrated-quote-dialog"/);
+  assert.doesNotMatch(quoteDialogSource, /ref\(false\)|const isOpen\s*=/);
+  assert.match(quoteDialogSource, /class="illustrated-quote-dialog"[\s\S]*?role="dialog"[\s\S]*?aria-modal="true"/);
+  assert.doesNotMatch(quoteDialogSource, /<Teleport to="body">/);
+  assert.match(quoteDialogSource, /class="illustrated-quote-dialog-text">\{\{ quoteText \}\}/);
+  assert.match(quoteDialogSource, /@click\.self="\$emit\('close'\)"/);
+  assert.match(quoteDialogSource, /@keydown\.esc\.stop\.prevent="\$emit\('close'\)"/);
   assert.match(sheetSource, /:inert="isEntranceQuoteDialogOpen \? true : undefined"/);
-  assert.match(sheetSource, /@keydown\.tab\.prevent="keepQuoteDialogFocus"/);
+  assert.match(quoteDialogSource, /@keydown\.tab\.prevent="\$emit\('keepFocus'\)"/);
   assert.match(sheetSource, /^\s+keepQuoteDialogFocus,$/m);
   assert.match(
     controllerSource,
     /function keepQuoteDialogFocus\(\): void \{[\s\S]*?quoteDialogCloseButton\.value\?\.focus\(\)/,
   );
+  // 弹窗仍然挂在 shell 内的普通渲染路径（不 teleport），backdrop 相对 wrapper 定位。
   assert.match(
     sheetSource,
-    /\.illustrated-wrapper\s*\{[^}]*position:\s*relative;[\s\S]*?\.illustrated-quote-dialog-backdrop\s*\{[^}]*position:\s*absolute;/,
+    /\.illustrated-wrapper\s*\{[^}]*position:\s*relative/,
   );
+  assert.match(quoteDialogSource, /\.illustrated-quote-dialog-backdrop\s*\{[^}]*position:\s*absolute;/);
+});
+
+test('story 与 quote 的 domain markup 已迁出默认 renderer，且不自行持有状态', async () => {
+  const [storySource, controller] = await Promise.all([
+    readSource('src/char_info_viewer/components/illustrated/default/IllustratedStoryPanel.vue'),
+    readSource('src/char_info_viewer/components/illustrated/core/useIllustratedSheetController.ts'),
+  ]);
+
+  // story 模块只吃纯文本，不解析 VM / YAML / Worldbook。
+  assert.match(sheetSource, /<IllustratedStoryPanel v-else :text="vm\.backstoryText" \/>/);
+  assert.doesNotMatch(sheetSource, /class="illustrated-story-block"/);
+  assert.match(storySource, /text:\s*string;/);
+  assert.match(storySource, /\{\{ text \|\| '暂无故事' \}\}/);
+  assert.doesNotMatch(storySource, /CharacterViewModel|characterViewModel|storySections|backstoryText/);
+
+  // 台词弹窗的 open state 与 focus ref 只有一个 owner：core controller。
+  assert.match(controller, /const isEntranceQuoteDialogOpen = ref\(false\);/);
+  assert.match(controller, /const quoteDialogCloseButton = ref<HTMLButtonElement \| null>\(null\);/);
+  // renderer 只消费 controller 传下来的字段，不得 import controller 或解析数据。
+  // 注释里可以解释 ownership，所以只断言 import 语句与 props 形状。
+  assert.doesNotMatch(quoteDialogSource, /^\s*import\s+.*(characterViewModel|useIllustratedSheetController)/m);
+  assert.doesNotMatch(storySource, /^\s*import\s+.*(characterViewModel|useIllustratedSheetController)/m);
+  assert.match(quoteDialogSource, /isOpen:\s*boolean;/);
+  assert.doesNotMatch(quoteDialogSource, /isEntranceQuoteDialogOpen/);
 });

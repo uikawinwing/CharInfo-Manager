@@ -237,9 +237,7 @@
             :status-effects="vm.statusEffects"
           />
 
-          <article v-else class="illustrated-story-block">
-            <p>{{ vm.backstoryText || '暂无故事' }}</p>
-          </article>
+          <IllustratedStoryPanel v-else :text="vm.backstoryText" />
         </div>
 
         <IllustratedTabNav
@@ -274,35 +272,14 @@
       </div>
     </main>
 
-    <div
-      v-if="isEntranceQuoteDialogOpen"
-      class="illustrated-quote-dialog-backdrop"
-      @click.self="closeQuote"
-    >
-      <div class="illustrated-wrapper illustrated-quote-dialog-theme">
-        <section
-          class="illustrated-quote-dialog"
-          role="dialog"
-          aria-modal="true"
-          :aria-label="`${vm.nameText}的完整台词`"
-          @keydown.esc.stop.prevent="closeQuote"
-          @keydown.tab.prevent="keepQuoteDialogFocus"
-        >
-          <span class="illustrated-quote-dialog-kicker">CHARACTER VOICE</span>
-          <h2>{{ vm.nameText }}的话</h2>
-          <span class="illustrated-quote-dialog-ornament" aria-hidden="true"><i></i></span>
-          <p class="illustrated-quote-dialog-text">{{ vm.entranceQuoteText }}</p>
-          <button
-            ref="quoteDialogCloseButton"
-            class="illustrated-quote-dialog-close"
-            type="button"
-            @click="closeQuote"
-          >
-            关闭
-          </button>
-        </section>
-      </div>
-    </div>
+    <IllustratedQuoteDialog
+      :is-open="isEntranceQuoteDialogOpen"
+      :name-text="vm.nameText"
+      :quote-text="vm.entranceQuoteText"
+      :close-button="quoteDialogCloseButton"
+      @close="closeQuote"
+      @keep-focus="keepQuoteDialogFocus"
+    />
   </div>
 </template>
 
@@ -326,6 +303,8 @@ import IllustratedOverviewPanel from './IllustratedOverviewPanel.vue';
 import IllustratedPageTitle from './IllustratedPageTitle.vue';
 import IllustratedPortraitPane from './IllustratedPortraitPane.vue';
 import IllustratedProfilePanel from './IllustratedProfilePanel.vue';
+import IllustratedQuoteDialog from './IllustratedQuoteDialog.vue';
+import IllustratedStoryPanel from './IllustratedStoryPanel.vue';
 import IllustratedTabNav from './IllustratedTabNav.vue';
 
 const props = defineProps<{
@@ -672,128 +651,6 @@ watch(
   border-radius: 16px;
   background: var(--illustrated-shell-background);
   box-shadow: var(--illustrated-shell-shadow);
-}
-
-.illustrated-quote-dialog-backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 20px;
-  background: var(--illustrated-dialog-backdrop);
-  backdrop-filter: blur(9px);
-  -webkit-backdrop-filter: blur(9px);
-}
-
-.illustrated-quote-dialog-theme.illustrated-wrapper {
-  width: min(100%, 560px);
-  max-width: 560px;
-  max-height: 100%;
-  margin: 0;
-  color: #f8f9fa;
-  background: transparent;
-  container-type: normal;
-}
-
-.illustrated-quote-dialog {
-  display: flex;
-  max-height: 100%;
-  flex-direction: column;
-  align-items: center;
-  padding: 30px;
-  overflow: hidden;
-  border: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.58);
-  border-radius: 16px;
-  background:
-    radial-gradient(circle at 50% 0, rgba(var(--illustrated-tier-accent-rgb), 0.16), transparent 20rem),
-    var(--illustrated-bg);
-  box-shadow:
-    0 0 0 1px rgba(var(--illustrated-race-accent-rgb), 0.2),
-    var(--illustrated-dialog-depth-shadow);
-  text-align: center;
-}
-
-.illustrated-quote-dialog-kicker {
-  color: var(--illustrated-tier-accent);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: calc(11px + var(--ci-font-size-adjust, 0px));
-  font-weight: 700;
-  letter-spacing: 0.18em;
-}
-
-.illustrated-quote-dialog h2 {
-  margin: 8px 0 0;
-  color: inherit;
-  font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
-  font-size: calc(clamp(23px, 4cqw, 30px) + var(--ci-font-size-adjust, 0px));
-}
-
-.illustrated-quote-dialog-ornament {
-  display: flex;
-  width: min(46%, 180px);
-  align-items: center;
-  gap: 10px;
-  margin: 18px 0;
-}
-
-.illustrated-quote-dialog-ornament::before,
-.illustrated-quote-dialog-ornament::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(var(--illustrated-tier-accent-rgb), 0.72));
-}
-
-.illustrated-quote-dialog-ornament::after {
-  transform: rotate(180deg);
-}
-
-.illustrated-quote-dialog-ornament i {
-  width: 7px;
-  height: 7px;
-  border: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.9);
-  background: rgba(var(--illustrated-tier-accent-rgb), 0.18);
-  transform: rotate(45deg);
-}
-
-.illustrated-quote-dialog-text {
-  min-height: 0;
-  margin: 0;
-  padding: 0 6px;
-  overflow-y: auto;
-  color: inherit;
-  font-family: 'LXGW WenKai Mono', 'Noto Serif SC', 'Songti SC', serif;
-  font-size: calc(clamp(16px, 3cqw, 19px) + var(--ci-font-size-adjust, 0px));
-  line-height: 1.8;
-  overflow-wrap: anywhere;
-  text-align: left;
-  white-space: pre-wrap;
-  scrollbar-width: thin;
-}
-
-.illustrated-quote-dialog-close {
-  width: 100%;
-  min-height: 46px;
-  margin-top: 24px;
-  border: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.66);
-  border-radius: 9px;
-  background: rgba(var(--illustrated-tier-accent-rgb), 0.14);
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 700;
-  touch-action: manipulation;
-}
-
-.illustrated-quote-dialog-close:hover {
-  background: rgba(var(--illustrated-tier-accent-rgb), 0.22);
-}
-
-.illustrated-quote-dialog-close:focus-visible {
-  outline: 2px solid var(--illustrated-tier-accent);
-  outline-offset: 3px;
 }
 
 .illustrated-data-pane {
@@ -1145,29 +1002,6 @@ watch(
   gap: 18px;
 }
 
-.illustrated-story-block {
-  padding: 28px 36px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background: radial-gradient(ellipse at center, rgba(30, 34, 42, 0.4) 0%, rgba(10, 12, 16, 0.8) 100%);
-}
-
-.illustrated-story-block h3 {
-  margin: 0 0 16px;
-  color: var(--illustrated-tier-accent);
-  font-family: 'Noto Serif SC', 'SimSun', serif;
-  font-size: calc(22px + var(--ci-font-size-adjust, 0px));
-  font-weight: 700;
-  text-align: center;
-  text-shadow: 0 0 12px rgba(var(--illustrated-tier-accent-rgb), 0.26);
-}
-
-.illustrated-story-block p {
-  margin: 0;
-  color: #e2e8f0;
-  line-height: 1.8;
-  white-space: pre-line;
-}
-
 .illustrated-story-link-block {
   display: grid;
   gap: 22px;
@@ -1497,29 +1331,6 @@ watch(
   }
 
   @include illustrated-mobile-content;
-
-  .illustrated-quote-dialog-backdrop {
-    align-items: flex-end;
-    padding: 12px;
-  }
-
-  .illustrated-quote-dialog-theme.illustrated-wrapper {
-    width: 100%;
-  }
-
-  .illustrated-quote-dialog {
-    padding: 24px 20px 18px;
-    border-radius: 16px 16px 12px 12px;
-  }
-
-  .illustrated-quote-dialog-text {
-    font-size: calc(16px + var(--ci-font-size-adjust, 0px));
-    line-height: 1.72;
-  }
-
-  .illustrated-quote-dialog-close {
-    margin-top: 20px;
-  }
 }
 
 @mixin illustrated-compact-mobile-content {
