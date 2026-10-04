@@ -20,6 +20,14 @@ const portraitPaneSource = await (await import('node:fs/promises')).readFile(
   new URL('../../src/char_info_viewer/components/illustrated/default/IllustratedPortraitPane.vue', import.meta.url),
   'utf8',
 );
+const profilePanelSource = await (await import('node:fs/promises')).readFile(
+  new URL('../../src/char_info_viewer/components/illustrated/default/IllustratedProfilePanel.vue', import.meta.url),
+  'utf8',
+);
+const characterPanelSource = await (await import('node:fs/promises')).readFile(
+  new URL('../../src/char_info_viewer/components/illustrated/default/IllustratedCharacterPanel.vue', import.meta.url),
+  'utf8',
+);
 const typesSource = await (await import('node:fs/promises')).readFile(
   new URL('../../src/char_info_viewer/components/illustrated/types.ts', import.meta.url),
   'utf8',
@@ -129,6 +137,82 @@ test('ItemCard 仍是一个 renderer + variant，不按 tab 分裂', () => {
   assert.ok(sheetSource.includes(`:variant="specialNpc ? 'holding' : 'item'"`));
   assert.ok(sheetSource.includes('variant="status"'));
   assert.ok(!/SkillItemCard|EquipmentItemCard|InventoryItemCard|StatusItemCard/.test(sheetSource));
+});
+
+/**
+ * Seam invariant：default renderer 树内不得存在绕过 seam 的 nested direct usage。
+ *
+ * 这比「某个文件恰好出现 N 次」可靠——它约束的是结构性质：只有 DefaultSheet 持有
+ * 三份 default import，nested child 一律经 prop 接收已解析模块。
+ */
+const defaultDirSources = {
+  'IllustratedDefaultSheet.vue': sheetSource,
+  'IllustratedPortraitPane.vue': portraitPaneSource,
+  'IllustratedProfilePanel.vue': profilePanelSource,
+  'IllustratedCharacterPanel.vue': characterPanelSource,
+};
+
+test('只有 DefaultSheet 持有 header / overview / itemCard 的 default import', () => {
+  for (const [name, source] of Object.entries(defaultDirSources)) {
+    const imports = /import Illustrated(Header|OverviewPanel|ItemCard) from '.\/[^']+'/.test(source);
+    assert.equal(imports, name === 'IllustratedDefaultSheet.vue', `${name} 的 default import 不合预期`);
+  }
+});
+
+test('nested child 不再直接渲染 header / overview / itemCard', () => {
+  // 这三个是「可能被 override 的模块」；PageTitle / Story / Quote / Divinity 不在 seam 内。
+  for (const [name, source] of Object.entries(defaultDirSources)) {
+    if (name === 'IllustratedDefaultSheet.vue') continue;
+    for (const tag of ['IllustratedHeader', 'IllustratedOverviewPanel', 'IllustratedItemCard']) {
+      assert.ok(
+        !new RegExp(`<${tag}[\\s/>]`).test(source),
+        `${name} 仍直接渲染 <${tag}>，绕过 override seam`,
+      );
+    }
+  }
+});
+
+test('header override 同时流入默认 Portrait 的移动端 header', () => {
+  assert.match(
+    portraitPaneSource,
+    /<component\s+:is="headerModule"[\s\S]*?:vm="vm"\s+compact\s*\/>/,
+    '默认 Portrait 必须用上层解析出的 headerModule 渲染 compact header',
+  );
+  assert.match(sheetSource, /:is="portraitModule"[\s\S]*?:header-module="headerModule"/);
+  assert.match(portraitPaneSource, /headerModule: Component;/, 'headerModule 必须是 prop 而非内部决定');
+});
+
+test('overview override 同时流入 ProfilePanel', () => {
+  assert.match(profilePanelSource, /<component\s+:is="overviewModule"/);
+  assert.match(profilePanelSource, /overviewModule: Component;/);
+  assert.match(sheetSource, /<IllustratedProfilePanel[\s\S]*?:overview-module="overviewModule"/);
+});
+
+test('itemCard override 同时流入 CharacterPanel 的 status cards', () => {
+  assert.match(characterPanelSource, /<component\s+:is="itemCardModule"/);
+  assert.match(characterPanelSource, /itemCardModule: Component;/);
+  assert.match(sheetSource, /<IllustratedCharacterPanel[\s\S]*?:item-card-module="itemCardModule"/);
+});
+
+test('三个 nested module prop 都是 required，fallback 只有 DefaultSheet 一个 owner', () => {
+  // required（不是 `?`）保证 child 不需要自己再写第二套 fallback。
+  assert.match(portraitPaneSource, /^\s+headerModule: Component;$/m);
+  assert.match(profilePanelSource, /^\s+overviewModule: Component;$/m);
+  assert.match(characterPanelSource, /^\s+itemCardModule: Component;$/m);
+  for (const [name, source] of Object.entries(defaultDirSources)) {
+    if (name === 'IllustratedDefaultSheet.vue') continue;
+    assert.ok(
+      !/headerModule\?|overviewModule\?|itemCardModule\?/.test(source),
+      `${name} 不该提供自己的 optional fallback`,
+    );
+  }
+});
+
+test('没有引入 registry / provide-inject / renderer context / slot system', () => {
+  const all = Object.values(defaultDirSources).join('\n');
+  assert.ok(!/provide\s*\(|inject\s*\(/.test(all), '不得用 provide/inject 传递已解析模块');
+  assert.ok(!/RendererContext|ModuleRegistry|moduleRegistry/.test(all));
+  assert.ok(!/<slot\b/.test(all), '不得用 slot 实现可替换性');
 });
 
 test('overrides 是可选 prop，默认路径不传', () => {

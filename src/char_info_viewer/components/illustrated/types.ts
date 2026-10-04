@@ -58,9 +58,12 @@ export type IllustratedPortraitModuleHandle = {
  * - **header** — props `vm`, `compact?`；emit `layoutChange`
  * - **overview** — props `attributes`, `resourceBoxes`, `entranceQuoteText?`；
  *   emits `toggleAttributeFormula(key)`, `openEntranceQuote`
- * - **portrait** — props `vm`, `portrait`, `isOverviewTab`, `forceMobileLayout`；
- *   emits `fallbackToDefault`, `openEntranceQuote(event)`；
- *   并须 `defineExpose({ captureCurrentFrame })`（见 `IllustratedPortraitModuleHandle`）
+ * - **portrait** — props `vm`, `portrait`, `isOverviewTab`, `forceMobileLayout`,
+ *   `headerModule`；emits `fallbackToDefault`, `openEntranceQuote(event)`；
+ *   并须 `defineExpose({ captureCurrentFrame })`（见 `IllustratedPortraitModuleHandle`）。
+ *   `headerModule` 是**上层已解析好的** header renderer：custom portrait 可以选择消费
+ *   也可以忽略，默认 Portrait 用它渲染移动端 compact header。这样 `overrides.header`
+ *   才是 renderer-wide 的，而不是只换掉桌面那一处。
  * - **itemCard** — props `item`, `showCost?`, `variant?`
  * - **navigation** — props `tabs`, `activeTab`, `savePhase`, `showImportAction`,
  *   `forceMobileLayout?`, `sideRail?`；emits `setTab(tab)`, `toggleImportMenu`
@@ -70,7 +73,7 @@ export type IllustratedRendererOverrides = {
   header?: Component;
   /** 首页属性 / 资源 / 登场台词面板。props: `attributes`, `resourceBoxes`, `entranceQuoteText?`。 */
   overview?: Component;
-  /** 立绘面板。props: `vm`, `portrait`, `isOverviewTab`, `forceMobileLayout`；须 expose `captureCurrentFrame`。 */
+  /** 立绘面板。props: `vm`, `portrait`, `isOverviewTab`, `forceMobileLayout`, `headerModule`；须 expose `captureCurrentFrame`。 */
   portrait?: Component;
   /** 技能 / 装备 / 背包 / 状态 / 持有共用的一张卡，靠 `variant` 区分密度。 */
   itemCard?: Component;

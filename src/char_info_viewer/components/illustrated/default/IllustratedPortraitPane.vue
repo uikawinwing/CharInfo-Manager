@@ -61,7 +61,7 @@
         <span class="illustrated-quote-expand-cue" aria-hidden="true">↗</span>
       </button>
       <div class="illustrated-mobile-header-overlay">
-        <IllustratedHeader :vm="vm" compact />
+        <component :is="headerModule" :vm="vm" compact />
       </div>
     </div>
   </aside>
@@ -70,21 +70,28 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
+import type { Component } from 'vue';
+
 import type { CharacterViewModel } from '../../../services/characterViewModel';
 import type { IllustratedPortraitFrame } from '../types';
 import type { IllustratedPortraitController } from '../core/useIllustratedPortrait';
-import IllustratedHeader from './IllustratedHeader.vue';
 
 /**
  * 默认立绘面板：只负责「怎么画」，行为全部来自 core 的 portrait controller。
  * 移动端顶部姓名 / 等级条样式由父级 renderer 通过 `:deep()` 覆盖，因此本组件根元素
  * 必须保持 `position: relative` 且不创建新的层叠上下文。
+ *
+ * 移动端 compact header 用的是**父级已解析好的** `headerModule`，本组件不自己
+ * 决定渲染哪个 header——否则 `overrides.header` 只换掉桌面 header，手机端仍是默认。
+ * fallback 只有一个 owner：上层的 `IllustratedDefaultSheet`。
  */
 const props = defineProps<{
   vm: CharacterViewModel;
   portrait: IllustratedPortraitController;
   isOverviewTab: boolean;
   forceMobileLayout: boolean;
+  /** 上层已解析的 header renderer（override 或默认）。required：唯一 fallback owner 在上层。 */
+  headerModule: Component;
 }>();
 
 defineEmits<{

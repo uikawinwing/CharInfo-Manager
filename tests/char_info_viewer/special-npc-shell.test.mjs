@@ -157,7 +157,7 @@ test('立绘角色卡 手机首页将台词与资料直接叠在立绘渐变上�
   // 手机首页叠层已随立绘视觉一起迁入 PortraitPane，父级只保留跨组件覆盖。
   assert.match(portraitPane, /class="illustrated-mobile-overview-overlay"/);
   assert.match(portraitPane, /class="illustrated-mobile-entrance-quote"/);
-  assert.match(portraitPane, /<IllustratedHeader :vm="vm" compact \/>/);
+  assert.match(portraitPane, /<component :is="headerModule" :vm="vm" compact \/>/);
   assert.match(
     sheet,
     /:deep\(\.illustrated-mobile-header-overlay\s*\n\s*\.illustrated-name:not\(\.illustrated-name-measure\)\)\s*\{[\s\S]*?order:\s*1/,

@@ -39,6 +39,7 @@
         :portrait="portrait"
         :is-overview-tab="isOverviewTab"
         :force-mobile-layout="forceMobileLayout"
+        :header-module="headerModule"
         @fallback-to-default="$emit('fallbackToDefault')"
         @open-entrance-quote="openQuote"
       />
@@ -98,6 +99,7 @@
               :resource-boxes="vm.resourceBoxes"
               :show-stats="!specialNpc"
               :backstory-text="profileFallbackBackstoryText"
+              :overview-module="overviewModule"
               @toggle-attribute-formula="$emit('toggleAttributeFormula', $event)"
             />
 
@@ -248,6 +250,7 @@
             :attributes="attributes"
             :resource-boxes="vm.resourceBoxes"
             :status-effects="vm.statusEffects"
+            :item-card-module="itemCardModule"
           />
 
           <IllustratedStoryPanel v-else :text="vm.backstoryText" />

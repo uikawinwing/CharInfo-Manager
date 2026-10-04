@@ -43,7 +43,8 @@
 
     <section v-if="statusEffects.length > 0" class="illustrated-panel-statuses">
       <h3>状态</h3>
-      <IllustratedItemCard
+      <component
+        :is="itemCardModule"
         v-for="(status, index) in statusEffects"
         :key="`${status.名称 ?? 'status'}-${index}`"
         :item="status"
@@ -56,15 +57,23 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import type { Component } from 'vue';
+
 import type { CharacterViewModel, ItemObject, ResourceBox } from '../../../services/characterViewModel';
-import IllustratedItemCard from './IllustratedItemCard.vue';
 import type { AttributeView } from '../types';
 
+/**
+ * 角色面板。状态效果卡用的是**父级已解析好的** `itemCardModule`，本组件不自己
+ * 决定渲染哪张卡——否则 `overrides.itemCard` 换掉技能/持有/背包，却换不掉这里的
+ * status cards。fallback 只有一个 owner：上层的 `IllustratedDefaultSheet`。
+ */
 const props = defineProps<{
   vm: CharacterViewModel;
   attributes: AttributeView[];
   resourceBoxes: ResourceBox[];
   statusEffects: ItemObject[];
+  /** 上层已解析的 item card renderer（override 或默认）。required：唯一 fallback owner 在上层。 */
+  itemCardModule: Component;
 }>();
 
 const radarGrid = [0.25, 0.5, 0.75, 1];

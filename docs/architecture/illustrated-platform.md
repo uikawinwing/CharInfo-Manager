@@ -229,7 +229,37 @@ export type IllustratedPortraitModuleHandle = {
 
 默认 `IllustratedPortraitPane.captureCurrentFrame()` 返回同一个 `IllustratedPortraitFrame`。父级只问「现在显示的是哪一帧」，不关心媒体是 `<img>` 还是 `<video>`。
 
-#### 五个模块的 contract
+#### seam 必须覆盖整棵 default renderer 树，不只是顶层调用点
+
+三个 default child 内部还会**再渲染**另两个可替换模块。如果它们自己 direct-import，override 就只换掉顶层那一处：
+
+```text
+default/IllustratedPortraitPane.vue     → 内部渲染 header
+default/IllustratedProfilePanel.vue      → 内部渲染 overview
+default/IllustratedCharacterPanel.vue    → 内部渲染 itemCard
+```
+
+修法不是 registry / provide-inject / renderer context / slot，而是**把已解析的模块显式向下传**：
+
+```text
+DefaultSheet ──:header-module──▶  PortraitPane
+DefaultSheet ──:overview-module─▶  ProfilePanel
+DefaultSheet ──:item-card-module▶  CharacterPanel
+```
+
+三个 prop 都是 **required**（不是 `?`）：child 不需要自己再写第二套 fallback，**fallback 的唯一 owner 是上层 `IllustratedDefaultSheet`**。
+
+改完的效果：`overrides.header` 同时换掉桌面 header 与手机 portrait overlay 的 compact header；`overrides.itemCard` 同时换掉技能/装备/背包/持有/状态**以及**角色面板里的 status cards。
+
+**维护时要守的 seam invariant**（比「某文件出现 N 次」可靠，约束的是结构性质）：
+
+- 只有 `IllustratedDefaultSheet.vue` 持有 `IllustratedHeader` / `IllustratedOverviewPanel` / `IllustratedItemCard` 的 default import。
+- 其它 default child 的模板里不得出现这三个标签。
+- 这三个 module prop 必须 required。
+
+`Portrait` 的 override contract 注明：custom portrait 会收到已解析好的 `headerModule`，**可以选择消费也可以忽略**；默认 Portrait 用它渲染移动端 compact header。
+
+
 
 | 模块 | props | emits | expose |
 | --- | --- | --- | --- |
@@ -252,6 +282,8 @@ save phase                                                 → viewer core / run
 ```
 
 不允许父组件持一个 ref、子组件再复制一个、再用 watch 互相同步。这是 Vue 史山最常见的来源。
+
+已解析的 module 向下传**不算**这种反模式：它不是「父持一份、子复制一份、watch 互同步」，而是单一 owner 向下分发同一个解析结果。真正的判据是**同一个可变状态有没有第二个 owner**。
 
 Renderer 只接收 `ViewModel` / `Controller` / module props，不在 UI 组件里重新解析 YAML / Worldbook / MVU。
 
@@ -353,7 +385,7 @@ identity = at-rule ancestry  >>  selector  {  排序后的 declarations  }
 
 这套比对能发现源码正则测试完全看不到的「规则被搬到组件外导致 scope 不匹配」。行为部分则需要用真实 runtime 挂载断言——`scoped`、`_unref` 这类编译期与运行期行为，源码正则和 transpile-only 构建都抓不到。
 
-**当前测试数是 373**（357 基线 + Phase 4 的 5 条 + Phase 5 的 11 条 override 契约）。基线 357 不是回归：`c63a883`（dev）删除了锁定立绘审美实现细节的源码正则测试，属于有意清理。判断测试是否丢失，要比对**测试清单**而不是总数——本分支相对 `dev` 只多出 seam 断言，没有删除任何 dev 侧测试。
+**当前测试数是 380**（357 基线 + Phase 4 的 5 条 + Phase 5 的 18 条 override / seam 契约）。基线 357 不是回归：`c63a883`（dev）删除了锁定立绘审美实现细节的源码正则测试，属于有意清理。判断测试是否丢失，要比对**测试清单**而不是总数——本分支相对 `dev` 只多出 seam 断言，没有删除任何 dev 侧测试。
 
 ### 搬迁中确认的既有问题（尚未修，不要在 Phase 5 顺手改）
 

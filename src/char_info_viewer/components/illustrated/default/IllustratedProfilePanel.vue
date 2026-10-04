@@ -1,6 +1,7 @@
 <template>
   <section class="illustrated-info-grid" :class="{ 'is-compact-profile': !showStats }">
-    <IllustratedOverviewPanel
+    <component
+      :is="overviewModule"
       v-if="showStats"
       class="illustrated-mobile-profile-stats"
       :attributes="attributes"
@@ -26,10 +27,16 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import type { Component } from 'vue';
+
 import type { CharacterViewModel, ResourceBox } from '../../../services/characterViewModel';
-import IllustratedOverviewPanel from './IllustratedOverviewPanel.vue';
 import type { AttributeView } from '../types';
 
+/**
+ * 档案面板。手机首页的属性统计块用的是**父级已解析好的** `overviewModule`，
+ * 本组件不自己决定渲染哪个 overview——否则 `overrides.overview` 只换掉首页，
+ * 档案页仍是默认。fallback 只有一个 owner：上层的 `IllustratedDefaultSheet`。
+ */
 const props = withDefaults(
   defineProps<{
     vm: CharacterViewModel;
@@ -37,6 +44,8 @@ const props = withDefaults(
     resourceBoxes: ResourceBox[];
     showStats?: boolean;
     backstoryText?: string;
+    /** 上层已解析的 overview renderer（override 或默认）。required：唯一 fallback owner 在上层。 */
+    overviewModule: Component;
   }>(),
   {
     showStats: true,
