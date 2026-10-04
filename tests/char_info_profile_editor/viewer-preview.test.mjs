@@ -4,7 +4,13 @@ import { readFile } from 'node:fs/promises';
 import { load } from 'js-yaml';
 
 import { createEmptyProfile } from '../../src/char_info_shared/characterProfile.ts';
-import { buildProfileEditorViewerPreviewData, buildProfileEditorViewerPreviewYaml, buildProfileEditorViewerVisualOverride, normalizeProfileEditorViewerPastedText, resolveProfileEditorViewerPreviewYaml } from '../../src/char_info_profile_editor/viewerPreview.ts';
+import {
+  buildProfileEditorViewerPreviewData,
+  buildProfileEditorViewerPreviewYaml,
+  buildProfileEditorViewerVisualOverride,
+  normalizeProfileEditorViewerPastedText,
+  resolveProfileEditorViewerPreviewYaml,
+} from '../../src/char_info_profile_editor/viewerPreview.ts';
 
 const profile = {
   ...createEmptyProfile('千爻'),
@@ -60,10 +66,12 @@ test('角色卡预览 预览直接使用未保存 draft 的颜色、台词和完
   assert.equal(override.config.custom_tiercolor, '#CC22DD');
   assert.equal(override.config.登场台词, '这是尚未保存的草稿台词。');
   assert.equal(override.config.gallery_pack_url, 'https://img.example.test/api/public/gallery/uika/qianyao');
-  assert.deepEqual(override.config.gallery, [{
-    title: '主立绘',
-    sources: ['https://example.com/url0.png', 'https://example.com/url1.png'],
-  }]);
+  assert.deepEqual(override.config.gallery, [
+    {
+      title: '主立绘',
+      sources: ['https://example.com/url0.png', 'https://example.com/url1.png'],
+    },
+  ]);
   assert.deepEqual(override.config.metadata, profile.metadata);
 });
 
@@ -80,32 +88,62 @@ test('角色卡预览 预览可直接使用完整 char_info 或纯 YAML 临时�
 });
 
 test('角色档案编辑器挂载真实 Viewer 作为只读草稿预览，并隔离聊天视觉变量', async () => {
-  const profileEditorSource = await readFile(new URL('../../src/char_info_profile_editor/App.vue', import.meta.url), 'utf8');
+  const profileEditorSource = await readFile(
+    new URL('../../src/char_info_profile_editor/App.vue', import.meta.url),
+    'utf8',
+  );
   const viewerSource = await readFile(new URL('../../src/char_info_viewer/App.vue', import.meta.url), 'utf8');
 
   assert.match(profileEditorSource, /import ViewerApp from '\.\.\/char_info_viewer\/App\.vue'/);
   assert.match(profileEditorSource, /<ViewerApp[\s\S]*embedded[\s\S]*read-only[\s\S]*preview-mode/);
-  assert.match(profileEditorSource, /:preview-data="viewerPreviewSource === 'sample' \? viewerPreviewSampleData : undefined"/);
+  assert.match(
+    profileEditorSource,
+    /:preview-data="viewerPreviewSource === 'sample' \? viewerPreviewSampleData : undefined"/,
+  );
   assert.match(profileEditorSource, /:visual-config-override="viewerPreviewVisualOverride"/);
   assert.match(profileEditorSource, /v-model="viewerPreviewPastedText"/);
   assert.match(profileEditorSource, /完整 &lt;char_info&gt; 或纯 YAML/);
   assert.match(profileEditorSource, /resolveProfileEditorViewerPreviewYaml/);
   assert.match(viewerSource, /props\.previewMode[\s\S]*resolveRemoteGalleryConfig[\s\S]*resolveCharacterVisualPreview/);
   assert.match(viewerSource, /previewData\?: CharacterData/);
-  assert.match(viewerSource, /\[\(\) => props\.yamlText, \(\) => props\.previewData, \(\) => props\.visualConfigOverride\]/);
-  assert.match(viewerSource, /if \(props\.previewMode && props\.previewData\)[\s\S]*previewBaseData = props\.previewData;[\s\S]*applyParsedCharacterData/);
+  assert.match(
+    viewerSource,
+    /\[\(\) => props\.yamlText, \(\) => props\.previewData, \(\) => props\.visualConfigOverride\]/,
+  );
+  assert.match(
+    viewerSource,
+    /if \(props\.previewMode && props\.previewData\)[\s\S]*applyParsedCharacterData\(props\.previewData, 'strict', \[\]\)/,
+  );
   assert.match(profileEditorSource, /updateViewerPreviewScale/);
   assert.match(profileEditorSource, /viewerPreviewMobileLayout/);
-  assert.match(profileEditorSource, /if \(mobileLayout\) \{[\s\S]*viewerPreviewScale\.value = 1;[\s\S]*viewerPreviewCanvasWidth\.value = availableWidth;[\s\S]*return;/);
+  assert.match(
+    profileEditorSource,
+    /if \(mobileLayout\) \{[\s\S]*viewerPreviewScale\.value = 1;[\s\S]*viewerPreviewCanvasWidth\.value = availableWidth;[\s\S]*return;/,
+  );
   assert.match(profileEditorSource, /viewerPreviewMobileLayout\.value[\s\S]*\? \{ width: '100%', transform: 'none' \}/);
   assert.match(profileEditorSource, /示例资料/);
   assert.match(profileEditorSource, /粘贴自己的 CharInfo/);
   assert.match(profileEditorSource, /粘贴完整 &lt;char_info&gt; 或纯 YAML 后，将在这里显示真实角色卡预览/);
   assert.doesNotMatch(profileEditorSource, /viewerPreviewScaleMode/);
   assert.doesNotMatch(profileEditorSource, /原始大小 100%|显示比例/);
-  assert.match(profileEditorSource, /\.profile-editor-viewer-preview\s*\{[\s\S]*position:\s*fixed;[\s\S]*width:\s*min\(1400px,[\s\S]*height:\s*calc\(100dvh - 24px\)/);
-  assert.match(profileEditorSource, /\.profile-editor-viewer-preview-canvas\s*\{[\s\S]*width:\s*1200px;[\s\S]*transform-origin:\s*top left;/);
-  assert.match(profileEditorSource, /\.profile-editor-viewer-preview-stage\s*\{[\s\S]*overflow:\s*hidden;[\s\S]*align-items:\s*center;[\s\S]*justify-content:\s*center;/);
-  assert.match(profileEditorSource, /@media \(max-width: 900px\)[\s\S]*\.profile-editor-viewer-preview\s*\{[\s\S]*inset:\s*0;[\s\S]*width:\s*100%;[\s\S]*height:\s*100%;[\s\S]*max-width:\s*none;[\s\S]*max-height:\s*none;[\s\S]*transform:\s*none;/);
-  assert.match(profileEditorSource, /@media \(max-width: 900px\)[\s\S]*\.profile-editor-viewer-preview-stage\s*\{[\s\S]*overflow-x:\s*hidden;[\s\S]*overflow-y:\s*auto;[\s\S]*align-items:\s*flex-start;[\s\S]*justify-content:\s*flex-start;/);
+  assert.match(
+    profileEditorSource,
+    /\.profile-editor-viewer-preview\s*\{[\s\S]*position:\s*fixed;[\s\S]*width:\s*min\(1400px,[\s\S]*height:\s*calc\(100dvh - 24px\)/,
+  );
+  assert.match(
+    profileEditorSource,
+    /\.profile-editor-viewer-preview-canvas\s*\{[\s\S]*width:\s*1200px;[\s\S]*transform-origin:\s*top left;/,
+  );
+  assert.match(
+    profileEditorSource,
+    /\.profile-editor-viewer-preview-stage\s*\{[\s\S]*overflow:\s*hidden;[\s\S]*align-items:\s*center;[\s\S]*justify-content:\s*center;/,
+  );
+  assert.match(
+    profileEditorSource,
+    /@media \(max-width: 900px\)[\s\S]*\.profile-editor-viewer-preview\s*\{[\s\S]*inset:\s*0;[\s\S]*width:\s*100%;[\s\S]*height:\s*100%;[\s\S]*max-width:\s*none;[\s\S]*max-height:\s*none;[\s\S]*transform:\s*none;/,
+  );
+  assert.match(
+    profileEditorSource,
+    /@media \(max-width: 900px\)[\s\S]*\.profile-editor-viewer-preview-stage\s*\{[\s\S]*overflow-x:\s*hidden;[\s\S]*overflow-y:\s*auto;[\s\S]*align-items:\s*flex-start;[\s\S]*justify-content:\s*flex-start;/,
+  );
 });

@@ -98,7 +98,7 @@
         @fallback-to-default="useIllustratedFallback"
       />
 
-      <div v-else :class="[wrapperClasses, { 'portrait-mode': isPortraitLayout, 'compact-card-active': isCardCollapsed }]">
+      <div v-else :class="[wrapperClasses, { 'compact-card-active': isCardCollapsed }]">
         <div class="frame-layer" :class="{ show: tierNumber >= 5 }" aria-hidden="true">
           <svg class="frame-svg frame-top" viewBox="0 0 400 100" preserveAspectRatio="none">
             <path d="M 5,100 A 195,80 0 0,1 395,100" />
@@ -141,7 +141,11 @@
 
           <span class="compact-card-data" :class="{ 'no-resources': resourceBoxes.length === 0 }">
             <span v-if="resourceBoxes.length > 0" class="compact-resources" aria-label="资源值">
-              <span v-for="resource in resourceBoxes" :key="`compact-resource-${resource.key}`" class="compact-resource">
+              <span
+                v-for="resource in resourceBoxes"
+                :key="`compact-resource-${resource.key}`"
+                class="compact-resource"
+              >
                 <span class="compact-resource-label">{{ resource.label }}</span>
                 <span class="compact-resource-value">{{ resource.value }}</span>
               </span>
@@ -159,7 +163,9 @@
                   <svg class="compact-attribute-icon" viewBox="0 0 24 24" focusable="false">
                     <path :d="compactAttributeIconPathMap[attr.key] || compactAttributeIconPathMap.精神" />
                   </svg>
-                  <span class="compact-attribute-name">{{ compactAttributeAbbreviationMap[attr.key] || attr.short }}</span>
+                  <span class="compact-attribute-name">{{
+                    compactAttributeAbbreviationMap[attr.key] || attr.short
+                  }}</span>
                 </span>
                 <span class="compact-attribute-value">{{ attr.total }}</span>
               </span>
@@ -168,7 +174,7 @@
         </button>
 
         <div v-if="!isCardCollapsed" class="sheet-content-wrapper">
-          <header v-if="!isPortraitLayout" class="sheet-header">
+          <header class="sheet-header">
             <button
               v-if="canUseCompactCard"
               class="card-collapse-button"
@@ -192,71 +198,40 @@
             </div>
           </header>
 
-          <div class="sheet-body" :class="{ 'portrait-body': isPortraitLayout, 'is-detail-tab': isPortraitDetailTab }">
-            <section v-if="isPortraitLayout" class="portrait-main-panel">
-              <div class="portrait-image-shell">
-                <img class="portrait-image" :src="portraitImageUrl" :alt="nameText" referrerpolicy="no-referrer" />
+          <div class="sheet-body">
+            <div class="attributes-grid">
+              <div
+                v-for="attr in attributes"
+                :key="attr.key"
+                class="attribute-item"
+                :class="{
+                  'show-formula': attr.showFormula,
+                  'has-formula': !!attr.formula,
+                  'has-warning': attr.isTotalAbnormal || attr.hasFormulaWarning,
+                }"
+                @click="toggleAttributeFormula(attr.key)"
+              >
+                <span class="attribute-name">{{ attr.short }}</span>
+                <span class="attribute-total" :class="{ 'is-warning': attr.isTotalAbnormal }">{{ attr.total }}</span>
+                <span v-if="attr.formula" class="attribute-formula">
+                  <template v-for="part in attr.formulaParts" :key="`${attr.key}-${part.index}-${part.text}`">
+                    <span v-if="part.index > 0" class="formula-part-separator">+</span>
+                    <span class="formula-part" :class="{ 'formula-part-warning': part.isWarning }">{{
+                      part.text
+                    }}</span>
+                  </template>
+                </span>
               </div>
-              <div class="portrait-info-panel">
-                <span class="level-badge portrait-level-badge">Lv.{{ levelText }}</span>
-                <h1 class="char-name portrait-name">{{ nameText }}</h1>
-                <div class="char-meta-row portrait-meta-row">
-                  <span>{{ raceText }}</span>
-                  <span class="meta-separator">◆</span>
-                  <span>{{ identityText }}</span>
-                  <span class="meta-separator">◆</span>
-                  <span>{{ classText }}</span>
-                  <span class="meta-separator">◆</span>
-                  <span class="tier-name">{{ tierText }}</span>
-                </div>
-                <div class="portrait-compact-stats">
-                  <span v-for="attr in attributes" :key="`portrait-${attr.key}`">
-                    {{ attr.short }} {{ attr.total }}
-                  </span>
-                </div>
-                <div v-if="resourceBoxes.length > 0" class="portrait-compact-resources">
-                  <span v-for="resource in resourceBoxes" :key="resource.key">
-                    {{ resource.label }} {{ resource.value }}
-                  </span>
-                </div>
-              </div>
-            </section>
+            </div>
 
-            <template v-else>
-              <div class="attributes-grid">
-                <div
-                  v-for="attr in attributes"
-                  :key="attr.key"
-                  class="attribute-item"
-                  :class="{
-                    'show-formula': attr.showFormula,
-                    'has-formula': !!attr.formula,
-                    'has-warning': attr.isTotalAbnormal || attr.hasFormulaWarning,
-                  }"
-                  @click="toggleAttributeFormula(attr.key)"
-                >
-                  <span class="attribute-name">{{ attr.short }}</span>
-                  <span class="attribute-total" :class="{ 'is-warning': attr.isTotalAbnormal }">{{ attr.total }}</span>
-                  <span v-if="attr.formula" class="attribute-formula">
-                    <template v-for="part in attr.formulaParts" :key="`${attr.key}-${part.index}-${part.text}`">
-                      <span v-if="part.index > 0" class="formula-part-separator">+</span>
-                      <span class="formula-part" :class="{ 'formula-part-warning': part.isWarning }">{{
-                        part.text
-                      }}</span>
-                    </template>
-                  </span>
-                </div>
+            <div v-if="resourceBoxes.length > 0" class="resource-grid">
+              <div v-for="resource in resourceBoxes" :key="resource.key" class="resource-item">
+                <span class="resource-name">{{ resource.label }}</span>
+                <span class="resource-value">{{ resource.value }}</span>
               </div>
+            </div>
 
-              <div v-if="resourceBoxes.length > 0" class="resource-grid">
-                <div v-for="resource in resourceBoxes" :key="resource.key" class="resource-item">
-                  <span class="resource-name">{{ resource.label }}</span>
-                  <span class="resource-value">{{ resource.value }}</span>
-                </div>
-              </div>
-            </template>
-
-            <div :class="isPortraitLayout ? 'portrait-tab-nav' : 'tab-nav'">
+            <div class="tab-nav">
               <button
                 v-for="tab in visibleTabs"
                 :key="tab.key"
@@ -268,7 +243,7 @@
               </button>
             </div>
 
-            <section v-if="!isPortraitLayout || activeTab !== 'profile'" class="tab-content">
+            <section class="tab-content">
               <template v-if="activeTab === 'profile'">
                 <div class="profile-grid">
                   <div class="profile-row">
@@ -477,7 +452,9 @@
                         :key="`passive-${entry.name}-${entry.content}`"
                         class="law-effect"
                       >
-                        <strong class="law-effect-title">{{ entry.fallback ? '【被动】' : `【被动】${entry.name}` }}</strong>
+                        <strong class="law-effect-title">{{
+                          entry.fallback ? '【被动】' : `【被动】${entry.name}`
+                        }}</strong>
                         <p>{{ entry.content }}</p>
                       </div>
                       <div
@@ -485,7 +462,9 @@
                         :key="`active-${entry.name}-${entry.content}`"
                         class="law-effect"
                       >
-                        <strong class="law-effect-title">{{ entry.fallback ? '【主动】' : `【主动】${entry.name}` }}</strong>
+                        <strong class="law-effect-title">{{
+                          entry.fallback ? '【主动】' : `【主动】${entry.name}`
+                        }}</strong>
                         <p>{{ entry.content }}</p>
                       </div>
                       <p v-if="itemDescription(item)" class="law-description">{{ itemDescription(item) }}</p>
@@ -543,7 +522,6 @@
 </template>
 
 <script setup lang="ts">
-import { waitUntil } from 'async-wait-until';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 
 import {
@@ -639,7 +617,6 @@ const props = withDefaults(
 
 const viewerRootRef = ref<HTMLElement | null>(null);
 const sheetData = ref<CharacterData | null>(null);
-const mvuImportData = ref<CharacterData | null>(null);
 const parseError = ref<FriendlyYamlError | null>(null);
 const originalYamlText = ref('');
 const parseMode = ref<'strict' | 'loose'>('strict');
@@ -649,7 +626,6 @@ const looseParsing = ref(false);
 const initializingViewer = ref(true);
 const theme = ref<ThemeResolved | null>(null);
 const activeTab = ref<TabKey>('profile');
-let previewBaseData: CharacterData | null = null;
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const bgLayerRef = ref<HTMLElement | null>(null);
@@ -689,8 +665,7 @@ const defaultParseErrorTips = [
 const parseErrorTips = computed(() => defaultParseErrorTips);
 const looseParseWarning = computed(() =>
   parseMode.value === 'loose'
-    ? parseWarnings.value[0] ||
-      '部分列表、装备、技能或登神长阶结构可能无法完整恢复，导入前请检查内容。'
+    ? parseWarnings.value[0] || '部分列表、装备、技能或登神长阶结构可能无法完整恢复，导入前请检查内容。'
     : '',
 );
 
@@ -714,10 +689,8 @@ const compactAttributeIconPathMap: Record<string, string> = {
   力量: 'M7 9v6M17 9v6M4 10v4M20 10v4M7 12h10',
   敏捷: 'M13 2 6 13h6l-1 9 7-12h-6l1-8',
   体质: 'M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6l-7-3z',
-  智力:
-    'M9 4a3 3 0 0 0-3 3v1a3 3 0 0 0-2 3 3 3 0 0 0 2 3v1a3 3 0 0 0 3 3m6-13a3 3 0 0 1 3 3v1a3 3 0 0 1 2 3 3 3 0 0 1-2 3v1a3 3 0 0 1-3 3M9 4v14M15 4v14M9 8h3M12 14h3',
-  精神:
-    'M12 3l1.2 3.2L16 7.5l-2.8 1.3L12 12l-1.2-3.2L8 7.5l2.8-1.3L12 3zM6 14l.8 2.2L9 17l-2.2.8L6 20l-.8-2.2L3 17l2.2-.8L6 14zM18 13l.7 1.8 1.8.7-1.8.7L18 18l-.7-1.8-1.8-.7 1.8-.7L18 13z',
+  智力: 'M9 4a3 3 0 0 0-3 3v1a3 3 0 0 0-2 3 3 3 0 0 0 2 3v1a3 3 0 0 0 3 3m6-13a3 3 0 0 1 3 3v1a3 3 0 0 1 2 3 3 3 0 0 1-2 3v1a3 3 0 0 1-3 3M9 4v14M15 4v14M9 8h3M12 14h3',
+  精神: 'M12 3l1.2 3.2L16 7.5l-2.8 1.3L12 12l-1.2-3.2L8 7.5l2.8-1.3L12 3zM6 14l.8 2.2L9 17l-2.2.8L6 20l-.8-2.2L3 17l2.2-.8L6 14zM18 13l.7 1.8 1.8.7-1.8.7L18 18l-.7-1.8-1.8-.7 1.8-.7L18 13z',
 };
 
 const tierNumber = computed(() => theme.value?.tier ?? 1);
@@ -770,9 +743,6 @@ function collapseCard(): void {
   manualCollapseState.value = true;
 }
 
-const isPortraitLayout = computed(() => false);
-const isPortraitDetailTab = computed(() => isPortraitLayout.value && activeTab.value !== 'profile');
-const portraitImageUrl = computed(() => vm.value?.imageUrl || '');
 const nameText = computed(() => vm.value?.nameText || '未知角色');
 const levelText = computed(() => vm.value?.levelText || '?');
 const raceText = computed(() => vm.value?.raceText || '其他');
@@ -899,16 +869,13 @@ async function initFromYaml() {
 
   originalYamlText.value = yamlText;
   sheetData.value = null;
-  mvuImportData.value = null;
   parseError.value = null;
   parseMode.value = 'strict';
   parseWarnings.value = [];
   theme.value = null;
-  previewBaseData = null;
 
   if (props.previewMode && props.previewData) {
-    previewBaseData = props.previewData;
-    await applyParsedCharacterData(previewBaseData, 'strict', []);
+    await applyParsedCharacterData(props.previewData, 'strict', []);
     nextTick(() => setupParticleEngine());
     return;
   }
@@ -924,26 +891,17 @@ async function initFromYaml() {
     return;
   }
 
-  previewBaseData = parsed.data;
-  await applyParsedCharacterData(previewBaseData, parsed.mode ?? 'strict', parsed.warnings ?? []);
+  await applyParsedCharacterData(parsed.data, parsed.mode ?? 'strict', parsed.warnings ?? []);
 
   nextTick(() => setupParticleEngine());
 }
 
-async function applyParsedCharacterData(
-  data: CharacterData,
-  mode: 'strict' | 'loose',
-  warnings: string[] = [],
-) {
+async function applyParsedCharacterData(data: CharacterData, mode: 'strict' | 'loose', warnings: string[] = []) {
   const previewVisualConfig = props.previewMode
     ? await resolveRemoteGalleryConfig(props.visualConfigOverride?.config)
     : undefined;
   const resolvedData = props.previewMode
-    ? resolveCharacterVisualPreview(
-        data,
-        props.visualConfigOverride?.characterName ?? '',
-        previewVisualConfig,
-      )
+    ? resolveCharacterVisualPreview(data, props.visualConfigOverride?.characterName ?? '', previewVisualConfig)
     : await resolveCharacterVisualConfigWithExtensions(data, getVariables({ type: 'chat' }));
   const hasLegacyInlineImageSyntax = hasDeprecatedVisualSyntax(resolvedData);
   deprecatedVisualSyntaxWarning.value = hasLegacyInlineImageSyntax
@@ -980,8 +938,7 @@ async function tryLooseParse() {
       return;
     }
 
-    previewBaseData = parsed.data;
-    await applyParsedCharacterData(previewBaseData, parsed.mode ?? 'loose', parsed.warnings ?? []);
+    await applyParsedCharacterData(parsed.data, parsed.mode ?? 'loose', parsed.warnings ?? []);
     await nextTick();
     setupParticleEngine();
   } finally {
@@ -1010,7 +967,7 @@ function flashImportButton(temp: string, duration = 1200) {
 }
 
 async function onImportMvu() {
-  const importData = mvuImportData.value || sheetData.value;
+  const importData = sheetData.value;
   if (!importData || saveBusy.value) return;
   importing.value = true;
   closeImportMenu();
@@ -1022,7 +979,9 @@ async function onImportMvu() {
     if (!ok) return;
 
     if (parseMode.value === 'loose') {
-      const looseOk = window.confirm('当前资料由基础资料恢复而来，可能缺少技能、装备或嵌套内容。确认检查无误后再保存？');
+      const looseOk = window.confirm(
+        '当前资料由基础资料恢复而来，可能缺少技能、装备或嵌套内容。确认检查无误后再保存？',
+      );
       if (!looseOk) return;
     }
 
@@ -1063,7 +1022,9 @@ async function onImportWorldbook() {
 
   try {
     if (parseMode.value === 'loose') {
-      const looseOk = window.confirm('当前资料由基础资料恢复而来，原始资料可能仍有格式错误。确认仍要保存到聊天世界书？');
+      const looseOk = window.confirm(
+        '当前资料由基础资料恢复而来，原始资料可能仍有格式错误。确认仍要保存到聊天世界书？',
+      );
       if (!looseOk) return;
     }
 
@@ -1990,123 +1951,6 @@ onBeforeUnmount(() => {
   padding: 20px 30px 90px;
 }
 
-.card-wrapper.portrait-mode {
-  max-width: 1120px;
-}
-
-.portrait-mode .sheet-body {
-  padding: 24px 24px 88px;
-}
-
-.portrait-body {
-  display: grid;
-  grid-template-columns: minmax(320px, 1.08fr) 112px minmax(300px, 0.92fr);
-  gap: 14px;
-  align-items: start;
-}
-
-.portrait-main-panel {
-  min-width: 0;
-}
-
-.portrait-image-shell {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 4 / 5;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid rgba(var(--tier-color-rgb), 0.5);
-  background: rgba(0, 0, 0, 0.28);
-  box-shadow:
-    0 12px 28px rgba(0, 0, 0, 0.46),
-    0 0 22px rgba(var(--tier-color-rgb), 0.16);
-}
-
-.portrait-image {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.portrait-info-panel {
-  margin-top: 10px;
-  padding: 14px;
-  border-radius: 8px;
-  border: 1px solid rgba(78, 255, 151, 0.55);
-  background: linear-gradient(180deg, rgba(6, 45, 34, 0.88) 0%, rgba(5, 31, 32, 0.82) 100%), rgba(4, 30, 28, 0.9);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 0 18px rgba(44, 205, 128, 0.18);
-}
-
-.portrait-level-badge {
-  margin-bottom: 8px;
-}
-
-.portrait-name {
-  margin-bottom: 8px;
-  font-size: calc(2.2rem + var(--ci-font-size-adjust, 0px));
-}
-
-.portrait-meta-row {
-  justify-content: flex-start;
-  font-size: calc(0.86rem + var(--ci-font-size-adjust, 0px));
-}
-
-.portrait-compact-stats,
-.portrait-compact-resources {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-  font-size: calc(0.86rem + var(--ci-font-size-adjust, 0px));
-  color: rgba(245, 255, 250, 0.92);
-}
-
-.portrait-compact-stats span,
-.portrait-compact-resources span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(134, 255, 185, 0.2);
-  background: rgba(0, 0, 0, 0.18);
-}
-
-.portrait-tab-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  position: sticky;
-  top: 12px;
-  min-width: 0;
-}
-
-.portrait-tab-nav .tab-button {
-  flex: 0 0 auto;
-  width: 100%;
-  min-height: 42px;
-  padding: 10px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.22);
-  color: #a8a8a8;
-}
-
-.portrait-tab-nav .tab-button.active {
-  color: var(--race-color);
-  border-color: rgba(var(--race-color-rgb), 0.62);
-  background: rgba(var(--race-color-rgb), 0.12);
-  font-weight: 700;
-}
-
-.portrait-body > .tab-content {
-  min-width: 0;
-  margin: 0;
-}
-
 .attributes-grid {
   display: flex;
   flex-wrap: wrap;
@@ -2642,35 +2486,6 @@ onBeforeUnmount(() => {
     padding: 16px 18px 84px;
   }
 
-  .portrait-mode .sheet-body {
-    padding: 16px 14px 82px;
-  }
-
-  .portrait-body {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .portrait-body.is-detail-tab .portrait-main-panel {
-    display: none;
-  }
-
-  .portrait-tab-nav {
-    position: static;
-    flex-direction: row;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .portrait-tab-nav::-webkit-scrollbar {
-    display: none;
-  }
-
-  .portrait-tab-nav .tab-button {
-    width: auto;
-    min-width: 82px;
-  }
-
   .sheet-header {
     padding: 40px 16px 20px;
   }
@@ -2813,18 +2628,6 @@ onBeforeUnmount(() => {
 
   .sheet-body {
     padding: 12px 10px 80px;
-  }
-
-  .portrait-mode .sheet-body {
-    padding: 10px 10px 78px;
-  }
-
-  .portrait-name {
-    font-size: calc(1.65rem + var(--ci-font-size-adjust, 0px));
-  }
-
-  .portrait-info-panel {
-    padding: 12px;
   }
 
   .attributes-grid {
