@@ -37,6 +37,10 @@
 仅在任务实际涉及 MVU 时读取 MVU Skills。
 制作整张 MVU 角色卡时，同时读取 `mvu-variable-framework` 和 `mvu-character-card`。
 
+架构路由：
+
+- 改动立绘角色卡（内部 `special_npc`）渲染、Illustrated 组件、默认版式或 DX：`src/char_info_viewer/components/illustrated/` 下的一切改动，先读 `docs/architecture/illustrated-platform.md`。
+
 ## 开发原则
 
 - 使用 TypeScript，不新建 JavaScript 脚本。
