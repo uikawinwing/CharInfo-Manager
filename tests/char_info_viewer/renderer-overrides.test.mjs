@@ -12,6 +12,18 @@ const sheetSource = await (await import('node:fs/promises')).readFile(
   new URL('../../src/char_info_viewer/components/illustrated/default/IllustratedDefaultSheet.vue', import.meta.url),
   'utf8',
 );
+const wrapperSource = await (await import('node:fs/promises')).readFile(
+  new URL('../../src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue', import.meta.url),
+  'utf8',
+);
+const portraitPaneSource = await (await import('node:fs/promises')).readFile(
+  new URL('../../src/char_info_viewer/components/illustrated/default/IllustratedPortraitPane.vue', import.meta.url),
+  'utf8',
+);
+const typesSource = await (await import('node:fs/promises')).readFile(
+  new URL('../../src/char_info_viewer/components/illustrated/types.ts', import.meta.url),
+  'utf8',
+);
 
 const { IllustratedRendererOverrides } = await import(
   '../../src/char_info_viewer/components/illustrated/types.ts'
@@ -121,4 +133,65 @@ test('ItemCard 仍是一个 renderer + variant，不按 tab 分裂', () => {
 
 test('overrides 是可选 prop，默认路径不传', () => {
   assert.match(sheetSource, /overrides\?: IllustratedRendererOverrides;/);
+});
+
+test('compatibility wrapper 显式声明 overrides，不依赖 $attrs fallthrough', () => {
+  // 历史 DX 正是通过 IllustratedCharacterSheet 进入；seam 建在隐式 fallthrough 上等于没有 seam。
+  assert.match(wrapperSource, /overrides\?: IllustratedRendererOverrides;/);
+  assert.match(
+    wrapperSource,
+    /import type \{[^}]*IllustratedRendererOverrides[^}]*\} from '\.\/types';/,
+    'wrapper 必须从 platform types 引入 override contract',
+  );
+  // 仍然只用现有的 $props 转发，不新增 adapter 层。
+  assert.match(wrapperSource, /v-bind="\$props"/);
+  assert.ok(
+    !/<template|v-if|v-for|:is=/.test(wrapperSource.replace(/<template>[\s\S]*?<\/template>/, '')),
+    'wrapper 不得新增额外结构或 adapter',
+  );
+});
+
+test('portrait template ref 依赖 capability，不依赖默认组件 instance type', () => {
+  assert.match(
+    sheetSource,
+    /const portraitPaneElement = ref<IllustratedPortraitModuleHandle \| null>\(null\);/,
+  );
+  // 父级不再用 InstanceType<typeof DefaultComponent>，否则 override 一接上类型层就退回默认实现。
+  assert.ok(
+    !/InstanceType<typeof\s+Illustrated/.test(sheetSource),
+    '父级不得把默认组件的 instance type 当作 template ref 类型',
+  );
+  // 默认实现与 contract 共用同一个 return type。
+  assert.match(portraitPaneSource, /function captureCurrentFrame\(\): IllustratedPortraitFrame \| null \{/);
+  assert.match(portraitPaneSource, /import type \{ IllustratedPortraitFrame \} from '\.\.\/types';/);
+});
+
+test('platform contract 定义了窄的 portrait capability', () => {
+  assert.match(
+    typesSource,
+    /export type IllustratedPortraitFrame = \{\s*source: CanvasImageSource;\s*width: number;\s*height: number;\s*\};/,
+  );
+  assert.match(
+    typesSource,
+    /export type IllustratedPortraitModuleHandle = \{\s*captureCurrentFrame\(\): IllustratedPortraitFrame \| null;\s*\};/,
+  );
+});
+
+test('五个模块的 props / emits / expose contract 已在 types.ts 写明', () => {
+  for (const needle of [
+    '`vm`, `compact?`',
+    '`layoutChange`',
+    '`attributes`, `resourceBoxes`, `entranceQuoteText?`',
+    '`toggleAttributeFormula(key)`, `openEntranceQuote`',
+    '`vm`, `portrait`, `isOverviewTab`, `forceMobileLayout`',
+    '`fallbackToDefault`, `openEntranceQuote(event)`',
+    '`item`, `showCost?`, `variant?`',
+    '`tabs`, `activeTab`, `savePhase`, `showImportAction`',
+    '`setTab(tab)`, `toggleImportMenu`',
+  ]) {
+    assert.ok(typesSource.includes(needle), `contract 注释缺少：${needle}`);
+  }
+  // 不得引入 generic type framework / registry。
+  assert.ok(!/interface\s+\w*Registry/.test(typesSource));
+  assert.ok(!/Component<[^>]/.test(typesSource), '保持简单的 Component，不做 Vue generic 化');
 });

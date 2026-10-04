@@ -20,7 +20,7 @@
  */
 import type { CharacterViewModel } from '../../services/characterViewModel';
 import type { ViewerSavePhase } from '../../../char_info_shared/viewerSaveUi';
-import type { AttributeView } from './types';
+import type { AttributeView, IllustratedRendererOverrides } from './types';
 import IllustratedDefaultSheet from './default/IllustratedDefaultSheet.vue';
 
 defineProps<{
@@ -32,6 +32,14 @@ defineProps<{
   debugEnabled: boolean;
   forceMobileLayout: boolean;
   specialNpc: boolean;
+  /**
+   * DX module override 入口。
+   *
+   * 必须在这里**显式声明**，不能依赖单根 component 的 `$attrs` fallthrough：
+   * 历史 DX 正是通过本 wrapper 进入渲染器，seam 建在隐式行为上等于没有 seam。
+   * 仍然只用现有的 `v-bind="$props"` 转发，不引入额外 adapter。
+   */
+  overrides?: IllustratedRendererOverrides;
 }>();
 
 const emit = defineEmits<{

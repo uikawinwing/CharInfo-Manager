@@ -307,7 +307,11 @@ import {
   VIEWER_IMPORT_WORLDBOOK_LABEL,
   type ViewerSavePhase,
 } from '../../../../char_info_shared/viewerSaveUi';
-import type { AttributeView, IllustratedRendererOverrides } from '../types';
+import type {
+  AttributeView,
+  IllustratedPortraitModuleHandle,
+  IllustratedRendererOverrides,
+} from '../types';
 import { useIllustratedPortrait } from '../core/useIllustratedPortrait';
 import { useIllustratedSheetController } from '../core/useIllustratedSheetController';
 import IllustratedCharacterPanel from './IllustratedCharacterPanel.vue';
@@ -368,7 +372,7 @@ defineEmits<{
 const wrapperElement = ref<HTMLElement | null>(null);
 const shellElement = ref<HTMLElement | null>(null);
 const panelsElement = ref<HTMLElement | null>(null);
-const portraitPaneElement = ref<InstanceType<typeof IllustratedPortraitPane> | null>(null);
+const portraitPaneElement = ref<IllustratedPortraitModuleHandle | null>(null);
 const detailWallpaperCanvas = ref<HTMLCanvasElement | null>(null);
 const detailWallpaperReady = ref(false);
 const overviewDensity = ref<'normal' | 'compact' | 'dense'>('normal');

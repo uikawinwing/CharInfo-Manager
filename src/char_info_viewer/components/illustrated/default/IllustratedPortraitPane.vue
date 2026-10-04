@@ -71,6 +71,7 @@
 import { computed, ref } from 'vue';
 
 import type { CharacterViewModel } from '../../../services/characterViewModel';
+import type { IllustratedPortraitFrame } from '../types';
 import type { IllustratedPortraitController } from '../core/useIllustratedPortrait';
 import IllustratedHeader from './IllustratedHeader.vue';
 
@@ -115,11 +116,7 @@ const videoElement = ref<HTMLVideoElement | null>(null);
  *
  * @returns 可用于绘制的媒体元素与它的自然尺寸；当前立绘未就绪时返回 null。
  */
-function captureCurrentFrame(): {
-  source: CanvasImageSource;
-  width: number;
-  height: number;
-} | null {
+function captureCurrentFrame(): IllustratedPortraitFrame | null {
   const source = isVideoPortrait.value ? videoElement.value : imageElement.value;
   if (!source) return null;
 

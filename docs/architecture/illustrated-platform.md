@@ -208,6 +208,39 @@ navigation?  IllustratedTabNav
 
 `portrait` 有一项额外义务：必须 `defineExpose({ captureCurrentFrame })`。移动端详情快照由父级 canvas 绘制，父级只调这个方法，不接触媒体 DOM。缺少它不会崩，但移动端详情页会静默失去背景图。
 
+#### seam 必须脱离 default implementation
+
+两处容易被忽略、但会让 seam 名存实亡的地方：
+
+1. **compatibility wrapper 显式声明 `overrides`。** 历史 DX 正是通过 `illustrated/IllustratedCharacterSheet.vue` 进入渲染器。Vue 当前可能因为单根 component 让它靠 `$attrs` fallthrough 碰巧工作——**但 seam 不能建在隐式行为上**。wrapper 用现有的 `v-bind="$props"` 转发，不新增 adapter。
+2. **portrait template ref 依赖 capability，不依赖默认组件 instance。** `portraitPaneElement` 的类型是 `IllustratedPortraitModuleHandle`，不是 `InstanceType<typeof IllustratedPortraitPane>`。否则 portrait override 一接上，父级在类型层就重新依赖回默认实现。
+
+```ts
+export type IllustratedPortraitFrame = {
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+};
+
+export type IllustratedPortraitModuleHandle = {
+  captureCurrentFrame(): IllustratedPortraitFrame | null;
+};
+```
+
+默认 `IllustratedPortraitPane.captureCurrentFrame()` 返回同一个 `IllustratedPortraitFrame`。父级只问「现在显示的是哪一帧」，不关心媒体是 `<img>` 还是 `<video>`。
+
+#### 五个模块的 contract
+
+| 模块 | props | emits | expose |
+| --- | --- | --- | --- |
+| `header` | `vm`, `compact?` | `layoutChange` | — |
+| `overview` | `attributes`, `resourceBoxes`, `entranceQuoteText?` | `toggleAttributeFormula(key)`, `openEntranceQuote` | — |
+| `portrait` | `vm`, `portrait`, `isOverviewTab`, `forceMobileLayout` | `fallbackToDefault`, `openEntranceQuote(event)` | `captureCurrentFrame()` |
+| `itemCard` | `item`, `showCost?`, `variant?` | — | — |
+| `navigation` | `tabs`, `activeTab`, `savePhase`, `showImportAction`, `forceMobileLayout?`, `sideRail?` | `setTab(tab)`, `toggleImportMenu` | — |
+
+当前阶段刻意保持 `Component`，不做 Vue generic 化——五个模块共用一个槽位类型已经够用，等真的出现类型冲突再拆。
+
 ---
 
 ## 5. 状态 ownership：一个状态一个 owner
@@ -320,7 +353,7 @@ identity = at-rule ancestry  >>  selector  {  排序后的 declarations  }
 
 这套比对能发现源码正则测试完全看不到的「规则被搬到组件外导致 scope 不匹配」。行为部分则需要用真实 runtime 挂载断言——`scoped`、`_unref` 这类编译期与运行期行为，源码正则和 transpile-only 构建都抓不到。
 
-**当前测试数是 369**（357 基线 + Phase 4 的 5 条 + Phase 5 的 7 条 override 契约）。基线 357 不是回归：`c63a883`（dev）删除了锁定立绘审美实现细节的源码正则测试，属于有意清理。判断测试是否丢失，要比对**测试清单**而不是总数——本分支相对 `dev` 只多出 seam 断言，没有删除任何 dev 侧测试。
+**当前测试数是 373**（357 基线 + Phase 4 的 5 条 + Phase 5 的 11 条 override 契约）。基线 357 不是回归：`c63a883`（dev）删除了锁定立绘审美实现细节的源码正则测试，属于有意清理。判断测试是否丢失，要比对**测试清单**而不是总数——本分支相对 `dev` 只多出 seam 断言，没有删除任何 dev 侧测试。
 
 ### 搬迁中确认的既有问题（尚未修，不要在 Phase 5 顺手改）
 
@@ -349,6 +382,7 @@ identity = at-rule ancestry  >>  selector  {  排序后的 declarations  }
 改兜底故事块                  → default/IllustratedStoryPanel
 改默认布局 / 组合              → default/IllustratedDefaultSheet
 让 DX 换掉某一整块             → types.ts 的 IllustratedRendererOverrides
+改立绘模块的帧能力 contract     → types.ts 的 IllustratedPortraitModuleHandle
 改共享平台类型                → illustrated/types.ts（root，不下沉）
 改兼容入口签名                → illustrated/IllustratedCharacterSheet（只转发）
 给 DX 一个完全不同的渲染        → Level 3 full renderer，只用 core controller

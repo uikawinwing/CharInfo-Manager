@@ -21,6 +21,28 @@ export type IllustratedTab = {
 };
 
 /**
+ * 立绘模块必须提供的「当前这一帧」能力。
+ *
+ * 移动端详情页的静态快照由父级 canvas 绘制：父级只问「现在显示的是哪一帧」，
+ * 不关心当前媒体是 `<img>` 还是 `<video>`，也不接触任何媒体 DOM。
+ */
+export type IllustratedPortraitFrame = {
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+};
+
+/**
+ * 立绘模块对外暴露的 handle。
+ *
+ * 父级 template ref 依赖这个 **capability**，而不是默认组件的 instance type——
+ * 否则 portrait override 一接上，父级就在类型层重新依赖回默认实现。
+ */
+export type IllustratedPortraitModuleHandle = {
+  captureCurrentFrame(): IllustratedPortraitFrame | null;
+};
+
+/**
  * 立绘 renderer 的可替换模块集合（DX Level 2：Module Override）。
  *
  * 每一项都是「用哪个组件画这一块」，且**全部可选**：没有提供的项必须 100% 回落到
@@ -31,9 +53,17 @@ export type IllustratedTab = {
  *
  * 粒度标准是「设计师真的会整块重新设计」的区域。单个 tag / badge / chip 不是模块。
  *
- * `portrait` 有一项额外义务：必须用 `defineExpose({ captureCurrentFrame })`
- * 暴露该能力。移动端详情页的静态快照由父级 canvas 绘制，父级只调用这个方法，
- * 不接触媒体 DOM。缺少它不会崩——`?.` 会让快照静默失效，移动端详情页失去背景图。
+ * 各模块实际需要实现的 contract（override 组件必须遵守）：
+ *
+ * - **header** — props `vm`, `compact?`；emit `layoutChange`
+ * - **overview** — props `attributes`, `resourceBoxes`, `entranceQuoteText?`；
+ *   emits `toggleAttributeFormula(key)`, `openEntranceQuote`
+ * - **portrait** — props `vm`, `portrait`, `isOverviewTab`, `forceMobileLayout`；
+ *   emits `fallbackToDefault`, `openEntranceQuote(event)`；
+ *   并须 `defineExpose({ captureCurrentFrame })`（见 `IllustratedPortraitModuleHandle`）
+ * - **itemCard** — props `item`, `showCost?`, `variant?`
+ * - **navigation** — props `tabs`, `activeTab`, `savePhase`, `showImportAction`,
+ *   `forceMobileLayout?`, `sideRail?`；emits `setTab(tab)`, `toggleImportMenu`
  */
 export type IllustratedRendererOverrides = {
   /** 首页姓名 / 等级 / 身份块。props: `vm`, `compact?`；emits: `layoutChange`。 */
