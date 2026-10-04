@@ -5,20 +5,20 @@ import test from 'node:test';
 const repoRoot = new URL('../../', import.meta.url);
 const readSource = path => readFile(new URL(path, repoRoot), 'utf8');
 
-const [appSource, sheetSource, runtimeRootSource] = await Promise.all([
+const [appSource, defaultSheetSource, sheetSource, runtimeRootSource] = await Promise.all([
   readSource('src/char_info_viewer/App.vue'),
+  readSource('src/char_info_viewer/components/DefaultCharacterSheet.vue'),
   readSource('src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue'),
   readSource('src/char_info_viewer_runtime/RuntimeRoot.vue'),
 ]);
 
-test('viewer renders a stable local shell and starts particles only after the card mounts', () => {
+test('viewer renders a stable local shell before the default card owns particle startup', () => {
   assert.match(appSource, /const initializingViewer = ref\(true\)/);
   assert.match(appSource, /v-else-if="initializingViewer"/);
   assert.match(appSource, /class="viewer-loading-shell"/);
-  assert.match(
-    appSource,
-    /initFromYaml\(\)\.finally\(async \(\) => \{[\s\S]*?initializingViewer\.value = false;[\s\S]*?await nextTick\(\);[\s\S]*?setupParticleEngine\(\);/u,
-  );
+  assert.match(appSource, /initFromYaml\(\)\.finally\(\(\) => \{[\s\S]*?initializingViewer\.value = false;/u);
+  assert.match(defaultSheetSource, /<canvas v-if="props\.effectsEnabled" ref="canvasRef" class="particle-canvas"/u);
+  assert.match(defaultSheetSource, /onMounted\(setupParticleEngine\)/u);
 });
 
 test('illustrated character portraits decode progressively without blocking the card frame', () => {
@@ -33,13 +33,13 @@ test('visual effects switch stops non-media UI animation and expensive compositi
   assert.match(runtimeRootSource, /关闭可降低手机负担。/u);
   assert.doesNotMatch(runtimeRootSource, /粒子特效/u);
   assert.match(appSource, /'viewer-effects-disabled': !props\.effectsEnabled/u);
-  assert.match(appSource, /<canvas v-if="props\.effectsEnabled"/u);
+  assert.match(defaultSheetSource, /<canvas v-if="props\.effectsEnabled"/u);
   assert.match(
-    appSource,
-    /\(\) => props\.effectsEnabled,[\s\S]*?engine\?\.destroy\(\);[\s\S]*?if \(!enabled\) return;/u,
+    defaultSheetSource,
+    /props\.effectsEnabled,[\s\S]*?engine\?\.destroy\(\);[\s\S]*?if \(!enabled\) return;/u,
   );
   assert.match(
-    appSource,
-    /\.viewer-effects-disabled :where\(\*\):not\(img\):not\(video\) \{[\s\S]*?animation: none !important;[\s\S]*?backdrop-filter: none !important;[\s\S]*?box-shadow: none !important;[\s\S]*?text-shadow: none !important;[\s\S]*?filter: none !important;/u,
+    defaultSheetSource,
+    /\.card-wrapper\.viewer-effects-disabled,[\s\S]*?animation: none !important;[\s\S]*?backdrop-filter: none !important;[\s\S]*?box-shadow: none !important;[\s\S]*?text-shadow: none !important;[\s\S]*?filter: none !important;/u,
   );
 });

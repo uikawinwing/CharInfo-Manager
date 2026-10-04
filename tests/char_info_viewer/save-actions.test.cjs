@@ -127,6 +127,10 @@ test('世界书写入 Promise 卡住但条目已可读回时仍结束保存状�
 test('Viewer Save 状态跟随真实保存结果，不再使用宿主页顶部 popup', () => {
   const repoRoot = path.resolve(__dirname, '../..');
   const appSource = fs.readFileSync(path.join(repoRoot, 'src/char_info_viewer/App.vue'), 'utf8');
+  const defaultSheetSource = fs.readFileSync(
+    path.join(repoRoot, 'src/char_info_viewer/components/DefaultCharacterSheet.vue'),
+    'utf8',
+  );
   const illustratedSource = fs.readFileSync(
     path.join(repoRoot, 'src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue'),
     'utf8',
@@ -138,7 +142,7 @@ test('Viewer Save 状态跟随真实保存结果，不再使用宿主页顶部 p
   const runtimeRootSource = fs.readFileSync(path.join(repoRoot, 'src/char_info_viewer_runtime/RuntimeRoot.vue'), 'utf8');
   const runtimeSource = fs.readFileSync(path.join(repoRoot, 'src/char_info_viewer_runtime/runtime.ts'), 'utf8');
 
-  assert.match(appSource, /导入至\[最新消息楼层\]变量/u);
+  assert.match(defaultSheetSource, /导入至\[最新消息楼层\]变量/u);
   assert.match(illustratedSource, /导入至\[最新消息楼层\]变量/u);
   assert.match(appSource, /message_id:\s*Math\.max\(0,\s*getLastMessageId\(\)\)/u);
   assert.doesNotMatch(appSource, /message_id:\s*props\.messageId/u);

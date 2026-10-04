@@ -4,6 +4,10 @@ import test from 'node:test';
 
 const repoRoot = new URL('../../', import.meta.url);
 const appSource = await readFile(new URL('src/char_info_viewer/App.vue', repoRoot), 'utf8');
+const defaultSheetSource = await readFile(
+  new URL('src/char_info_viewer/components/DefaultCharacterSheet.vue', repoRoot),
+  'utf8',
+);
 const runtimeEntrySource = await readFile(new URL('src/char_info_viewer_runtime/index.ts', repoRoot), 'utf8');
 const specialSheetSource = await readFile(
   new URL('src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue', repoRoot),
@@ -31,6 +35,7 @@ test('viewer scopes theme variables to its own card root', () => {
 
 test('multiple cards do not repeat static viewer element ids in the host document', () => {
   assert.doesNotMatch(appSource, /id="(?:particle-canvas|import-action-(?:btn|menu))"/);
+  assert.doesNotMatch(defaultSheetSource, /id="(?:particle-canvas|import-action-(?:btn|menu))"/);
   assert.doesNotMatch(specialSheetSource, /id="import-action-menu"/);
 });
 
