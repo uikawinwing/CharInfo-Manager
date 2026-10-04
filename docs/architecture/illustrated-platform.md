@@ -115,6 +115,8 @@ core/useIllustratedPortrait.ts
 ```text
 default/IllustratedDefaultSheet.vue   薄组合层 + visual token 定义
 default/IllustratedPortraitPane.vue
+default/IllustratedQuoteDialog.vue
+default/IllustratedStoryPanel.vue
 default/IllustratedHeader.vue
 default/IllustratedOverviewPanel.vue
 default/IllustratedProfilePanel.vue
@@ -130,7 +132,9 @@ default/divinitySections.ts
 
 **当前组件名不含 `SpecialNpc`**：它是「默认稳定 renderer」，不是「special_npc 版式」。`special_npc` 只作为 Viewer 内部路由值出现。
 
-Story panel 与 Quote dialog 仍是 sheet 内联的 DOM，尚未抽成独立模块——这是 Phase 4 的内容。
+Phase 4 之后，sheet 里已不再有 domain-detail markup：故事与完整台词各自成模块。
+
+`IllustratedQuoteDialog.vue` 的 `closeButton` prop 直接绑定 controller 持有的 ref 对象，Vue 把 DOM 写回同一个 ref——这样焦点管理仍然只有 controller 一个 owner，父子之间没有 ref 复制 + watch 互同步。新增交互时不要退回「父传 open 布尔 + 子 emit close」以外的写法。
 
 ### 3.3 themes
 
@@ -247,15 +251,28 @@ tests/char_info_viewer/viewer-host-boundary.test.mjs
 | 1 | portrait seam：抽 `useIllustratedPortrait` + `IllustratedPortraitPane` | 完成 `9d6817f` / `f7ae986` |
 | 2 | sheet controller：抽 `useIllustratedSheetController` | 完成 `a301d7e` |
 | 3 | 默认 renderer 收薄为 `IllustratedDefaultSheet`，旧文件名保留兼容 wrapper | 完成 `80c0dc3` / `17efa45` |
-| 4 | 剩余自然模块：Story panel、Quote dialog | 未开始 |
+| 4 | 剩余自然模块：Story panel、Quote dialog | 完成 `4d97d6c` |
 | 5 | `IllustratedRendererOverrides`：Header / Overview / Portrait / ItemCard / Navigation，默认 fallback | 未开始 |
 | 6 | 把 DX 接入新 seam（本轮**不做**，见下） | 不做 |
 
 每 phase 至少满足：行为测试通过、build 通过、lint 0 error、默认视觉无意外改变、mobile / desktop 路由 contract 保持。
 
-除自动化门禁外，**每次搬迁样式或状态都必须额外做一次 CSS 零差异比对**：编译所有 illustrated SFC 的 scoped style，剥掉 `data-v-*` 并归一化后与基线对比。这套比对能发现源码正则测试完全看不到的「规则被搬到组件外导致 scope 不匹配」。行为部分则需要用真实 `effectScope` 挂载 composable 断言，因为仓库测试跑不了 composable。
+除自动化门禁外，**每次搬迁样式或状态都必须额外做一次 CSS 零差异比对**：编译所有 illustrated SFC 的 scoped style，把每条规则拆成 `selector { 排序后的 declarations }` 组成集合，搬迁前后 diff 这个集合（`@container` 条件不参与比较）。
 
-**当前测试数是 357。** 这不是回归：`c63a883`（dev）删除了锁定立绘审美实现细节的源码正则测试，属于有意清理。判断测试是否丢失，要比对**测试清单**而不是总数——本分支相对 `dev` 只多出 seam 断言，没有删除任何 dev 侧测试。
+**必须比对「整条规则集合」而不是归一化后的单行文本。** 早期版本用正则压平整份 CSS 再 diff，结果一次搬迁报出 10 行差异，其中一半是 sass 输出的 `@charset` 顺序噪声，另一半是被掩盖的真实问题。按规则集合比对后，同一次搬迁精确显示：0 条丢失、1 条新增，而那条新增正是我引入的 `force-mobile-layout` 触发——正是靠这个更严的比对才发现它与既有行为不一致。
+
+这套比对能发现源码正则测试完全看不到的「规则被搬到组件外导致 scope 不匹配」。行为部分则需要用真实 `effectScope` 挂载 composable 断言，因为仓库测试跑不了 composable。
+
+**当前测试数是 358**（357 + Phase 4 新增 1 条 ownership 断言）。基线 357 不是回归：`c63a883`（dev）删除了锁定立绘审美实现细节的源码正则测试，属于有意清理。判断测试是否丢失，要比对**测试清单**而不是总数——本分支相对 `dev` 只多出 seam 断言，没有删除任何 dev 侧测试。
+
+### 搬迁中确认的既有问题（尚未修，不要在 Phase 5 顺手改）
+
+这两条是 Phase 4 做零差异比对时查实的**既有**问题，不是本次引入的。修它们会改变视觉或删代码，超出「只做 ownership extraction」的范围：
+
+1. **台词弹窗的移动端版式在 `force-mobile-layout` 下不生效。** `IllustratedQuoteDialog.vue` 里的移动端规则只是 `@container char-info-viewer (max-width: 900px)` 的直接子规则，**不在** `illustrated-mobile-content` mixin 内——拆分前也是这样。sheet 的其余移动端规则都同时走 `@container` 和 `force-mobile-layout` 两条触发路径，弹窗是唯一的例外。
+2. **`illustrated-story-block h3` 没有对应节点。** 该样式在模板里没有标题元素，属于历史残留。
+
+修 1 属于行为变更（会改变 force-mobile 下的弹窗版式），必须单独一个 commit 并单独验收。
 
 **Phase 6 之前不 merge DX 分支。** 这样整个迁移过程零 DX 干扰，回归只可能来自本次改动本身。
 
@@ -271,6 +288,8 @@ tests/char_info_viewer/viewer-host-boundary.test.mjs
 改 portrait 加载行为          → core/useIllustratedPortrait
 改默认 portrait 外观          → default/IllustratedPortraitPane
 改默认导航                    → default/IllustratedTabNav
+改完整台词弹窗                → default/IllustratedQuoteDialog（状态仍在 core）
+改兜底故事块                  → default/IllustratedStoryPanel
 改默认布局 / 组合              → default/IllustratedDefaultSheet
 改兼容入口签名                → illustrated/IllustratedCharacterSheet（只转发）
 给 DX 一个完全不同的导航       → dx/<该 dx>
