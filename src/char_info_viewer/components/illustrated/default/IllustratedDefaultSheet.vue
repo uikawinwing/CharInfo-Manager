@@ -276,7 +276,7 @@
       :is-open="isEntranceQuoteDialogOpen"
       :name-text="vm.nameText"
       :quote-text="vm.entranceQuoteText"
-      :close-button="quoteDialogCloseButton"
+      :set-close-button="setQuoteDialogCloseButton"
       @close="closeQuote"
       @keep-focus="keepQuoteDialogFocus"
     />
@@ -433,7 +433,7 @@ const {
   isGroupCollapsed,
   toggleGroup,
   isEntranceQuoteDialogOpen,
-  quoteDialogCloseButton,
+  setQuoteDialogCloseButton,
   openQuote,
   closeQuote,
   keepQuoteDialogFocus,

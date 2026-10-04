@@ -33,6 +33,7 @@ Phase 0–3 已完成。默认 renderer 已从「单文件壳 + 大半 CSS」拆
 1. **`scoped` 只给最后一个复合选择器打 `data-v-*`。** 因此 `.illustrated-shell.is-x .child` 搬进子组件后**仍然有效**，而父级里写成 `.shell .child[data-v-parent] :deep(...)` 的规则，在 `child` 移入子组件后**会静默失效**——`child` 只带 child 的 scope id。跨组件覆盖必须把整条后代链收进一个 `:deep()`。
 2. **源码正则测试和 transpile-only 构建都抓不到未定义标识符。** `captureDetailWallpaper` 曾在 Phase 1 漏了解构 `portraitLoaded` / `portraitLoadFailed`，build 与全部测试全绿，但真实运行时一离开首页 tab 就抛 `ReferenceError`。父级引用 controller 的任何字段，必须有对应断言守住。
 3. **一个状态的旧契约可能只迁了一半。** Phase 3 把 renderer 搬进 `default/` 时，`App.vue` 已改传 `:save-phase`，wrapper 与 default sheet 仍声明 `importing` / `importButtonText`。搬迁时必须同时迁移 props 契约，并全链核对。
+4. **`<script setup>` 里的 Ref 不能当 prop 传下去再用 `:ref` 接收。** binding 属于 `setup-maybe-ref`，编译产物是 `_unref(x)`，子组件拿到 `.value`。`setRef` 的实现本身是对的（`rawRef.f` 为 false 时直接 `ref.value = value`），错在 prop 传过去之前就被解包了——只读 runtime 源码、不看编译产物会得出相反结论。要跨组件传 DOM 引用就用 callback template-ref。
 
 
 ### DX 代码当前不在 `dev` 上
@@ -134,7 +135,9 @@ default/divinitySections.ts
 
 Phase 4 之后，sheet 里已不再有 domain-detail markup：故事与完整台词各自成模块。
 
-`IllustratedQuoteDialog.vue` 的 `closeButton` prop 直接绑定 controller 持有的 ref 对象，Vue 把 DOM 写回同一个 ref——这样焦点管理仍然只有 controller 一个 owner，父子之间没有 ref 复制 + watch 互同步。新增交互时不要退回「父传 open 布尔 + 子 emit close」以外的写法。
+`IllustratedQuoteDialog.vue` 用 **callback template-ref** 把关闭按钮 DOM 交回 controller：controller 暴露 `setQuoteDialogCloseButton(element)`，父级传 `:set-close-button="setQuoteDialogCloseButton"`，子组件写 `:ref="setCloseButton"`。
+
+**绝对不要把 controller 的 Ref 对象当 prop 传下去再用 `:ref` 接收。** `<script setup>` 模板里该 binding 的类型是 `setup-maybe-ref`，跨 component 传 prop 时编译产物是 `_unref(quoteDialogCloseButton)`——子组件收到的是 `.value`（`null`），DOM 永远写不回 controller。Phase 4 最初就是这么写的，源码正则、build、358 条测试全绿，但 `openQuote()` 的 nextTick focus 与 `keepQuoteDialogFocus()` 在运行时静默失效。真实 runtime 回归测试见 `tests/char_info_viewer/quote-dialog-focus.test.mjs`。
 
 ### 3.3 themes
 
@@ -257,13 +260,23 @@ tests/char_info_viewer/viewer-host-boundary.test.mjs
 
 每 phase 至少满足：行为测试通过、build 通过、lint 0 error、默认视觉无意外改变、mobile / desktop 路由 contract 保持。
 
-除自动化门禁外，**每次搬迁样式或状态都必须额外做一次 CSS 零差异比对**：编译所有 illustrated SFC 的 scoped style，把每条规则拆成 `selector { 排序后的 declarations }` 组成集合，搬迁前后 diff 这个集合（`@container` 条件不参与比较）。
+除自动化门禁外，**每次搬迁样式或状态都必须额外做一次 CSS 零差异比对**：编译所有 illustrated SFC 的 scoped style，把每条规则展开成
 
-**必须比对「整条规则集合」而不是归一化后的单行文本。** 早期版本用正则压平整份 CSS 再 diff，结果一次搬迁报出 10 行差异，其中一半是 sass 输出的 `@charset` 顺序噪声，另一半是被掩盖的真实问题。按规则集合比对后，同一次搬迁精确显示：0 条丢失、1 条新增，而那条新增正是我引入的 `force-mobile-layout` 触发——正是靠这个更严的比对才发现它与既有行为不一致。
+```text
+identity = at-rule ancestry  >>  selector  {  排序后的 declarations  }
+```
 
-这套比对能发现源码正则测试完全看不到的「规则被搬到组件外导致 scope 不匹配」。行为部分则需要用真实 `effectScope` 挂载 composable 断言，因为仓库测试跑不了 composable。
+**at-rule ancestry 必须参与 identity**，至少包含 `@container`、`@media`、`@supports`。只比 selector + declarations 会把「同一条规则从 `@container` 内搬到外面」误判成零差异——条件消失了，但文本完全一样。
 
-**当前测试数是 358**（357 + Phase 4 新增 1 条 ownership 断言）。基线 357 不是回归：`c63a883`（dev）删除了锁定立绘审美实现细节的源码正则测试，属于有意清理。判断测试是否丢失，要比对**测试清单**而不是总数——本分支相对 `dev` 只多出 seam 断言，没有删除任何 dev 侧测试。
+切分前还要整体剥掉注释：sass 会把 SCSS 注释保留在编译产物里，注释中的 `@container` 字样与花括号会让规则切分错位。剥不干净时报出的差异全是假的（曾经因此把 5 条真实存在的规则误报成丢失）。
+
+**必须比对「整条规则集合」而不是归一化后的单行文本。** 早期版本用正则压平整份 CSS 再 diff，报告被 `@charset` 顺序噪声淹没。按规则集合比对后，同一次搬迁精确显示 0 条丢失、0 条新增。
+
+比对逻辑本身要有自检：构造「同一 selector + declarations，分别放在 `@container` 内 / 外 / `@media` 内」三种情况，确认三者被判为不同。工具本身没验证过就等于没测。
+
+这套比对能发现源码正则测试完全看不到的「规则被搬到组件外导致 scope 不匹配」。行为部分则需要用真实 runtime 挂载断言——`scoped`、`_unref` 这类编译期与运行期行为，源码正则和 transpile-only 构建都抓不到。
+
+**当前测试数是 362**（357 + Phase 4 的 5 条：1 条 ownership 断言 + 4 条台词弹窗真实 runtime 焦点回归）。基线 357 不是回归：`c63a883`（dev）删除了锁定立绘审美实现细节的源码正则测试，属于有意清理。判断测试是否丢失，要比对**测试清单**而不是总数——本分支相对 `dev` 只多出 seam 断言，没有删除任何 dev 侧测试。
 
 ### 搬迁中确认的既有问题（尚未修，不要在 Phase 5 顺手改）
 

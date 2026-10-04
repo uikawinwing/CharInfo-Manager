@@ -98,6 +98,19 @@ export function useIllustratedSheetController(options: {
   const quoteDialogCloseButton = ref<HTMLButtonElement | null>(null);
   let entranceQuoteTriggerElement: HTMLElement | null = null;
 
+  /**
+   * 台词弹窗关闭按钮的 template-ref 回调。
+   *
+   * 必须走 callback 而不是把 `quoteDialogCloseButton` 这个 Ref 对象直接当 prop 传下去：
+   * `<script setup>` 模板里 binding 属于 `setup-maybe-ref`，跨 component 传 prop 时
+   * 编译产物是 `_unref(x)`，子组件收到的是 `.value` 而不是 Ref 本身，DOM 永远写不回来。
+   *
+   * 用 callback 后 ownership 仍然只有这里一处，子组件不持有任何 open / close 状态。
+   */
+  function setQuoteDialogCloseButton(element: HTMLButtonElement | null): void {
+    quoteDialogCloseButton.value = element;
+  }
+
   function openQuote(event?: Event): void {
     entranceQuoteTriggerElement =
       event?.currentTarget instanceof HTMLElement
@@ -158,6 +171,7 @@ export function useIllustratedSheetController(options: {
     toggleGroup,
     isEntranceQuoteDialogOpen,
     quoteDialogCloseButton,
+    setQuoteDialogCloseButton,
     openQuote,
     closeQuote,
     keepQuoteDialogFocus,

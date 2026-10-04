@@ -18,7 +18,7 @@
         <span class="illustrated-quote-dialog-ornament" aria-hidden="true"><i></i></span>
         <p class="illustrated-quote-dialog-text">{{ quoteText }}</p>
         <button
-          :ref="closeButton"
+          :ref="setCloseButton"
           class="illustrated-quote-dialog-close"
           type="button"
           @click="$emit('close')"
@@ -31,25 +31,28 @@
 </template>
 
 <script setup lang="ts">
-import type { Ref } from 'vue';
-
 /**
  * 默认登场的完整台词弹窗，只负责「怎么画」。
  *
  * open / close / focus 三件事的状态全部由 `core/useIllustratedSheetController` 独占：
  * - `isOpen` 是父级传下来的 controller 字段，这里不复制也不 watch 同步。
- * - `closeButton` 直接绑定 controller 持有的 ref 对象，Vue 会把 DOM 写回同一个 ref，
- *   因此焦点管理仍然只有 controller 一个 owner，父子之间没有 ref 复制 + watch 互同步。
+ * - 关闭按钮用 **callback template-ref**（`setCloseButton`）把 DOM 交回 controller，
+ *   而不是接收一个 Ref 对象当 prop。
+ *
+ * 为什么必须是 callback：`<script setup>` 模板里 controller 字段的 binding 类型是
+ * `setup-maybe-ref`，跨 component 传 prop 时编译产物是 `_unref(quoteDialogCloseButton)`，
+ * 子组件收到的是 `.value`（null）而不是 Ref 本身，DOM 永远写不回去，
+ * `openQuote()` 的 nextTick focus 与 `keepQuoteDialogFocus()` 会静默失效。
  *
  * 弹窗内的 `.illustrated-wrapper` 不是布局壳，而是 `--illustrated-*` visual token 的作用域：
- * 弹窗被 teleport 之外的普通渲染路径挂在同一棵 DOM 子树上，token 由外层 `.illustrated-wrapper` 继承而来。
- * 保留这个 class 是为了让 dialog 内部的 var() 与移动端覆写规则继续命中。
+ * token 由外层 `.illustrated-wrapper` 沿 DOM 继承而来。保留这个 class 是为了让 dialog
+ * 内部的 var() 与移动端覆写规则继续命中。
  */
 const props = defineProps<{
   isOpen: boolean;
   nameText: string;
   quoteText: string;
-  closeButton: Ref<HTMLButtonElement | null>;
+  setCloseButton: (element: HTMLButtonElement | null) => void;
 }>();
 
 defineEmits<{

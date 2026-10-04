@@ -85,7 +85,14 @@ test('clamped entrance quotes open an accessible full-text dialog on desktop and
   // sheet 只透传 controller 字段与回调，dialog 自身不持有任何 open state。
   assert.match(sheetSource, /@open-entrance-quote="openQuote"/);
   assert.match(sheetSource, /<IllustratedQuoteDialog[\s\S]*?:is-open="isEntranceQuoteDialogOpen"/);
-  assert.match(sheetSource, /:close-button="quoteDialogCloseButton"/);
+  // 关闭按钮必须走 callback template-ref：`<script setup>` 的 binding 是
+  // `setup-maybe-ref`，跨 component 传 Ref 对象会被编译成 `_unref(x)`，
+  // 子组件只拿到 `.value`，DOM 永远写不回 controller（Phase 4 曾因此让 focus 静默失效）。
+  assert.match(sheetSource, /:set-close-button="setQuoteDialogCloseButton"/);
+  assert.doesNotMatch(sheetSource, /:close-button="/);
+  assert.match(quoteDialogSource, /:ref="setCloseButton"/);
+  assert.match(quoteDialogSource, /setCloseButton:\s*\(element:\s*HTMLButtonElement \| null\)\s*=>\s*void;/);
+  assert.doesNotMatch(quoteDialogSource, /import type \{ Ref \}/);
   assert.match(sheetSource, /@close="closeQuote"/);
   assert.match(sheetSource, /@keep-focus="keepQuoteDialogFocus"/);
   assert.doesNotMatch(sheetSource, /class="illustrated-quote-dialog"/);
@@ -98,6 +105,10 @@ test('clamped entrance quotes open an accessible full-text dialog on desktop and
   assert.match(sheetSource, /:inert="isEntranceQuoteDialogOpen \? true : undefined"/);
   assert.match(quoteDialogSource, /@keydown\.tab\.prevent="\$emit\('keepFocus'\)"/);
   assert.match(sheetSource, /^\s+keepQuoteDialogFocus,$/m);
+  assert.match(
+    controllerSource,
+    /function setQuoteDialogCloseButton\(element: HTMLButtonElement \| null\): void \{[\s\S]*?quoteDialogCloseButton\.value = element;/,
+  );
   assert.match(
     controllerSource,
     /function keepQuoteDialogFocus\(\): void \{[\s\S]*?quoteDialogCloseButton\.value\?\.focus\(\)/,
