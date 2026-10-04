@@ -6,7 +6,7 @@ const runtimeRoot = readFileSync(new URL('../../src/char_info_viewer_runtime/Run
 const runtime = readFileSync(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
 const viewerApp = readFileSync(new URL('../../src/char_info_viewer/App.vue', import.meta.url), 'utf8');
 const sheet = readFileSync(
-  new URL('../../src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue', import.meta.url),
+  new URL('../../src/char_info_viewer/components/illustrated/default/IllustratedDefaultSheet.vue', import.meta.url),
   'utf8',
 );
 const portraitCore = readFileSync(

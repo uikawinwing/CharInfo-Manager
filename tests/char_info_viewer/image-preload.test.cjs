@@ -10,7 +10,7 @@ const repoRoot = path.resolve(__dirname, '../..');
 const preloadSource = readFileSync(path.join(repoRoot, 'src/char_info_viewer/services/imagePreload.ts'), 'utf8');
 const runtimeSource = readFileSync(path.join(repoRoot, 'src/char_info_viewer_runtime/runtime.ts'), 'utf8');
 const illustratedSource = readFileSync(
-  path.join(repoRoot, 'src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue'),
+  path.join(repoRoot, 'src/char_info_viewer/components/illustrated/default/IllustratedDefaultSheet.vue'),
   'utf8',
 );
 const portraitCoreSource = readFileSync(

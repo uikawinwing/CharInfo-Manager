@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const shellPath = new URL('../../src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue', import.meta.url);
+const shellPath = new URL('../../src/char_info_viewer/components/illustrated/default/IllustratedDefaultSheet.vue', import.meta.url);
 const navigationPath = new URL('../../src/char_info_viewer/components/illustrated/IllustratedTabNav.vue', import.meta.url);
 const itemCardPath = new URL('../../src/char_info_viewer/components/illustrated/IllustratedItemCard.vue', import.meta.url);
 const profilePanelPath = new URL(

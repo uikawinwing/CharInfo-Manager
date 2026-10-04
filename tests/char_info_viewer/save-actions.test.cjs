@@ -128,7 +128,7 @@ test('Viewer Save 状态跟随真实保存结果，不再使用宿主页顶部 p
   const repoRoot = path.resolve(__dirname, '../..');
   const appSource = fs.readFileSync(path.join(repoRoot, 'src/char_info_viewer/App.vue'), 'utf8');
   const illustratedSource = fs.readFileSync(
-    path.join(repoRoot, 'src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue'),
+    path.join(repoRoot, 'src/char_info_viewer/components/illustrated/default/IllustratedDefaultSheet.vue'),
     'utf8',
   );
   const illustratedNavSource = fs.readFileSync(

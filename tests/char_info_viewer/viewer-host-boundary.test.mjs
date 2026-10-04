@@ -6,7 +6,7 @@ const repoRoot = new URL('../../', import.meta.url);
 const appSource = await readFile(new URL('src/char_info_viewer/App.vue', repoRoot), 'utf8');
 const runtimeEntrySource = await readFile(new URL('src/char_info_viewer_runtime/index.ts', repoRoot), 'utf8');
 const specialSheetSource = await readFile(
-  new URL('src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue', repoRoot),
+  new URL('src/char_info_viewer/components/illustrated/default/IllustratedDefaultSheet.vue', repoRoot),
   'utf8',
 );
 const runtimeSource = await readFile(new URL('src/char_info_viewer_runtime/runtime.ts', repoRoot), 'utf8');
@@ -32,6 +32,36 @@ test('viewer scopes theme variables to its own card root', () => {
 test('multiple cards do not repeat static viewer element ids in the host document', () => {
   assert.doesNotMatch(appSource, /id="(?:particle-canvas|import-action-(?:btn|menu))"/);
   assert.doesNotMatch(specialSheetSource, /id="import-action-menu"/);
+});
+
+test('兼容入口 IllustratedCharacterSheet 只做转发，不持有实现', async () => {
+  const wrapperSource = await readFile(
+    new URL('src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue', repoRoot),
+    'utf8',
+  );
+
+  assert.match(wrapperSource, /import IllustratedDefaultSheet from '\.\/default\/IllustratedDefaultSheet\.vue'/);
+  assert.match(wrapperSource, /<IllustratedDefaultSheet/);
+  // 五个 emit 必须逐个显式转发，否则调用方会静默收不到事件。
+  for (const [kebab, camel] of [
+    ['toggle-attribute-formula', 'toggleAttributeFormula'],
+    ['toggle-import-menu', 'toggleImportMenu'],
+    ['import-mvu', 'importMvu'],
+    ['import-worldbook', 'importWorldbook'],
+    ['fallback-to-default', 'fallbackToDefault'],
+  ]) {
+    assert.match(wrapperSource, new RegExp(`@${kebab}="emit\\('${camel}'`));
+  }
+  // 兼容层不得携带任何实现。
+  assert.doesNotMatch(wrapperSource, /<style/);
+  assert.doesNotMatch(wrapperSource, /illustrated-portrait-pane/);
+  assert.doesNotMatch(wrapperSource, /useIllustrated(?:Portrait|SheetController)/);
+});
+
+test('默认立绘角色卡 renderer 的实现在 default/ 目录内', async () => {
+  assert.match(specialSheetSource, /<IllustratedPortraitPane/);
+  assert.match(specialSheetSource, /useIllustratedSheetController\(/);
+  assert.match(specialSheetSource, /<style scoped/);
 });
 
 test('vNext runtime mounts cards through local displayed-text ranges', () => {

@@ -5,7 +5,7 @@ const test = require('node:test');
 
 const componentPath = path.resolve(
   __dirname,
-  '../../src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue',
+  '../../src/char_info_viewer/components/illustrated/default/IllustratedDefaultSheet.vue',
 );
 const portraitCorePath = path.resolve(
   __dirname,

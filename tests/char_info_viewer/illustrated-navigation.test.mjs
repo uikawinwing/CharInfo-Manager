@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const navPath = new URL('../../src/char_info_viewer/components/illustrated/IllustratedTabNav.vue', import.meta.url);
 const sheetPath = new URL(
-  '../../src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue',
+  '../../src/char_info_viewer/components/illustrated/default/IllustratedDefaultSheet.vue',
   import.meta.url,
 );
 const controllerPath = new URL(

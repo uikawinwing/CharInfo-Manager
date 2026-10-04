@@ -20,7 +20,7 @@ const managerOverlaySource = readFileSync(
 );
 const managerAppSource = readFileSync(new URL('../../src/char_info_profile_editor/App.vue', import.meta.url), 'utf8');
 const illustratedSheetSource = readFileSync(
-  new URL('../../src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue', import.meta.url),
+  new URL('../../src/char_info_viewer/components/illustrated/default/IllustratedDefaultSheet.vue', import.meta.url),
   'utf8',
 );
 const illustratedPortraitPaneSource = readFileSync(
