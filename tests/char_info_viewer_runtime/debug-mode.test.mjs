@@ -10,6 +10,7 @@ const sheet = readFileSync(
   'utf8',
 );
 const overlay = readFileSync(new URL('../../src/char_info_profile_editor/overlay.ts', import.meta.url), 'utf8');
+const viewerDefaults = readFileSync(new URL('../../src/char_info_shared/viewerUiDefaults.ts', import.meta.url), 'utf8');
 const profileEditorApp = readFileSync(new URL('../../src/char_info_profile_editor/App.vue', import.meta.url), 'utf8');
 const profileEditorGallery = readFileSync(
   new URL('../../src/char_info_profile_editor/components/GalleryStep.vue', import.meta.url),
@@ -21,7 +22,8 @@ test('Debug 模式从运行时设置传入 Viewer 与 Profile Editor，并默认
   assert.match(runtimeRoot, /:debug-enabled="state\.settings\.debugEnabled"/u);
   assert.match(runtime, /state\.settings\.debugEnabled = nextSettings\.debugEnabled/u);
   assert.match(runtime, /debugEnabled: state\.settings\.debugEnabled/u);
-  assert.match(overlay, /debugEnabled: options\.debugEnabled \?\? false/u);
+  assert.match(overlay, /debugEnabled: options\.debugEnabled \?\? DEFAULT_VIEWER_DEBUG_ENABLED/u);
+  assert.match(viewerDefaults, /DEFAULT_VIEWER_DEBUG_ENABLED = false/u);
   assert.match(viewerApp, /debugEnabled\?: boolean/u);
   assert.match(viewerApp, /:debug-enabled="props\.debugEnabled"/u);
   assert.match(sheet, /if \(!props\.debugEnabled\) return;[\s\S]*?\[CharInfo\]\[ImageFallback\]\[Viewer\]/u);
