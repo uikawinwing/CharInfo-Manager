@@ -36,13 +36,13 @@
     <div v-if="showImportAction" class="illustrated-nav-action">
       <button
         class="illustrated-nav-save-button"
-        :disabled="importing"
+        :disabled="savePending"
         type="button"
         aria-label="保存或导入"
         @click.stop="$emit('toggleImportMenu')"
       >
         <span class="illustrated-save-icon" aria-hidden="true">↓</span>
-        <span>{{ importing ? '保存中' : importButtonText === '📥' ? '保存' : importButtonText }}</span>
+        <span>{{ saveLabel }}</span>
       </button>
     </div>
   </nav>
@@ -51,13 +51,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import { VIEWER_SAVE_NAV_LABELS, type ViewerSavePhase } from '../../../char_info_shared/viewerSaveUi';
 import type { IllustratedTab, IllustratedTabKey } from './types';
 
 const props = defineProps<{
   tabs: IllustratedTab[];
   activeTab: IllustratedTabKey;
-  importing: boolean;
-  importButtonText: string;
+  savePhase: ViewerSavePhase;
   showImportAction: boolean;
   forceMobileLayout?: boolean;
   sideRail?: boolean;
@@ -70,6 +70,8 @@ defineEmits<{
 
 const homeTab = computed(() => props.tabs.find(tab => tab.key === 'overview') ?? null);
 const detailTabs = computed(() => props.tabs.filter(tab => tab.key !== 'overview'));
+const savePending = computed(() => props.savePhase === 'pending');
+const saveLabel = computed(() => VIEWER_SAVE_NAV_LABELS[props.savePhase]);
 const tabIcons: Partial<Record<IllustratedTabKey, string>> = {
   overview: '⌂',
   profile: '▤',

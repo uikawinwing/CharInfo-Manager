@@ -1,3 +1,5 @@
+import type { ViewerSaveFeedbackPhase } from '../char_info_shared/viewerSaveUi';
+
 export interface CharacterData {
   姓名?: string;
   等级?: string | number;
@@ -44,14 +46,13 @@ export interface CharacterData {
 
 export type ViewerSaveFeedback = {
   target: 'chat-variable' | 'worldbook';
-  phase: 'pending' | 'success' | 'error';
+  phase: ViewerSaveFeedbackPhase;
   message: string;
   successMessage?: string;
 };
 
 export type ViewerSaveState = {
-  phase: 'pending' | 'success' | 'error';
-  label: string;
+  phase: ViewerSaveFeedbackPhase;
 };
 
 export interface ParseSuccess {

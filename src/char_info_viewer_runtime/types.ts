@@ -1,3 +1,4 @@
+import type { ViewerSaveFeedbackPhase } from '../char_info_shared/viewerSaveUi';
 import type { CurrentCharacterSnapshot } from './currentCharacterLibrary';
 import type { CharInfoFloatingButtonPosition, CharInfoUiSettings } from './runtimeSettings';
 
@@ -34,8 +35,7 @@ export type RuntimeSettingsView = {
 };
 
 export type RuntimeSaveState = {
-  phase: 'pending' | 'success' | 'error';
-  label: string;
+  phase: ViewerSaveFeedbackPhase;
 };
 
 export type RuntimeMountDiagnosticEntry = {

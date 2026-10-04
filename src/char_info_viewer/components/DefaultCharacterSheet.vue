@@ -408,8 +408,10 @@
         {{ saveButtonText }}
       </button>
       <div v-if="!props.readOnly" class="import-action-menu" :class="{ show: showImportMenu }">
-        <button type="button" :disabled="saveBusy" @click="onImportMvu">导入至[最新消息楼层]变量</button>
-        <button type="button" :disabled="saveBusy" @click="onImportWorldbook">导入到聊天世界书</button>
+        <button type="button" :disabled="saveBusy" @click="onImportMvu">{{ VIEWER_IMPORT_MVU_LABEL }}</button>
+        <button type="button" :disabled="saveBusy" @click="onImportWorldbook">
+          {{ VIEWER_IMPORT_WORLDBOOK_LABEL }}
+        </button>
       </div>
     </div>
   </div>
@@ -418,6 +420,12 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 
+import {
+  VIEWER_IMPORT_MVU_LABEL,
+  VIEWER_IMPORT_WORLDBOOK_LABEL,
+  VIEWER_SAVE_COMPACT_LABELS,
+  type ViewerSavePhase,
+} from '../../char_info_shared/viewerSaveUi';
 import { evaluateCharacterCollapse } from '../services/characterCollapse';
 import {
   itemCost,
@@ -461,8 +469,7 @@ const props = defineProps<{
   attributes: DefaultSheetAttribute[];
   effectsEnabled: boolean;
   readOnly: boolean;
-  saveBusy: boolean;
-  saveButtonText: string;
+  savePhase: ViewerSavePhase;
   showImportMenu: boolean;
   collapseModeEnabled: boolean;
   alwaysExpandRules: string;
@@ -471,6 +478,9 @@ const props = defineProps<{
   levelGapCollapseThreshold: number;
   playerLevel: number | null;
 }>();
+
+const saveBusy = computed(() => props.savePhase === 'pending');
+const saveButtonText = computed(() => VIEWER_SAVE_COMPACT_LABELS[props.savePhase]);
 
 const emit = defineEmits<{
   toggleAttributeFormula: [key: string];

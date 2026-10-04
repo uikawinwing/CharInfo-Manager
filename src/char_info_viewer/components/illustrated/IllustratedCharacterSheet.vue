@@ -303,8 +303,7 @@
           v-if="!specialNpc"
           :tabs="tabs"
           :active-tab="activeSpecialTab"
-          :importing="importing"
-          :import-button-text="importButtonText"
+          :save-phase="savePhase"
           :show-import-action="!readOnly"
           :force-mobile-layout="forceMobileLayout"
           @set-tab="setActiveSpecialTab"
@@ -317,8 +316,7 @@
         side-rail
         :tabs="tabs"
         :active-tab="activeSpecialTab"
-        :importing="importing"
-        :import-button-text="importButtonText"
+        :save-phase="savePhase"
         :show-import-action="!readOnly"
         :force-mobile-layout="forceMobileLayout"
         @set-tab="setActiveSpecialTab"
@@ -326,8 +324,10 @@
       />
 
       <div v-if="!readOnly" class="import-action-menu" :class="{ show: showImportMenu }">
-        <button type="button" :disabled="importing" @click="$emit('importMvu')">导入至[最新消息楼层]变量</button>
-        <button type="button" :disabled="importing" @click="$emit('importWorldbook')">导入到聊天世界书</button>
+        <button type="button" :disabled="savePending" @click="$emit('importMvu')">{{ VIEWER_IMPORT_MVU_LABEL }}</button>
+        <button type="button" :disabled="savePending" @click="$emit('importWorldbook')">
+          {{ VIEWER_IMPORT_WORLDBOOK_LABEL }}
+        </button>
       </div>
     </main>
 
@@ -366,6 +366,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 
+import {
+  VIEWER_IMPORT_MVU_LABEL,
+  VIEWER_IMPORT_WORLDBOOK_LABEL,
+  type ViewerSavePhase,
+} from '../../../char_info_shared/viewerSaveUi';
 import { itemType, type CharacterViewModel, type ItemObject } from '../../services/characterViewModel';
 import { preloadPortraitImages } from '../../services/imagePreload';
 import { normalizePortraitMediaUrlForBrowser } from '../../services/imageUrl';
@@ -383,14 +388,15 @@ import IllustratedTabNav from './IllustratedTabNav.vue';
 const props = defineProps<{
   vm: CharacterViewModel;
   attributes: AttributeView[];
-  importing: boolean;
-  importButtonText: string;
+  savePhase: ViewerSavePhase;
   showImportMenu: boolean;
   readOnly: boolean;
   debugEnabled: boolean;
   forceMobileLayout: boolean;
   specialNpc: boolean;
 }>();
+
+const savePending = computed(() => props.savePhase === 'pending');
 
 const DESKTOP_REFERENCE_WIDTH = 1200;
 const DESKTOP_REFERENCE_HEIGHT = 800;

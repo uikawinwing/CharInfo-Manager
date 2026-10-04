@@ -84,8 +84,7 @@
         v-if="shouldShowSpecialNpcLayout && vm"
         :vm="vm"
         :attributes="attributes"
-        :importing="saveBusy"
-        :import-button-text="saveButtonText"
+        :save-phase="savePhase"
         :show-import-menu="showImportMenu"
         :read-only="props.readOnly"
         :debug-enabled="props.debugEnabled"
@@ -106,8 +105,7 @@
         :attributes="attributes"
         :effects-enabled="props.effectsEnabled"
         :read-only="props.readOnly"
-        :save-busy="saveBusy"
-        :save-button-text="saveButtonText"
+        :save-phase="savePhase"
         :show-import-menu="showImportMenu"
         :collapse-mode-enabled="props.collapseModeEnabled"
         :always-expand-rules="props.alwaysExpandRules"
@@ -140,6 +138,7 @@ import {
   DEFAULT_VIEWER_LEVEL_GAP_COLLAPSE_ENABLED,
   DEFAULT_VIEWER_LEVEL_GAP_COLLAPSE_THRESHOLD,
 } from '../char_info_shared/viewerUiDefaults';
+import type { ViewerSavePhase } from '../char_info_shared/viewerSaveUi';
 import {
   ATTRIBUTE_KEYS,
   buildAttributeWarningMap,
@@ -221,25 +220,13 @@ const initializingViewer = ref(true);
 const theme = ref<ThemeResolved | null>(null);
 
 const showImportMenu = ref(false);
-const importing = ref(false);
-const defaultImportButtonText = '📥';
-const importButtonText = ref(defaultImportButtonText);
-const savePending = computed(() => props.saveState?.phase === 'pending');
-const usesRuntimeSaveState = computed(() => Boolean(props.saveFeedback));
-const saveBusy = computed(() => (usesRuntimeSaveState.value ? savePending.value : importing.value));
-const saveButtonText = computed(() =>
-  usesRuntimeSaveState.value ? props.saveState?.label || defaultImportButtonText : importButtonText.value,
+const localSavePhase = ref<ViewerSavePhase>('idle');
+const savePhase = computed<ViewerSavePhase>(() =>
+  localSavePhase.value === 'pending' ? 'pending' : (props.saveState?.phase ?? localSavePhase.value),
 );
-watch(
-  () => props.saveState?.phase,
-  phase => {
-    if (!usesRuntimeSaveState.value || !phase || phase === 'pending') return;
-    importing.value = false;
-    importButtonText.value = defaultImportButtonText;
-  },
-);
+const saveBusy = computed(() => savePhase.value === 'pending');
 
-let importButtonResetTimer: ReturnType<typeof setTimeout> | null = null;
+let savePhaseResetTimer: ReturnType<typeof setTimeout> | null = null;
 let previewYamlRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 let listenerDocument: Document | null = null;
 
@@ -406,22 +393,21 @@ function closeImportMenu() {
   showImportMenu.value = false;
 }
 
-function flashImportButton(temp: string, duration = 1200) {
-  if (importButtonResetTimer) {
-    clearTimeout(importButtonResetTimer);
-    importButtonResetTimer = null;
+function flashSavePhase(phase: Extract<ViewerSavePhase, 'success' | 'error'>, duration: number) {
+  if (savePhaseResetTimer) {
+    clearTimeout(savePhaseResetTimer);
+    savePhaseResetTimer = null;
   }
-  importButtonText.value = temp;
-  importButtonResetTimer = setTimeout(() => {
-    importButtonText.value = defaultImportButtonText;
-    importButtonResetTimer = null;
+  localSavePhase.value = phase;
+  savePhaseResetTimer = setTimeout(() => {
+    localSavePhase.value = 'idle';
+    savePhaseResetTimer = null;
   }, duration);
 }
 
 async function onImportMvu() {
   const importData = sheetData.value;
   if (!importData || saveBusy.value) return;
-  importing.value = true;
   closeImportMenu();
 
   try {
@@ -437,7 +423,7 @@ async function onImportMvu() {
       if (!looseOk) return;
     }
 
-    importButtonText.value = '⏳';
+    localSavePhase.value = 'pending';
     const characterName = importData.姓名 || '角色';
     props.saveFeedback?.({
       target: 'chat-variable',
@@ -446,8 +432,7 @@ async function onImportMvu() {
       successMessage: `✓ ${characterName} 已导入至最新消息楼层变量。`,
     });
     await importToMvuVariables(importData, { type: 'message', message_id: Math.max(0, getLastMessageId()) });
-    importing.value = false;
-    flashImportButton('✓ 已保存', 3000);
+    flashSavePhase('success', 3000);
     props.saveFeedback?.({
       target: 'chat-variable',
       phase: 'success',
@@ -460,16 +445,13 @@ async function onImportMvu() {
       phase: 'error',
       message: `✕ ${err?.message || '导入至最新消息楼层变量失败。'}`,
     });
-    flashImportButton('❌', 1800);
+    flashSavePhase('error', 1800);
     window.alert(`保存失败: ${err?.message || String(err)}`);
-  } finally {
-    importing.value = false;
   }
 }
 
 async function onImportWorldbook() {
   if (!sheetData.value || saveBusy.value) return;
-  importing.value = true;
   closeImportMenu();
 
   try {
@@ -480,7 +462,7 @@ async function onImportWorldbook() {
       if (!looseOk) return;
     }
 
-    importButtonText.value = '⏳';
+    localSavePhase.value = 'pending';
     const characterName = sheetData.value.姓名 || '角色';
     props.saveFeedback?.({
       target: 'worldbook',
@@ -493,8 +475,7 @@ async function onImportWorldbook() {
       yamlLength: originalYamlText.value.length,
     });
     const result = await saveToChatWorldbook(sheetData.value, originalYamlText.value);
-    importing.value = false;
-    flashImportButton('✓ 已保存', 3000);
+    flashSavePhase('success', 3000);
     props.saveFeedback?.({
       target: 'worldbook',
       phase: 'success',
@@ -508,10 +489,8 @@ async function onImportWorldbook() {
       phase: 'error',
       message: `✕ ${err?.message || '保存到聊天世界书失败。'}`,
     });
-    flashImportButton('❌', 1800);
+    flashSavePhase('error', 1800);
     window.alert(`保存失败: ${err?.message || String(err)}`);
-  } finally {
-    importing.value = false;
   }
 }
 
@@ -533,9 +512,9 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  if (importButtonResetTimer) {
-    clearTimeout(importButtonResetTimer);
-    importButtonResetTimer = null;
+  if (savePhaseResetTimer) {
+    clearTimeout(savePhaseResetTimer);
+    savePhaseResetTimer = null;
   }
   if (previewYamlRefreshTimer) {
     clearTimeout(previewYamlRefreshTimer);
