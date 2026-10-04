@@ -17,8 +17,8 @@
       muted
       playsinline
       preload="metadata"
-      @loadeddata="onPortraitLoaded"
-      @error="onPortraitLoadError"
+      @loadeddata="props.portrait.onPortraitLoaded"
+      @error="props.portrait.onPortraitLoadError"
     ></video>
     <img
       v-else-if="!portraitLoadFailed"
@@ -31,20 +31,20 @@
       loading="lazy"
       decoding="async"
       referrerpolicy="no-referrer"
-      @load="onPortraitLoaded"
-      @error="onPortraitLoadError"
+      @load="props.portrait.onPortraitLoaded"
+      @error="props.portrait.onPortraitLoadError"
     />
     <section v-else class="illustrated-portrait-failure" role="status">
       <strong>立绘无法加载</strong>
       <p>可能是网络、代理或资源地址不可用。</p>
       <div class="illustrated-portrait-failure-actions">
-        <button type="button" @click="retryPortraitLoad">重试</button>
+        <button type="button" @click="props.portrait.retryPortraitLoad">重试</button>
         <button type="button" @click="$emit('fallbackToDefault')">切换到默认版</button>
       </div>
     </section>
     <div v-if="isOverviewTab && hasMultiplePortraits" class="illustrated-portrait-navigation">
-      <button type="button" aria-label="上一张立绘" @click="switchPortrait(-1)">‹</button>
-      <button type="button" aria-label="下一张立绘" @click="switchPortrait(1)">›</button>
+      <button type="button" aria-label="上一张立绘" @click="props.portrait.switchPortrait(-1)">‹</button>
+      <button type="button" aria-label="下一张立绘" @click="props.portrait.switchPortrait(1)">›</button>
     </div>
     <div v-if="isOverviewTab" class="illustrated-mobile-overview-overlay">
       <button
@@ -68,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import type { CharacterViewModel } from '../../services/characterViewModel';
 import type { IllustratedPortraitController } from './core/useIllustratedPortrait';
@@ -91,30 +91,46 @@ defineEmits<{
   openEntranceQuote: [trigger: Event];
 }>();
 
-const {
-  portraitMediaUrl,
-  hasMultiplePortraits,
-  isVideoPortrait,
-  portraitLoaded,
-  portraitLoadFailed,
-  switchPortrait,
-  retryPortraitLoad,
-  onPortraitLoaded,
-  onPortraitLoadError,
-} = props.portrait;
+/**
+ * 状态通过 `computed` 逐个包一层，而不是在 setup 里解构 `props.portrait`。
+ * 解构只在 setup 执行一次，若父级将来整体替换 controller 对象，这里会永久
+ * 指向旧对象；`computed` 每次读取都回到 `props.portrait`，因此是 replacement-safe。
+ * 动作（switch / retry / load 回调）则直接从 `props.portrait` 取，不缓存函数引用。
+ */
+const portraitLoaded = computed(() => props.portrait.portraitLoaded.value);
+const portraitLoadFailed = computed(() => props.portrait.portraitLoadFailed.value);
+const portraitMediaUrl = computed(() => props.portrait.portraitMediaUrl.value);
+const hasMultiplePortraits = computed(() => props.portrait.hasMultiplePortraits.value);
+const isVideoPortrait = computed(() => props.portrait.isVideoPortrait.value);
 
 const imageElement = ref<HTMLImageElement | null>(null);
 const videoElement = ref<HTMLVideoElement | null>(null);
 
 /**
- * `captureDetailWallpaper()` 需要读取真实媒体元素的自然尺寸来绘制移动端背景，
- * 因此把元素访问权通过 expose 交回父级，而不是让父级持有跨组件边界的模板 ref。
+ * 移动端详情页需要一张「当前立绘的静态快照」当背景。
+ *
+ * 这个能力归立绘模块所有：父级只调用 `captureCurrentFrame()` 并把结果画到自己的
+ * canvas 上，不需要知道当前媒体是 `<img>` 还是 `<video>`，也不接触任何 DOM 节点。
+ * 将来 DX 换成别的立绘实现时，只要同样提供这个能力，父级无需任何改动。
+ *
+ * @returns 可用于绘制的媒体元素与它的自然尺寸；当前立绘未就绪时返回 null。
  */
-defineExpose({
-  get mediaElement(): HTMLImageElement | HTMLVideoElement | null {
-    return isVideoPortrait.value ? videoElement.value : imageElement.value;
-  },
-});
+function captureCurrentFrame(): {
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+} | null {
+  const source = isVideoPortrait.value ? videoElement.value : imageElement.value;
+  if (!source) return null;
+
+  const width = source instanceof HTMLVideoElement ? source.videoWidth : source.naturalWidth;
+  const height = source instanceof HTMLVideoElement ? source.videoHeight : source.naturalHeight;
+  if (!width || !height) return null;
+
+  return { source, width, height };
+}
+
+defineExpose({ captureCurrentFrame });
 </script>
 
 <style scoped lang="scss">

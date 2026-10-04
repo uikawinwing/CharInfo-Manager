@@ -206,11 +206,13 @@ test('立绘角色卡 手机详情沿用当前立绘静态快照，并把 Save �
   assert.match(controller, /activeSpecialTab\.value === 'overview' && tab !== 'overview'/);
   assert.match(controller, /onLeaveOverview\?\.\(\)/);
   assert.match(sheet, /onLeaveOverview:\s*captureDetailWallpaper,/);
-  // 立绘媒体元素已归 child 所有，父级通过 expose 读取，避免跨组件边界的模板 ref。
-  assert.match(sheet, /portraitPaneElement\.value\?\.mediaElement/);
-  assert.match(portraitPane, /ref="imageElement"/);
-  assert.match(portraitPane, /ref="videoElement"/);
-  assert.match(portraitPane, /get mediaElement\(\)/);
+  // 立绘媒体帧已归 child 所有，父级通过 captureCurrentFrame 能力获取，
+  // 不再跨越组件边界持有 img / video 的模板 ref。
+  assert.match(sheet, /portraitPaneElement\.value\?\.captureCurrentFrame\(\)/);
+  assert.doesNotMatch(sheet, /HTMLVideoElement|HTMLImageElement/);
+  assert.match(portraitPane, /function captureCurrentFrame\(\)/);
+  assert.match(portraitPane, /defineExpose\(\{ captureCurrentFrame \}\)/);
+  assert.doesNotMatch(portraitPane, /get mediaElement\(\)/);
   assert.match(navigation, /grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\) 44px/);
   assert.match(
     navigation,

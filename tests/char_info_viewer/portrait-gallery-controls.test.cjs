@@ -90,6 +90,26 @@ test('立绘视觉已从默认 renderer 迁出到独立面板，renderer 只组�
   assert.match(pane, /@include illustrated-portrait-compact-content\('\.illustrated-portrait-pane\.force-mobile-layout'\)/);
 });
 
+test('立绘面板必须对 controller 整体替换保持安全，且只暴露语义能力', () => {
+  const pane = fs.readFileSync(portraitPanePath, 'utf8');
+
+  // 在 setup 里解构 props.portrait 只执行一次；若父级整体替换 controller，
+  // 解构出的引用会永久指向旧对象。状态必须经 computed 回到 props.portrait 读取。
+  assert.doesNotMatch(
+    pane,
+    /^\}\s*=\s*props\.portrait;/m,
+    '不得在 setup 中解构 props.portrait，否则 controller 被替换后会留下 stale 引用',
+  );
+  assert.match(pane, /computed\(\(\) => props\.portrait\.portraitMediaUrl\.value\)/);
+  assert.match(pane, /computed\(\(\) => props\.portrait\.portraitLoaded\.value\)/);
+  assert.match(pane, /@click="props\.portrait\.switchPortrait\(-1\)"/);
+  assert.match(pane, /@load="props\.portrait\.onPortraitLoaded"/);
+
+  // 只暴露语义能力，不把 img / video 之类的私有 DOM 交给父级。
+  assert.match(pane, /defineExpose\(\{ captureCurrentFrame \}\)/);
+  assert.doesNotMatch(pane, /defineExpose\(\{[^}]*mediaElement/s);
+});
+
 test('renderer 使用的立绘状态必须在父级有声明，避免移动端快照抛 ReferenceError', () => {
   const sheet = fs.readFileSync(componentPath, 'utf8');
 

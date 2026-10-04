@@ -25,7 +25,7 @@ test('illustrated character portraits decode progressively without blocking the 
   assert.match(portraitPaneSource, /loading="lazy"/);
   assert.match(portraitPaneSource, /decoding="async"/);
   assert.match(portraitPaneSource, /class="illustrated-portrait-loading"/);
-  assert.match(portraitPaneSource, /@load="onPortraitLoaded"/);
+  assert.match(portraitPaneSource, /@load="props\.portrait\.onPortraitLoaded"/);
 });
 
 test('visual effects switch stops non-media UI animation and expensive compositing on mobile', () => {

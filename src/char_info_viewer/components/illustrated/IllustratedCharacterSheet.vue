@@ -383,19 +383,20 @@ const { portraitLoaded, portraitLoadFailed } = portrait;
 function captureDetailWallpaper(): void {
   const canvas = detailWallpaperCanvas.value;
   const shell = shellElement.value;
-  const source = portraitPaneElement.value?.mediaElement ?? null;
-  if (!canvas || !shell || !source || !portraitLoaded.value || portraitLoadFailed.value) {
+  if (!canvas || !shell || !portraitLoaded.value || portraitLoadFailed.value) {
     detailWallpaperReady.value = false;
     return;
   }
 
-  const sourceWidth = source instanceof HTMLVideoElement ? source.videoWidth : source.naturalWidth;
-  const sourceHeight = source instanceof HTMLVideoElement ? source.videoHeight : source.naturalHeight;
-  if (!sourceWidth || !sourceHeight) {
+  // 立绘模块负责「当前这一帧是什么」，父级只负责画到自己的 canvas 上，
+  // 因此不需要知道当前媒体是 <img> 还是 <video>。
+  const frame = portraitPaneElement.value?.captureCurrentFrame() ?? null;
+  if (!frame) {
     detailWallpaperReady.value = false;
     return;
   }
 
+  const { source, width: sourceWidth, height: sourceHeight } = frame;
   const cssWidth = Math.max(1, shell.clientWidth);
   const cssHeight = Math.max(1, shell.clientHeight);
   const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
