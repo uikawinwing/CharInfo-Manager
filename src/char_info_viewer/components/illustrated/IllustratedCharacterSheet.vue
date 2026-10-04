@@ -19,14 +19,14 @@
  * 不是「special_npc 版式」。
  */
 import type { CharacterViewModel } from '../../services/characterViewModel';
+import type { ViewerSavePhase } from '../../../char_info_shared/viewerSaveUi';
 import type { AttributeView } from './types';
 import IllustratedDefaultSheet from './default/IllustratedDefaultSheet.vue';
 
 defineProps<{
   vm: CharacterViewModel;
   attributes: AttributeView[];
-  importing: boolean;
-  importButtonText: string;
+  savePhase: ViewerSavePhase;
   showImportMenu: boolean;
   readOnly: boolean;
   debugEnabled: boolean;

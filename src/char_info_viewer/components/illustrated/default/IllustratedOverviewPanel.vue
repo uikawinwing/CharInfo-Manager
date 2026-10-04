@@ -117,11 +117,11 @@ const emit = defineEmits<{
   max-width: var(--flag-width);
   min-height: var(--flag-min-height);
   padding: 15px 5px 36px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--illustrated-border-faint);
   border-top: 2px solid var(--illustrated-race-accent);
   background: rgba(0, 0, 0, 0.3);
   clip-path: polygon(0% 0%, 100% 0%, 100% 85%, 50% 100%, 0% 85%);
-  color: #ffffff;
+  color: var(--illustrated-fg);
   cursor: default;
   text-align: center;
   transition:
@@ -160,7 +160,7 @@ const emit = defineEmits<{
   font-size: calc(2rem + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   line-height: 1;
-  text-shadow: 0 2px 15px rgba(var(--illustrated-race-accent-rgb), 0.45);
+  text-shadow: var(--illustrated-attribute-value-shadow);
 }
 
 .illustrated-attribute-total.warning,
@@ -251,7 +251,7 @@ const emit = defineEmits<{
 }
 
 .illustrated-resource-value {
-  color: #ffffff;
+  color: var(--illustrated-fg);
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
   font-size: calc(22px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;

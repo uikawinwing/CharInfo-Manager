@@ -1,19 +1,31 @@
 import { z } from 'zod';
 
 import { CHAR_INFO_THEME_MODES, DEFAULT_CHAR_INFO_THEME_MODE, type CharInfoThemeMode } from '../char_info_shared/managerTheme.ts';
+import {
+  DEFAULT_VIEWER_ACTIVE_FLOOR_LIMIT,
+  DEFAULT_VIEWER_ALWAYS_EXPAND_RULES,
+  DEFAULT_VIEWER_AUTO_COLLAPSE_RULES,
+  DEFAULT_VIEWER_COLLAPSE_MODE_ENABLED,
+  DEFAULT_VIEWER_DEBUG_ENABLED,
+  DEFAULT_VIEWER_EFFECTS_ENABLED,
+  DEFAULT_VIEWER_FONT_SIZE_ADJUSTMENT,
+  DEFAULT_VIEWER_FORCE_MOBILE_LAYOUT,
+  DEFAULT_VIEWER_LEVEL_GAP_COLLAPSE_ENABLED,
+  DEFAULT_VIEWER_LEVEL_GAP_COLLAPSE_THRESHOLD,
+} from '../char_info_shared/viewerUiDefaults.ts';
 import { normalizeImageSourcePriority } from '../char_info_viewer/services/imageSourcePriority.ts';
 
-export const DEFAULT_ACTIVE_FLOOR_LIMIT = 6;
+export const DEFAULT_ACTIVE_FLOOR_LIMIT = DEFAULT_VIEWER_ACTIVE_FLOOR_LIMIT;
 export const MIN_ACTIVE_FLOOR_LIMIT = 1;
 export const MAX_ACTIVE_FLOOR_LIMIT = 20;
 export const DEFAULT_MAX_CARDS_PER_MESSAGE = 4;
 export const MIN_MAX_CARDS_PER_MESSAGE = 1;
 export const MAX_MAX_CARDS_PER_MESSAGE = 20;
 export const DEFAULT_IMAGE_SOURCE_PRIORITY = ['files.catbox.moe', 'i.ibb.co'];
-export const DEFAULT_COLLAPSE_LEVEL_GAP = 5;
+export const DEFAULT_COLLAPSE_LEVEL_GAP = DEFAULT_VIEWER_LEVEL_GAP_COLLAPSE_THRESHOLD;
 export const MIN_COLLAPSE_LEVEL_GAP = 1;
 export const MAX_COLLAPSE_LEVEL_GAP = 99;
-export const DEFAULT_FONT_SIZE_ADJUSTMENT = 0;
+export const DEFAULT_FONT_SIZE_ADJUSTMENT = DEFAULT_VIEWER_FONT_SIZE_ADJUSTMENT;
 export const MIN_FONT_SIZE_ADJUSTMENT = -1;
 export const MAX_FONT_SIZE_ADJUSTMENT = 4;
 
@@ -44,15 +56,15 @@ const DEFAULT_SETTINGS: CharInfoUiSettings = {
   activeFloorLimit: DEFAULT_ACTIVE_FLOOR_LIMIT,
   maxCardsPerMessage: DEFAULT_MAX_CARDS_PER_MESSAGE,
   unlimitedCardsPerMessage: false,
-  effectsEnabled: true,
-  forceMobileLayout: false,
+  effectsEnabled: DEFAULT_VIEWER_EFFECTS_ENABLED,
+  forceMobileLayout: DEFAULT_VIEWER_FORCE_MOBILE_LAYOUT,
   themeMode: DEFAULT_CHAR_INFO_THEME_MODE,
   fontSizeAdjustment: DEFAULT_FONT_SIZE_ADJUSTMENT,
-  debugEnabled: false,
-  collapseModeEnabled: false,
-  alwaysExpandRules: '',
-  autoCollapseRules: '',
-  levelGapCollapseEnabled: false,
+  debugEnabled: DEFAULT_VIEWER_DEBUG_ENABLED,
+  collapseModeEnabled: DEFAULT_VIEWER_COLLAPSE_MODE_ENABLED,
+  alwaysExpandRules: DEFAULT_VIEWER_ALWAYS_EXPAND_RULES,
+  autoCollapseRules: DEFAULT_VIEWER_AUTO_COLLAPSE_RULES,
+  levelGapCollapseEnabled: DEFAULT_VIEWER_LEVEL_GAP_COLLAPSE_ENABLED,
   levelGapCollapseThreshold: DEFAULT_COLLAPSE_LEVEL_GAP,
   imageSourcePriorityEnabled: false,
   imageSourcePriority: [...DEFAULT_IMAGE_SOURCE_PRIORITY],

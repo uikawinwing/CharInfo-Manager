@@ -2,6 +2,11 @@ import { createApp, type App as VueApp } from 'vue';
 
 import { createScriptIdIframe, teleportStyle } from '@util/script';
 import { DEFAULT_CHAR_INFO_THEME_MODE, type CharInfoThemeMode } from '../char_info_shared/managerTheme';
+import {
+  DEFAULT_VIEWER_DEBUG_ENABLED,
+  DEFAULT_VIEWER_FONT_SIZE_ADJUSTMENT,
+  DEFAULT_VIEWER_FORCE_MOBILE_LAYOUT,
+} from '../char_info_shared/viewerUiDefaults';
 import App from './App.vue';
 
 const MANAGER_IFRAME_SRCDOC =
@@ -40,7 +45,7 @@ export function createProfileEditorOverlay(
   let managerViewportCleanup: (() => void) | null = null;
   let managerController: ProfileEditorController | null = null;
   let managerRootElement: HTMLElement | null = null;
-  let forceMobileLayout = options.forceMobileLayout ?? false;
+  let forceMobileLayout = options.forceMobileLayout ?? DEFAULT_VIEWER_FORCE_MOBILE_LAYOUT;
 
   const getHostWindow = (): Window => (window.parent !== window ? window.parent : window);
 
@@ -144,8 +149,8 @@ export function createProfileEditorOverlay(
           initialEntryUid: options.entryUid,
           initialCharacterName: options.initialCharacterName,
           themeMode: options.themeMode ?? DEFAULT_CHAR_INFO_THEME_MODE,
-          fontSizeAdjustment: options.fontSizeAdjustment ?? 0,
-          debugEnabled: options.debugEnabled ?? false,
+          fontSizeAdjustment: options.fontSizeAdjustment ?? DEFAULT_VIEWER_FONT_SIZE_ADJUSTMENT,
+          debugEnabled: options.debugEnabled ?? DEFAULT_VIEWER_DEBUG_ENABLED,
           onForceRefresh: options.onForceRefresh,
           onReturnToLibrary: options.onReturnToLibrary,
           onClose: close,

@@ -24,7 +24,7 @@ defineProps<{
   gap: 14px;
   margin: 0 0 22px;
   padding: 6px 0 2px;
-  color: var(--illustrated-race-accent);
+  color: var(--illustrated-page-title-fg);
 }
 
 .illustrated-page-title-line {
@@ -43,9 +43,7 @@ defineProps<{
   font-weight: 700;
   letter-spacing: 0.16em;
   text-align: center;
-  text-shadow:
-    0 0 8px rgba(var(--illustrated-race-accent-rgb), 0.55),
-    0 2px 10px rgba(0, 0, 0, 0.8);
+  text-shadow: var(--illustrated-page-title-shadow);
 }
 
 .illustrated-page-title h2 span {

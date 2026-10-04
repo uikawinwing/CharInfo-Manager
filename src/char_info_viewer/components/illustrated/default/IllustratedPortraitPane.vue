@@ -138,6 +138,7 @@ defineExpose({ captureCurrentFrame });
   position: relative;
   flex: 0 0 45%;
   min-width: 0;
+  background: var(--illustrated-portrait-pane-background);
 }
 
 .illustrated-portrait-pane::after {
@@ -353,13 +354,7 @@ defineExpose({ captureCurrentFrame });
   }
 
   .illustrated-shell.is-special-npc.is-overview-tab #{$root}::after {
-    background: linear-gradient(
-      180deg,
-      transparent 42%,
-      rgba(8, 10, 14, 0.14) 56%,
-      rgba(8, 10, 14, 0.76) 80%,
-      var(--illustrated-bg) 100%
-    );
+    background: var(--illustrated-mobile-portrait-overlay);
   }
 
   .illustrated-shell.is-special-npc.is-overview-tab .illustrated-mobile-overview-overlay {

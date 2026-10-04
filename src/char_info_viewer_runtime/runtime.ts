@@ -140,11 +140,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   let lifecycleRevision = 0;
   let started = false;
 
-  const setSaveState = (cardKey: string, phase: 'pending' | 'success' | 'error') => {
-    state.saveStateByCard[cardKey] = {
-      phase,
-      label: phase === 'pending' ? '保存中…' : phase === 'success' ? '✓ 已保存' : '保存失败',
-    };
+  const setSaveState = (cardKey: string, phase: ViewerSaveFeedback['phase']) => {
+    state.saveStateByCard[cardKey] = { phase };
   };
 
   const handleViewerSaveFeedback = (cardKey: string, feedback: ViewerSaveFeedback) => {

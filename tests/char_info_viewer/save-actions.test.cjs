@@ -127,6 +127,10 @@ test('世界书写入 Promise 卡住但条目已可读回时仍结束保存状�
 test('Viewer Save 状态跟随真实保存结果，不再使用宿主页顶部 popup', () => {
   const repoRoot = path.resolve(__dirname, '../..');
   const appSource = fs.readFileSync(path.join(repoRoot, 'src/char_info_viewer/App.vue'), 'utf8');
+  const defaultSheetSource = fs.readFileSync(
+    path.join(repoRoot, 'src/char_info_viewer/components/DefaultCharacterSheet.vue'),
+    'utf8',
+  );
   const illustratedSource = fs.readFileSync(
     path.join(repoRoot, 'src/char_info_viewer/components/illustrated/default/IllustratedDefaultSheet.vue'),
     'utf8',
@@ -137,9 +141,12 @@ test('Viewer Save 状态跟随真实保存结果，不再使用宿主页顶部 p
   );
   const runtimeRootSource = fs.readFileSync(path.join(repoRoot, 'src/char_info_viewer_runtime/RuntimeRoot.vue'), 'utf8');
   const runtimeSource = fs.readFileSync(path.join(repoRoot, 'src/char_info_viewer_runtime/runtime.ts'), 'utf8');
+  const saveUiSource = fs.readFileSync(path.join(repoRoot, 'src/char_info_shared/viewerSaveUi.ts'), 'utf8');
 
-  assert.match(appSource, /导入至\[最新消息楼层\]变量/u);
-  assert.match(illustratedSource, /导入至\[最新消息楼层\]变量/u);
+  assert.match(defaultSheetSource, /VIEWER_IMPORT_MVU_LABEL/u);
+  assert.match(illustratedSource, /VIEWER_IMPORT_MVU_LABEL/u);
+  assert.match(saveUiSource, /VIEWER_IMPORT_MVU_LABEL = '导入至\[最新消息楼层\]变量'/u);
+  assert.match(saveUiSource, /VIEWER_IMPORT_WORLDBOOK_LABEL = '导入到聊天世界书'/u);
   assert.match(appSource, /message_id:\s*Math\.max\(0,\s*getLastMessageId\(\)\)/u);
   assert.doesNotMatch(appSource, /message_id:\s*props\.messageId/u);
   assert.doesNotMatch(appSource, /导入到角色状态/u);
@@ -151,8 +158,12 @@ test('Viewer Save 状态跟随真实保存结果，不再使用宿主页顶部 p
   assert.match(runtimeRootSource, /:save-state="state\.saveStateByCard\[card\.key\]"/u);
   assert.match(runtimeRootSource, /saveFeedbackHandler\(card\.key, feedback\)/u);
   assert.doesNotMatch(runtimeRootSource, /char-info-save-notice|state\.saveNotice/u);
-  assert.match(runtimeSource, /label:\s*phase === 'pending' \? '保存中…' : phase === 'success' \? '✓ 已保存'/u);
+  assert.match(runtimeSource, /state\.saveStateByCard\[cardKey\] = \{ phase \}/u);
+  assert.doesNotMatch(runtimeSource, /保存中…|✓ 已保存|保存失败/u);
   assert.doesNotMatch(runtimeSource, /completePendingChatVariableSave|pendingChatVariableCards/u);
   assert.match(runtimeSource, /saveFeedbackHandler:\s*handleViewerSaveFeedback/u);
-  assert.match(illustratedNavSource, /importButtonText === '📥' \? '保存' : importButtonText/u);
+  assert.match(appSource, /localSavePhase = ref<ViewerSavePhase>\('idle'\)/u);
+  assert.doesNotMatch(appSource, /importButtonText|defaultImportButtonText|flashImportButton/u);
+  assert.match(illustratedNavSource, /VIEWER_SAVE_NAV_LABELS\[props\.savePhase\]/u);
+  assert.doesNotMatch(illustratedNavSource, /importButtonText === '📥'/u);
 });

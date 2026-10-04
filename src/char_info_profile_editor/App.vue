@@ -916,6 +916,10 @@ import {
   type EncounteredCharacterRecord,
 } from '../char_info_shared/characterEntryLibrary';
 import { DEFAULT_CHAR_INFO_THEME_MODE, managerThemeClass, type CharInfoThemeMode } from '../char_info_shared/managerTheme';
+import {
+  DEFAULT_VIEWER_DEBUG_ENABLED,
+  DEFAULT_VIEWER_FONT_SIZE_ADJUSTMENT,
+} from '../char_info_shared/viewerUiDefaults';
 import { copyTextWithDocumentSelection, copyTextWithFallback } from './clipboard';
 import GalleryStep from './components/GalleryStep.vue';
 import { preferredStaticImageUrl, type EditableGalleryImage } from './galleryEditor';
@@ -997,8 +1001,8 @@ const props = withDefaults(
     initialEntryUid: undefined,
     initialCharacterName: '',
     themeMode: DEFAULT_CHAR_INFO_THEME_MODE,
-    fontSizeAdjustment: 0,
-    debugEnabled: false,
+    fontSizeAdjustment: DEFAULT_VIEWER_FONT_SIZE_ADJUSTMENT,
+    debugEnabled: DEFAULT_VIEWER_DEBUG_ENABLED,
     onForceRefresh: undefined,
     onReturnToLibrary: undefined,
   },

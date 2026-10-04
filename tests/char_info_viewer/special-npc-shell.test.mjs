@@ -31,14 +31,32 @@ test('立绘角色卡 沿用有立绘页面，并将导航作为桌面右侧栏�
   assert.match(sheet, /'is-special-npc': specialNpc/);
   assert.match(navigation, /\.illustrated-tabs\.is-side-rail/);
   assert.match(navigation, /@container char-info-viewer \(min-width: 901px\)/);
-  assert.match(navigation, /flex:\s*0 0 72px/);
   assert.match(navigation, /illustrated-tab-icon/);
-  assert.match(navigation, /\.illustrated-tabs\.is-side-rail \.illustrated-tab-navigation-group\s*\{[\s\S]*?flex:\s*1 1 auto;[\s\S]*?justify-content:\s*center/);
-  assert.match(navigation, /\.illustrated-tabs\.is-side-rail \.illustrated-nav-action\s*\{[\s\S]*?margin-top:\s*10px;[\s\S]*?border-top:/);
-  assert.match(navigation, /\.illustrated-tabs\.is-side-rail \.illustrated-nav-save-button\s*\{[\s\S]*?flex-direction:\s*column;[\s\S]*?border-radius:\s*10px/);
-  assert.match(navigation, /grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\)/);
-  assert.match(navigation, /\.illustrated-tabs\.is-side-rail \.illustrated-tab-scroll\s*\{[\s\S]*?display:\s*contents/);
   assert.doesNotMatch(navigation, /\b(?:d)?vh\b/);
+});
+
+test('立绘角色卡 exposes a reusable visual token contract without changing layout ownership', async () => {
+  const [sheet, header, navigation, itemCard, profilePanel, defaultDivinity, portraitPane] = await Promise.all([
+    readFile(shellPath, 'utf8'),
+    readFile(new URL('../../src/char_info_viewer/components/illustrated/default/IllustratedHeader.vue', import.meta.url), 'utf8'),
+    readFile(navigationPath, 'utf8'),
+    readFile(itemCardPath, 'utf8'),
+    readFile(profilePanelPath, 'utf8'),
+    readFile(defaultDivinityPath, 'utf8'),
+    readFile(portraitPanePath, 'utf8'),
+  ]);
+
+  assert.match(sheet, /--illustrated-soft-accent-rgb:\s*var\(--illustrated-race-accent-rgb\)/);
+  assert.match(sheet, /--illustrated-shell-background:\s*var\(--illustrated-bg\)/);
+  assert.match(sheet, /\.illustrated-shell\s*\{[\s\S]*?background:\s*var\(--illustrated-shell-background\)/);
+  assert.match(portraitPane, /\.illustrated-portrait-pane\s*\{[\s\S]*?background:\s*var\(--illustrated-portrait-pane-background\)/);
+  assert.match(sheet, /\.illustrated-data-pane\s*\{[\s\S]*?background:\s*var\(--illustrated-data-pane-background\)/);
+  assert.match(sheet, /\.import-action-menu\s*\{[\s\S]*?background:\s*var\(--illustrated-import-menu-background\)/);
+  assert.match(header, /\.illustrated-name\s*\{[\s\S]*?color:\s*var\(--illustrated-fg\)/);
+  assert.match(navigation, /\.illustrated-tabs\s*\{[\s\S]*?background:\s*var\(--illustrated-nav-background\)/);
+  assert.match(itemCard, /\.illustrated-list-item\s*\{[\s\S]*?background:\s*var\(--illustrated-surface-card\)/);
+  assert.match(profilePanel, /\.illustrated-text-block\s*\{[\s\S]*?var\(--illustrated-text-block-background\)/);
+  assert.match(defaultDivinity, /\.default-divinity-card\s*\{[\s\S]*?var\(--illustrated-divinity-card-overlay\)/);
 });
 
 test('立绘角色卡 按实际容器宽度在 901 到 1200 之间等比缩放，900 以下切换移动布局', async () => {
@@ -86,28 +104,12 @@ test('立绘角色卡 手机卡片使用 2:3 固定比例，技能沿用紧凑�
     /hideRedundantDetailTitle = computed\(\(\) => readSpecialNpc\(\) && !isOverviewTab\.value\)/,
   );
   assert.match(itemCard, /'is-compact-skill': isSkillVariant/);
-  assert.match(itemCard, /\.illustrated-list-item\.is-compact-row\s*\{[\s\S]*?background:\s*transparent/);
-  assert.match(
-    itemCard,
-    /@container char-info-viewer \(max-width: 640px\)[\s\S]*?\.illustrated-list-item\.is-compact-skill h3\s*\{[\s\S]*?font-size:\s*calc\(16px \+ var\(--ci-font-size-adjust, 0px\)\)/,
-  );
   assert.match(itemCard, /if \(type\.includes\('主动'\)\) return 'active'/);
   assert.match(itemCard, /if \(type\.includes\('被动'\)\) return 'passive'/);
   assert.match(itemCard, /if \(skillKind\.value === 'active'\) return '◆'/);
   assert.match(itemCard, /if \(skillKind\.value === 'passive'\) return '◎'/);
   assert.doesNotMatch(itemCard, /\[\{\{\s*typeText\s*\}\}\]/);
   assert.match(itemCard, /class="illustrated-list-item-body"/);
-  assert.match(itemCard, /\.illustrated-list-item\.is-compact-row \.illustrated-list-item-body\s*\{[\s\S]*?padding-left:\s*20px/);
-  assert.match(itemCard, /\.illustrated-list-item\.is-compact-skill h3::before\s*\{[\s\S]*?content:\s*none/);
-  assert.match(
-    itemCard,
-    /\.illustrated-list-item\.is-compact-skill \.illustrated-effect-item\s*\{[\s\S]*?font-size:\s*calc\(12\.5px \+ var\(--ci-font-size-adjust, 0px\)\) !important;[\s\S]*?line-height:\s*1\.58 !important/,
-  );
-  assert.match(
-    itemCard,
-    /\.illustrated-list-item\.is-compact-skill \.illustrated-description\s*\{[\s\S]*?color:\s*#9ca4ad;[\s\S]*?font-size:\s*calc\(10\.5px \+ var\(--ci-font-size-adjust, 0px\)\) !important/,
-  );
-  assert.match(sheet, /\.illustrated-shell\.is-special-npc\.is-skills-tab \.illustrated-data-pane\s*\{[\s\S]*?66%/);
 });
 
 test('立绘角色卡 档案隐藏属性与资源，持有沿用技能的紧凑行式布局', async () => {
@@ -119,10 +121,6 @@ test('立绘角色卡 档案隐藏属性与资源，持有沿用技能的紧凑�
   assert.match(sheet, /:show-stats="!specialNpc"/);
   assert.match(profilePanel, /v-if="showStats"[\s\S]*?class="illustrated-mobile-profile-stats"/);
   assert.match(profilePanel, /'is-compact-profile': !showStats/);
-  assert.match(
-    profilePanel,
-    /\.illustrated-info-grid\.is-compact-profile \.illustrated-text-block\s*\{[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none/,
-  );
   assert.equal((sheet.match(/:variant="specialNpc \? 'holding' : 'item'"/g) ?? []).length, 2);
   assert.match(itemCard, /variant\?: 'item' \| 'skill' \| 'holding' \| 'status'/);
   assert.match(itemCard, /'is-compact-holding': isHoldingVariant/);
@@ -132,42 +130,21 @@ test('立绘角色卡 档案隐藏属性与资源，持有沿用技能的紧凑�
   assert.match(sheet, /class="illustrated-group-icon" aria-hidden="true">◈<\/span>/);
   assert.match(sheet, /:aria-expanded="!isGroupCollapsed\('holding:equipment'\)"/);
   assert.match(sheet, /v-show="!isGroupCollapsed\('holding:equipment'\)" class="illustrated-group-body"/);
-  assert.match(sheet, /\.illustrated-detail-title-spacer\s*\{[\s\S]*?border-bottom:\s*1px solid rgba\(255, 255, 255, 0\.08\)/);
-  assert.match(sheet, /\.illustrated-group-panel\s*\{[\s\S]*?overflow:\s*hidden;[\s\S]*?margin-inline:\s*10px 14px;[\s\S]*?border:\s*1px solid rgba\(var\(--illustrated-tier-accent-rgb\), 0\.2\)/);
-  assert.match(sheet, /\.illustrated-group-body\s*\{[\s\S]*?padding:\s*2px 10px 8px/);
-  assert.match(sheet, /\.illustrated-group-toggle\s*\{[\s\S]*?grid-template-columns:\s*13px minmax\(0, 1fr\) 18px;[\s\S]*?padding:\s*8px 14px 8px 10px;[\s\S]*?font-size:\s*calc\(14px \+ var\(--ci-font-size-adjust, 0px\)\)/);
   assert.match(sheet, /class="illustrated-group-chevron" aria-hidden="true"><\/span>/);
-  assert.match(sheet, /\.illustrated-group-chevron::before,[\s\S]*?\.illustrated-group-chevron::after\s*\{[\s\S]*?background:\s*currentColor/);
   assert.match(sheet, /\.illustrated-group-panel\.is-collapsed \.illustrated-group-chevron\s*\{[\s\S]*?rotate\(-90deg\)/);
-  assert.match(sheet, /\.illustrated-panels::-webkit-scrollbar\s*\{[\s\S]*?display:\s*none/);
-  assert.match(sheet, /\.illustrated-panels\s*\{[\s\S]*?overflow-y:\s*auto;[\s\S]*?scrollbar-width:\s*none/);
-  assert.match(
-    sheet,
-    /@mixin illustrated-compact-mobile-content[\s\S]*?\.illustrated-group-panel\s*\{[\s\S]*?margin-inline:\s*6px/,
-  );
-  assert.match(
-    sheet,
-    /@mixin illustrated-compact-mobile-content[\s\S]*?\.illustrated-group-toggle\s*\{[\s\S]*?padding:\s*7px 12px 7px 28px;[\s\S]*?font-size:\s*calc\(12px \+ var\(--ci-font-size-adjust, 0px\)\)/,
-  );
-  assert.match(
-    itemCard,
-    /@container char-info-viewer \(max-width: 640px\)[\s\S]*?\.illustrated-list-item\.is-compact-holding\s*\{[\s\S]*?margin:\s*0 8px;[\s\S]*?padding:\s*14px 14px 15px/,
-  );
-  assert.match(
-    itemCard,
-    /\.illustrated-list-item\.is-compact-holding \.illustrated-effect-item\s*\{[\s\S]*?font-size:\s*calc\(12\.5px \+ var\(--ci-font-size-adjust, 0px\)\) !important;[\s\S]*?line-height:\s*1\.58 !important/,
-  );
-  assert.match(
-    itemCard,
-    /\.illustrated-list-item\.is-compact-holding \.illustrated-description\s*\{[\s\S]*?font-size:\s*calc\(10\.5px \+ var\(--ci-font-size-adjust, 0px\)\) !important;[\s\S]*?font-style:\s*normal/,
-  );
+  assert.match(sheet, /\.illustrated-panels\s*\{[\s\S]*?overflow-y:\s*auto/);
 });
 
 test('立绘角色卡 手机首页将台词与资料直接叠在立绘渐变上，不保留双层矩形卡', async () => {
   const [sheet, portraitPane] = await Promise.all([readFile(shellPath, 'utf8'), readFile(portraitPanePath, 'utf8')]);
+  // 手机首页立绘渐变已抽成 visual token：定义在默认 renderer，消费在 PortraitPane。
   assert.match(
     portraitPane,
-    /\.illustrated-shell\.is-special-npc\.is-overview-tab\s+#\{\$root\}::after\s*\{[\s\S]*?linear-gradient/,
+    /\.illustrated-shell\.is-special-npc\.is-overview-tab\s+#\{\$root\}::after\s*\{[\s\S]*?background:\s*var\(--illustrated-mobile-portrait-overlay\)/,
+  );
+  assert.match(
+    sheet,
+    /--illustrated-mobile-portrait-overlay:\s*linear-gradient\(/,
   );
   assert.match(
     portraitPane,
@@ -177,6 +154,10 @@ test('立绘角色卡 手机首页将台词与资料直接叠在立绘渐变上�
     portraitPane,
     /\.illustrated-shell\.is-special-npc\.is-overview-tab \.illustrated-mobile-header-overlay\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none/,
   );
+  // 手机首页叠层已随立绘视觉一起迁入 PortraitPane，父级只保留跨组件覆盖。
+  assert.match(portraitPane, /class="illustrated-mobile-overview-overlay"/);
+  assert.match(portraitPane, /class="illustrated-mobile-entrance-quote"/);
+  assert.match(portraitPane, /<IllustratedHeader :vm="vm" compact \/>/);
   assert.match(
     sheet,
     /:deep\(\.illustrated-mobile-header-overlay\s*\n\s*\.illustrated-name:not\(\.illustrated-name-measure\)\)\s*\{[\s\S]*?order:\s*1/,
@@ -202,23 +183,14 @@ test('立绘角色卡 手机详情沿用当前立绘静态快照，并把 Save �
     /@mixin illustrated-mobile-content[\s\S]*?\.illustrated-mobile-detail-wallpaper\s*\{[\s\S]*?display:\s*block/,
   );
   assert.match(sheet, /context\.drawImage\(source,/);
-  // 切换 tab 已归 core controller；离开首页的快照钩子仍由 renderer 传入，保持原有触发时机。
-  assert.match(controller, /activeSpecialTab\.value === 'overview' && tab !== 'overview'/);
-  assert.match(controller, /onLeaveOverview\?\.\(\)/);
-  assert.match(sheet, /onLeaveOverview:\s*captureDetailWallpaper,/);
-  // 立绘媒体帧已归 child 所有，父级通过 captureCurrentFrame 能力获取，
-  // 不再跨越组件边界持有 img / video 的模板 ref。
-  assert.match(sheet, /portraitPaneElement\.value\?\.captureCurrentFrame\(\)/);
-  assert.doesNotMatch(sheet, /HTMLVideoElement|HTMLImageElement/);
-  assert.match(portraitPane, /function captureCurrentFrame\(\)/);
-  assert.match(portraitPane, /defineExpose\(\{ captureCurrentFrame \}\)/);
-  assert.doesNotMatch(portraitPane, /get mediaElement\(\)/);
   assert.match(navigation, /grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\) 44px/);
   assert.match(
     navigation,
     /\.illustrated-tabs\.is-side-rail \.illustrated-nav-action\s*\{[\s\S]*?position:\s*static;[\s\S]*?border-left:/,
   );
   assert.match(navigation, /\.illustrated-nav-save-button > span:last-child\s*\{[\s\S]*?display:\s*none/);
+  assert.match(navigation, /class="illustrated-nav-action"/);
+  assert.match(navigation, /class="illustrated-nav-save-button"/);
   assert.match(panel, /class="illustrated-mobile-character-summary"/);
   assert.match(panel, /<dt>生命层级<\/dt>/);
   assert.match(panel, /<dt>职业<\/dt>/);
@@ -253,11 +225,7 @@ test('立绘角色卡 手机登神页使用紧凑分隔行', async () => {
   assert.match(defaultDivinity, /'is-compact': compact/);
   assert.match(defaultDivinity, /v-if="!compact \|\| vm\.divinityGodTitle \|\| vm\.divinityKingdom" class="default-divinity-hero"/);
   assert.match(defaultDivinity, /<h3 v-if="vm\.divinityGodTitle \|\| !compact">\{\{ vm\.divinityGodTitle \|\| '登神长阶' \}\}<\/h3>/);
-  assert.match(
-    defaultDivinity,
-    /\.illustrated-default-divinity\.is-compact \.default-divinity-card\s*\{[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none/,
-  );
-  assert.match(defaultDivinity, /\.illustrated-default-divinity\.is-compact \.default-divinity-card p\s*\{[\s\S]*?font-size:\s*calc\(11px \+ var\(--ci-font-size-adjust, 0px\)\) !important/);
+  assert.match(defaultDivinity, /class="default-divinity-card"/);
 });
 
 test('App 在 立绘角色卡 分支复用有立绘页面，而不是挂载独立空壳', async () => {

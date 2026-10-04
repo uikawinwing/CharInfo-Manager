@@ -129,12 +129,10 @@ const statusLines = computed(() => {
   position: relative;
   margin-bottom: 24px;
   padding: 24px 32px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--illustrated-border-faint);
   border-radius: 2px;
-  background: rgba(12, 14, 18, 0.85);
-  box-shadow:
-    inset 0 0 40px rgba(0, 0, 0, 0.8),
-    0 10px 20px rgba(0, 0, 0, 0.5);
+  background: var(--illustrated-surface-card);
+  box-shadow: var(--illustrated-item-shadow);
   --item-color: var(--illustrated-race-accent);
 }
 
@@ -172,10 +170,10 @@ const statusLines = computed(() => {
   display: flex;
   align-items: center;
   margin: 0;
-  color: #ffffff;
+  color: var(--illustrated-fg);
   font-size: calc(20px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  text-shadow: var(--illustrated-heading-shadow);
 }
 
 .illustrated-list-item h3::before {
@@ -232,8 +230,8 @@ const statusLines = computed(() => {
   padding: 4px 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 2px;
-  background: rgba(0, 0, 0, 0.4);
-  color: #a0a5b5;
+  background: var(--illustrated-surface-tag);
+  color: var(--illustrated-fg-muted);
   font-size: calc(12px + var(--ci-font-size-adjust, 0px));
 }
 
@@ -247,7 +245,7 @@ const statusLines = computed(() => {
 }
 
 .illustrated-effect-item {
-  color: #e2e8f0;
+  color: var(--illustrated-fg-soft);
   line-height: 1.7;
 }
 
@@ -262,7 +260,7 @@ const statusLines = computed(() => {
 .illustrated-effect-text,
 .illustrated-description,
 .illustrated-line {
-  color: #e2e8f0;
+  color: var(--illustrated-fg-soft);
   white-space: pre-line;
 }
 
@@ -282,7 +280,7 @@ const statusLines = computed(() => {
   border: 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 0;
-  background: transparent;
+  background: var(--illustrated-compact-row-background);
   box-shadow: none;
 }
 

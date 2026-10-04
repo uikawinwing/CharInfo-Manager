@@ -126,7 +126,7 @@ const blocks = computed(() =>
     linear-gradient(var(--corner), var(--corner)),
     linear-gradient(var(--corner), var(--corner)),
     linear-gradient(var(--corner), var(--corner)),
-    radial-gradient(ellipse at center, rgba(30, 34, 42, 0.4) 0%, rgba(10, 12, 16, 0.8) 100%);
+    var(--illustrated-text-block-background);
   background-repeat: no-repeat;
   background-position:
     0 0,
@@ -148,7 +148,7 @@ const blocks = computed(() =>
     12px 1px,
     1px 12px,
     auto;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--illustrated-panel-shadow);
 }
 
 .illustrated-text-block::before,
@@ -193,11 +193,11 @@ const blocks = computed(() =>
 
 .illustrated-text-block p {
   margin: 0;
-  color: #e2e8f0;
+  color: var(--illustrated-fg-soft);
   font-size: calc(15px + var(--ci-font-size-adjust, 0px));
   line-height: 1.8;
   white-space: pre-line;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  text-shadow: var(--illustrated-text-shadow);
 }
 
 @container char-info-viewer (max-width: 900px) {
