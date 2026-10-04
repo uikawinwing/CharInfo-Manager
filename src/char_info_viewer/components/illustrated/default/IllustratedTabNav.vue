@@ -132,7 +132,7 @@ function tabIcon(key: IllustratedTabKey): string {
   min-height: 44px;
   padding: 6px 8px;
   border: none;
-  background: var(--illustrated-tab-active-background);
+  background: none;
   color: var(--illustrated-tab-fg);
   cursor: pointer;
   font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
@@ -154,6 +154,7 @@ function tabIcon(key: IllustratedTabKey): string {
 
 .illustrated-tab-button:hover:not(:disabled),
 .illustrated-tab-button.active:not(:disabled) {
+  background: var(--illustrated-tab-active-background);
   color: var(--illustrated-tab-active-fg);
 }
 
