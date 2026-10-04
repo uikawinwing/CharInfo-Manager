@@ -139,7 +139,7 @@ watch(() => props.vm.nameText, updateNameLayout, { flush: 'post' });
   font-size: calc(13px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   letter-spacing: 0.1em;
-  text-shadow: 0 0 8px rgba(var(--illustrated-tier-accent-rgb), 0.4);
+  text-shadow: var(--illustrated-tier-shadow);
 }
 
 .illustrated-level {

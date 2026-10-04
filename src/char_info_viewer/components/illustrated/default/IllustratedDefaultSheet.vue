@@ -616,6 +616,23 @@ watch(
   --illustrated-mobile-nav-background: color-mix(in srgb, var(--illustrated-bg) 94%, transparent);
   --illustrated-side-rail-background: rgba(4, 5, 9, 0.82);
   --illustrated-side-rail-shadow: none;
+  // 导航视觉 token。idle / active 的前景与指示色**不与 race-accent 绑定**：
+  // 真实 theme 的 active 指示色与 race-accent 并不相等（Iris race-accent 是
+  // #42a996，而 active 指示色是 #f078a6），绑死会让浅色主题失效。
+  --illustrated-nav-border-color: var(--illustrated-border-soft);
+  --illustrated-tab-fg: var(--illustrated-fg-muted);
+  --illustrated-tab-active-fg: var(--illustrated-race-accent);
+  --illustrated-tab-active-indicator: var(--illustrated-race-accent);
+  // 桌面底栏的 active 没有背景，只有前景变化，所以默认透明。
+  --illustrated-tab-active-background: transparent;
+  // 侧栏 active 才有的渐变底色，与桌面底栏是两条独立证据，值不可合并。
+  --illustrated-side-rail-border-color: rgba(255, 255, 255, 0.08);
+  --illustrated-side-rail-tab-active-background: linear-gradient(
+    90deg,
+    rgba(var(--illustrated-race-accent-rgb), 0.12),
+    transparent
+  );
+  --illustrated-tier-shadow: 0 0 8px rgba(var(--illustrated-tier-accent-rgb), 0.4);
   --illustrated-import-menu-background: rgba(20, 20, 20, 0.92);
   --illustrated-import-menu-border: rgba(255, 255, 255, 0.18);
   --illustrated-import-menu-fg: #eee;

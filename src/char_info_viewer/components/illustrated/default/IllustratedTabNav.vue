@@ -105,7 +105,7 @@ function tabIcon(key: IllustratedTabKey): string {
   min-height: var(--illustrated-tabs-height);
   margin: 0 auto;
   overflow: hidden;
-  border-top: 1px solid var(--illustrated-border-soft);
+  border-top: 1px solid var(--illustrated-nav-border-color);
   background: var(--illustrated-nav-background);
 }
 
@@ -132,8 +132,8 @@ function tabIcon(key: IllustratedTabKey): string {
   min-height: 44px;
   padding: 6px 8px;
   border: none;
-  background: none;
-  color: var(--illustrated-fg-muted);
+  background: var(--illustrated-tab-active-background);
+  color: var(--illustrated-tab-fg);
   cursor: pointer;
   font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
   font-size: calc(15px + var(--ci-font-size-adjust, 0px));
@@ -154,7 +154,7 @@ function tabIcon(key: IllustratedTabKey): string {
 
 .illustrated-tab-button:hover:not(:disabled),
 .illustrated-tab-button.active:not(:disabled) {
-  color: var(--illustrated-race-accent);
+  color: var(--illustrated-tab-active-fg);
 }
 
 .illustrated-tab-button.active::after {
@@ -164,7 +164,7 @@ function tabIcon(key: IllustratedTabKey): string {
   bottom: -1px;
   left: 0;
   height: 2px;
-  background: var(--illustrated-race-accent);
+  background: var(--illustrated-tab-active-indicator);
 }
 
 .illustrated-tab-icon,
@@ -240,7 +240,7 @@ function tabIcon(key: IllustratedTabKey): string {
     justify-content: flex-start;
     margin: 0;
     border-top: 0;
-    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 1px solid var(--illustrated-side-rail-border-color);
     padding: 14px 6px;
     background: var(--illustrated-side-rail-background);
     box-shadow: var(--illustrated-side-rail-shadow);
@@ -321,7 +321,7 @@ function tabIcon(key: IllustratedTabKey): string {
   }
 
   .illustrated-tabs.is-side-rail .illustrated-tab-button.active {
-    background: linear-gradient(90deg, rgba(var(--illustrated-race-accent-rgb), 0.12), transparent);
+    background: var(--illustrated-side-rail-tab-active-background);
   }
 
   .illustrated-tabs.is-side-rail .illustrated-tab-button.active::after {
