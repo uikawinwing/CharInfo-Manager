@@ -23,6 +23,10 @@ const illustratedSheetSource = readFileSync(
   new URL('../../src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue', import.meta.url),
   'utf8',
 );
+const illustratedPortraitPaneSource = readFileSync(
+  new URL('../../src/char_info_viewer/components/illustrated/IllustratedPortraitPane.vue', import.meta.url),
+  'utf8',
+);
 const illustratedTabNavSource = readFileSync(
   new URL('../../src/char_info_viewer/components/illustrated/IllustratedTabNav.vue', import.meta.url),
   'utf8',
@@ -203,9 +207,10 @@ test('手机角色详情把资料分页固定在三键栏上方，并在首页�
     '桌面 Force Mobile 不应依赖纵向滚动才能看到整张卡',
   );
   assert.match(
-    illustratedSheetSource,
+    illustratedPortraitPaneSource,
     /class="illustrated-portrait-pane"[\s\S]*?class="illustrated-mobile-overview-overlay"[\s\S]*?<IllustratedHeader[^>]*compact/u,
   );
+  assert.match(illustratedSheetSource, /<IllustratedPortraitPane[\s\S]*?:force-mobile-layout="forceMobileLayout"/u);
   assert.match(
     illustratedSheetSource,
     /<div ref="panelsElement" class="illustrated-panels">[\s\S]*?<IllustratedTabNav/u,

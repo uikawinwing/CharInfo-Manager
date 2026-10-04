@@ -5,7 +5,7 @@ const test = require('node:test');
 
 const componentPath = path.resolve(
   __dirname,
-  '../../src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue',
+  '../../src/char_info_viewer/components/illustrated/IllustratedPortraitPane.vue',
 );
 
 test('the illustrated character mobile overview keeps the entrance quote above its header card', () => {
@@ -14,7 +14,7 @@ test('the illustrated character mobile overview keeps the entrance quote above i
   assert.match(source, /class="illustrated-mobile-overview-overlay"/);
   assert.match(
     source,
-    /<button\s+[\s\S]*?v-if="vm\.entranceQuoteText"[\s\S]*?class="illustrated-mobile-entrance-quote"[\s\S]*?@click="openEntranceQuoteDialog"/,
+    /<button\s+[\s\S]*?v-if="vm\.entranceQuoteText"[\s\S]*?class="illustrated-mobile-entrance-quote"[\s\S]*?@click="\$emit\('openEntranceQuote', \$event\)"/,
   );
   assert.match(source, /\.illustrated-mobile-overview-overlay\s*\{[\s\S]*?display:\s*flex;/);
   assert.match(source, /\.illustrated-mobile-entrance-quote\s*\{[\s\S]*?background:\s*rgba\([^;]+\);/);

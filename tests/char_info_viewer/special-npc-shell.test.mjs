@@ -10,6 +10,10 @@ const profilePanelPath = new URL(
   import.meta.url,
 );
 const panelPath = new URL('../../src/char_info_viewer/components/illustrated/IllustratedCharacterPanel.vue', import.meta.url);
+const portraitPanePath = new URL(
+  '../../src/char_info_viewer/components/illustrated/IllustratedPortraitPane.vue',
+  import.meta.url,
+);
 const defaultDivinityPath = new URL(
   '../../src/char_info_viewer/components/illustrated/IllustratedDefaultDivinityPanel.vue',
   import.meta.url,
@@ -141,31 +145,35 @@ test('立绘角色卡 档案隐藏属性与资源，持有沿用技能的紧凑�
 });
 
 test('立绘角色卡 手机首页将台词与资料直接叠在立绘渐变上，不保留双层矩形卡', async () => {
-  const sheet = await readFile(shellPath, 'utf8');
+  const [sheet, portraitPane] = await Promise.all([readFile(shellPath, 'utf8'), readFile(portraitPanePath, 'utf8')]);
   assert.match(
-    sheet,
-    /\.illustrated-shell\.is-special-npc\.is-overview-tab \.illustrated-portrait-pane::after\s*\{[\s\S]*?linear-gradient/,
+    portraitPane,
+    /\.illustrated-shell\.is-special-npc\.is-overview-tab\s+#\{\$root\}::after\s*\{[\s\S]*?linear-gradient/,
   );
   assert.match(
-    sheet,
+    portraitPane,
     /\.illustrated-shell\.is-special-npc\.is-overview-tab \.illustrated-mobile-entrance-quote\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none/,
   );
   assert.match(
-    sheet,
+    portraitPane,
     /\.illustrated-shell\.is-special-npc\.is-overview-tab \.illustrated-mobile-header-overlay\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none/,
   );
-  assert.match(sheet, /:deep\(\.illustrated-name:not\(\.illustrated-name-measure\)\)\s*\{[\s\S]*?order:\s*1/);
   assert.match(
     sheet,
-    /\.illustrated-shell\.is-special-npc\.is-overview-tab[\s\S]*?:deep\(\.illustrated-subtitle\),[\s\S]*?:deep\(\.illustrated-level-tier\)\s*\{[\s\S]*?display:\s*none/,
+    /:deep\(\.illustrated-mobile-header-overlay\s*\n\s*\.illustrated-name:not\(\.illustrated-name-measure\)\)\s*\{[\s\S]*?order:\s*1/,
+  );
+  assert.match(
+    sheet,
+    /\.illustrated-shell\.is-special-npc\.is-overview-tab[\s\S]*?:deep\(\.illustrated-mobile-header-overlay\s*\n\s*\.illustrated-subtitle\),[\s\S]*?:deep\(\.illustrated-mobile-header-overlay\s*\n\s*\.illustrated-level-tier\)\s*\{[\s\S]*?display:\s*none/,
   );
 });
 
 test('立绘角色卡 手机详情沿用当前立绘静态快照，并把 Save 收进六项底栏右侧操作位', async () => {
-  const [sheet, navigation, panel] = await Promise.all([
+  const [sheet, navigation, panel, portraitPane] = await Promise.all([
     readFile(shellPath, 'utf8'),
     readFile(navigationPath, 'utf8'),
     readFile(panelPath, 'utf8'),
+    readFile(portraitPanePath, 'utf8'),
   ]);
   assert.match(sheet, /ref="detailWallpaperCanvas"/);
   assert.match(sheet, /\.illustrated-mobile-detail-wallpaper\s*\{\s*display:\s*none/);
@@ -175,8 +183,11 @@ test('立绘角色卡 手机详情沿用当前立绘静态快照，并把 Save �
   );
   assert.match(sheet, /context\.drawImage\(source,/);
   assert.match(sheet, /activeSpecialTab\.value === 'overview' && tab !== 'overview'/);
-  assert.match(sheet, /ref="portraitImageElement"/);
-  assert.match(sheet, /ref="portraitVideoElement"/);
+  // 立绘媒体元素已归 child 所有，父级通过 expose 读取，避免跨组件边界的模板 ref。
+  assert.match(sheet, /portraitPaneElement\.value\?\.mediaElement/);
+  assert.match(portraitPane, /ref="imageElement"/);
+  assert.match(portraitPane, /ref="videoElement"/);
+  assert.match(portraitPane, /get mediaElement\(\)/);
   assert.match(navigation, /grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\) 44px/);
   assert.match(
     navigation,

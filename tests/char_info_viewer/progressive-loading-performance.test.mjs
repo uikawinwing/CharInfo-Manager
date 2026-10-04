@@ -5,9 +5,9 @@ import test from 'node:test';
 const repoRoot = new URL('../../', import.meta.url);
 const readSource = path => readFile(new URL(path, repoRoot), 'utf8');
 
-const [appSource, sheetSource, runtimeRootSource] = await Promise.all([
+const [appSource, portraitPaneSource, runtimeRootSource] = await Promise.all([
   readSource('src/char_info_viewer/App.vue'),
-  readSource('src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue'),
+  readSource('src/char_info_viewer/components/illustrated/IllustratedPortraitPane.vue'),
   readSource('src/char_info_viewer_runtime/RuntimeRoot.vue'),
 ]);
 
@@ -22,10 +22,10 @@ test('viewer renders a stable local shell and starts particles only after the ca
 });
 
 test('illustrated character portraits decode progressively without blocking the card frame', () => {
-  assert.match(sheetSource, /loading="lazy"/);
-  assert.match(sheetSource, /decoding="async"/);
-  assert.match(sheetSource, /class="illustrated-portrait-loading"/);
-  assert.match(sheetSource, /@load="onPortraitLoaded"/);
+  assert.match(portraitPaneSource, /loading="lazy"/);
+  assert.match(portraitPaneSource, /decoding="async"/);
+  assert.match(portraitPaneSource, /class="illustrated-portrait-loading"/);
+  assert.match(portraitPaneSource, /@load="onPortraitLoaded"/);
 });
 
 test('visual effects switch stops non-media UI animation and expensive compositing on mobile', () => {

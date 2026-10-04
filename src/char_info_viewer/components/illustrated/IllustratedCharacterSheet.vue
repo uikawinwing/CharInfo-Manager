@@ -32,72 +32,15 @@
         :class="{ 'is-visible': !isOverviewTab && detailWallpaperReady }"
         aria-hidden="true"
       ></canvas>
-      <aside class="illustrated-portrait-pane">
-        <div v-if="!portraitLoaded && !portraitLoadFailed" class="illustrated-portrait-loading" role="status">
-          <span aria-hidden="true">◇</span>
-          <small>立绘载入中</small>
-        </div>
-        <video
-          v-if="isVideoPortrait && !portraitLoadFailed"
-          ref="portraitVideoElement"
-          :key="portraitMediaUrl"
-          class="illustrated-portrait-video"
-          :class="{ 'is-loaded': portraitLoaded }"
-          :src="portraitMediaUrl"
-          :aria-label="vm.nameText"
-          autoplay
-          loop
-          muted
-          playsinline
-          preload="metadata"
-          @loadeddata="onPortraitLoaded"
-          @error="onPortraitLoadError"
-        ></video>
-        <img
-          v-else-if="!portraitLoadFailed"
-          ref="portraitImageElement"
-          :key="portraitMediaUrl"
-          class="illustrated-portrait-image"
-          :class="{ 'is-loaded': portraitLoaded }"
-          :src="portraitMediaUrl"
-          :alt="vm.nameText"
-          loading="lazy"
-          decoding="async"
-          referrerpolicy="no-referrer"
-          @load="onPortraitLoaded"
-          @error="onPortraitLoadError"
-        />
-        <section v-else class="illustrated-portrait-failure" role="status">
-          <strong>立绘无法加载</strong>
-          <p>可能是网络、代理或资源地址不可用。</p>
-          <div class="illustrated-portrait-failure-actions">
-            <button type="button" @click="retryPortraitLoad">重试</button>
-            <button type="button" @click="$emit('fallbackToDefault')">切换到默认版</button>
-          </div>
-        </section>
-        <div v-if="isOverviewTab && hasMultiplePortraits" class="illustrated-portrait-navigation">
-          <button type="button" aria-label="上一张立绘" @click="switchPortrait(-1)">‹</button>
-          <button type="button" aria-label="下一张立绘" @click="switchPortrait(1)">›</button>
-        </div>
-        <div v-if="isOverviewTab" class="illustrated-mobile-overview-overlay">
-          <button
-            v-if="vm.entranceQuoteText"
-            class="illustrated-mobile-entrance-quote"
-            type="button"
-            :aria-label="`查看${vm.nameText}的完整台词`"
-            title="查看完整台词"
-            @click="openEntranceQuoteDialog"
-          >
-            <span class="illustrated-mobile-quote-mark" aria-hidden="true">“</span>
-            <span class="illustrated-mobile-quote-text">{{ vm.entranceQuoteText }}</span>
-            <span class="illustrated-mobile-quote-mark" aria-hidden="true">”</span>
-            <span class="illustrated-quote-expand-cue" aria-hidden="true">↗</span>
-          </button>
-          <div class="illustrated-mobile-header-overlay">
-            <IllustratedHeader :vm="vm" compact />
-          </div>
-        </div>
-      </aside>
+      <IllustratedPortraitPane
+        ref="portraitPaneElement"
+        :vm="vm"
+        :portrait="portrait"
+        :is-overview-tab="isOverviewTab"
+        :force-mobile-layout="forceMobileLayout"
+        @fallback-to-default="$emit('fallbackToDefault')"
+        @open-entrance-quote="openEntranceQuoteDialog"
+      />
 
       <section class="illustrated-data-pane">
         <IllustratedHeader
@@ -375,6 +318,7 @@ import IllustratedHeader from './IllustratedHeader.vue';
 import IllustratedItemCard from './IllustratedItemCard.vue';
 import IllustratedOverviewPanel from './IllustratedOverviewPanel.vue';
 import IllustratedPageTitle from './IllustratedPageTitle.vue';
+import IllustratedPortraitPane from './IllustratedPortraitPane.vue';
 import IllustratedProfilePanel from './IllustratedProfilePanel.vue';
 import IllustratedTabNav from './IllustratedTabNav.vue';
 
@@ -452,8 +396,7 @@ const activeProfileSubview = ref<'info' | 'story'>('info');
 const wrapperElement = ref<HTMLElement | null>(null);
 const shellElement = ref<HTMLElement | null>(null);
 const panelsElement = ref<HTMLElement | null>(null);
-const portraitImageElement = ref<HTMLImageElement | null>(null);
-const portraitVideoElement = ref<HTMLVideoElement | null>(null);
+const portraitPaneElement = ref<InstanceType<typeof IllustratedPortraitPane> | null>(null);
 const detailWallpaperCanvas = ref<HTMLCanvasElement | null>(null);
 const detailWallpaperReady = ref(false);
 const overviewDensity = ref<'normal' | 'compact' | 'dense'>('normal');
@@ -483,21 +426,6 @@ const portrait = useIllustratedPortrait({
   debugEnabled: () => props.debugEnabled,
 });
 
-const {
-  activePortraitIndex,
-  activePortraitSourceIndex,
-  activePortraitSources,
-  activePortraitUrl,
-  portraitMediaUrl,
-  hasMultiplePortraits,
-  isVideoPortrait,
-  portraitLoaded,
-  portraitLoadFailed,
-  switchPortrait,
-  retryPortraitLoad,
-  onPortraitLoaded,
-  onPortraitLoadError,
-} = portrait;
 const tabs = computed<IllustratedTab[]>(() => [
   { key: 'overview', label: '首页' },
   { key: 'characterPanel', label: '面板' },
@@ -521,7 +449,7 @@ const activeSpecialTabTitle = computed(() => tabs.value.find(tab => tab.key === 
 function captureDetailWallpaper(): void {
   const canvas = detailWallpaperCanvas.value;
   const shell = shellElement.value;
-  const source = isVideoPortrait.value ? portraitVideoElement.value : portraitImageElement.value;
+  const source = portraitPaneElement.value?.mediaElement ?? null;
   if (!canvas || !shell || !source || !portraitLoaded.value || portraitLoadFailed.value) {
     detailWallpaperReady.value = false;
     return;
@@ -846,194 +774,6 @@ watchEffect(() => {
 .illustrated-quote-dialog-close:focus-visible {
   outline: 2px solid var(--illustrated-tier-accent);
   outline-offset: 3px;
-}
-
-.illustrated-portrait-pane {
-  position: relative;
-  flex: 0 0 45%;
-  min-width: 0;
-}
-
-.illustrated-portrait-pane::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to right, transparent 60%, var(--illustrated-bg) 100%);
-  pointer-events: none;
-}
-
-.illustrated-portrait-image {
-  display: block;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  object-fit: cover;
-  object-position: top center;
-  transition: opacity 180ms ease-out;
-}
-
-.illustrated-portrait-video {
-  display: block;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  object-fit: cover;
-  object-position: top center;
-  transition: opacity 180ms ease-out;
-}
-
-.illustrated-portrait-image.is-loaded,
-.illustrated-portrait-video.is-loaded {
-  opacity: 1;
-}
-
-.illustrated-portrait-loading {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  display: grid;
-  place-content: center;
-  gap: 10px;
-  color: rgba(var(--illustrated-soft-accent-rgb), 0.78);
-  text-align: center;
-  background:
-    radial-gradient(circle at 42% 36%, rgba(var(--illustrated-race-accent-rgb), 0.18), transparent 34%),
-    linear-gradient(145deg, rgba(22, 35, 49, 0.98), var(--illustrated-bg));
-}
-
-.illustrated-portrait-loading span {
-  font-size: calc(clamp(28px, 5cqw, 54px) + var(--ci-font-size-adjust, 0px));
-  text-shadow: 0 0 20px rgba(var(--illustrated-soft-accent-rgb), 0.38);
-  animation: illustrated-portrait-pulse 1.2s ease-in-out infinite alternate;
-}
-
-.illustrated-portrait-loading small {
-  font-size: calc(12px + var(--ci-font-size-adjust, 0px));
-  font-weight: 700;
-  letter-spacing: 0.12em;
-}
-
-@keyframes illustrated-portrait-pulse {
-  from {
-    opacity: 0.35;
-    transform: scale(0.94);
-  }
-  to {
-    opacity: 0.9;
-    transform: scale(1);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .illustrated-portrait-loading span {
-    animation: none;
-  }
-
-  .illustrated-portrait-image,
-  .illustrated-portrait-video {
-    transition: none;
-  }
-}
-
-.illustrated-portrait-failure {
-  position: relative;
-  z-index: 5;
-  display: grid;
-  align-content: center;
-  justify-items: center;
-  width: 100%;
-  height: 100%;
-  min-height: 260px;
-  padding: 28px;
-  background:
-    radial-gradient(circle at 50% 35%, rgba(var(--illustrated-tier-accent-rgb), 0.14), transparent 56%),
-    var(--illustrated-bg);
-  color: #f8f9fa;
-  text-align: center;
-}
-
-.illustrated-portrait-failure strong {
-  color: var(--illustrated-tier-accent);
-  font-size: calc(20px + var(--ci-font-size-adjust, 0px));
-}
-
-.illustrated-portrait-failure p {
-  max-width: 22em;
-  margin: 10px 0 20px;
-  color: rgba(248, 249, 250, 0.76);
-  font-size: calc(14px + var(--ci-font-size-adjust, 0px));
-  line-height: 1.6;
-}
-
-.illustrated-portrait-failure-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-}
-
-.illustrated-portrait-failure-actions button {
-  min-height: 40px;
-  padding: 0 16px;
-  border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.72);
-  border-radius: 6px;
-  background: rgba(var(--illustrated-race-accent-rgb), 0.12);
-  color: #f8f9fa;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 700;
-}
-
-.illustrated-portrait-failure-actions button:hover {
-  border-color: var(--illustrated-tier-accent);
-  background: rgba(var(--illustrated-tier-accent-rgb), 0.18);
-}
-
-.illustrated-portrait-navigation {
-  position: absolute;
-  top: 50%;
-  right: 14px;
-  left: 14px;
-  z-index: 6;
-  display: flex;
-  justify-content: space-between;
-  pointer-events: none;
-  transform: translateY(-50%);
-}
-
-.illustrated-portrait-navigation button {
-  display: grid;
-  width: 42px;
-  height: 42px;
-  padding: 0;
-  border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.6);
-  border-radius: 50%;
-  background: rgba(7, 11, 18, 0.56);
-  color: rgba(255, 255, 255, 0.92);
-  cursor: pointer;
-  font:
-    400 30px/1 Georgia,
-    serif;
-  place-items: center;
-  pointer-events: auto;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
-  transition:
-    border-color 160ms ease,
-    background 160ms ease,
-    transform 160ms ease;
-}
-
-.illustrated-portrait-navigation button:hover,
-.illustrated-portrait-navigation button:focus-visible {
-  border-color: var(--illustrated-tier-accent);
-  background: rgba(7, 11, 18, 0.78);
-  outline: none;
-  transform: scale(1.06);
-}
-
-.illustrated-mobile-overview-overlay,
-.illustrated-mobile-header-overlay {
-  display: none;
 }
 
 .illustrated-data-pane {
@@ -1539,15 +1279,6 @@ watchEffect(() => {
     aspect-ratio: 2 / 3;
   }
 
-  .illustrated-portrait-pane {
-    flex: 1 1 auto;
-    min-height: 0;
-  }
-
-  .illustrated-shell.is-detail-tab .illustrated-portrait-pane {
-    display: none;
-  }
-
   .illustrated-mobile-detail-wallpaper {
     position: absolute;
     inset: 0;
@@ -1563,10 +1294,6 @@ watchEffect(() => {
 
   .illustrated-mobile-detail-wallpaper.is-visible {
     opacity: 0.34;
-  }
-
-  .illustrated-portrait-pane::after {
-    background: linear-gradient(to bottom, transparent 65%, var(--illustrated-bg) 100%);
   }
 
   .illustrated-data-pane {
@@ -1602,136 +1329,15 @@ watchEffect(() => {
     display: none;
   }
 
-  .illustrated-mobile-overview-overlay {
-    position: absolute;
-    right: 18px;
-    bottom: 22px;
-    left: 18px;
-    z-index: 3;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .illustrated-shell.is-special-npc.is-overview-tab .illustrated-portrait-pane::after {
-    background: linear-gradient(
-      180deg,
-      transparent 42%,
-      rgba(8, 10, 14, 0.14) 56%,
-      rgba(8, 10, 14, 0.76) 80%,
-      var(--illustrated-bg) 100%
-    );
-  }
-
-  .illustrated-shell.is-special-npc.is-overview-tab .illustrated-mobile-overview-overlay {
-    right: 17px;
-    bottom: 12px;
-    left: 17px;
-    gap: 6px;
-  }
-
-  .illustrated-mobile-entrance-quote {
-    position: relative;
-    appearance: none;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    min-height: 38px;
-    margin: 0 8px;
-    padding: 7px 12px;
-    border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.48);
-    border-radius: 6px;
-    background: rgba(8, 12, 18, 0.58);
-    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.2);
-    color: rgba(255, 255, 255, 0.96);
-    cursor: pointer;
-    font-family: 'LXGW WenKai Mono', 'Noto Serif SC', 'Songti SC', serif;
-    font-size: calc(clamp(12px, 3.4cqw, 14px) + var(--ci-font-size-adjust, 0px));
-    font-style: normal;
-    font-weight: 400;
-    letter-spacing: 0.04em;
-    line-height: 1.4;
-    text-align: center;
-    touch-action: manipulation;
-  }
-
-  .illustrated-shell.is-special-npc.is-overview-tab .illustrated-mobile-entrance-quote {
-    min-height: 0;
-    margin: 0 4px;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    font-size: calc(11px + var(--ci-font-size-adjust, 0px));
-    line-height: 1.5;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
-  }
-
-  .illustrated-mobile-entrance-quote:focus-visible {
-    outline: 2px solid var(--illustrated-tier-accent);
-    outline-offset: 3px;
-  }
-
-  .illustrated-mobile-entrance-quote .illustrated-quote-expand-cue {
-    position: absolute;
-    right: 5px;
-    bottom: 3px;
-    color: rgba(var(--illustrated-tier-accent-rgb), 0.76);
-    font: 10px/1 sans-serif;
-  }
-
-  .illustrated-mobile-quote-mark {
-    flex: 0 0 auto;
-    color: rgba(var(--illustrated-race-accent-rgb), 0.92);
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: calc(18px + var(--ci-font-size-adjust, 0px));
-    line-height: 1;
-  }
-
-  .illustrated-mobile-quote-text {
-    display: -webkit-box;
-    overflow: hidden;
-    overflow-wrap: anywhere;
-    white-space: pre-line;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-  }
-
-  .illustrated-mobile-header-overlay {
-    display: block;
-    padding: 10px 12px;
-    border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.62);
-    border-radius: 8px;
-    background: rgba(12, 14, 20, 0.66);
-    box-shadow:
-      0 10px 32px rgba(0, 0, 0, 0.42),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
-  }
-
-  .illustrated-shell.is-special-npc.is-overview-tab .illustrated-mobile-header-overlay {
-    padding: 0 2px;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-
   .illustrated-shell.is-special-npc.is-overview-tab
-    .illustrated-mobile-header-overlay
-    :deep(.illustrated-header.compact) {
+    :deep(.illustrated-mobile-header-overlay
+      .illustrated-header.compact) {
     gap: 4px;
   }
 
   .illustrated-shell.is-special-npc.is-overview-tab
-    .illustrated-mobile-header-overlay
-    :deep(.illustrated-name:not(.illustrated-name-measure)) {
+    :deep(.illustrated-mobile-header-overlay
+      .illustrated-name:not(.illustrated-name-measure)) {
     order: 1;
     margin: 0 !important;
     font-size: calc(clamp(24px, 8cqw, 28px) + var(--ci-font-size-adjust, 0px));
@@ -1740,17 +1346,17 @@ watchEffect(() => {
   }
 
   .illustrated-shell.is-special-npc.is-overview-tab
-    .illustrated-mobile-header-overlay
-    :deep(.illustrated-subtitle),
+    :deep(.illustrated-mobile-header-overlay
+      .illustrated-subtitle),
   .illustrated-shell.is-special-npc.is-overview-tab
-    .illustrated-mobile-header-overlay
-    :deep(.illustrated-level-tier) {
+    :deep(.illustrated-mobile-header-overlay
+      .illustrated-level-tier) {
     display: none;
   }
 
   .illustrated-shell.is-special-npc.is-overview-tab
-    .illustrated-mobile-header-overlay
-    :deep(.illustrated-subtitle) {
+    :deep(.illustrated-mobile-header-overlay
+      .illustrated-subtitle) {
     order: 2;
     gap: 5px;
     font-size: calc(10px + var(--ci-font-size-adjust, 0px));
@@ -1759,25 +1365,25 @@ watchEffect(() => {
   }
 
   .illustrated-shell.is-special-npc.is-overview-tab
-    .illustrated-mobile-header-overlay
-    :deep(.illustrated-level-tier) {
+    :deep(.illustrated-mobile-header-overlay
+      .illustrated-level-tier) {
     order: 3;
     margin: 2px 0 0;
     padding: 2px 0;
   }
 
   .illustrated-shell.is-special-npc.is-overview-tab
-    .illustrated-mobile-header-overlay
-    :deep(.illustrated-level),
+    :deep(.illustrated-mobile-header-overlay
+      .illustrated-level),
   .illustrated-shell.is-special-npc.is-overview-tab
-    .illustrated-mobile-header-overlay
-    :deep(.illustrated-tier) {
+    :deep(.illustrated-mobile-header-overlay
+      .illustrated-tier) {
     font-size: calc(10px + var(--ci-font-size-adjust, 0px));
   }
 
   .illustrated-shell.is-special-npc.is-overview-tab
-    .illustrated-mobile-header-overlay
-    :deep(.illustrated-badge-separator) {
+    :deep(.illustrated-mobile-header-overlay
+      .illustrated-badge-separator) {
     margin: 0 10px;
   }
 
@@ -1962,16 +1568,6 @@ watchEffect(() => {
   .illustrated-group-chevron {
     width: 13px;
     height: 13px;
-  }
-
-  .illustrated-mobile-overview-overlay {
-    right: 14px;
-    bottom: 18px;
-    left: 14px;
-  }
-
-  .illustrated-mobile-header-overlay {
-    padding: 9px 10px;
   }
 
   .import-action-menu {

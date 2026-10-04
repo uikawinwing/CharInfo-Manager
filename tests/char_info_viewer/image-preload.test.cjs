@@ -17,6 +17,10 @@ const portraitCoreSource = readFileSync(
   path.join(repoRoot, 'src/char_info_viewer/components/illustrated/core/useIllustratedPortrait.ts'),
   'utf8',
 );
+const illustratedPaneSource = readFileSync(
+  path.join(repoRoot, 'src/char_info_viewer/components/illustrated/IllustratedPortraitPane.vue'),
+  'utf8',
+);
 
 test('图片预载只温热浏览器正常缓存，不建立独立 Cache Storage 或改变跨域请求模式', () => {
   assert.match(preloadSource, /const MAX_CONCURRENT_PRELOADS = 4;/);
@@ -92,9 +96,10 @@ test('当前角色库和立绘 Viewer 只做小窗口预热，不扫描完整图
   assert.match(portraitCoreSource, /void preloadPortraitImages\(urls\)/);
 });
 
-test('立绘 markup 与默认视觉仍留在默认 renderer，未被行为迁移改变', () => {
-  assert.match(illustratedSource, /class="illustrated-portrait-pane"/);
-  assert.match(illustratedSource, /loading="lazy"/);
-  assert.match(illustratedSource, /decoding="async"/);
-  assert.match(illustratedSource, /referrerpolicy="no-referrer"/);
+test('立绘 markup 的渐进式解码与隐私属性仍保留在立绘面板', () => {
+  assert.match(portraitCoreSource, /normalizePortraitMediaUrlForBrowser/);
+  assert.match(illustratedPaneSource, /class="illustrated-portrait-image"/);
+  assert.match(illustratedPaneSource, /loading="lazy"/);
+  assert.match(illustratedPaneSource, /decoding="async"/);
+  assert.match(illustratedPaneSource, /referrerpolicy="no-referrer"/);
 });

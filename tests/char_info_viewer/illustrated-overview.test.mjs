@@ -5,10 +5,11 @@ import test from 'node:test';
 const repoRoot = new URL('../../', import.meta.url);
 const readSource = path => readFile(new URL(path, repoRoot), 'utf8');
 
-const [overviewSource, sheetSource, headerSource] = await Promise.all([
+const [overviewSource, sheetSource, headerSource, portraitPaneSource] = await Promise.all([
   readSource('src/char_info_viewer/components/illustrated/IllustratedOverviewPanel.vue'),
   readSource('src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue'),
   readSource('src/char_info_viewer/components/illustrated/IllustratedHeader.vue'),
+  readSource('src/char_info_viewer/components/illustrated/IllustratedPortraitPane.vue'),
 ]);
 
 test('illustrated character overview renders the entrance quote only when display text exists', () => {
@@ -163,7 +164,8 @@ test('clamped entrance quotes open an accessible full-text dialog on desktop and
     /<button[\s\S]*?class="illustrated-entrance-quote"[\s\S]*?@click="emit\('openEntranceQuote'\)"/,
   );
   assert.match(overviewSource, /openEntranceQuote:\s*\[\];/);
-  assert.match(sheetSource, /class="illustrated-mobile-entrance-quote"[\s\S]*?@click="openEntranceQuoteDialog"/);
+  // 移动端入口台词已随立绘面板迁到 child：child 只 emit，父级 renderer 独占 dialog。
+  assert.match(portraitPaneSource, /class="illustrated-mobile-entrance-quote"[\s\S]*?@click="\$emit\('openEntranceQuote', \$event\)"/);
   assert.match(sheetSource, /@open-entrance-quote="openEntranceQuoteDialog"/);
   assert.match(sheetSource, /class="illustrated-quote-dialog"[\s\S]*?role="dialog"[\s\S]*?aria-modal="true"/);
   assert.doesNotMatch(sheetSource, /<Teleport to="body">/);

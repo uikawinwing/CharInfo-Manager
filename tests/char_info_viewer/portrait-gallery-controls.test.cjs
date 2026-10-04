@@ -12,8 +12,13 @@ const portraitCorePath = path.resolve(
   '../../src/char_info_viewer/components/illustrated/core/useIllustratedPortrait.ts',
 );
 
+const portraitPanePath = path.resolve(
+  __dirname,
+  '../../src/char_info_viewer/components/illustrated/IllustratedPortraitPane.vue',
+);
+
 test('illustrated character overview provides previous and next portrait controls only for galleries', () => {
-  const source = fs.readFileSync(componentPath, 'utf8');
+  const source = fs.readFileSync(portraitPanePath, 'utf8');
 
   assert.match(source, /v-if="isOverviewTab && hasMultiplePortraits"/);
   assert.match(source, /aria-label="上一张立绘"/);
@@ -48,4 +53,39 @@ test('立绘行为已从默认 renderer 迁出到 core，renderer 只消费 cont
   assert.doesNotMatch(source, /createMediaSourceTimeout/);
   assert.doesNotMatch(source, /nextMediaSourceIndex/);
   assert.doesNotMatch(source, /preloadPortraitImages/);
+});
+
+test('移动端姓名条覆盖必须跨组件边界生效：父级不得要求 overlay 携带父级 scope id', () => {
+  const sheet = fs.readFileSync(componentPath, 'utf8');
+  const pane = fs.readFileSync(portraitPanePath, 'utf8');
+
+  // overlay 已移入 child，只带 child 的 scope id。父级若写成
+  // `.shell ... .illustrated-mobile-header-overlay :deep(...)`，
+  // 编译后会要求 overlay 带父级 data-v，规则静默失效。
+  assert.doesNotMatch(
+    sheet,
+    /\.illustrated-mobile-header-overlay\s*\n\s*:deep\(/,
+    '父级不得对已移入 child 的 overlay 直接施加 scope 选择器，否则移动端姓名条样式会静默失效',
+  );
+  assert.match(
+    sheet,
+    /\.illustrated-shell\.is-special-npc\.is-overview-tab\s*\n\s*:deep\(\.illustrated-mobile-header-overlay/u,
+  );
+  assert.match(pane, /class="illustrated-mobile-header-overlay"/);
+});
+
+test('立绘视觉已从默认 renderer 迁出到独立面板，renderer 只组合不拥有立绘样式', () => {
+  const sheet = fs.readFileSync(componentPath, 'utf8');
+  const pane = fs.readFileSync(portraitPanePath, 'utf8');
+
+  assert.match(sheet, /<IllustratedPortraitPane/);
+  assert.doesNotMatch(sheet, /\.illustrated-portrait-(?:image|video|loading|failure|navigation)\s*\{/);
+  assert.match(pane, /\.illustrated-portrait-pane\s*\{/);
+  assert.match(pane, /\.illustrated-portrait-image\s*\{/);
+  assert.match(pane, /\.illustrated-portrait-navigation\s*\{/);
+  // 移动端布局必须同时保留 @container 阈值与 force-mobile-layout 触发路径。
+  assert.match(pane, /@container char-info-viewer \(max-width: 900px\)/);
+  assert.match(pane, /@container char-info-viewer \(max-width: 640px\)/);
+  assert.match(pane, /@include illustrated-portrait-mobile-content\('\.illustrated-portrait-pane\.force-mobile-layout'\)/);
+  assert.match(pane, /@include illustrated-portrait-compact-content\('\.illustrated-portrait-pane\.force-mobile-layout'\)/);
 });
