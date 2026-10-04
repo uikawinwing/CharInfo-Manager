@@ -28,7 +28,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import type { CharacterViewModel } from '../../services/characterViewModel';
+import type { CharacterViewModel } from '../../../services/characterViewModel';
 
 const props = withDefaults(
   defineProps<{

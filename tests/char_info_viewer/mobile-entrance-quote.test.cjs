@@ -5,7 +5,7 @@ const test = require('node:test');
 
 const componentPath = path.resolve(
   __dirname,
-  '../../src/char_info_viewer/components/illustrated/IllustratedPortraitPane.vue',
+  '../../src/char_info_viewer/components/illustrated/default/IllustratedPortraitPane.vue',
 );
 
 test('the illustrated character mobile overview keeps the entrance quote above its header card', () => {

@@ -26,9 +26,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import type { CharacterViewModel, ResourceBox } from '../../services/characterViewModel';
+import type { CharacterViewModel, ResourceBox } from '../../../services/characterViewModel';
 import IllustratedOverviewPanel from './IllustratedOverviewPanel.vue';
-import type { AttributeView } from './types';
+import type { AttributeView } from '../types';
 
 const props = withDefaults(
   defineProps<{

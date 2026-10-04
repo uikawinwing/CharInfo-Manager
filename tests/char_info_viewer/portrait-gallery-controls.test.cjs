@@ -14,7 +14,7 @@ const portraitCorePath = path.resolve(
 
 const portraitPanePath = path.resolve(
   __dirname,
-  '../../src/char_info_viewer/components/illustrated/IllustratedPortraitPane.vue',
+  '../../src/char_info_viewer/components/illustrated/default/IllustratedPortraitPane.vue',
 );
 
 test('illustrated character overview provides previous and next portrait controls only for galleries', () => {

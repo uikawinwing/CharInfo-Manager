@@ -56,9 +56,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import type { CharacterViewModel, ItemObject, ResourceBox } from '../../services/characterViewModel';
+import type { CharacterViewModel, ItemObject, ResourceBox } from '../../../services/characterViewModel';
 import IllustratedItemCard from './IllustratedItemCard.vue';
-import type { AttributeView } from './types';
+import type { AttributeView } from '../types';
 
 const props = defineProps<{
   vm: CharacterViewModel;

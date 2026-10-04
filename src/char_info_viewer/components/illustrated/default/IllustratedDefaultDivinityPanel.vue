@@ -32,7 +32,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import type { CharacterViewModel } from '../../services/characterViewModel';
+import type { CharacterViewModel } from '../../../services/characterViewModel';
 import { buildDivinitySections } from './divinitySections';
 
 const props = withDefaults(defineProps<{ vm: CharacterViewModel; compact?: boolean }>(), {

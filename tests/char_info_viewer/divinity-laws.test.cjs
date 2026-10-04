@@ -3,7 +3,7 @@ const { readFileSync } = require('node:fs');
 const test = require('node:test');
 
 const { buildCharacterViewModel } = require('../../src/char_info_viewer/services/characterViewModel.ts');
-const { buildDivinitySections } = require('../../src/char_info_viewer/components/illustrated/divinitySections.ts');
+const { buildDivinitySections } = require('../../src/char_info_viewer/components/illustrated/default/divinitySections.ts');
 const { parseCharacterYaml } = require('../../src/char_info_viewer/services/yamlParser.ts');
 
 test('keeps the complete law collection when legacy top-level data accompanies the current divinity field', () => {
@@ -112,7 +112,7 @@ test('renders prompt-style named law effects', () => {
 
 test('keeps the illustrated divinity tab vertically scrollable when its content exceeds the panel', () => {
   const panelSource = readFileSync(
-    require.resolve('../../src/char_info_viewer/components/illustrated/IllustratedDefaultDivinityPanel.vue'),
+    require.resolve('../../src/char_info_viewer/components/illustrated/default/IllustratedDefaultDivinityPanel.vue'),
     'utf8',
   );
   const divinityPanelRule = panelSource.match(/\.illustrated-default-divinity\s*\{[^}]*\}/)?.[0];

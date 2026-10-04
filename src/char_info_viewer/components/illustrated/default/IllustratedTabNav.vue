@@ -51,7 +51,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import type { IllustratedTab, IllustratedTabKey } from './types';
+import type { IllustratedTab, IllustratedTabKey } from '../types';
 
 const props = defineProps<{
   tabs: IllustratedTab[];

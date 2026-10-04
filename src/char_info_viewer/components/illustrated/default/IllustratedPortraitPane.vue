@@ -70,8 +70,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
-import type { CharacterViewModel } from '../../services/characterViewModel';
-import type { IllustratedPortraitController } from './core/useIllustratedPortrait';
+import type { CharacterViewModel } from '../../../services/characterViewModel';
+import type { IllustratedPortraitController } from '../core/useIllustratedPortrait';
 import IllustratedHeader from './IllustratedHeader.vue';
 
 /**

@@ -68,7 +68,7 @@ import {
   statusEffectLayers,
   statusEffectSource,
   type ItemObject,
-} from '../../services/characterViewModel';
+} from '../../../services/characterViewModel';
 
 const props = withDefaults(
   defineProps<{

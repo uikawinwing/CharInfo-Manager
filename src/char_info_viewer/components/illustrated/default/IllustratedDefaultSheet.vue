@@ -313,15 +313,15 @@ import type { CharacterViewModel } from '../../../services/characterViewModel';
 import type { AttributeView } from '../types';
 import { useIllustratedPortrait } from '../core/useIllustratedPortrait';
 import { useIllustratedSheetController } from '../core/useIllustratedSheetController';
-import IllustratedCharacterPanel from '../IllustratedCharacterPanel.vue';
-import IllustratedDefaultDivinityPanel from '../IllustratedDefaultDivinityPanel.vue';
-import IllustratedHeader from '../IllustratedHeader.vue';
-import IllustratedItemCard from '../IllustratedItemCard.vue';
-import IllustratedOverviewPanel from '../IllustratedOverviewPanel.vue';
-import IllustratedPageTitle from '../IllustratedPageTitle.vue';
-import IllustratedPortraitPane from '../IllustratedPortraitPane.vue';
-import IllustratedProfilePanel from '../IllustratedProfilePanel.vue';
-import IllustratedTabNav from '../IllustratedTabNav.vue';
+import IllustratedCharacterPanel from './IllustratedCharacterPanel.vue';
+import IllustratedDefaultDivinityPanel from './IllustratedDefaultDivinityPanel.vue';
+import IllustratedHeader from './IllustratedHeader.vue';
+import IllustratedItemCard from './IllustratedItemCard.vue';
+import IllustratedOverviewPanel from './IllustratedOverviewPanel.vue';
+import IllustratedPageTitle from './IllustratedPageTitle.vue';
+import IllustratedPortraitPane from './IllustratedPortraitPane.vue';
+import IllustratedProfilePanel from './IllustratedProfilePanel.vue';
+import IllustratedTabNav from './IllustratedTabNav.vue';
 
 const props = defineProps<{
   vm: CharacterViewModel;

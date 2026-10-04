@@ -132,7 +132,7 @@ test('Viewer Save 状态跟随真实保存结果，不再使用宿主页顶部 p
     'utf8',
   );
   const illustratedNavSource = fs.readFileSync(
-    path.join(repoRoot, 'src/char_info_viewer/components/illustrated/IllustratedTabNav.vue'),
+    path.join(repoRoot, 'src/char_info_viewer/components/illustrated/default/IllustratedTabNav.vue'),
     'utf8',
   );
   const runtimeRootSource = fs.readFileSync(path.join(repoRoot, 'src/char_info_viewer_runtime/RuntimeRoot.vue'), 'utf8');

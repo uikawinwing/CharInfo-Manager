@@ -3,19 +3,19 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const shellPath = new URL('../../src/char_info_viewer/components/illustrated/default/IllustratedDefaultSheet.vue', import.meta.url);
-const navigationPath = new URL('../../src/char_info_viewer/components/illustrated/IllustratedTabNav.vue', import.meta.url);
-const itemCardPath = new URL('../../src/char_info_viewer/components/illustrated/IllustratedItemCard.vue', import.meta.url);
+const navigationPath = new URL('../../src/char_info_viewer/components/illustrated/default/IllustratedTabNav.vue', import.meta.url);
+const itemCardPath = new URL('../../src/char_info_viewer/components/illustrated/default/IllustratedItemCard.vue', import.meta.url);
 const profilePanelPath = new URL(
-  '../../src/char_info_viewer/components/illustrated/IllustratedProfilePanel.vue',
+  '../../src/char_info_viewer/components/illustrated/default/IllustratedProfilePanel.vue',
   import.meta.url,
 );
-const panelPath = new URL('../../src/char_info_viewer/components/illustrated/IllustratedCharacterPanel.vue', import.meta.url);
+const panelPath = new URL('../../src/char_info_viewer/components/illustrated/default/IllustratedCharacterPanel.vue', import.meta.url);
 const portraitPanePath = new URL(
-  '../../src/char_info_viewer/components/illustrated/IllustratedPortraitPane.vue',
+  '../../src/char_info_viewer/components/illustrated/default/IllustratedPortraitPane.vue',
   import.meta.url,
 );
 const defaultDivinityPath = new URL(
-  '../../src/char_info_viewer/components/illustrated/IllustratedDefaultDivinityPanel.vue',
+  '../../src/char_info_viewer/components/illustrated/default/IllustratedDefaultDivinityPanel.vue',
   import.meta.url,
 );
 const appPath = new URL('../../src/char_info_viewer/App.vue', import.meta.url);

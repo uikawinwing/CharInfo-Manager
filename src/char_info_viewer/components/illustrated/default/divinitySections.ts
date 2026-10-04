@@ -6,7 +6,7 @@ import {
   lawPassiveEntries,
   type CharacterViewModel,
   type ItemObject,
-} from '../../services/characterViewModel';
+} from '../../../services/characterViewModel';
 
 export type DivinityStageSection = {
   kind: string;

@@ -50,8 +50,8 @@
 </template>
 
 <script setup lang="ts">
-import type { ResourceBox } from '../../services/characterViewModel';
-import type { AttributeView } from './types';
+import type { ResourceBox } from '../../../services/characterViewModel';
+import type { AttributeView } from '../types';
 
 withDefaults(
   defineProps<{

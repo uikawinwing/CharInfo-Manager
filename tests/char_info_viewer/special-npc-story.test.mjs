@@ -7,7 +7,7 @@ const sheetSource = await readFile(
   'utf8',
 );
 const profileSource = await readFile(
-  new URL('../../src/char_info_viewer/components/illustrated/IllustratedProfilePanel.vue', import.meta.url),
+  new URL('../../src/char_info_viewer/components/illustrated/default/IllustratedProfilePanel.vue', import.meta.url),
   'utf8',
 );
 const controllerSource = await readFile(

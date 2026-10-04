@@ -18,7 +18,7 @@ const portraitCoreSource = readFileSync(
   'utf8',
 );
 const illustratedPaneSource = readFileSync(
-  path.join(repoRoot, 'src/char_info_viewer/components/illustrated/IllustratedPortraitPane.vue'),
+  path.join(repoRoot, 'src/char_info_viewer/components/illustrated/default/IllustratedPortraitPane.vue'),
   'utf8',
 );
 

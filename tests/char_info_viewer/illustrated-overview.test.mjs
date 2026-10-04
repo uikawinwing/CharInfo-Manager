@@ -6,10 +6,10 @@ const repoRoot = new URL('../../', import.meta.url);
 const readSource = path => readFile(new URL(path, repoRoot), 'utf8');
 
 const [overviewSource, sheetSource, headerSource, portraitPaneSource, controllerSource] = await Promise.all([
-  readSource('src/char_info_viewer/components/illustrated/IllustratedOverviewPanel.vue'),
+  readSource('src/char_info_viewer/components/illustrated/default/IllustratedOverviewPanel.vue'),
   readSource('src/char_info_viewer/components/illustrated/default/IllustratedDefaultSheet.vue'),
-  readSource('src/char_info_viewer/components/illustrated/IllustratedHeader.vue'),
-  readSource('src/char_info_viewer/components/illustrated/IllustratedPortraitPane.vue'),
+  readSource('src/char_info_viewer/components/illustrated/default/IllustratedHeader.vue'),
+  readSource('src/char_info_viewer/components/illustrated/default/IllustratedPortraitPane.vue'),
   readSource('src/char_info_viewer/components/illustrated/core/useIllustratedSheetController.ts'),
 ]);
 

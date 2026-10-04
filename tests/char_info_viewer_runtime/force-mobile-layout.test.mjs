@@ -24,11 +24,11 @@ const illustratedSheetSource = readFileSync(
   'utf8',
 );
 const illustratedPortraitPaneSource = readFileSync(
-  new URL('../../src/char_info_viewer/components/illustrated/IllustratedPortraitPane.vue', import.meta.url),
+  new URL('../../src/char_info_viewer/components/illustrated/default/IllustratedPortraitPane.vue', import.meta.url),
   'utf8',
 );
 const illustratedTabNavSource = readFileSync(
-  new URL('../../src/char_info_viewer/components/illustrated/IllustratedTabNav.vue', import.meta.url),
+  new URL('../../src/char_info_viewer/components/illustrated/default/IllustratedTabNav.vue', import.meta.url),
   'utf8',
 );
 const viewerAppSource = readFileSync(new URL('../../src/char_info_viewer/App.vue', import.meta.url), 'utf8');
@@ -190,6 +190,35 @@ test('手机角色详情底栏保留三个主动作，返回游戏固定在中�
     runtimeRootSource,
     /class="char-info-library-viewer-mobile-dock"[\s\S]*?@click="closeCharacterLibrary"/u,
   );
+});
+
+test('默认 renderer 目录内的相对导入必须全部可解析', async () => {
+  // 目录搬迁最容易漏掉多行 import 的路径深度，这类错误 build 能抓到但源码正则抓不到，
+  // 因此这里显式把 illustrated/ 下的相对 import 全解析一遍。
+  const { readdir } = await import('node:fs/promises');
+  const { dirname, resolve } = await import('node:path');
+  const { existsSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+
+  const root = fileURLToPath(new URL('../../src/char_info_viewer/components/illustrated/', import.meta.url));
+  const files = (await readdir(root, { recursive: true }))
+    .filter(name => typeof name === 'string' && /\.(vue|ts)$/.test(name))
+    .map(name => resolve(root, name));
+
+  assert.ok(files.length > 0, 'illustrated/ 下应存在源码文件');
+
+  const broken = [];
+  for (const file of files) {
+    const source = readFileSync(file, 'utf8');
+    for (const match of source.matchAll(/from\s+'(\.[^']+)'/g)) {
+      const target = resolve(dirname(file), match[1]);
+      if (!existsSync(target) && !existsSync(`${target}.ts`) && !existsSync(`${target}.vue`)) {
+        broken.push(`${file.slice(root.length)} -> ${match[1]}`);
+      }
+    }
+  }
+
+  assert.deepEqual(broken, [], `以下相对导入无法解析：\n${broken.join('\n')}`);
 });
 
 test('手机角色详情把资料分页固定在三键栏上方，并在首页首屏显示姓名块', () => {

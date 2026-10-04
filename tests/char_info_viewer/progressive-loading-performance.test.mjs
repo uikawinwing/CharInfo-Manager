@@ -7,7 +7,7 @@ const readSource = path => readFile(new URL(path, repoRoot), 'utf8');
 
 const [appSource, portraitPaneSource, runtimeRootSource] = await Promise.all([
   readSource('src/char_info_viewer/App.vue'),
-  readSource('src/char_info_viewer/components/illustrated/IllustratedPortraitPane.vue'),
+  readSource('src/char_info_viewer/components/illustrated/default/IllustratedPortraitPane.vue'),
   readSource('src/char_info_viewer_runtime/RuntimeRoot.vue'),
 ]);
 
