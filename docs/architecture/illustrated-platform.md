@@ -204,7 +204,7 @@ navigation?  IllustratedTabNav
 
 不提供 registry、plugin loader、slot、JSON layout DSL、动态发现、创作者配置项。需要时用显式 import + props 表达。
 
-**ItemCard 只有一个 override 槽位**，不是按 tab 分裂成 Skill/Equipment/Inventory/Status 四套。六个调用点共用 `itemCardModule`，差异全部经由既有 `variant` prop 表达。DX 若真需要不同 renderer，再在 override 内部按 `variant` 分支。
+**ItemCard 只有一个 override 槽位**，不是按 tab 分裂成 Skill/Equipment/Inventory/Status 四套。所有调用点共用 `itemCardModule`，差异全部经由既有 `variant` prop 表达。DX 若真需要不同 renderer，再在 override 内部按 `variant` 分支。
 
 `portrait` 有一项额外义务：必须 `defineExpose({ captureCurrentFrame })`。移动端详情快照由父级 canvas 绘制，父级只调这个方法，不接触媒体 DOM。缺少它不会崩，但移动端详情页会静默失去背景图。
 
