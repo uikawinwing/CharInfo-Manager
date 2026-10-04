@@ -9,7 +9,7 @@
 
 ## 1. 当前状态
 
-Phase 0–4 已完成。默认 renderer 已从「单文件壳 + 大半 CSS」拆成 `core/` 行为层与 `default/` 视觉层，旧文件名只保留兼容 wrapper。
+Phase 0–5 已完成。默认 renderer 已从「单文件壳 + 大半 CSS」拆成 `core/` 行为层与 `default/` 视觉层，旧文件名只保留兼容 wrapper，五个可替换模块已有 fallback seam。
 
 ### 当前 ownership 事实
 
@@ -38,9 +38,22 @@ Phase 0–4 已完成。默认 renderer 已从「单文件壳 + 大半 CSS」拆
 
 ### DX 代码当前不在 `dev` 上
 
-DX 实现在 `origin/feat/dx-character-v2-dev-sync` 与 `origin/DX-character-V2-remake`，**尚未合入本分支**。`IllustratedV2Sheet.vue` 是约 690 行 wrapper：template 只有一行 `<IllustratedCharacterSheet v-bind="$attrs" side-rail-navigation />` 加一层装饰，script 5 行，style 654 行，其中约 82 个 selector 直接打在默认 renderer 私有 class 上（`.illustrated-shell`、`.illustrated-portrait-pane`、`.illustrated-data-pane`、`.illustrated-group-panel`、`.illustrated-tabs.is-side-rail`、`.illustrated-attribute-total` 等）。
+DX 实现在 `origin/feat/dx-character-v2-dev-sync` 与 `origin/DX-character-V2-remake`，**尚未合入本分支**（Phase 6 才接入）。`IllustratedV2Sheet.vue` 是 690 行 wrapper：template + script 只有 27 行，其余 654 行是 CSS，其中 81 个 selector 直接打在默认 renderer 私有 class 上。
 
 这就是本平台存在的理由：**外部设计一旦依赖默认 renderer 的私有 DOM，默认 DOM 一动，外部一起坏。**
+
+### 1.1 DX selector 分类（Phase 5 实证）
+
+**81 个 selector 是 evidence，不是 specification。** Phase 5 逐条读过，分类如下：
+
+| 类别 | 实际内容 | 处置 |
+| --- | --- | --- |
+| **已在 token contract 内** | `.illustrated-v2-theme-* .illustrated-wrapper { --illustrated-*: ... }` 两个大块，单块就重定义 60+ token | **已由 Level 1 覆盖**，不需要 override |
+| **theme token 缺口** | `illustrated-tab-button` x11、`illustrated-tabs` x7、`illustrated-header` x7、`illustrated-page-title` x4、`illustrated-attribute` x4、`illustrated-tag` / `illustrated-tier` / `illustrated-subtitle` / `illustrated-level` / `illustrated-name` / `illustrated-line` / `illustrated-text-block` / `illustrated-list-item` / `illustrated-attribute-total` 等 | 改的是颜色、阴影、圆角、边框——**应该补进 token contract，不是 module replacement** |
+| **default layout coordination** | `illustrated-shell` x4、`illustrated-data-pane` x4、`illustrated-portrait-pane` x5、`illustrated-group-panel` x2 | renderer 拥有的骨架，**不属于任何可替换模块**；塞进 override 会让 seam 变形 |
+| **DX 私有 styling** | `iris-v2-*` / `anastasia-v2-*` 装饰层、bubble、jellyfish、dream-dice | 本来就该留在 DX 自己文件里，**platform 不需要 seam** |
+
+**结论：Level 2 module override 只覆盖 5 个模块边界，DX 现有 81 个 selector 里绝大多数仍属于 Level 1 token 或 DX 私有样式。** 这正是想要的窄 seam。Phase 6 接入 DX 时，应先把剩余非 token 规则补进 token contract，**而不是扩张 override 槽位**。
 
 ---
 
@@ -175,6 +188,26 @@ Level 3 必须作为 escape hatch 存在，否则所有特殊 DX 最终都会退
 
 **禁止用大量 slot 实现可替换性**，那会变成 slot spaghetti。**也禁止把模块切得过细**（`NameText.vue` / `TierBadge.vue` / `TagChip.vue` 这类），DX 拼几十个 Lego 的维护成本更高。合理的 module 粒度是「设计师真的会整块重新设计」的区域。
 
+### 4.1 Module Override contract
+
+`IllustratedRendererOverrides` 定义在 `illustrated/types.ts`（platform shared types，不新建 `core/types.ts`）：
+
+```text
+header?      IllustratedHeader
+overview?    IllustratedOverviewPanel
+portrait?    IllustratedPortraitPane
+itemCard?    IllustratedItemCard
+navigation?  IllustratedTabNav
+```
+
+五项**全部可选**，逐项独立回落。`IllustratedDefaultSheet.vue` 用五个 `computed` 逐项解析（`props.overrides?.x ?? Default`），模板用 `<component :is>` 绑定。
+
+不提供 registry、plugin loader、slot、JSON layout DSL、动态发现、创作者配置项。需要时用显式 import + props 表达。
+
+**ItemCard 只有一个 override 槽位**，不是按 tab 分裂成 Skill/Equipment/Inventory/Status 四套。六个调用点共用 `itemCardModule`，差异全部经由既有 `variant` prop 表达。DX 若真需要不同 renderer，再在 override 内部按 `variant` 分支。
+
+`portrait` 有一项额外义务：必须 `defineExpose({ captureCurrentFrame })`。移动端详情快照由父级 canvas 绘制，父级只调这个方法，不接触媒体 DOM。缺少它不会崩，但移动端详情页会静默失去背景图。
+
 ---
 
 ## 5. 状态 ownership：一个状态一个 owner
@@ -266,7 +299,7 @@ tests/char_info_viewer/viewer-host-boundary.test.mjs
 | 2 | sheet controller：抽 `useIllustratedSheetController` | 完成 `a301d7e` |
 | 3 | 默认 renderer 收薄为 `IllustratedDefaultSheet`，旧文件名保留兼容 wrapper | 完成 `80c0dc3` / `17efa45` |
 | 4 | 剩余自然模块：Story panel、Quote dialog | 完成 `4d97d6c` |
-| 5 | `IllustratedRendererOverrides`：Header / Overview / Portrait / ItemCard / Navigation，默认 fallback | 未开始 |
+| 5 | `IllustratedRendererOverrides`：Header / Overview / Portrait / ItemCard / Navigation，默认 fallback | 完成 |
 | 6 | 把 DX 接入新 seam（本轮**不做**，见下） | 不做 |
 
 每 phase 至少满足：行为测试通过、build 通过、lint 0 error、默认视觉无意外改变、mobile / desktop 路由 contract 保持。
@@ -287,7 +320,7 @@ identity = at-rule ancestry  >>  selector  {  排序后的 declarations  }
 
 这套比对能发现源码正则测试完全看不到的「规则被搬到组件外导致 scope 不匹配」。行为部分则需要用真实 runtime 挂载断言——`scoped`、`_unref` 这类编译期与运行期行为，源码正则和 transpile-only 构建都抓不到。
 
-**当前测试数是 362**（357 + Phase 4 的 5 条：1 条 ownership 断言 + 4 条台词弹窗真实 runtime 焦点回归）。基线 357 不是回归：`c63a883`（dev）删除了锁定立绘审美实现细节的源码正则测试，属于有意清理。判断测试是否丢失，要比对**测试清单**而不是总数——本分支相对 `dev` 只多出 seam 断言，没有删除任何 dev 侧测试。
+**当前测试数是 369**（357 基线 + Phase 4 的 5 条 + Phase 5 的 7 条 override 契约）。基线 357 不是回归：`c63a883`（dev）删除了锁定立绘审美实现细节的源码正则测试，属于有意清理。判断测试是否丢失，要比对**测试清单**而不是总数——本分支相对 `dev` 只多出 seam 断言，没有删除任何 dev 侧测试。
 
 ### 搬迁中确认的既有问题（尚未修，不要在 Phase 5 顺手改）
 
@@ -315,9 +348,10 @@ identity = at-rule ancestry  >>  selector  {  排序后的 declarations  }
 改完整台词弹窗                → default/IllustratedQuoteDialog（状态仍在 core）
 改兜底故事块                  → default/IllustratedStoryPanel
 改默认布局 / 组合              → default/IllustratedDefaultSheet
+让 DX 换掉某一整块             → types.ts 的 IllustratedRendererOverrides
+改共享平台类型                → illustrated/types.ts（root，不下沉）
 改兼容入口签名                → illustrated/IllustratedCharacterSheet（只转发）
-给 DX 一个完全不同的导航       → dx/<该 dx>
-新增所有角色通用的 tab 行为    → core
+给 DX 一个完全不同的渲染        → Level 3 full renderer，只用 core controller
 把成熟 DX 玩具开放给创作者     → 先 reusable module，再接创作者 preset
 ```
 

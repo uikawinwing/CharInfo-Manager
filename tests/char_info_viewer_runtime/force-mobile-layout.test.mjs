@@ -239,10 +239,10 @@ test('手机角色详情把资料分页固定在三键栏上方，并在首页�
     illustratedPortraitPaneSource,
     /class="illustrated-portrait-pane"[\s\S]*?class="illustrated-mobile-overview-overlay"[\s\S]*?<IllustratedHeader[^>]*compact/u,
   );
-  assert.match(illustratedSheetSource, /<IllustratedPortraitPane[\s\S]*?:force-mobile-layout="forceMobileLayout"/u);
+  assert.match(illustratedSheetSource, /:is="portraitModule"[\s\S]*?:force-mobile-layout="forceMobileLayout"/u);
   assert.match(
     illustratedSheetSource,
-    /<div ref="panelsElement" class="illustrated-panels">[\s\S]*?<IllustratedTabNav/u,
+    /<div ref="panelsElement" class="illustrated-panels">[\s\S]*?:is="navigationModule"/u,
   );
   assert.doesNotMatch(runtimeRootSource, /scrollLibraryViewerFromWheel|beginLibraryViewerScroll/u);
   assert.doesNotMatch(runtimeRootSource, /\.char-info-library-viewer\s*\{[^}]*touch-action:\s*none;/u);

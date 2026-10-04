@@ -64,7 +64,7 @@ test('兼容入口 IllustratedCharacterSheet 只做转发，不持有实现', as
 });
 
 test('默认立绘角色卡 renderer 的实现在 default/ 目录内', async () => {
-  assert.match(specialSheetSource, /<IllustratedPortraitPane/);
+  assert.match(specialSheetSource, /:is="portraitModule"/);
   assert.match(specialSheetSource, /useIllustratedSheetController\(/);
   assert.match(specialSheetSource, /<style scoped/);
 });

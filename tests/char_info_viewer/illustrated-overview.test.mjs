@@ -56,10 +56,10 @@ test('overview density progresses from normal through compact to dense using mea
 test('overview density classes stay on their target components instead of leaking onto the shell', () => {
   assert.doesNotMatch(headerSource, /:global\(\.overview-density-/);
   assert.doesNotMatch(overviewSource, /:global\(\.overview-density-/);
-  assert.match(sheetSource, /IllustratedHeader[\s\S]*?:class="\['illustrated-desktop-header', overviewDensityClass\]"/);
+  assert.match(sheetSource, /:is="headerModule"[\s\S]*?:class="\['illustrated-desktop-header', overviewDensityClass\]"/);
   assert.match(
     sheetSource,
-    /IllustratedOverviewPanel[\s\S]*?:class="\[overviewDensityClass, \{ 'is-special-npc-overview': specialNpc \}\]"/,
+    /:is="overviewModule"[\s\S]*?:class="\[overviewDensityClass, \{ 'is-special-npc-overview': specialNpc \}\]"/,
   );
 });
 

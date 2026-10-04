@@ -32,7 +32,8 @@
         :class="{ 'is-visible': !isOverviewTab && detailWallpaperReady }"
         aria-hidden="true"
       ></canvas>
-      <IllustratedPortraitPane
+      <component
+        :is="portraitModule"
         ref="portraitPaneElement"
         :vm="vm"
         :portrait="portrait"
@@ -43,7 +44,8 @@
       />
 
       <section class="illustrated-data-pane">
-        <IllustratedHeader
+        <component
+          :is="headerModule"
           v-if="isOverviewTab"
           :class="['illustrated-desktop-header', overviewDensityClass]"
           :vm="vm"
@@ -54,7 +56,8 @@
           <div v-if="hideRedundantDetailTitle" class="illustrated-detail-title-spacer" aria-hidden="true"></div>
           <IllustratedPageTitle v-else-if="!isOverviewTab" :title="activeSpecialTabTitle" />
 
-          <IllustratedOverviewPanel
+          <component
+            :is="overviewModule"
             v-if="activeSpecialTab === 'overview'"
             :class="[overviewDensityClass, { 'is-special-npc-overview': specialNpc }]"
             :attributes="attributes"
@@ -131,7 +134,8 @@
                 </button>
               </h3>
               <div v-show="!isGroupCollapsed(`skill:${group.key}`)" class="illustrated-group-body">
-                <IllustratedItemCard
+                <component
+                  :is="itemCardModule"
                   v-for="(item, index) in group.items"
                   :key="`skill-${group.key}-${index}`"
                   :item="item"
@@ -143,13 +147,19 @@
           </template>
 
           <template v-else-if="activeSpecialTab === 'equipment'">
-            <IllustratedItemCard v-for="(item, index) in vm.equipments" :key="`equipment-${index}`" :item="item" />
+            <component
+              :is="itemCardModule"
+              v-for="(item, index) in vm.equipments"
+              :key="`equipment-${index}`"
+              :item="item"
+            />
           </template>
 
           <template v-else-if="activeSpecialTab === 'inventory'">
             <section v-for="section in vm.inventorySections" :key="section.key" class="illustrated-section">
               <h3 class="illustrated-section-title">{{ section.title }}</h3>
-              <IllustratedItemCard
+              <component
+                :is="itemCardModule"
                 v-for="(item, index) in section.items"
                 :key="`${section.key}-${index}`"
                 :item="item"
@@ -176,7 +186,8 @@
                 </button>
               </h3>
               <div v-show="!isGroupCollapsed('holding:equipment')" class="illustrated-group-body">
-                <IllustratedItemCard
+                <component
+                  :is="itemCardModule"
                   v-for="(item, index) in vm.equipments"
                   :key="`holding-equipment-${index}`"
                   :item="item"
@@ -204,7 +215,8 @@
                 </button>
               </h3>
               <div v-show="!isGroupCollapsed(`holding:${section.key}`)" class="illustrated-group-body">
-                <IllustratedItemCard
+                <component
+                  :is="itemCardModule"
                   v-for="(item, index) in section.items"
                   :key="`holding-${section.key}-${index}`"
                   :item="item"
@@ -221,7 +233,8 @@
           />
 
           <template v-else-if="activeSpecialTab === 'statusEffects'">
-            <IllustratedItemCard
+            <component
+              :is="itemCardModule"
               v-for="(item, index) in vm.statusEffects"
               :key="`status-${index}`"
               :item="item"
@@ -240,7 +253,8 @@
           <IllustratedStoryPanel v-else :text="vm.backstoryText" />
         </div>
 
-        <IllustratedTabNav
+        <component
+          :is="navigationModule"
           v-if="!specialNpc"
           :tabs="tabs"
           :active-tab="activeSpecialTab"
@@ -252,7 +266,8 @@
         />
       </section>
 
-      <IllustratedTabNav
+      <component
+        :is="navigationModule"
         v-if="specialNpc"
         side-rail
         :tabs="tabs"
@@ -292,7 +307,7 @@ import {
   VIEWER_IMPORT_WORLDBOOK_LABEL,
   type ViewerSavePhase,
 } from '../../../../char_info_shared/viewerSaveUi';
-import type { AttributeView } from '../types';
+import type { AttributeView, IllustratedRendererOverrides } from '../types';
 import { useIllustratedPortrait } from '../core/useIllustratedPortrait';
 import { useIllustratedSheetController } from '../core/useIllustratedSheetController';
 import IllustratedCharacterPanel from './IllustratedCharacterPanel.vue';
@@ -316,9 +331,27 @@ const props = defineProps<{
   debugEnabled: boolean;
   forceMobileLayout: boolean;
   specialNpc: boolean;
+  /**
+   * DX Level 2 module override。每一项都可省略，省略即用默认组件。
+   * 不传本 prop 时行为与 CSS 与拆分前完全一致。
+   */
+  overrides?: IllustratedRendererOverrides;
 }>();
 
 const savePending = computed(() => props.savePhase === 'pending');
+
+/**
+ * 逐项回落：override 优先，缺省即默认组件。
+ *
+ * 用 computed 逐项读 `props.overrides`，而不是在 setup 里解构——解绑构只在 setup
+ * 执行一次，将来父级整体替换 overrides 对象时会永久指向旧对象（与 PortraitPane
+ * 处理 portrait controller 的理由相同）。
+ */
+const headerModule = computed(() => props.overrides?.header ?? IllustratedHeader);
+const overviewModule = computed(() => props.overrides?.overview ?? IllustratedOverviewPanel);
+const portraitModule = computed(() => props.overrides?.portrait ?? IllustratedPortraitPane);
+const itemCardModule = computed(() => props.overrides?.itemCard ?? IllustratedItemCard);
+const navigationModule = computed(() => props.overrides?.navigation ?? IllustratedTabNav);
 
 const DESKTOP_REFERENCE_WIDTH = 1200;
 const DESKTOP_REFERENCE_HEIGHT = 800;

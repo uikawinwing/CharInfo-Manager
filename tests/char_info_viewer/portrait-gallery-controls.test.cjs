@@ -78,7 +78,7 @@ test('立绘视觉已从默认 renderer 迁出到独立面板，renderer 只组�
   const sheet = fs.readFileSync(componentPath, 'utf8');
   const pane = fs.readFileSync(portraitPanePath, 'utf8');
 
-  assert.match(sheet, /<IllustratedPortraitPane/);
+  assert.match(sheet, /:is="portraitModule"/);
   assert.doesNotMatch(sheet, /\.illustrated-portrait-(?:image|video|loading|failure|navigation)\s*\{/);
   assert.match(pane, /\.illustrated-portrait-pane\s*\{/);
   assert.match(pane, /\.illustrated-portrait-image\s*\{/);

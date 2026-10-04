@@ -26,7 +26,7 @@ const controllerPath = new URL(
 
 test('立绘角色卡 沿用有立绘页面，并将导航作为桌面右侧栏和移动底栏', async () => {
   const [sheet, navigation] = await Promise.all([readFile(shellPath, 'utf8'), readFile(navigationPath, 'utf8')]);
-  assert.match(sheet, /<IllustratedTabNav[\s\S]*?v-if="specialNpc"[\s\S]*?side-rail/);
+  assert.match(sheet, /:is="navigationModule"[\s\S]*?v-if="specialNpc"[\s\S]*?side-rail/);
   assert.match(sheet, /v-if="specialNpc"[\s\S]*?:show-import-action="!readOnly"/);
   assert.match(sheet, /'is-special-npc': specialNpc/);
   assert.match(navigation, /\.illustrated-tabs\.is-side-rail/);
@@ -208,7 +208,7 @@ test('立绘角色卡 把装备与背包合并为持有，并把资源集中到�
     controller,
     /\{ key: 'overview', label: '首页' \},\s*\{ key: 'characterPanel', label: '面板' \},\s*\{ key: 'profile', label: '档案' \}/,
   );
-  assert.match(sheet, /IllustratedOverviewPanel[\s\S]*?:resource-boxes="\[\]"/);
+  assert.match(sheet, /:is="overviewModule"[\s\S]*?:resource-boxes="\[\]"/);
   assert.match(sheet, /activeSpecialTab === 'characterPanel'/);
   assert.match(panel, /class="illustrated-radar"/);
   assert.match(panel, /class="illustrated-panel-resources"/);
