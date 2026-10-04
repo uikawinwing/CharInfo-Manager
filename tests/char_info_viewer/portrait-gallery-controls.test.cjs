@@ -7,6 +7,10 @@ const componentPath = path.resolve(
   __dirname,
   '../../src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue',
 );
+const portraitCorePath = path.resolve(
+  __dirname,
+  '../../src/char_info_viewer/components/illustrated/core/useIllustratedPortrait.ts',
+);
 
 test('illustrated character overview provides previous and next portrait controls only for galleries', () => {
   const source = fs.readFileSync(componentPath, 'utf8');
@@ -19,13 +23,13 @@ test('illustrated character overview provides previous and next portrait control
 });
 
 test('illustrated character chooses image or video from the currently selected portrait URL', () => {
-  const source = fs.readFileSync(componentPath, 'utf8');
+  const source = fs.readFileSync(portraitCorePath, 'utf8');
 
   assert.match(source, /normalizePortraitMediaUrlForBrowser\(activePortraitUrl\.value\)\?\.kind === 'video'/);
 });
 
 test('同一张立绘失败或卡住时都会按 sources 顺序切换备用图床', () => {
-  const source = fs.readFileSync(componentPath, 'utf8');
+  const source = fs.readFileSync(portraitCorePath, 'utf8');
 
   assert.match(source, /activePortraitSourceIndex/);
   assert.match(source, /activePortraitSources/);
@@ -35,4 +39,13 @@ test('同一张立绘失败或卡住时都会按 sources 顺序切换备用图�
   assert.match(source, /portraitLoadTimeout\.arm\(\)/);
   assert.match(source, /portraitLoadTimeout\.clear\(\)/);
   assert.match(source, /retryPortraitLoad[\s\S]*nextMediaSourceIndex\(fromIndex, activePortraitSources\.value\.length\)/);
+});
+
+test('立绘行为已从默认 renderer 迁出到 core，renderer 只消费 controller', () => {
+  const source = fs.readFileSync(componentPath, 'utf8');
+
+  assert.match(source, /useIllustratedPortrait\(/);
+  assert.doesNotMatch(source, /createMediaSourceTimeout/);
+  assert.doesNotMatch(source, /nextMediaSourceIndex/);
+  assert.doesNotMatch(source, /preloadPortraitImages/);
 });

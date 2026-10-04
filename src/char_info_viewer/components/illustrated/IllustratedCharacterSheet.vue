@@ -367,10 +367,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 
 import { itemType, type CharacterViewModel, type ItemObject } from '../../services/characterViewModel';
-import { preloadPortraitImages } from '../../services/imagePreload';
-import { normalizePortraitMediaUrlForBrowser } from '../../services/imageUrl';
-import { createMediaSourceTimeout, nextMediaSourceIndex } from '../../services/mediaSourceFallback';
 import type { AttributeView, IllustratedTab, IllustratedTabKey } from './types';
+import { useIllustratedPortrait } from './core/useIllustratedPortrait';
 import IllustratedCharacterPanel from './IllustratedCharacterPanel.vue';
 import IllustratedDefaultDivinityPanel from './IllustratedDefaultDivinityPanel.vue';
 import IllustratedHeader from './IllustratedHeader.vue';
@@ -480,72 +478,26 @@ const illustratedWrapperStyle = computed(() =>
       }
     : undefined,
 );
-const portraitLoadFailed = ref(false);
-const portraitLoaded = ref(false);
-const portraitRetryAttempt = ref(0);
-function resolveInitialPortraitIndex(): number {
-  if (props.vm.randomizeInitialImage && props.vm.imageUrls.length > 1) {
-    return Math.floor(Math.random() * props.vm.imageUrls.length);
-  }
-  return 0;
-}
-
-const activePortraitIndex = ref(resolveInitialPortraitIndex());
-const activePortraitSourceIndex = ref(0);
-const activePortraitSources = computed(
-  () =>
-    props.vm.imageSourceGroups[activePortraitIndex.value] ??
-    [props.vm.imageUrls[activePortraitIndex.value] ?? props.vm.imageUrl].filter(Boolean),
-);
-const activePortraitUrl = computed(() => activePortraitSources.value[activePortraitSourceIndex.value] ?? '');
-const portraitWarmUrls = computed(() => {
-  const count = Math.max(props.vm.imageSourceGroups.length, props.vm.imageUrls.length);
-  if (count === 0) return [];
-
-  const indices = [activePortraitIndex.value];
-  if (count > 1) {
-    indices.push((activePortraitIndex.value - 1 + count) % count, (activePortraitIndex.value + 1) % count);
-  }
-
-  return indices
-    .map(index => props.vm.imageSourceGroups[index]?.[0] ?? props.vm.imageUrls[index] ?? '')
-    .filter((url, index, urls) => Boolean(url) && urls.indexOf(url) === index);
+const portrait = useIllustratedPortrait({
+  vm: () => props.vm,
+  debugEnabled: () => props.debugEnabled,
 });
 
-watch(
-  portraitWarmUrls,
-  urls => {
-    void preloadPortraitImages(urls);
-  },
-  { immediate: true },
-);
-
-function debugPortraitFallback(event: string, details: Record<string, unknown> = {}): void {
-  if (!props.debugEnabled) return;
-  console.info('[CharInfo][ImageFallback][Viewer]', {
-    event,
-    character: props.vm.nameText,
-    portraitIndex: activePortraitIndex.value,
-    sourceIndex: activePortraitSourceIndex.value,
-    url: activePortraitUrl.value,
-    ...details,
-  });
-}
-
-const hasMultiplePortraits = computed(() => props.vm.imageSourceGroups.length > 1 || props.vm.imageUrls.length > 1);
-const isVideoPortrait = computed(() => normalizePortraitMediaUrlForBrowser(activePortraitUrl.value)?.kind === 'video');
-const portraitMediaUrl = computed(() => {
-  if (portraitRetryAttempt.value === 0) return activePortraitUrl.value;
-
-  try {
-    const url = new URL(activePortraitUrl.value, window.location.href);
-    url.searchParams.set('_char_info_retry', String(portraitRetryAttempt.value));
-    return url.href;
-  } catch (_) {
-    const separator = activePortraitUrl.value.includes('?') ? '&' : '?';
-    return `${activePortraitUrl.value}${separator}_char_info_retry=${portraitRetryAttempt.value}`;
-  }
-});
+const {
+  activePortraitIndex,
+  activePortraitSourceIndex,
+  activePortraitSources,
+  activePortraitUrl,
+  portraitMediaUrl,
+  hasMultiplePortraits,
+  isVideoPortrait,
+  portraitLoaded,
+  portraitLoadFailed,
+  switchPortrait,
+  retryPortraitLoad,
+  onPortraitLoaded,
+  onPortraitLoadError,
+} = portrait;
 const tabs = computed<IllustratedTab[]>(() => [
   { key: 'overview', label: '首页' },
   { key: 'characterPanel', label: '面板' },
@@ -624,71 +576,6 @@ function setActiveSpecialTab(tab: IllustratedTabKey): void {
   activeSpecialTab.value = tab;
 }
 
-const portraitLoadTimeout = createMediaSourceTimeout(() => {
-  debugPortraitFallback('timeout');
-  advancePortraitSource('timeout');
-});
-
-function retryPortraitLoad(): void {
-  portraitLoadFailed.value = false;
-  portraitLoaded.value = false;
-  const fromIndex = activePortraitSourceIndex.value;
-  const nextIndex = nextMediaSourceIndex(fromIndex, activePortraitSources.value.length) ?? 0;
-  activePortraitSourceIndex.value = nextIndex;
-  portraitRetryAttempt.value += 1;
-  debugPortraitFallback('retry', { fromIndex, toIndex: nextIndex });
-}
-
-function onPortraitLoaded(): void {
-  portraitLoadTimeout.clear();
-  portraitLoaded.value = true;
-  portraitLoadFailed.value = false;
-  debugPortraitFallback('loaded');
-}
-
-function advancePortraitSource(reason: 'error' | 'timeout'): void {
-  portraitLoadTimeout.clear();
-  portraitLoaded.value = false;
-  const fromIndex = activePortraitSourceIndex.value;
-  const nextIndex = nextMediaSourceIndex(fromIndex, activePortraitSources.value.length);
-  if (nextIndex !== null) {
-    activePortraitSourceIndex.value = nextIndex;
-    portraitRetryAttempt.value = 0;
-    debugPortraitFallback('fallback', { reason, fromIndex, toIndex: nextIndex });
-    return;
-  }
-  portraitLoadFailed.value = true;
-  debugPortraitFallback('all_failed', { reason, fromIndex });
-}
-
-function onPortraitLoadError(): void {
-  debugPortraitFallback('error');
-  advancePortraitSource('error');
-}
-
-watch(
-  portraitMediaUrl,
-  url => {
-    portraitLoadTimeout.clear();
-    if (url && !portraitLoadFailed.value) {
-      debugPortraitFallback('try');
-      portraitLoadTimeout.arm();
-    }
-  },
-  { immediate: true },
-);
-
-function switchPortrait(offset: number): void {
-  const count = props.vm.imageUrls.length;
-  if (count < 2) return;
-
-  activePortraitIndex.value = (activePortraitIndex.value + offset + count) % count;
-  activePortraitSourceIndex.value = 0;
-  portraitLoadFailed.value = false;
-  portraitLoaded.value = false;
-  portraitRetryAttempt.value = 0;
-}
-
 function openEntranceQuoteDialog(event?: Event): void {
   entranceQuoteTriggerElement =
     event?.currentTarget instanceof HTMLElement
@@ -758,19 +645,7 @@ onBeforeUnmount(() => {
   if (overviewDensityFrame !== undefined) cancelAnimationFrame(overviewDensityFrame);
   layoutResizeObserver?.disconnect();
   overviewResizeObserver?.disconnect();
-  portraitLoadTimeout.dispose();
 });
-
-watch(
-  () => JSON.stringify(props.vm.imageSourceGroups),
-  () => {
-    activePortraitIndex.value = resolveInitialPortraitIndex();
-    activePortraitSourceIndex.value = 0;
-    portraitLoadFailed.value = false;
-    portraitLoaded.value = false;
-    portraitRetryAttempt.value = 0;
-  },
-);
 
 watch(
   () => [

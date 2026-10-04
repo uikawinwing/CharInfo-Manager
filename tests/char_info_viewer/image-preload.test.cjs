@@ -13,6 +13,10 @@ const illustratedSource = readFileSync(
   path.join(repoRoot, 'src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue'),
   'utf8',
 );
+const portraitCoreSource = readFileSync(
+  path.join(repoRoot, 'src/char_info_viewer/components/illustrated/core/useIllustratedPortrait.ts'),
+  'utf8',
+);
 
 test('图片预载只温热浏览器正常缓存，不建立独立 Cache Storage 或改变跨域请求模式', () => {
   assert.match(preloadSource, /const MAX_CONCURRENT_PRELOADS = 4;/);
@@ -83,7 +87,14 @@ test('当前角色库和立绘 Viewer 只做小窗口预热，不扫描完整图
   assert.match(runtimeSource, /baseCharacters\.slice\(0, 8\)/);
   assert.match(runtimeSource, /resolveCharacterVisualPreloadUrls\(character\.name, chatVariables, 1, sourcePriorities\)/);
   assert.match(runtimeSource, /resolveCharacterVisualPreloadUrls\(name, chatVariables, 3, sourcePriorities\)/);
-  assert.match(illustratedSource, /activePortraitIndex\.value - 1/);
-  assert.match(illustratedSource, /activePortraitIndex\.value \+ 1/);
-  assert.match(illustratedSource, /void preloadPortraitImages\(urls\)/);
+  assert.match(portraitCoreSource, /activePortraitIndex\.value - 1/);
+  assert.match(portraitCoreSource, /activePortraitIndex\.value \+ 1/);
+  assert.match(portraitCoreSource, /void preloadPortraitImages\(urls\)/);
+});
+
+test('立绘 markup 与默认视觉仍留在默认 renderer，未被行为迁移改变', () => {
+  assert.match(illustratedSource, /class="illustrated-portrait-pane"/);
+  assert.match(illustratedSource, /loading="lazy"/);
+  assert.match(illustratedSource, /decoding="async"/);
+  assert.match(illustratedSource, /referrerpolicy="no-referrer"/);
 });
