@@ -122,10 +122,12 @@ const blocks = computed(() =>
 }
 
 .illustrated-text-block {
-  --corner: rgba(var(--illustrated-race-accent-rgb), 0.6);
+  /* DX 主题把 corner-color 设为 transparent 即可去掉这 8 层装饰角，
+     只替换底层 surface，不会被 8 层 corner 盖住。 */
+  --corner: var(--illustrated-text-block-corner-color);
   position: relative;
   padding: 28px 36px;
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--illustrated-text-block-border-color);
   background:
     linear-gradient(var(--corner), var(--corner)),
     linear-gradient(var(--corner), var(--corner)),

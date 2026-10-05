@@ -23,8 +23,10 @@ const props = defineProps<{
 <style scoped lang="scss">
 .illustrated-story-block {
   padding: 28px 36px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background: radial-gradient(ellipse at center, rgba(30, 34, 42, 0.4) 0%, rgba(10, 12, 16, 0.8) 100%);
+  /* 原为 `1px solid rgba(255, 255, 255, 0.05)`，与 --illustrated-border-faint 同值。 */
+  border: 1px solid var(--illustrated-border-faint);
+  background: var(--illustrated-story-block-background);
+  box-shadow: var(--illustrated-story-block-shadow);
 }
 
 .illustrated-story-block h3 {
@@ -39,7 +41,8 @@ const props = defineProps<{
 
 .illustrated-story-block p {
   margin: 0;
-  color: #e2e8f0;
+  /* 原为硬编码 #e2e8f0，与 --illustrated-fg-soft 同值。 */
+  color: var(--illustrated-fg-soft);
   line-height: 1.8;
   white-space: pre-line;
 }

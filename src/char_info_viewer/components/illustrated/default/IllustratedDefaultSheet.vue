@@ -651,6 +651,22 @@ watch(
   --illustrated-portrait-media-object-position: top center;
   --illustrated-portrait-media-shadow: none;
   --illustrated-portrait-media-clip-path: none;
+  // 内容面板视觉 token。group-panel 的边框用 tier-accent 派生、text-block 用
+  // 独立低透明度白、story-block 与 border-faint 同值但语义不同，因此不共用。
+  --illustrated-group-panel-border-color: rgba(var(--illustrated-tier-accent-rgb), 0.2);
+  --illustrated-group-panel-shadow: inset 0 1px 0 var(--illustrated-group-panel-highlight);
+  --illustrated-group-panel-mobile-border-color: rgba(var(--illustrated-tier-accent-rgb), 0.24);
+  --illustrated-group-panel-mobile-background: rgba(3, 7, 11, 0.18);
+  --illustrated-story-block-background: radial-gradient(
+    ellipse at center,
+    rgba(30, 34, 42, 0.4) 0%,
+    rgba(10, 12, 16, 0.8) 100%
+  );
+  --illustrated-story-block-shadow: none;
+  --illustrated-text-block-border-color: rgba(255, 255, 255, 0.03);
+  // text-block 有 8 层 corner gradient 叠在 --illustrated-text-block-background 之上。
+  // DX 覆盖 background 时必须能单独把 corner 关掉，否则 8 层会盖住主题表面。
+  --illustrated-text-block-corner-color: rgba(var(--illustrated-race-accent-rgb), 0.6);
   --illustrated-import-menu-background: rgba(20, 20, 20, 0.92);
   --illustrated-import-menu-border: rgba(255, 255, 255, 0.18);
   --illustrated-import-menu-fg: #eee;
@@ -871,10 +887,10 @@ watch(
 .illustrated-group-panel {
   overflow: hidden;
   margin-inline: 10px 14px;
-  border: 1px solid rgba(var(--illustrated-tier-accent-rgb), 0.2);
+  border: 1px solid var(--illustrated-group-panel-border-color);
   border-radius: 4px;
   background: var(--illustrated-group-panel-background);
-  box-shadow: inset 0 1px 0 var(--illustrated-group-panel-highlight);
+  box-shadow: var(--illustrated-group-panel-shadow);
 }
 
 .illustrated-group-panel.is-collapsed {
@@ -1454,8 +1470,8 @@ watch(
 
   .illustrated-group-panel {
     margin-inline: 6px;
-    border-color: rgba(var(--illustrated-tier-accent-rgb), 0.24);
-    background: rgba(3, 7, 11, 0.18);
+    border-color: var(--illustrated-group-panel-mobile-border-color);
+    background: var(--illustrated-group-panel-mobile-background);
   }
 
   .illustrated-group-body {
