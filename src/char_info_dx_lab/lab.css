@@ -1,0 +1,26 @@
+/*
+ * Lab 自身的全局样式（不含 Vue 组件样式）。
+ * 组件样式由 webpack 打包；这里只放 host 层与 editable zone 的基础规则。
+ */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #0b0d12;
+  color: #e6eaf0;
+  font-family: 'Noto Sans SC', 'Microsoft YaHei', system-ui, sans-serif;
+}
+
+/*
+ * Editable CSS 的稳定 scope。
+ *
+ * 外部 LLM 的所有自定义规则都应以 `.dx-lab-user-design` 起头，
+ * 避免污染 Lab toolbar 与其它 UI。
+ */
+.dx-lab-user-design {
+  position: relative;
+  width: 100%;
+}
+
+/* 字体是 optional enhancement：即使远程字体加载失败，也必须正常显示 fallback。 */
