@@ -9,7 +9,7 @@
           class="dx-lab-btn"
           :class="{ 'is-active': theme === option.id }"
           type="button"
-          @click="theme = option.id"
+          @click="selectTheme(option.id)"
         >
           {{ option.label }}
         </button>
@@ -120,6 +120,18 @@ const viewports = VIEWPORTS;
 
 const current = computed(() => fixtures.find(f => f.id === fixtureId.value) ?? fixtures[0]);
 const viewportSize = computed(() => VIEWPORTS.find(v => v.id === viewport.value) ?? VIEWPORTS[0]);
+
+/**
+ * 主题按钮默认切到该主题自己的 canonical fixture。
+ *
+ * Fixture 控件仍保持独立，方便之后刻意做跨主题压力测试；但用户直接点 Iris /
+ * Anastasia 时，不应该继续拿另一名角色的资料来“换皮”。
+ */
+function selectTheme(nextTheme: 'default' | 'iris' | 'anastasia'): void {
+  theme.value = nextTheme;
+  if (nextTheme === 'iris') fixtureId.value = 'iris-full';
+  if (nextTheme === 'anastasia') fixtureId.value = 'anastasia-full';
+}
 
 /**
  * 角色真名。

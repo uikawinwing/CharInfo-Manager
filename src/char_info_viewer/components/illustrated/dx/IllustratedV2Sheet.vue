@@ -188,53 +188,93 @@ defineOptions({ inheritAttrs: false });
 }
 
 /* ============================================================
- * Anastasia — 深蓝 / 金色
+ * Anastasia — 当前 preview：浅色银蓝 / 金色
+ *
+ * 视觉真值取自 docs/previews/char_info_viewer/anastasia-layout-preview.html
+ * 的最终 cascade；保留 current platform 的 1200×800 与 desktop side rail，
+ * 不倒退复制旧 preview 的横向 tabs / 1200×932 layout。
  * ============================================================ */
 .illustrated-v2-theme-anastasia .illustrated-wrapper {
-  color-scheme: dark;
-  color: #e8eef2;
-  --illustrated-bg: #07182b;
-  --illustrated-panel: rgba(8, 29, 51, 0.9);
-  --illustrated-fg: #e8eef2;
-  --illustrated-fg-soft: #c4d0d9;
-  --illustrated-fg-muted: #9fb2c0;
-  --illustrated-surface-subtle: rgba(12, 39, 65, 0.48);
-  --illustrated-surface-muted: rgba(10, 34, 58, 0.72);
-  --illustrated-surface-card: rgba(8, 29, 51, 0.9);
-  --illustrated-surface-tag: rgba(15, 51, 82, 0.88);
-  --illustrated-group-panel-collapsed-background: rgba(7, 24, 43, 0.72);
-  --illustrated-group-panel-highlight: rgba(232, 238, 242, 0.04);
-  --illustrated-group-toggle-background: linear-gradient(90deg, rgba(217, 181, 106, 0.08), rgba(15, 51, 82, 0.26));
-  --illustrated-group-toggle-hover-background: linear-gradient(90deg, rgba(217, 181, 106, 0.13), rgba(24, 69, 110, 0.34));
-  --illustrated-profile-subnav-background: rgba(7, 24, 43, 0.72);
-  --illustrated-profile-story-background: linear-gradient(180deg, rgba(232, 238, 242, 0.035), transparent 46%), rgba(8, 29, 51, 0.82);
-  --illustrated-profile-story-highlight: rgba(232, 238, 242, 0.04);
-  --illustrated-profile-story-mobile-background: rgba(8, 29, 51, 0.88);
-  --illustrated-mobile-summary-background: rgba(8, 29, 51, 0.78);
-  --illustrated-compact-row-background: linear-gradient(90deg, rgba(18, 49, 78, 0.72), rgba(6, 24, 43, 0.56));
-  --illustrated-nav-background: rgba(5, 20, 36, 0.94);
-  --illustrated-mobile-nav-background: rgba(5, 20, 36, 0.94);
-  --illustrated-page-title-fg: #f4f7f9;
-  --illustrated-race-accent: #e8eef2;
-  --illustrated-race-accent-rgb: 232, 238, 242;
+  color-scheme: light;
+  color: #14304b;
+  --illustrated-bg: #e6edf1;
+  --illustrated-panel: rgba(241, 246, 248, 0.88);
+  --illustrated-fg: #14304b;
+  --illustrated-fg-soft: #315873;
+  --illustrated-fg-muted: #547083;
+  --illustrated-surface-subtle: rgba(255, 255, 255, 0.58);
+  --illustrated-surface-muted: rgba(239, 245, 247, 0.78);
+  --illustrated-surface-card:
+    radial-gradient(ellipse at 50% 0, rgba(255, 255, 255, 0.9), transparent 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(234, 242, 248, 0.76));
+  --illustrated-surface-tag: #f8fbfd;
+  --illustrated-group-panel-collapsed-background: rgba(239, 245, 247, 0.76);
+  --illustrated-group-panel-highlight: rgba(255, 255, 255, 0.94);
+  --illustrated-group-toggle-background: linear-gradient(90deg, rgba(10, 45, 78, 0.05), rgba(215, 227, 235, 0.42));
+  --illustrated-group-toggle-hover-background: linear-gradient(90deg, rgba(10, 45, 78, 0.08), rgba(215, 227, 235, 0.62));
+  --illustrated-profile-subnav-background: rgba(248, 252, 254, 0.82);
+  --illustrated-profile-story-background:
+    radial-gradient(ellipse at 50% 0, rgba(255, 255, 255, 0.88), transparent 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(234, 242, 248, 0.74));
+  --illustrated-profile-story-highlight: rgba(255, 255, 255, 0.92);
+  --illustrated-profile-story-mobile-background: rgba(239, 245, 247, 0.9);
+  --illustrated-mobile-summary-background: rgba(239, 245, 247, 0.9);
+  --illustrated-compact-row-background: linear-gradient(90deg, rgba(248, 252, 254, 0.9), rgba(225, 237, 244, 0.72));
+  --illustrated-nav-background: rgba(248, 252, 254, 0.9);
+  --illustrated-mobile-nav-background: rgba(248, 252, 254, 0.94);
+  --illustrated-page-title-fg: #0a2d4e;
+  --illustrated-race-accent: #0a2d4e;
+  --illustrated-race-accent-rgb: 10, 45, 78;
   --illustrated-tier-accent: #d9b56a;
   --illustrated-tier-accent-rgb: 217, 181, 106;
+  --illustrated-shell-border-color: rgba(10, 45, 78, 0.14);
+  --illustrated-shell-background:
+    radial-gradient(circle at 52% -10%, rgba(247, 250, 251, 0.58), transparent 30rem),
+    radial-gradient(circle at 78% 22%, rgba(24, 69, 110, 0.06), transparent 30rem),
+    radial-gradient(circle at 86% 46%, rgba(217, 181, 106, 0.08), transparent 17rem),
+    linear-gradient(180deg, rgba(239, 245, 247, 0.97) 0%, rgba(229, 237, 241, 0.97) 42%, rgba(214, 226, 233, 0.97) 100%),
+    #e6edf1;
+  --illustrated-shell-shadow:
+    0 18px 46px rgba(15, 48, 78, 0.16),
+    0 0 0 1px rgba(10, 45, 78, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --illustrated-portrait-pane-background: transparent;
+  --illustrated-data-pane-background:
+    linear-gradient(90deg, rgba(10, 45, 78, 0.05), transparent 38%, rgba(10, 45, 78, 0.035)),
+    linear-gradient(180deg, rgba(239, 245, 247, 0.54), rgba(220, 231, 237, 0.48));
+  --illustrated-detail-pane-background: var(--illustrated-data-pane-background);
+  --illustrated-detail-wallpaper-filter: saturate(0.88) brightness(1.04);
+  --illustrated-detail-wallpaper-opacity: 0.16;
   --illustrated-flag-width: 152px;
   --illustrated-flag-height: 154px;
   --illustrated-flag-gap: 12px;
-  /* --- 6A token assignments：导航 --- */
-  --illustrated-nav-border-color: rgba(155, 176, 194, 0.28);
-  --illustrated-tab-fg: #aebfcb;
-  --illustrated-tab-active-fg: #f4f7f9;
-  --illustrated-tab-active-background: linear-gradient(90deg, rgba(95, 159, 189, 0.13), rgba(217, 181, 106, 0.07));
+
+  --illustrated-name-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9),
+    0 8px 18px rgba(10, 45, 78, 0.16);
+  --illustrated-text-shadow: none;
+  --illustrated-heading-shadow: none;
+  --illustrated-tier-shadow: none;
+  --illustrated-page-title-shadow: none;
+  --illustrated-attribute-value-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.92),
+    0 6px 14px rgba(182, 59, 73, 0.18);
+  --illustrated-panel-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 14px 28px rgba(15, 48, 78, 0.12);
+  --illustrated-item-shadow: var(--illustrated-panel-shadow);
+  --illustrated-nav-shadow: 0 -8px 20px rgba(15, 48, 78, 0.08);
+
+  --illustrated-nav-border-color: rgba(10, 45, 78, 0.16);
+  --illustrated-tab-fg: #315873;
+  --illustrated-tab-active-fg: #0a2d4e;
+  --illustrated-tab-active-background: transparent;
   --illustrated-tab-active-indicator: #d9b56a;
-  --illustrated-side-rail-border-color: rgba(155, 176, 194, 0.3);
-  --illustrated-side-rail-background:
-    linear-gradient(180deg, rgba(24, 69, 110, 0.16), transparent 44%),
-    rgba(4, 16, 30, 0.96);
-  --illustrated-side-rail-shadow: -8px 0 24px rgba(0, 0, 0, 0.24);
-  --illustrated-side-rail-tab-active-background: linear-gradient(90deg, rgba(95, 159, 189, 0.18), rgba(217, 181, 106, 0.08));
-  /* --- 6A token assignments：属性旗标 --- */
+  --illustrated-side-rail-border-color: rgba(10, 45, 78, 0.16);
+  --illustrated-side-rail-background: rgba(248, 252, 254, 0.9);
+  --illustrated-side-rail-shadow: -8px 0 18px rgba(15, 48, 78, 0.08);
+  --illustrated-side-rail-tab-active-background: rgba(10, 45, 78, 0.07);
+
   --illustrated-attribute-border: 1px solid rgba(10, 45, 78, 0.14);
   --illustrated-attribute-border-top: 2px solid rgba(10, 45, 78, 0.54);
   --illustrated-attribute-border-bottom-color: rgba(95, 143, 168, 0.7);
@@ -251,29 +291,27 @@ defineOptions({ inheritAttrs: false });
     0 12px 24px rgba(15, 48, 78, 0.13),
     0 0 0 1px rgba(255, 255, 255, 0.72);
   --illustrated-attribute-total-fg: #b63b49;
-  /* --- 6A token assignments：立绘媒体 --- */
+
+  --illustrated-portrait-media-border: none;
   --illustrated-portrait-media-radius: 8px;
   --illustrated-portrait-media-object-position: top center;
-  --illustrated-portrait-media-shadow: 0 14px 34px rgba(0, 0, 0, 0.34);
-  --illustrated-portrait-media-clip-path: polygon(14px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px), 0 14px);
-  /* --- 6A token assignments：内容面板 ---
-     旧 direct surface 值与 platform token 默认值不等，逐项按旧 direct 迁移。 */
-  --illustrated-border-faint: rgba(155, 176, 194, 0.34);
-  --illustrated-surface-card: linear-gradient(180deg, rgba(18, 49, 78, 0.9), rgba(6, 24, 43, 0.92));
-  --illustrated-item-shadow: 0 8px 22px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  --illustrated-panel-shadow: 0 8px 22px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  --illustrated-group-panel-border-color: rgba(155, 176, 194, 0.34);
-  --illustrated-group-panel-shadow: 0 8px 22px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  --illustrated-group-panel-background: linear-gradient(180deg, rgba(18, 49, 78, 0.9), rgba(6, 24, 43, 0.92));
-  --illustrated-group-panel-mobile-border-color: rgba(155, 176, 194, 0.34);
-  --illustrated-group-panel-mobile-background: linear-gradient(180deg, rgba(18, 49, 78, 0.9), rgba(6, 24, 43, 0.92));
-  --illustrated-story-block-background: linear-gradient(180deg, rgba(18, 49, 78, 0.9), rgba(6, 24, 43, 0.92));
-  --illustrated-story-block-shadow: 0 8px 22px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --illustrated-portrait-media-shadow:
+    0 0 0 1px rgba(155, 176, 194, 0.2),
+    0 16px 36px rgba(0, 0, 0, 0.28),
+    0 0 28px rgba(24, 69, 110, 0.1);
+  --illustrated-portrait-media-clip-path: polygon(16px 0, calc(100% - 16px) 0, 100% 16px, 100% calc(100% - 16px), calc(100% - 16px) 100%, 16px 100%, 0 calc(100% - 16px), 0 16px);
+
+  --illustrated-border-faint: rgba(10, 45, 78, 0.16);
+  --illustrated-group-panel-border-color: rgba(10, 45, 78, 0.16);
+  --illustrated-group-panel-shadow: var(--illustrated-panel-shadow);
+  --illustrated-group-panel-background: var(--illustrated-surface-card);
+  --illustrated-group-panel-mobile-border-color: rgba(10, 45, 78, 0.18);
+  --illustrated-group-panel-mobile-background: rgba(248, 252, 254, 0.9);
+  --illustrated-story-block-background: var(--illustrated-surface-card);
+  --illustrated-story-block-shadow: var(--illustrated-panel-shadow);
   --illustrated-text-block-corner-color: transparent;
-  --illustrated-text-block-background: linear-gradient(180deg, rgba(18, 49, 78, 0.9), rgba(6, 24, 43, 0.92));
-  --illustrated-text-block-border-color: rgba(155, 176, 194, 0.34);
-  /* 旧 direct 正文是 text-shadow: none。 */
-  --illustrated-text-shadow: none;
+  --illustrated-text-block-background: var(--illustrated-surface-card);
+  --illustrated-text-block-border-color: rgba(10, 45, 78, 0.16);
 }
 
 /* ============================================================
@@ -292,71 +330,81 @@ defineOptions({ inheritAttrs: false });
   color: #7258ba;
 }
 
+/*
+ * Anastasia current preview 的 header 等级文字是 #1a4865，而 tier accent 仍是金色。
+ * 和 Iris 同理，不能为了 header 这一处改掉全局 tier-accent。
+ */
+.illustrated-v2-theme-anastasia .illustrated-header .illustrated-level,
+.illustrated-v2-theme-anastasia .illustrated-header .illustrated-tier {
+  color: #1a4865;
+}
+
+.illustrated-v2-theme-anastasia .illustrated-header .illustrated-badge-separator,
+.illustrated-v2-theme-anastasia .illustrated-header .illustrated-meta-sep {
+  color: #925b18;
+}
+
 /* ============================================================
  * DX 私有装饰层
  * 这些不是主题表面差异，而是 DX 自己的美术表达，保持 DX-owned。
  * ============================================================ */
 
-/* --- Anastasia：装饰性内框 --- */
+/* --- Anastasia：current preview 的浅色内框 --- */
 .illustrated-v2-theme-anastasia .illustrated-shell::before {
   content: '';
   position: absolute;
   inset: 9px;
   z-index: 9;
-  border: 1px solid rgba(232, 238, 242, 0.2);
+  border: 1px solid rgba(10, 45, 78, 0.14);
   border-radius: 10px;
-  background:
-    linear-gradient(135deg, rgba(232, 238, 242, 0.88) 0 13px, transparent 13px) top left / 58px 58px no-repeat,
-    linear-gradient(225deg, rgba(232, 238, 242, 0.88) 0 13px, transparent 13px) top right / 58px 58px no-repeat,
-    linear-gradient(45deg, rgba(217, 181, 106, 0.62) 0 12px, transparent 12px) bottom left / 54px 54px no-repeat,
-    linear-gradient(315deg, rgba(217, 181, 106, 0.62) 0 12px, transparent 12px) bottom right / 54px 54px no-repeat;
-  box-shadow: inset 0 0 24px rgba(24, 69, 110, 0.08);
-  pointer-events: none;
-}
-
-/* --- Anastasia：立绘相框 --- */
-.illustrated-v2-theme-anastasia .illustrated-portrait-pane {
-  padding: 12px;
-  background: linear-gradient(180deg, rgba(232, 238, 242, 0.08), transparent 28%), #0a2947;
-}
-
-.illustrated-v2-theme-anastasia .illustrated-portrait-pane::before {
-  content: '';
-  position: absolute;
-  inset: 12px;
-  z-index: 3;
-  border: 2px solid rgba(232, 238, 242, 0.76);
-  border-radius: 9px;
-  clip-path: polygon(16px 0, calc(100% - 16px) 0, 100% 16px, 100% calc(100% - 16px), calc(100% - 16px) 100%, 16px 100%, 0 calc(100% - 16px), 0 16px);
+  background: none;
   box-shadow:
-    inset 0 0 0 1px rgba(155, 176, 194, 0.28),
-    0 0 16px rgba(232, 238, 242, 0.12);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.82),
+    inset 0 0 26px rgba(10, 45, 78, 0.04);
   pointer-events: none;
 }
 
-.illustrated-v2-theme-anastasia .illustrated-portrait-pane::after {
-  inset: 12px;
-  z-index: 2;
-  border-radius: 8px;
-  background: linear-gradient(to right, transparent 68%, rgba(7, 24, 43, 0.92) 100%);
+/*
+ * current preview 最终 cascade 明确关闭旧深色版的 portrait frame pseudo。
+ * 图像本身仍保留八角 clip 与浅色 shadow，由 portrait media token 表达。
+ */
+.illustrated-v2-theme-anastasia .illustrated-portrait-pane {
+  padding: 14px 10px 14px 14px;
+  background: transparent;
 }
 
-/* --- Anastasia：资料区锚点底纹 --- */
+.illustrated-v2-theme-anastasia .illustrated-portrait-pane::before,
+.illustrated-v2-theme-anastasia .illustrated-portrait-pane::after {
+  display: none;
+}
+
+/* --- Anastasia：current preview 的浅色锚点底纹 --- */
 .illustrated-v2-theme-anastasia .illustrated-data-pane {
   isolation: isolate;
 }
 
-.illustrated-v2-theme-anastasia .illustrated-data-pane::before {
+.illustrated-v2-theme-anastasia .illustrated-data-pane::before,
+.illustrated-v2-theme-anastasia .illustrated-data-pane::after {
   content: '';
   position: absolute;
   inset: 0;
   z-index: 0;
+  pointer-events: none;
+}
+
+.illustrated-v2-theme-anastasia .illustrated-data-pane::before {
   /* 资产在仓库根 assets/。本文件位于 src/char_info_viewer/components/illustrated/dx/，
      比旧的 illustrated/ 深一层，因此相对路径多一个 ..。 */
   background: url('../../../../../assets/char_info_viewer/materials/anchor.svg') center / 260px 260px repeat;
   opacity: 0.12;
   filter: saturate(0.64) contrast(0.88);
-  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+.illustrated-v2-theme-anastasia .illustrated-data-pane::after {
+  background:
+    radial-gradient(ellipse at 50% 10%, rgba(246, 249, 250, 0.36), transparent 22rem),
+    radial-gradient(ellipse at 50% 62%, rgba(24, 69, 110, 0.07), transparent 24rem);
 }
 
 .illustrated-v2-theme-anastasia .illustrated-data-pane > * {
