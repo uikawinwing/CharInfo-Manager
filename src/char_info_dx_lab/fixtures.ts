@@ -14,6 +14,17 @@ export type DxLabFixture = {
   specialNpc: boolean;
   /** 本地 data URI，offline boot 不依赖网络。 */
   portraitUrl: string;
+  /**
+   * Lab-only visual config。
+   *
+   * 它的唯一作用是让**正式**的 `resolveCharacterVisualPreview` 识别出这是 viewer image
+   * profile，从而由正规链路打上 specialNpc brand。里面的 HTTPS URL 是
+   * `.invalid` 保留域，**不需要真实网络成功**——真正渲染时由 Lab 的 embedded
+   * portrait adapter 覆盖媒体字段为 data URI。
+   *
+   * 不要在这里放宽产品的 URL policy，也不要把 data: 塞进正式 resolver。
+   */
+  visualConfig?: unknown;
   data: CharacterData;
 };
 
@@ -26,6 +37,12 @@ export const dxLabFixtures: DxLabFixture[] = [
     name: '艾璃丝（完整 specialNpc）',
     specialNpc: true,
     portraitUrl: PORTRAIT_PNG,
+    // 让正式 preview resolver 判定为 viewer image profile。
+    // `example.invalid` 是 RFC 2606 保留域，永不解析到真实主机。
+    visualConfig: {
+      schema_version: 2,
+      gallery: [{ sources: ['https://example.invalid/dx-lab-portrait.png'] }],
+    },
     data: {
       姓名: '艾璃丝·赛瑞利亚',
       生命层级: '第五层级',

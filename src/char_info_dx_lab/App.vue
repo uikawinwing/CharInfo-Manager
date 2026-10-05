@@ -122,12 +122,26 @@ const current = computed(() => fixtures.find(f => f.id === fixtureId.value) ?? f
 const viewportSize = computed(() => VIEWPORTS.find(v => v.id === viewport.value) ?? VIEWPORTS[0]);
 
 /**
- * `specialNpc` 品牌是 `themeService` 内部的 Symbol，只能由正规解析链路打上。
- * Lab 走 `resolveCharacterVisualPreview`（同步、无 ST 依赖），与 Viewer 的 previewMode
- * 路径同源，而不是自己伪造 Symbol。
+ * 角色真名。
+ *
+ * `fixture.name` 是 Lab UI 标签（"艾璃丝（完整 specialNpc）"），而
+ * `resolveCharacterVisualPreview` 要求 `resolveCharacterName(data) === characterName`。
+ * 这里直接从 data 的 `姓名` 取，避免维护第二份名字。
+ */
+const characterName = computed(() => String(pickField(current.value.data, '姓名') ?? '').trim());
+
+/**
+ * 走**正式** preview chain。
+ *
+ * specialNpc brand 是 themeService 内部 Symbol，只有
+ * `resolveCharacterVisualPreview` 在「姓名匹配 + config 含 viewer image」时才会打上。
+ * Lab 不伪造 Symbol、不导出 brand、不改产品逻辑 —— 只提供一份能被正式 resolver
+ * 识别的 Lab-only visualConfig（见 fixtures.ts）。
  */
 const resolvedData = computed(() =>
-  resolveCharacterVisualPreview(current.value.data as never, current.value.name, undefined),
+  current.value.visualConfig
+    ? resolveCharacterVisualPreview(current.value.data as never, characterName.value, current.value.visualConfig)
+    : (current.value.data as never),
 );
 
 /**
@@ -186,7 +200,9 @@ const sheetProps = computed(() => ({
   readOnly: true,
   debugEnabled: false,
   forceMobileLayout: viewportSize.value.force,
-  specialNpc: current.value.specialNpc,
+  // 由正式 VM 派生，而不是读 fixture 自己的 boolean —— 这样 Lab scenario
+  // 与真实 Viewer 不会分叉。
+  specialNpc: vm.value.layoutKind === 'special_npc',
 }));
 
 function onFallbackToDefault(): void {

@@ -103,12 +103,23 @@ if (asMarkdown) {
   console.log(JSON.stringify(report, null, 2));
 }
 
-/** 取出 zone marker 之间的内容，并剥掉外层标签，只留实际内容。 */
+/**
+ * 取出 zone marker 之间的内容，并剥掉外层标签，只留实际内容。
+ *
+ * 必须用**完整** marker（`<!-- BEGIN -->`）来定位：`ZONES[].begin` 只是 marker 文本本身，
+ * 不含注释包装。用它 slice 会残留 `-->` / `<!--` 片段，导致后续 <style> 正则匹配失败。
+ */
 function stripTag(raw, tagName) {
   const zone = findZoneOf(raw);
   let inner = raw;
   if (zone) {
-    inner = raw.slice(raw.indexOf(zone.begin) + zone.begin.length, raw.indexOf(zone.end));
+    const beginMarker = `<!-- ${zone.begin} -->`;
+    const endMarker = `<!-- ${zone.end} -->`;
+    const start = raw.indexOf(beginMarker);
+    const end = raw.indexOf(endMarker);
+    if (start !== -1 && end !== -1) {
+      inner = raw.slice(start + beginMarker.length, end);
+    }
   }
   const re = new RegExp(`^\\s*<${tagName}[^>]*>([\\s\\S]*)<\\/${tagName}>\\s*$`, 'i');
   const m = inner.match(re);
