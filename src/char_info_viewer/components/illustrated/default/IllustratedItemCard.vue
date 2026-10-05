@@ -228,7 +228,7 @@ const statusLines = computed(() => {
 
 .illustrated-tag {
   padding: 4px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--illustrated-tag-border-color);
   border-radius: 2px;
   background: var(--illustrated-surface-tag);
   color: var(--illustrated-fg-muted);
@@ -278,7 +278,7 @@ const statusLines = computed(() => {
   margin: 0;
   padding: 13px 0 14px;
   border: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--illustrated-compact-divider-color);
   border-radius: 0;
   background: var(--illustrated-compact-row-background);
   box-shadow: none;
@@ -327,7 +327,7 @@ const statusLines = computed(() => {
 
 .illustrated-skill-cost {
   max-width: 130px;
-  color: #a4a09a;
+  color: var(--illustrated-skill-cost-fg);
   font-size: calc(9px + var(--ci-font-size-adjust, 0px));
   line-height: 1.35;
   text-align: right;
@@ -335,7 +335,7 @@ const statusLines = computed(() => {
 
 .illustrated-skill-cost small {
   display: block;
-  color: #c3beb6;
+  color: var(--illustrated-skill-cost-label-fg);
   font-size: inherit;
   font-weight: 700;
 }
@@ -389,7 +389,7 @@ const statusLines = computed(() => {
 
 .illustrated-list-item.is-compact-row .illustrated-description {
   margin: 8px 0 0 !important;
-  color: #747980;
+  color: var(--illustrated-compact-row-description-fg);
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
   font-size: calc(9.3px + var(--ci-font-size-adjust, 0px)) !important;
   font-style: italic;
@@ -420,8 +420,8 @@ const statusLines = computed(() => {
   .illustrated-list-item.is-compact-skill {
     margin: 0 8px;
     padding: 14px 14px 15px;
-    border-bottom-color: rgba(255, 255, 255, 0.11);
-    background: linear-gradient(90deg, rgba(4, 7, 11, 0.5), rgba(4, 7, 11, 0.26));
+    border-bottom-color: var(--illustrated-compact-mobile-divider-color);
+    background: var(--illustrated-compact-skill-background);
   }
 
   .illustrated-list-item.is-compact-skill h3 {
@@ -441,14 +441,14 @@ const statusLines = computed(() => {
   .illustrated-list-item.is-compact-skill .illustrated-skill-cost {
     max-width: 112px;
     padding-top: 1px;
-    color: #c7c3bd;
+    color: var(--illustrated-compact-skill-cost-fg);
     font-size: calc(10px + var(--ci-font-size-adjust, 0px));
     line-height: 1.35;
   }
 
   .illustrated-list-item.is-compact-skill .illustrated-skill-cost small {
     margin-bottom: 1px;
-    color: #e4dfd7;
+    color: var(--illustrated-compact-skill-cost-label-fg);
   }
 
   .illustrated-list-item.is-compact-skill .illustrated-tags {
@@ -458,9 +458,9 @@ const statusLines = computed(() => {
 
   .illustrated-list-item.is-compact-skill .illustrated-tag {
     padding: 2px 6px;
-    border-color: rgba(255, 255, 255, 0.08);
-    background: rgba(3, 5, 8, 0.32);
-    color: #aeb5bf;
+    border-color: var(--illustrated-compact-tag-border-color);
+    background: var(--illustrated-compact-tag-background);
+    color: var(--illustrated-compact-tag-fg);
     font-size: calc(9.5px + var(--ci-font-size-adjust, 0px));
     line-height: 1.35 !important;
   }
@@ -470,24 +470,24 @@ const statusLines = computed(() => {
   }
 
   .illustrated-list-item.is-compact-skill .illustrated-effect-item {
-    color: #f0f3f7;
+    color: var(--illustrated-compact-effect-fg);
     font-size: calc(12.5px + var(--ci-font-size-adjust, 0px)) !important;
     line-height: 1.58 !important;
   }
 
   .illustrated-list-item.is-compact-skill .illustrated-effect-name {
     margin-right: 6px;
-    color: color-mix(in srgb, var(--item-color) 84%, #ffffff);
+    color: var(--illustrated-compact-effect-name-fg);
     font-weight: 750;
   }
 
   .illustrated-list-item.is-compact-skill .illustrated-effect-text {
-    color: #edf1f5;
+    color: var(--illustrated-compact-effect-text-fg);
   }
 
   .illustrated-list-item.is-compact-skill .illustrated-description {
     margin: 9px 0 0 !important;
-    color: #9ca4ad;
+    color: var(--illustrated-compact-description-fg);
     font-size: calc(10.5px + var(--ci-font-size-adjust, 0px)) !important;
     font-style: normal;
     line-height: 1.58 !important;
@@ -497,8 +497,8 @@ const statusLines = computed(() => {
   .illustrated-list-item.is-compact-holding {
     margin: 0 8px;
     padding: 14px 14px 15px;
-    border-bottom-color: rgba(255, 255, 255, 0.11);
-    background: linear-gradient(90deg, rgba(4, 7, 11, 0.48), rgba(4, 7, 11, 0.24));
+    border-bottom-color: var(--illustrated-compact-mobile-divider-color);
+    background: var(--illustrated-compact-holding-background);
   }
 
   .illustrated-list-item.is-compact-holding .illustrated-list-item-header {
@@ -520,7 +520,7 @@ const statusLines = computed(() => {
     justify-self: end;
     align-self: start;
     padding: 2px 0 0;
-    color: color-mix(in srgb, var(--item-color) 86%, #ffffff);
+    color: var(--illustrated-compact-holding-type-fg);
     font-size: calc(10px + var(--ci-font-size-adjust, 0px));
     line-height: 1.35;
     letter-spacing: 0.04em;
@@ -534,9 +534,9 @@ const statusLines = computed(() => {
 
   .illustrated-list-item.is-compact-holding .illustrated-tag {
     padding: 2px 6px;
-    border-color: rgba(255, 255, 255, 0.08);
-    background: rgba(3, 5, 8, 0.32);
-    color: #aeb5bf;
+    border-color: var(--illustrated-compact-tag-border-color);
+    background: var(--illustrated-compact-tag-background);
+    color: var(--illustrated-compact-tag-fg);
     font-size: calc(9.5px + var(--ci-font-size-adjust, 0px));
     line-height: 1.35 !important;
   }
@@ -546,24 +546,24 @@ const statusLines = computed(() => {
   }
 
   .illustrated-list-item.is-compact-holding .illustrated-effect-item {
-    color: #f0f3f7;
+    color: var(--illustrated-compact-effect-fg);
     font-size: calc(12.5px + var(--ci-font-size-adjust, 0px)) !important;
     line-height: 1.58 !important;
   }
 
   .illustrated-list-item.is-compact-holding .illustrated-effect-name {
     margin-right: 6px;
-    color: color-mix(in srgb, var(--item-color) 84%, #ffffff);
+    color: var(--illustrated-compact-effect-name-fg);
     font-weight: 750;
   }
 
   .illustrated-list-item.is-compact-holding .illustrated-effect-text {
-    color: #edf1f5;
+    color: var(--illustrated-compact-effect-text-fg);
   }
 
   .illustrated-list-item.is-compact-holding .illustrated-description {
     margin: 9px 0 0 !important;
-    color: #9ca4ad;
+    color: var(--illustrated-compact-description-fg);
     font-size: calc(10.5px + var(--ci-font-size-adjust, 0px)) !important;
     font-style: normal;
     line-height: 1.58 !important;

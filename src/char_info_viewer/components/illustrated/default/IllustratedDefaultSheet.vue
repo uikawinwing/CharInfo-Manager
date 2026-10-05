@@ -603,6 +603,7 @@ watch(
     rgba(var(--illustrated-tier-accent-rgb), 0.13),
     rgba(5, 9, 14, 0.1)
   );
+  --illustrated-group-chevron-fg: rgba(224, 233, 239, 0.72);
   --illustrated-profile-subnav-background: rgba(4, 8, 13, 0.38);
   --illustrated-profile-story-background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 46%), rgba(5, 9, 14, 0.34);
@@ -610,6 +611,32 @@ watch(
   --illustrated-profile-story-mobile-background: rgba(7, 10, 15, 0.46);
   --illustrated-mobile-summary-background: var(--illustrated-surface-muted);
   --illustrated-compact-row-background: transparent;
+
+  // Compact content surfaces need their own semantic seam because the mobile renderer
+  // intentionally differs from the desktop card surface in the default dark theme.
+  --illustrated-tag-border-color: rgba(255, 255, 255, 0.1);
+  --illustrated-compact-divider-color: rgba(255, 255, 255, 0.08);
+  --illustrated-compact-mobile-divider-color: rgba(255, 255, 255, 0.11);
+  --illustrated-compact-skill-background: linear-gradient(90deg, rgba(4, 7, 11, 0.5), rgba(4, 7, 11, 0.26));
+  --illustrated-compact-holding-background: linear-gradient(90deg, rgba(4, 7, 11, 0.48), rgba(4, 7, 11, 0.24));
+  --illustrated-skill-cost-fg: #a4a09a;
+  --illustrated-skill-cost-label-fg: #c3beb6;
+  --illustrated-compact-skill-cost-fg: #c7c3bd;
+  --illustrated-compact-skill-cost-label-fg: #e4dfd7;
+  --illustrated-compact-tag-border-color: rgba(255, 255, 255, 0.08);
+  --illustrated-compact-tag-background: rgba(3, 5, 8, 0.32);
+  --illustrated-compact-tag-fg: #aeb5bf;
+  --illustrated-compact-effect-fg: #f0f3f7;
+  --illustrated-compact-effect-name-fg: color-mix(in srgb, var(--item-color) 84%, #ffffff);
+  --illustrated-compact-effect-text-fg: #edf1f5;
+  --illustrated-compact-row-description-fg: #747980;
+  --illustrated-compact-description-fg: #9ca4ad;
+  --illustrated-compact-holding-type-fg: color-mix(in srgb, var(--item-color) 86%, #ffffff);
+  --illustrated-creator-meta-fg: #e2e8f0;
+  --illustrated-creator-metadata-fg: #cbd5e1;
+  --illustrated-compact-profile-body-fg: #c9cdd4;
+  --illustrated-radar-card-background: rgba(0, 0, 0, 0.1);
+
   --illustrated-dialog-backdrop: rgba(3, 6, 12, 0.72);
   --illustrated-dialog-depth-shadow: 0 24px 70px rgba(0, 0, 0, 0.58);
   --illustrated-nav-background: linear-gradient(180deg, rgba(20, 22, 30, 0.2) 0%, rgba(20, 22, 30, 0.96) 35%);
@@ -719,6 +746,8 @@ watch(
   );
   --illustrated-divinity-fg: #fffdf5;
   --illustrated-divinity-fg-soft: rgba(255, 252, 242, 0.72);
+  --illustrated-divinity-meta-fg: rgba(216, 228, 236, 0.58);
+  --illustrated-divinity-body-fg: rgba(255, 252, 242, 0.88);
   --illustrated-divinity-surface: rgba(5, 15, 32, 0.44);
   --illustrated-divinity-hero-overlay:
     radial-gradient(ellipse at 50% 0, rgba(var(--illustrated-tier-accent-rgb), 0.18), transparent 62%),
@@ -928,7 +957,7 @@ watch(
 .illustrated-detail-title-spacer {
   min-height: 38px;
   margin: 0 0 13px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--illustrated-compact-divider-color);
 }
 
 .illustrated-group-title {
@@ -982,7 +1011,7 @@ watch(
   width: 14px;
   height: 14px;
   justify-self: end;
-  color: rgba(224, 233, 239, 0.72);
+  color: var(--illustrated-group-chevron-fg);
   transition: transform 0.16s ease;
   transform: rotate(0deg);
 }
@@ -1018,7 +1047,7 @@ watch(
   justify-content: flex-start;
   margin: 0 0 13px;
   padding: 0 2px 9px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--illustrated-compact-divider-color);
 }
 
 .illustrated-shell.is-special-npc.is-detail-tab :deep(.illustrated-page-title-line),

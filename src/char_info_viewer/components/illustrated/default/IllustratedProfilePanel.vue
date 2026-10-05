@@ -102,7 +102,7 @@ const blocks = computed(() =>
   display: inline-flex;
   align-items: baseline;
   gap: 7px;
-  color: #e2e8f0;
+  color: var(--illustrated-creator-meta-fg);
   font-size: calc(13px + var(--ci-font-size-adjust, 0px));
 }
 
@@ -115,7 +115,7 @@ const blocks = computed(() =>
 
 .illustrated-creator-metadata p {
   margin: 0;
-  color: #cbd5e1;
+  color: var(--illustrated-creator-metadata-fg);
   font-size: calc(13px + var(--ci-font-size-adjust, 0px));
   line-height: 1.75;
   white-space: pre-line;
@@ -224,7 +224,7 @@ const blocks = computed(() =>
     gap: 8px;
     padding: 11px 0 12px;
     border: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--illustrated-compact-divider-color);
     border-radius: 0;
     background: transparent;
   }
@@ -237,7 +237,7 @@ const blocks = computed(() =>
   .illustrated-info-grid.is-compact-profile .illustrated-text-block {
     padding: 11px 0 12px;
     border: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--illustrated-compact-divider-color);
     background: transparent;
     box-shadow: none;
   }
@@ -266,7 +266,7 @@ const blocks = computed(() =>
   }
 
   .illustrated-info-grid.is-compact-profile .illustrated-text-block p {
-    color: #c9cdd4;
+    color: var(--illustrated-compact-profile-body-fg);
     font-size: calc(11px + var(--ci-font-size-adjust, 0px)) !important;
     line-height: 1.65 !important;
     text-shadow: none;

@@ -148,11 +148,11 @@ test('立绘角色卡 手机首页将台词与资料直接叠在立绘渐变上�
   );
   assert.match(
     portraitPane,
-    /\.illustrated-shell\.is-special-npc\.is-overview-tab \.illustrated-mobile-entrance-quote\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none/,
+    /\.illustrated-shell\.is-special-npc\.is-overview-tab\s+#\{\$root\} \.illustrated-mobile-entrance-quote\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none/,
   );
   assert.match(
     portraitPane,
-    /\.illustrated-shell\.is-special-npc\.is-overview-tab \.illustrated-mobile-header-overlay\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none/,
+    /\.illustrated-shell\.is-special-npc\.is-overview-tab\s+#\{\$root\} \.illustrated-mobile-header-overlay\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none/,
   );
   // 手机首页叠层已随立绘视觉一起迁入 PortraitPane，父级只保留跨组件覆盖。
   assert.match(portraitPane, /class="illustrated-mobile-overview-overlay"/);

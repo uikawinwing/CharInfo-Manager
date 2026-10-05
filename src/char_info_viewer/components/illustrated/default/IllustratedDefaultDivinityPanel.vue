@@ -53,7 +53,7 @@ const sections = computed(() => buildDivinitySections(props.vm));
   padding-bottom: 18px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  color: rgba(255, 252, 242, 0.94);
+  color: var(--illustrated-divinity-fg);
   scrollbar-color: rgba(var(--illustrated-tier-accent-rgb), 0.34) transparent;
   scrollbar-width: thin;
 }
@@ -117,7 +117,7 @@ const sections = computed(() => buildDivinitySections(props.vm));
 }
 
 .default-divinity-card-head small {
-  color: rgba(216, 228, 236, 0.58);
+  color: var(--illustrated-divinity-meta-fg);
   font-family: Cinzel, Georgia, serif;
   font-size: calc(10px + var(--ci-font-size-adjust, 0px));
   letter-spacing: 0.14em;
@@ -133,7 +133,7 @@ const sections = computed(() => buildDivinitySections(props.vm));
 
 .default-divinity-card p {
   margin: 0;
-  color: rgba(255, 252, 242, 0.88);
+  color: var(--illustrated-divinity-body-fg);
   font-size: calc(14px + var(--ci-font-size-adjust, 0px));
   font-weight: 600;
   line-height: 1.72;
@@ -194,7 +194,7 @@ const sections = computed(() => buildDivinitySections(props.vm));
     gap: 5px;
     padding: 10px 0 11px;
     border: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--illustrated-compact-divider-color);
     background: transparent;
     box-shadow: none;
   }
