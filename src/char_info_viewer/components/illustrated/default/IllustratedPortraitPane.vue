@@ -354,7 +354,7 @@ defineExpose({ captureCurrentFrame });
     background: linear-gradient(to bottom, transparent 65%, var(--illustrated-bg) 100%);
   }
 
-  .illustrated-mobile-overview-overlay {
+  #{$root} .illustrated-mobile-overview-overlay {
     position: absolute;
     right: 18px;
     bottom: 22px;
@@ -369,14 +369,14 @@ defineExpose({ captureCurrentFrame });
     background: var(--illustrated-mobile-portrait-overlay);
   }
 
-  .illustrated-shell.is-special-npc.is-overview-tab .illustrated-mobile-overview-overlay {
+  .illustrated-shell.is-special-npc.is-overview-tab #{$root} .illustrated-mobile-overview-overlay {
     right: 17px;
     bottom: 12px;
     left: 17px;
     gap: 6px;
   }
 
-  .illustrated-mobile-entrance-quote {
+  #{$root} .illustrated-mobile-entrance-quote {
     position: relative;
     appearance: none;
     box-sizing: border-box;
@@ -403,7 +403,7 @@ defineExpose({ captureCurrentFrame });
     touch-action: manipulation;
   }
 
-  .illustrated-shell.is-special-npc.is-overview-tab .illustrated-mobile-entrance-quote {
+  .illustrated-shell.is-special-npc.is-overview-tab #{$root} .illustrated-mobile-entrance-quote {
     min-height: 0;
     margin: 0 4px;
     padding: 0;
@@ -416,12 +416,12 @@ defineExpose({ captureCurrentFrame });
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
   }
 
-  .illustrated-mobile-entrance-quote:focus-visible {
+  #{$root} .illustrated-mobile-entrance-quote:focus-visible {
     outline: 2px solid var(--illustrated-tier-accent);
     outline-offset: 3px;
   }
 
-  .illustrated-mobile-entrance-quote .illustrated-quote-expand-cue {
+  #{$root} .illustrated-mobile-entrance-quote .illustrated-quote-expand-cue {
     position: absolute;
     right: 5px;
     bottom: 3px;
@@ -429,7 +429,7 @@ defineExpose({ captureCurrentFrame });
     font: 10px/1 sans-serif;
   }
 
-  .illustrated-mobile-quote-mark {
+  #{$root} .illustrated-mobile-quote-mark {
     flex: 0 0 auto;
     color: rgba(var(--illustrated-race-accent-rgb), 0.92);
     font-family: Georgia, 'Times New Roman', serif;
@@ -437,7 +437,7 @@ defineExpose({ captureCurrentFrame });
     line-height: 1;
   }
 
-  .illustrated-mobile-quote-text {
+  #{$root} .illustrated-mobile-quote-text {
     display: -webkit-box;
     overflow: hidden;
     overflow-wrap: anywhere;
@@ -446,7 +446,7 @@ defineExpose({ captureCurrentFrame });
     -webkit-line-clamp: 2;
   }
 
-  .illustrated-mobile-header-overlay {
+  #{$root} .illustrated-mobile-header-overlay {
     display: block;
     padding: 10px 12px;
     border: 1px solid rgba(var(--illustrated-race-accent-rgb), 0.62);
@@ -459,7 +459,7 @@ defineExpose({ captureCurrentFrame });
     -webkit-backdrop-filter: blur(5px);
   }
 
-  .illustrated-shell.is-special-npc.is-overview-tab .illustrated-mobile-header-overlay {
+  .illustrated-shell.is-special-npc.is-overview-tab #{$root} .illustrated-mobile-header-overlay {
     padding: 0 2px;
     border: 0;
     border-radius: 0;
@@ -471,13 +471,13 @@ defineExpose({ captureCurrentFrame });
 }
 
 @mixin illustrated-portrait-compact-content($root: '.illustrated-portrait-pane') {
-  .illustrated-mobile-overview-overlay {
+  #{$root} .illustrated-mobile-overview-overlay {
     right: 14px;
     bottom: 18px;
     left: 14px;
   }
 
-  .illustrated-mobile-header-overlay {
+  #{$root} .illustrated-mobile-header-overlay {
     padding: 9px 10px;
   }
 }
