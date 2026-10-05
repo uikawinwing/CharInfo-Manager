@@ -159,7 +159,11 @@ defineExpose({ captureCurrentFrame });
   height: 100%;
   opacity: 0;
   object-fit: cover;
-  object-position: top center;
+  object-position: var(--illustrated-portrait-media-object-position);
+  border: var(--illustrated-portrait-media-border);
+  border-radius: var(--illustrated-portrait-media-radius);
+  box-shadow: var(--illustrated-portrait-media-shadow);
+  clip-path: var(--illustrated-portrait-media-clip-path);
   transition: opacity 180ms ease-out;
 }
 
@@ -169,7 +173,11 @@ defineExpose({ captureCurrentFrame });
   height: 100%;
   opacity: 0;
   object-fit: cover;
-  object-position: top center;
+  object-position: var(--illustrated-portrait-media-object-position);
+  border: var(--illustrated-portrait-media-border);
+  border-radius: var(--illustrated-portrait-media-radius);
+  box-shadow: var(--illustrated-portrait-media-shadow);
+  clip-path: var(--illustrated-portrait-media-clip-path);
   transition: opacity 180ms ease-out;
 }
 

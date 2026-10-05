@@ -633,6 +633,24 @@ watch(
     transparent
   );
   --illustrated-tier-shadow: 0 0 8px rgba(var(--illustrated-tier-accent-rgb), 0.4);
+  // 属性旗标视觉 token。属性卡的边框造型（top 高亮条、下边框色）与
+  // race-accent / border-faint 都不同，因此独立成组，不复用通用 surface token。
+  --illustrated-attribute-border: 1px solid var(--illustrated-border-faint);
+  --illustrated-attribute-border-top: 2px solid var(--illustrated-race-accent);
+  --illustrated-attribute-border-bottom-color: var(--illustrated-border-faint);
+  --illustrated-attribute-radius: 0;
+  --illustrated-attribute-background: rgba(0, 0, 0, 0.3);
+  --illustrated-attribute-clip-path: polygon(0% 0%, 100% 0%, 100% 85%, 50% 100%, 0% 85%);
+  --illustrated-attribute-fg: var(--illustrated-fg);
+  --illustrated-attribute-shadow: none;
+  --illustrated-attribute-total-fg: var(--illustrated-race-accent);
+  // 立绘媒体（img / video）视觉 token。当前默认没有边框 / 圆角 / 阴影 / 裁切，
+  // 所以 default 分别是 none / 0 / none / none —— 与「未设置」严格等价。
+  --illustrated-portrait-media-border: none;
+  --illustrated-portrait-media-radius: 0;
+  --illustrated-portrait-media-object-position: top center;
+  --illustrated-portrait-media-shadow: none;
+  --illustrated-portrait-media-clip-path: none;
   --illustrated-import-menu-background: rgba(20, 20, 20, 0.92);
   --illustrated-import-menu-border: rgba(255, 255, 255, 0.18);
   --illustrated-import-menu-fg: #eee;

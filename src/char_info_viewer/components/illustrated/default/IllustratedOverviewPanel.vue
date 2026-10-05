@@ -117,11 +117,16 @@ const emit = defineEmits<{
   max-width: var(--flag-width);
   min-height: var(--flag-min-height);
   padding: 15px 5px 36px;
-  border: 1px solid var(--illustrated-border-faint);
-  border-top: 2px solid var(--illustrated-race-accent);
-  background: rgba(0, 0, 0, 0.3);
-  clip-path: polygon(0% 0%, 100% 0%, 100% 85%, 50% 100%, 0% 85%);
-  color: var(--illustrated-fg);
+  border: var(--illustrated-attribute-border);
+  border-top: var(--illustrated-attribute-border-top);
+  /* 显式声明下边框色：default 下与 border 简写算出的值相同（严格等价），
+     但 DX 改了 border 简写后必须同时给这个 token，否则下边框会退回 border-faint。 */
+  border-bottom-color: var(--illustrated-attribute-border-bottom-color);
+  border-radius: var(--illustrated-attribute-radius);
+  background: var(--illustrated-attribute-background);
+  box-shadow: var(--illustrated-attribute-shadow);
+  clip-path: var(--illustrated-attribute-clip-path);
+  color: var(--illustrated-attribute-fg);
   cursor: default;
   text-align: center;
   transition:
@@ -155,7 +160,7 @@ const emit = defineEmits<{
 }
 
 .illustrated-attribute-total {
-  color: var(--illustrated-race-accent);
+  color: var(--illustrated-attribute-total-fg);
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
   font-size: calc(2rem + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
