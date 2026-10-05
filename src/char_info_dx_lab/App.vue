@@ -77,6 +77,7 @@ import {
   splitAttributeFormula,
 } from '@/char_info_viewer/services/attributeWarning';
 import { buildCharacterViewModel, pickField } from '@/char_info_viewer/services/characterViewModel';
+import { resolveCharacterVisualPreview } from '@/char_info_viewer/services/themeService';
 import type { AttributeView } from '@/char_info_viewer/components/illustrated/types';
 
 type ViewportId = 'desktop' | 'narrow' | 'mobile';
@@ -120,11 +121,45 @@ const viewports = VIEWPORTS;
 const current = computed(() => fixtures.find(f => f.id === fixtureId.value) ?? fixtures[0]);
 const viewportSize = computed(() => VIEWPORTS.find(v => v.id === viewport.value) ?? VIEWPORTS[0]);
 
-const vm = computed(() => buildCharacterViewModel(current.value.data as never, ['local', 'remote']));
+/**
+ * `specialNpc` 品牌是 `themeService` 内部的 Symbol，只能由正规解析链路打上。
+ * Lab 走 `resolveCharacterVisualPreview`（同步、无 ST 依赖），与 Viewer 的 previewMode
+ * 路径同源，而不是自己伪造 Symbol。
+ */
+const resolvedData = computed(() =>
+  resolveCharacterVisualPreview(current.value.data as never, current.value.name, undefined),
+);
+
+/**
+ * Lab-only offline portrait adapter。
+ *
+ * 产品的 `buildCharacterViewModel` / `normalizePortraitMediaUrlForBrowser` 故意只接受
+ * 正式媒体 URL（https / 本地 gallery），**不要**为了 Lab 允许 data: URL 而放宽产品规则。
+ *
+ * 离线 Lab 的 fixture 用 embedded data URI 保证 file:// 下不依赖网络，所以这里在
+ * VM 已经构建完成之后，只覆盖媒体相关字段。
+ *
+ * 这不是业务逻辑，也不复制 portrait controller —— 它只是把「Lab 的离线立绘」
+ * 接到真实 renderer 已经消费的那几个字段上。
+ */
+const vm = computed(() => {
+  const base = buildCharacterViewModel(resolvedData.value, ['local', 'remote']);
+  const portraitUrl = current.value.portraitUrl;
+  if (!portraitUrl) return base;
+
+  return {
+    ...base,
+    imageUrl: portraitUrl,
+    imageUrls: [portraitUrl],
+    imageSourceGroups: [[portraitUrl]],
+    randomizeInitialImage: false,
+  };
+});
 
 const attributes = computed<AttributeView[]>(() => {
-  const attrObj = (pickField(current.value.data, '属性', '属性') || {}) as Record<string, unknown>;
-  const warningMap = buildAttributeWarningMap(attrObj, pickField(current.value.data, '等级'));
+  const source = resolvedData.value;
+  const attrObj = (pickField(source, '属性', '属性') || {}) as Record<string, unknown>;
+  const warningMap = buildAttributeWarningMap(attrObj, pickField(source, '等级'));
   return ATTRIBUTE_KEYS.map(key => {
     const parsed = splitAttributeFormula(getAttributeRawValue(attrObj, key));
     const warning = warningMap[key as keyof typeof warningMap];
