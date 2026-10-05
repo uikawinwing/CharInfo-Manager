@@ -72,20 +72,14 @@ defineOptions({ inheritAttrs: false });
   color-scheme: light;
   color: #17324a;
   --illustrated-bg: #dce9e7;
-  --illustrated-shell-border-color: rgba(49, 83, 109, 0.58);
-  --illustrated-shell-background:
-    radial-gradient(circle at 76% 4%, rgba(169, 140, 232, 0.18), transparent 24rem),
-    radial-gradient(circle at 18% 92%, rgba(240, 120, 166, 0.13), transparent 28rem),
-    linear-gradient(145deg, #edf5f3 0%, #dcefeb 54%, #e9e1f7 100%);
+  --illustrated-shell-border-color: #31536d;
+  --illustrated-shell-background: #edf5f3;
   --illustrated-shell-shadow:
-    0 0 0 4px rgba(247, 251, 250, 0.78),
-    0 0 0 5px rgba(66, 169, 150, 0.48),
-    0 22px 52px rgba(23, 50, 74, 0.2);
+    0 22px 46px rgba(23, 50, 74, 0.2),
+    0 0 0 4px rgba(247, 251, 250, 0.82),
+    0 0 0 5px #8cb5b0;
   --illustrated-portrait-pane-background: #a8c8c7;
-  --illustrated-data-pane-background:
-    radial-gradient(circle at 15% 16%, rgba(240, 120, 166, 0.13) 0 3px, transparent 4px) 0 0 / 88px 88px,
-    radial-gradient(circle at 82% 23%, rgba(169, 140, 232, 0.14) 0 4px, transparent 5px) 0 0 / 126px 126px,
-    linear-gradient(135deg, rgba(247, 251, 250, 0.96), #dcefeb 52%, #ebe2fa);
+  --illustrated-data-pane-background: #dcefeb;
   --illustrated-detail-pane-background: var(--illustrated-data-pane-background);
   --illustrated-detail-wallpaper-filter: saturate(0.94) brightness(1.02);
   --illustrated-detail-wallpaper-opacity: 0.18;
@@ -94,9 +88,9 @@ defineOptions({ inheritAttrs: false });
   --illustrated-fg-muted: #547083;
   --illustrated-surface-subtle: rgba(255, 255, 255, 0.34);
   --illustrated-surface-muted: rgba(247, 251, 250, 0.72);
-  --illustrated-surface-card: rgba(247, 251, 250, 0.95);
+  --illustrated-surface-card: rgba(247, 251, 250, 0.94);
   --illustrated-surface-tag: #ffffff;
-  --illustrated-group-panel-background: rgba(247, 251, 250, 0.95);
+  --illustrated-group-panel-background: rgba(247, 251, 250, 0.94);
   --illustrated-group-panel-collapsed-background: rgba(247, 251, 250, 0.82);
   --illustrated-group-panel-highlight: rgba(255, 255, 255, 0.5);
   --illustrated-group-toggle-background: linear-gradient(90deg, rgba(169, 140, 232, 0.08), rgba(220, 239, 235, 0.5));
@@ -109,7 +103,9 @@ defineOptions({ inheritAttrs: false });
   --illustrated-compact-row-background: linear-gradient(90deg, rgba(247, 251, 250, 0.74), rgba(220, 239, 235, 0.56));
   --illustrated-dialog-backdrop: rgba(23, 50, 74, 0.34);
   --illustrated-dialog-depth-shadow: 0 20px 50px rgba(23, 50, 74, 0.14);
-  --illustrated-mobile-portrait-overlay: none;
+  --illustrated-mobile-portrait-overlay:
+    linear-gradient(180deg, rgba(23, 50, 74, 0.05) 0%, transparent 32%, transparent 62%, rgba(23, 50, 74, 0.2) 100%),
+    linear-gradient(90deg, rgba(131, 220, 203, 0.12), transparent 22%, transparent 78%, rgba(169, 140, 232, 0.12));
   --illustrated-import-menu-background: rgba(247, 251, 250, 0.97);
   --illustrated-import-menu-border: rgba(49, 83, 109, 0.18);
   --illustrated-import-menu-fg: #17324a;
@@ -146,44 +142,42 @@ defineOptions({ inheritAttrs: false });
   --illustrated-tab-active-background: #d9f0ea;
   --illustrated-tab-active-indicator: #f078a6;
   --illustrated-side-rail-border-color: #9abbb7;
-  /* 旧 direct selector 最终值是 .94，不是 token block 里的 .96。 */
+  /* current preview 的导航表面是 .94；布局继续使用 platform side rail。 */
   --illustrated-side-rail-background: rgba(247, 251, 250, 0.94);
   --illustrated-side-rail-shadow: -8px 0 20px rgba(23, 50, 74, 0.08);
-  --illustrated-side-rail-tab-active-background: linear-gradient(90deg, rgba(131, 220, 203, 0.26), rgba(169, 140, 232, 0.06));
-  /* --- 6A token assignments：属性旗标 ---
-     旧 direct 是 `border: 1px solid #85b7b0`（shorthand 会 reset border-top），
-     所以 border / border-top / border-bottom-color 三者必须同为该值，
-     否则会错误保留 platform default 的 top 与 bottom。 */
+  --illustrated-side-rail-tab-active-background: #d9f0ea;
+  /* --- current Iris preview：属性旗标 --- */
   --illustrated-attribute-border: 1px solid #85b7b0;
   --illustrated-attribute-border-top: 1px solid #85b7b0;
   --illustrated-attribute-border-bottom-color: #85b7b0;
-  --illustrated-attribute-radius: 18px 18px 42% 42% / 18px 18px 22% 22%;
+  --illustrated-attribute-radius: 18px 18px 46% 46% / 18px 18px 24% 24%;
   --illustrated-attribute-background: linear-gradient(180deg, #f9fcfb 0%, #e6f4f1 58%, #bfe8df 100%);
   --illustrated-attribute-clip-path: none;
   --illustrated-attribute-fg: #17324a;
-  --illustrated-attribute-shadow: 0 8px 14px rgba(23, 50, 74, 0.1), inset 0 0 0 4px rgba(255, 255, 255, 0.5);
+  --illustrated-attribute-shadow: 0 8px 14px rgba(23, 50, 74, 0.1), inset 0 0 0 4px rgba(255, 255, 255, 0.52);
   --illustrated-attribute-total-fg: #be4f79;
-  /* --- 6A token assignments：立绘媒体 --- */
-  --illustrated-portrait-media-border: 1px solid rgba(237, 255, 251, 0.88);
-  --illustrated-portrait-media-radius: 10px;
+  /* --- current Iris preview：立绘媒体（frame 由 pane pseudo 提供） --- */
+  --illustrated-portrait-media-border: none;
+  --illustrated-portrait-media-radius: 0;
   --illustrated-portrait-media-object-position: 50% 48%;
-  --illustrated-portrait-media-shadow: 0 12px 28px rgba(23, 50, 74, 0.2);
-  /* --- 6A token assignments：内容面板 --- */
+  --illustrated-portrait-media-shadow: none;
+  --illustrated-portrait-media-clip-path: none;
+  /* --- current Iris preview：内容面板 --- */
   --illustrated-border-faint: #a6c3c0;
-  --illustrated-surface-card: rgba(247, 251, 250, 0.95);
+  --illustrated-surface-card: rgba(247, 251, 250, 0.94);
   --illustrated-item-shadow: 0 8px 18px rgba(23, 50, 74, 0.1);
   --illustrated-panel-shadow: 0 8px 18px rgba(23, 50, 74, 0.1);
   --illustrated-group-panel-border-color: #a6c3c0;
   --illustrated-group-panel-shadow: 0 8px 18px rgba(23, 50, 74, 0.1);
-  --illustrated-group-panel-background: rgba(247, 251, 250, 0.95);
+  --illustrated-group-panel-background: rgba(247, 251, 250, 0.94);
   --illustrated-group-panel-mobile-border-color: #a6c3c0;
-  --illustrated-group-panel-mobile-background: rgba(247, 251, 250, 0.95);
-  --illustrated-story-block-background: rgba(247, 251, 250, 0.95);
+  --illustrated-group-panel-mobile-background: rgba(247, 251, 250, 0.94);
+  --illustrated-story-block-background: rgba(247, 251, 250, 0.94);
   --illustrated-story-block-shadow: 0 8px 18px rgba(23, 50, 74, 0.1);
   /* 旧 direct `background:` 会整体替换底层表面，platform 的 8 层 corner
      gradient 必须显式关掉，否则会盖住主题表面。 */
   --illustrated-text-block-corner-color: transparent;
-  --illustrated-text-block-background: rgba(247, 251, 250, 0.95);
+  --illustrated-text-block-background: rgba(247, 251, 250, 0.94);
   --illustrated-text-block-border-color: #a6c3c0;
 }
 
@@ -412,9 +406,91 @@ defineOptions({ inheritAttrs: false });
   z-index: 1;
 }
 
-/* --- Iris：属性旗标右下角装饰点 + 其裁切需求 --- */
+/* --- Iris：current preview 的立绘框 / readability overlay --- */
+.illustrated-v2-theme-iris .illustrated-portrait-pane {
+  overflow: hidden;
+  border-right: 1px solid #8cb5b0;
+  background: #a8c8c7;
+}
+
+.illustrated-v2-theme-iris .illustrated-portrait-pane::before {
+  content: '';
+  position: absolute;
+  inset: 15px;
+  z-index: 3;
+  border: 1px solid rgba(231, 255, 251, 0.88);
+  border-radius: 6px;
+  box-shadow:
+    inset 0 0 0 1px rgba(23, 50, 74, 0.22),
+    0 0 0 4px rgba(131, 220, 203, 0.1);
+  pointer-events: none;
+}
+
+.illustrated-v2-theme-iris .illustrated-portrait-pane::after {
+  z-index: 2;
+  background:
+    linear-gradient(180deg, rgba(23, 50, 74, 0.05) 0%, transparent 32%, transparent 62%, rgba(23, 50, 74, 0.2) 100%),
+    linear-gradient(90deg, rgba(131, 220, 203, 0.12), transparent 22%, transparent 78%, rgba(169, 140, 232, 0.12));
+}
+
+/* --- Iris：current preview 的资料区底纹 --- */
+.illustrated-v2-theme-iris .illustrated-data-pane {
+  isolation: isolate;
+}
+
+.illustrated-v2-theme-iris .illustrated-data-pane::before,
+.illustrated-v2-theme-iris .illustrated-data-pane::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.illustrated-v2-theme-iris .illustrated-data-pane::before {
+  background-color: #dcefeb;
+  background-image:
+    radial-gradient(circle at 15% 16%, rgba(240, 120, 166, 0.14) 0 3px, transparent 4px),
+    radial-gradient(circle at 82% 23%, rgba(169, 140, 232, 0.15) 0 4px, transparent 5px),
+    radial-gradient(circle at 62% 78%, rgba(66, 169, 150, 0.12) 0 5px, transparent 6px),
+    radial-gradient(circle at 34% 55%, transparent 0 19px, rgba(114, 88, 186, 0.08) 20px 21px, transparent 22px);
+  background-size:
+    88px 88px,
+    126px 126px,
+    148px 148px,
+    180px 180px;
+}
+
+.illustrated-v2-theme-iris .illustrated-data-pane::after {
+  background: linear-gradient(
+    135deg,
+    rgba(247, 251, 250, 0.76),
+    rgba(220, 239, 235, 0.42) 48%,
+    rgba(235, 226, 250, 0.4)
+  );
+}
+
+.illustrated-v2-theme-iris .illustrated-data-pane > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* --- Iris：属性旗标 current preview 顶部色条 + 右下角装饰点 --- */
 .illustrated-v2-theme-iris .illustrated-attribute {
   overflow: hidden;
+}
+
+.illustrated-v2-theme-iris .illustrated-attribute::before {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 9px;
+  border-bottom: 2px solid #7258ba;
+  background: #83dccb;
+  pointer-events: none;
 }
 
 .illustrated-v2-theme-iris .illustrated-attribute::after {
@@ -429,6 +505,27 @@ defineOptions({ inheritAttrs: false });
   background: rgba(237, 255, 251, 0.14);
   box-shadow: inset -2px -3px 6px rgba(131, 220, 203, 0.18);
   pointer-events: none;
+}
+
+/*
+ * current preview 的 mobile nameplate 是浅色半透明可读性盒。
+ * default specialNpc 会把普通 header box 透明化，这里按 Iris 当前设计补回主题自己的 surface。
+ */
+.illustrated-v2-theme-iris
+  .illustrated-shell.is-special-npc.is-overview-tab
+  .illustrated-portrait-pane
+  .illustrated-mobile-header-overlay,
+.illustrated-v2-theme-iris
+  .illustrated-shell.is-special-npc.is-overview-tab
+  .illustrated-portrait-pane.force-mobile-layout
+  .illustrated-mobile-header-overlay {
+  padding: 12px 14px 13px;
+  border: 1px solid rgba(131, 220, 203, 0.9);
+  border-radius: 8px;
+  background: rgba(237, 245, 243, 0.94);
+  box-shadow: 0 9px 22px rgba(23, 50, 74, 0.22);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* --- Iris：立绘区装饰层 --- */
@@ -647,10 +744,8 @@ defineOptions({ inheritAttrs: false });
 }
 
 @media (max-width: 900px) {
-  .illustrated-v2-theme-iris
-    .illustrated-shell.is-special-npc.is-overview-tab
-    .illustrated-portrait-pane::after {
-    background: none !important;
+  .illustrated-v2-theme-iris .illustrated-portrait-pane::before {
+    inset: 11px;
   }
 
   .illustrated-v2-surface .iris-v2-jellyfish,
