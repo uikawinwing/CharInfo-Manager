@@ -139,6 +139,52 @@ defineOptions({ inheritAttrs: false });
   --illustrated-race-accent-rgb: 66, 169, 150;
   --illustrated-tier-accent: #a98ce8;
   --illustrated-tier-accent-rgb: 169, 140, 232;
+  /* --- 6A token assignments：导航 --- */
+  --illustrated-nav-border-color: #9abbb7;
+  --illustrated-tab-fg: #31536d;
+  --illustrated-tab-active-fg: #17324a;
+  --illustrated-tab-active-background: #d9f0ea;
+  --illustrated-tab-active-indicator: #f078a6;
+  --illustrated-side-rail-border-color: #9abbb7;
+  /* 旧 direct selector 最终值是 .94，不是 token block 里的 .96。 */
+  --illustrated-side-rail-background: rgba(247, 251, 250, 0.94);
+  --illustrated-side-rail-shadow: -8px 0 20px rgba(23, 50, 74, 0.08);
+  --illustrated-side-rail-tab-active-background: linear-gradient(90deg, rgba(131, 220, 203, 0.26), rgba(169, 140, 232, 0.06));
+  /* --- 6A token assignments：属性旗标 ---
+     旧 direct 是 `border: 1px solid #85b7b0`（shorthand 会 reset border-top），
+     所以 border / border-top / border-bottom-color 三者必须同为该值，
+     否则会错误保留 platform default 的 top 与 bottom。 */
+  --illustrated-attribute-border: 1px solid #85b7b0;
+  --illustrated-attribute-border-top: 1px solid #85b7b0;
+  --illustrated-attribute-border-bottom-color: #85b7b0;
+  --illustrated-attribute-radius: 18px 18px 42% 42% / 18px 18px 22% 22%;
+  --illustrated-attribute-background: linear-gradient(180deg, #f9fcfb 0%, #e6f4f1 58%, #bfe8df 100%);
+  --illustrated-attribute-clip-path: none;
+  --illustrated-attribute-fg: #17324a;
+  --illustrated-attribute-shadow: 0 8px 14px rgba(23, 50, 74, 0.1), inset 0 0 0 4px rgba(255, 255, 255, 0.5);
+  --illustrated-attribute-total-fg: #be4f79;
+  /* --- 6A token assignments：立绘媒体 --- */
+  --illustrated-portrait-media-border: 1px solid rgba(237, 255, 251, 0.88);
+  --illustrated-portrait-media-radius: 10px;
+  --illustrated-portrait-media-object-position: 50% 48%;
+  --illustrated-portrait-media-shadow: 0 12px 28px rgba(23, 50, 74, 0.2);
+  /* --- 6A token assignments：内容面板 --- */
+  --illustrated-border-faint: #a6c3c0;
+  --illustrated-surface-card: rgba(247, 251, 250, 0.95);
+  --illustrated-item-shadow: 0 8px 18px rgba(23, 50, 74, 0.1);
+  --illustrated-panel-shadow: 0 8px 18px rgba(23, 50, 74, 0.1);
+  --illustrated-group-panel-border-color: #a6c3c0;
+  --illustrated-group-panel-shadow: 0 8px 18px rgba(23, 50, 74, 0.1);
+  --illustrated-group-panel-background: rgba(247, 251, 250, 0.95);
+  --illustrated-group-panel-mobile-border-color: #a6c3c0;
+  --illustrated-group-panel-mobile-background: rgba(247, 251, 250, 0.95);
+  --illustrated-story-block-background: rgba(247, 251, 250, 0.95);
+  --illustrated-story-block-shadow: 0 8px 18px rgba(23, 50, 74, 0.1);
+  /* 旧 direct `background:` 会整体替换底层表面，platform 的 8 层 corner
+     gradient 必须显式关掉，否则会盖住主题表面。 */
+  --illustrated-text-block-corner-color: transparent;
+  --illustrated-text-block-background: rgba(247, 251, 250, 0.95);
+  --illustrated-text-block-border-color: #a6c3c0;
 }
 
 /* ============================================================
@@ -176,6 +222,74 @@ defineOptions({ inheritAttrs: false });
   --illustrated-flag-width: 152px;
   --illustrated-flag-height: 154px;
   --illustrated-flag-gap: 12px;
+  /* --- 6A token assignments：导航 --- */
+  --illustrated-nav-border-color: rgba(155, 176, 194, 0.28);
+  --illustrated-tab-fg: #aebfcb;
+  --illustrated-tab-active-fg: #f4f7f9;
+  --illustrated-tab-active-background: linear-gradient(90deg, rgba(95, 159, 189, 0.13), rgba(217, 181, 106, 0.07));
+  --illustrated-tab-active-indicator: #d9b56a;
+  --illustrated-side-rail-border-color: rgba(155, 176, 194, 0.3);
+  --illustrated-side-rail-background:
+    linear-gradient(180deg, rgba(24, 69, 110, 0.16), transparent 44%),
+    rgba(4, 16, 30, 0.96);
+  --illustrated-side-rail-shadow: -8px 0 24px rgba(0, 0, 0, 0.24);
+  --illustrated-side-rail-tab-active-background: linear-gradient(90deg, rgba(95, 159, 189, 0.18), rgba(217, 181, 106, 0.08));
+  /* --- 6A token assignments：属性旗标 --- */
+  --illustrated-attribute-border: 1px solid rgba(10, 45, 78, 0.14);
+  --illustrated-attribute-border-top: 2px solid rgba(10, 45, 78, 0.54);
+  --illustrated-attribute-border-bottom-color: rgba(95, 143, 168, 0.7);
+  --illustrated-attribute-radius: 0;
+  --illustrated-attribute-background:
+    linear-gradient(180deg, transparent 0 11px, rgba(24, 69, 110, 0.9) 11px 13px, transparent 13px 16px, rgba(24, 69, 110, 0.72) 16px 18px, transparent 18px),
+    radial-gradient(ellipse at 50% 0, rgba(255, 255, 255, 0.96), transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(232, 241, 248, 0.94) 52%, rgba(95, 143, 168, 0.82) 100%);
+  --illustrated-attribute-clip-path: polygon(0% 0%, 100% 0%, 100% 85%, 50% 100%, 0% 85%);
+  --illustrated-attribute-fg: #0a2d4e;
+  --illustrated-attribute-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    inset 0 -14px 24px rgba(95, 143, 168, 0.18),
+    0 12px 24px rgba(15, 48, 78, 0.13),
+    0 0 0 1px rgba(255, 255, 255, 0.72);
+  --illustrated-attribute-total-fg: #b63b49;
+  /* --- 6A token assignments：立绘媒体 --- */
+  --illustrated-portrait-media-radius: 8px;
+  --illustrated-portrait-media-object-position: top center;
+  --illustrated-portrait-media-shadow: 0 14px 34px rgba(0, 0, 0, 0.34);
+  --illustrated-portrait-media-clip-path: polygon(14px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px), 0 14px);
+  /* --- 6A token assignments：内容面板 ---
+     旧 direct surface 值与 platform token 默认值不等，逐项按旧 direct 迁移。 */
+  --illustrated-border-faint: rgba(155, 176, 194, 0.34);
+  --illustrated-surface-card: linear-gradient(180deg, rgba(18, 49, 78, 0.9), rgba(6, 24, 43, 0.92));
+  --illustrated-item-shadow: 0 8px 22px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --illustrated-panel-shadow: 0 8px 22px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --illustrated-group-panel-border-color: rgba(155, 176, 194, 0.34);
+  --illustrated-group-panel-shadow: 0 8px 22px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --illustrated-group-panel-background: linear-gradient(180deg, rgba(18, 49, 78, 0.9), rgba(6, 24, 43, 0.92));
+  --illustrated-group-panel-mobile-border-color: rgba(155, 176, 194, 0.34);
+  --illustrated-group-panel-mobile-background: linear-gradient(180deg, rgba(18, 49, 78, 0.9), rgba(6, 24, 43, 0.92));
+  --illustrated-story-block-background: linear-gradient(180deg, rgba(18, 49, 78, 0.9), rgba(6, 24, 43, 0.92));
+  --illustrated-story-block-shadow: 0 8px 22px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --illustrated-text-block-corner-color: transparent;
+  --illustrated-text-block-background: linear-gradient(180deg, rgba(18, 49, 78, 0.9), rgba(6, 24, 43, 0.92));
+  --illustrated-text-block-border-color: rgba(155, 176, 194, 0.34);
+  /* 旧 direct 正文是 text-shadow: none。 */
+  --illustrated-text-shadow: none;
+}
+
+/* ============================================================
+ * 仍需 direct selector 的视觉差异
+ * 这些无法由现有 token 等价表达，保留在 DX。
+ * ============================================================ */
+
+/*
+ * Iris header 等级条：旧 direct 是 #7258ba，而 --illustrated-tier-accent 是
+ * #a98ce8。tier-accent 被 7 个 default 文件消费（含 Story / Quote / Attribute），
+ * 改它会把整卡紫色系一起改掉，因此头部这一处保留 direct selector，
+ * 而不是新增一个 header-only token。
+ */
+.illustrated-v2-theme-iris .illustrated-header .illustrated-level,
+.illustrated-v2-theme-iris .illustrated-header .illustrated-tier {
+  color: #7258ba;
 }
 
 /* ============================================================
