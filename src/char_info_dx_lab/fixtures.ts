@@ -10,17 +10,20 @@ import type { IllustratedV2Theme } from '@/char_info_viewer/components/illustrat
 export type DxLabFixture = {
   id: string;
   name: string;
-  /** 至少一个 fixture 是完整 specialNpc，覆盖 desktop side rail 与 6 tab contract。 */
-  specialNpc: boolean;
-  /** 本地 data URI，offline boot 不依赖网络。 */
-  portraitUrl: string;
+  /**
+   * Lab 预览立绘来源，按顺序 fallback。
+   *
+   * 正常设计预览优先使用真实外链；最后一个 data URI 只负责断网 / 图床失败时
+   * 兜底，避免 QA 测试图反过来成为人类和 LLM 默认看到的“角色立绘”。
+   */
+  portraitSources: readonly string[];
   /**
    * Lab-only visual config。
    *
    * 它的唯一作用是让**正式**的 `resolveCharacterVisualPreview` 识别出这是 viewer image
-   * profile，从而由正规链路打上 specialNpc brand。里面的 HTTPS URL 是
-   * `.invalid` 保留域，**不需要真实网络成功**——真正渲染时由 Lab 的 embedded
-   * portrait adapter 覆盖媒体字段为 data URI。
+   * profile，从而由正规链路打上 specialNpc brand。这里使用与正常设计预览相同的
+   * 真实 HTTPS 图片；Lab host 会把 embedded data URI 追加为 source fallback，
+   * 因此完全断网时仍可启动和渲染。
    *
    * 不要在这里放宽产品的 URL policy，也不要把 data: 塞进正式 resolver。
    */
@@ -28,20 +31,22 @@ export type DxLabFixture = {
   data: CharacterData;
 };
 
-const PORTRAIT_PNG =
+const OFFLINE_PORTRAIT_FALLBACK =
   'data:image/png;base64,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';
 
 export const dxLabFixtures: DxLabFixture[] = [
   {
     id: 'iris-full',
     name: '艾璃丝（完整 specialNpc）',
-    specialNpc: true,
-    portraitUrl: PORTRAIT_PNG,
+    portraitSources: [
+      'https://files.catbox.moe/wa4anv.png',
+      OFFLINE_PORTRAIT_FALLBACK,
+    ],
     // 让正式 preview resolver 判定为 viewer image profile。
-    // `example.invalid` 是 RFC 2606 保留域，永不解析到真实主机。
+    // 正常预览使用旧 DX Lab 已有的艾璃丝真实立绘 URL。
     visualConfig: {
       schema_version: 2,
-      gallery: [{ sources: ['https://example.invalid/dx-lab-portrait.png'] }],
+      gallery: [{ sources: ['https://files.catbox.moe/wa4anv.png'] }],
     },
     data: {
       姓名: '艾璃丝·赛瑞利亚',
@@ -129,8 +134,7 @@ export const dxLabFixtures: DxLabFixture[] = [
   {
     id: 'plain',
     name: '普通角色（无立绘路径）',
-    specialNpc: false,
-    portraitUrl: '',
+    portraitSources: [],
     data: {
       姓名: '示例·普通角色',
       等级: 6,

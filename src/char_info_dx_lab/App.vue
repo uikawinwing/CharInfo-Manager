@@ -145,27 +145,29 @@ const resolvedData = computed(() =>
 );
 
 /**
- * Lab-only offline portrait adapter。
+ * Lab-only portrait source adapter。
  *
  * 产品的 `buildCharacterViewModel` / `normalizePortraitMediaUrlForBrowser` 故意只接受
  * 正式媒体 URL（https / 本地 gallery），**不要**为了 Lab 允许 data: URL 而放宽产品规则。
  *
- * 离线 Lab 的 fixture 用 embedded data URI 保证 file:// 下不依赖网络，所以这里在
- * VM 已经构建完成之后，只覆盖媒体相关字段。
+ * fixture 把真实外链放在第一顺位，并把 embedded data URI 放在最后作为 offline
+ * fallback。这样正常设计预览看到真实角色图，而完全断网 / 图床失败时仍能由现有
+ * portrait controller 自动切换到内嵌图。
  *
- * 这不是业务逻辑，也不复制 portrait controller —— 它只是把「Lab 的离线立绘」
- * 接到真实 renderer 已经消费的那几个字段上。
+ * 这不是业务逻辑，也不复制 fallback 状态机 —— 它只是把 Lab 的 source group 接到
+ * 真实 renderer 已经消费的字段上。
  */
 const vm = computed(() => {
   const base = buildCharacterViewModel(resolvedData.value, ['local', 'remote']);
-  const portraitUrl = current.value.portraitUrl;
-  if (!portraitUrl) return base;
+  const portraitSources = [...current.value.portraitSources];
+  const primaryPortraitUrl = portraitSources[0];
+  if (!primaryPortraitUrl) return base;
 
   return {
     ...base,
-    imageUrl: portraitUrl,
-    imageUrls: [portraitUrl],
-    imageSourceGroups: [[portraitUrl]],
+    imageUrl: primaryPortraitUrl,
+    imageUrls: [primaryPortraitUrl],
+    imageSourceGroups: [portraitSources],
     randomizeInitialImage: false,
   };
 });
