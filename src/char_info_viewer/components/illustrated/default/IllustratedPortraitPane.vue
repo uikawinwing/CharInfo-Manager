@@ -391,7 +391,7 @@ defineExpose({ captureCurrentFrame });
     border-radius: 6px;
     background: rgba(8, 12, 18, 0.58);
     box-shadow: 0 5px 16px rgba(0, 0, 0, 0.2);
-    color: rgba(255, 255, 255, 0.96);
+    color: var(--illustrated-mobile-quote-fg);
     cursor: pointer;
     font-family: 'LXGW WenKai Mono', 'Noto Serif SC', 'Songti SC', serif;
     font-size: calc(clamp(12px, 3.4cqw, 14px) + var(--ci-font-size-adjust, 0px));
@@ -413,7 +413,7 @@ defineExpose({ captureCurrentFrame });
     box-shadow: none;
     font-size: calc(11px + var(--ci-font-size-adjust, 0px));
     line-height: 1.5;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
+    text-shadow: var(--illustrated-mobile-quote-shadow);
   }
 
   #{$root} .illustrated-mobile-entrance-quote:focus-visible {

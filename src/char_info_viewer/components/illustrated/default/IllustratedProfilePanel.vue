@@ -191,7 +191,7 @@ const blocks = computed(() =>
   font-weight: 700;
   letter-spacing: 0.15em;
   text-align: center;
-  text-shadow: 0 2px 8px rgba(var(--illustrated-race-accent-rgb), 0.3);
+  text-shadow: var(--illustrated-profile-heading-shadow);
 }
 
 .illustrated-text-block h3::before,

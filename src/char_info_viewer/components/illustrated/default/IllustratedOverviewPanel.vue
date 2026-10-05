@@ -252,7 +252,7 @@ const emit = defineEmits<{
   font-size: calc(13px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   letter-spacing: 0.15em;
-  text-shadow: 0 0 10px currentColor;
+  text-shadow: var(--illustrated-resource-label-shadow);
 }
 
 .illustrated-resource-value {
@@ -260,7 +260,7 @@ const emit = defineEmits<{
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
   font-size: calc(22px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+  text-shadow: var(--illustrated-resource-value-shadow);
 }
 
 .illustrated-entrance-quote {
@@ -280,7 +280,7 @@ const emit = defineEmits<{
   border: 0;
   background: none;
   box-shadow: none;
-  color: rgba(255, 255, 255, 0.96);
+  color: var(--illustrated-quote-fg);
   cursor: pointer;
   font-family: 'LXGW WenKai Mono', 'Kaiti SC', STKaiti, serif;
   font-size: calc(clamp(17px, 1.7cqw, 20px) + var(--ci-font-size-adjust, 0px));
@@ -347,7 +347,7 @@ const emit = defineEmits<{
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 5;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.64);
+  text-shadow: var(--illustrated-quote-shadow);
 }
 
 .illustrated-entrance-quote-text::before,

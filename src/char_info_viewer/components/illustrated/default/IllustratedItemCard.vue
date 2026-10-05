@@ -182,7 +182,7 @@ const statusLines = computed(() => {
   color: var(--item-color);
   font-size: calc(20px + var(--ci-font-size-adjust, 0px));
   font-weight: 400;
-  text-shadow: 0 0 12px var(--item-color);
+  text-shadow: var(--illustrated-item-marker-shadow);
 }
 
 .illustrated-list-item-type {
@@ -318,7 +318,7 @@ const statusLines = computed(() => {
   font-size: calc(13px + var(--ci-font-size-adjust, 0px));
   font-weight: 600;
   line-height: 1;
-  text-shadow: 0 0 10px color-mix(in srgb, var(--item-color) 70%, transparent);
+  text-shadow: var(--illustrated-skill-marker-shadow);
 }
 
 .illustrated-skill-kind-marker.is-passive {

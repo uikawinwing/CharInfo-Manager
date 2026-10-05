@@ -80,7 +80,7 @@ defineEmits<{
   max-width: 560px;
   max-height: 100%;
   margin: 0;
-  color: #f8f9fa;
+  color: var(--illustrated-dialog-fg);
   background: transparent;
   container-type: normal;
 }

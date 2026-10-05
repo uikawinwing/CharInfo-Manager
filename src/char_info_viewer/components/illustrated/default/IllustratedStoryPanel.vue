@@ -36,7 +36,7 @@ const props = defineProps<{
   font-size: calc(22px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
   text-align: center;
-  text-shadow: 0 0 12px rgba(var(--illustrated-tier-accent-rgb), 0.26);
+  text-shadow: var(--illustrated-story-heading-shadow);
 }
 
 .illustrated-story-block p {

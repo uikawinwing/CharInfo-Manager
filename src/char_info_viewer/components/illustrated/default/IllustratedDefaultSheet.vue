@@ -676,6 +676,29 @@ watch(
   --illustrated-name-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
   --illustrated-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
   --illustrated-heading-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+
+  // 暗底文字效果必须独立于普通 heading/name token：mobile nameplate、资源值、
+  // item marker 等在 default dark renderer 需要更强对比，但 light theme 应能单独关掉。
+  --illustrated-mobile-name-shadow: 0 3px 16px rgba(0, 0, 0, 0.94);
+  --illustrated-mobile-subtitle-shadow: 0 2px 7px rgba(0, 0, 0, 0.95);
+  --illustrated-resource-label-shadow: 0 0 10px currentColor;
+  --illustrated-resource-value-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+  --illustrated-quote-fg: rgba(255, 255, 255, 0.96);
+  --illustrated-quote-shadow: 0 2px 10px rgba(0, 0, 0, 0.64);
+  // mobile quote 直接压在立绘上，不与 nameplate 共用；即使 light theme 也可能需要图片对比度。
+  --illustrated-mobile-quote-fg: rgba(255, 255, 255, 0.96);
+  --illustrated-mobile-quote-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
+  --illustrated-item-marker-shadow: 0 0 12px currentColor;
+  --illustrated-skill-marker-shadow: 0 0 10px color-mix(in srgb, currentColor 70%, transparent);
+  --illustrated-profile-heading-shadow: 0 2px 8px rgba(var(--illustrated-race-accent-rgb), 0.3);
+  --illustrated-story-heading-shadow: 0 0 12px rgba(var(--illustrated-tier-accent-rgb), 0.26);
+  --illustrated-dialog-fg: #f8f9fa;
+  --illustrated-profile-story-body-fg: #d7dce3;
+  --illustrated-story-link-title-fg: #fff8da;
+  --illustrated-story-link-body-fg: #d9e5f2;
+  --illustrated-story-link-button-fg: #fff6d5;
+  --illustrated-story-link-heading-shadow: 0 0 14px rgba(var(--illustrated-tier-accent-rgb), 0.36);
+
   --illustrated-page-title-fg: var(--illustrated-race-accent);
   --illustrated-page-title-shadow:
     0 0 8px rgba(var(--illustrated-race-accent-rgb), 0.55),
@@ -1081,7 +1104,7 @@ watch(
 
 .illustrated-profile-story-section p {
   margin: 0;
-  color: #d7dce3;
+  color: var(--illustrated-profile-story-body-fg);
   font-size: calc(14px + var(--ci-font-size-adjust, 0px));
   line-height: 1.9;
   overflow-wrap: anywhere;
@@ -1122,16 +1145,16 @@ watch(
 
 .illustrated-story-link-copy h3 {
   margin: 0;
-  color: #fff8da;
+  color: var(--illustrated-story-link-title-fg);
   font-family: 'Noto Serif SC', 'SimSun', serif;
   font-size: calc(28px + var(--ci-font-size-adjust, 0px));
   font-weight: 700;
-  text-shadow: 0 0 14px rgba(var(--illustrated-tier-accent-rgb), 0.36);
+  text-shadow: var(--illustrated-story-link-heading-shadow);
 }
 
 .illustrated-story-link-copy p {
   margin: 0;
-  color: #d9e5f2;
+  color: var(--illustrated-story-link-body-fg);
   line-height: 1.75;
 }
 
@@ -1145,7 +1168,7 @@ watch(
     rgba(var(--illustrated-tier-accent-rgb), 0.2),
     rgba(var(--illustrated-tier-accent-rgb), 0.08)
   );
-  color: #fff6d5;
+  color: var(--illustrated-story-link-button-fg);
   cursor: pointer;
   font-weight: 700;
   transition:
@@ -1287,7 +1310,7 @@ watch(
     margin: 0 !important;
     font-size: calc(clamp(24px, 8cqw, 28px) + var(--ci-font-size-adjust, 0px));
     line-height: 1.12;
-    text-shadow: 0 3px 16px rgba(0, 0, 0, 0.94);
+    text-shadow: var(--illustrated-mobile-name-shadow);
   }
 
   .illustrated-shell.is-special-npc.is-overview-tab
@@ -1306,7 +1329,7 @@ watch(
     gap: 5px;
     font-size: calc(10px + var(--ci-font-size-adjust, 0px));
     line-height: 1.35;
-    text-shadow: 0 2px 7px rgba(0, 0, 0, 0.95);
+    text-shadow: var(--illustrated-mobile-subtitle-shadow);
   }
 
   .illustrated-shell.is-special-npc.is-overview-tab
