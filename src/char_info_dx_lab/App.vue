@@ -330,10 +330,21 @@ body {
   width: 390px;
 }
 
-/* 移动视口下强制模拟 force-mobile，宽度限制由 frame 决定。 */
-.dx-lab-frame.is-mobile .dx-lab-user-design {
+/*
+ * Lab 必须提供与真实 Viewer 相同的 named container。
+ *
+ * Illustrated 的 desktop / mobile 分支使用
+ * `@container char-info-viewer (...)`，如果这里只在 mobile 才声明 container-name，
+ * Desktop / Narrow 会永远命不中 desktop side-rail 规则，导航就会错误保持横向。
+ */
+.dx-lab-user-design {
   container-type: inline-size;
   container-name: char-info-viewer;
+  width: 100%;
+}
+
+/* 移动视口下宽度限制由 frame 决定，forceMobileLayout 由 props 触发。 */
+.dx-lab-frame.is-mobile .dx-lab-user-design {
   width: 390px;
 }
 </style>
