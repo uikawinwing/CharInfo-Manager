@@ -1,4 +1,4 @@
-import { projectKnownCharacterData, readIdentityRegistry, resolveIdentityBinding } from '../char_info_shared/identityRegistry';
+import { projectKnownCharacterData, readIdentityRegistry, resolveIdentityBinding } from '../char_info_shared/identityRegistry.ts';
 
 export type CurrentCharacterSnapshot = {
   name: string;
