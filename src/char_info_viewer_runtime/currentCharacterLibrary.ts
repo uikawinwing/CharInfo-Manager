@@ -1,10 +1,5 @@
-import { projectKnownCharacterData, readIdentityRegistry, resolveIdentityBinding } from '../char_info_shared/identityRegistry.ts';
-
 export type CurrentCharacterSnapshot = {
   name: string;
-  displayName: string;
-  identityId: string | null;
-  isIdentityConcealed: boolean;
   race: string;
   identity: string;
   level: string;
@@ -77,32 +72,24 @@ export function collectCurrentCharacterSnapshots(
 ): CurrentCharacterSnapshot[] {
   const relationshipList = getRelationshipList(mvuData);
   if (!relationshipList) return [];
-  const identities = readIdentityRegistry(chatVariables);
 
   return Object.entries(relationshipList)
     .flatMap(([rawName, value]) => {
       const name = rawName.trim();
       if (!name || !isRecord(value)) return [];
-      // Keep the MVU key stable. Only project explicitly known values to the UI.
-      const binding = resolveIdentityBinding(identities, { name });
-      const publicData = binding ? projectKnownCharacterData(value, binding) : value;
-      const isIdentityConcealed = !!binding && binding.visibility !== 'revealed';
 
       return [
         {
           name,
-          displayName: binding?.publicName ?? name,
-          identityId: binding?.id ?? null,
-          isIdentityConcealed,
-          race: formatListValue(publicData.种族) || (binding ? '未知' : ''),
-          identity: formatListValue(publicData.身份) || (binding ? '未知' : ''),
-          level: formatListValue(publicData.等级) || (binding ? '未知' : ''),
+          race: formatListValue(value.种族),
+          identity: formatListValue(value.身份),
+          level: formatListValue(value.等级),
           inScene: value.在场 === true,
-          affinity: normalizeAffinity(publicData.好感度),
-          innerThought: formatListValue(publicData.心里话),
-          avatarUrl: !binding || binding.knownFields.includes('头像') ? resolveAvatarUrl(chatVariables, name) : '',
+          affinity: normalizeAffinity(value.好感度),
+          innerThought: formatListValue(value.心里话),
+          avatarUrl: resolveAvatarUrl(chatVariables, name),
           hasProfileRecord: hasProfileRecord(chatVariables, name),
-          data: publicData,
+          data: value,
         },
       ];
     })
@@ -134,7 +121,7 @@ export function collectChangedAffinityNames(nextMvuData: unknown, previousMvuDat
 export function buildCurrentCharacterViewerData(snapshot: CurrentCharacterSnapshot): Record<string, unknown> {
   const viewerData = clonePlainValue({
     ...snapshot.data,
-    姓名: snapshot.displayName,
+    姓名: snapshot.name,
   }) as Record<string, unknown>;
   if (viewerData.外貌特质 == null && viewerData.外貌 != null) {
     viewerData.外貌特质 = clonePlainValue(viewerData.外貌);

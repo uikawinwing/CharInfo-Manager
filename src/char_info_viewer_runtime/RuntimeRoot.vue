@@ -192,15 +192,15 @@
               <img
                 v-if="character.avatarUrl && !failedAvatarUrls.has(character.avatarUrl)"
                 :src="character.avatarUrl"
-                :alt="`${character.displayName}头像`"
+                :alt="`${character.name}头像`"
                 loading="lazy"
                 referrerpolicy="no-referrer"
                 @error="onAvatarError(character.avatarUrl)"
               />
-              <span v-else aria-hidden="true">{{ character.displayName.slice(0, 1) }}</span>
+              <span v-else aria-hidden="true">{{ character.name.slice(0, 1) }}</span>
             </span>
             <span class="char-info-library-list-copy">
-              <strong>{{ character.displayName }}</strong>
+              <strong>{{ character.name }}</strong>
               <small>{{ [character.race, character.identity].filter(Boolean).join(' · ') || '资料待补全' }}</small>
             </span>
             <span class="char-info-library-list-meta">
@@ -263,7 +263,7 @@
 
               <section class="char-info-library-current-viewer" aria-label="当前聊天角色资料">
                 <header class="char-info-library-header">
-        <h2>{{ selectedCharacter?.displayName || '角色资料' }}</h2>
+        <h2>{{ selectedCharacter?.name || '角色资料' }}</h2>
         <div class="char-info-library-header-actions">
           <button class="char-info-library-list-action" type="button" @click="onOpenLibraryList">
             <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -275,7 +275,7 @@
             <span>角色列表</span>
           </button>
           <button
-            v-if="selectedCharacter && !selectedCharacter.isIdentityConcealed"
+            v-if="selectedCharacter"
             class="char-info-library-list-action char-info-library-profile-action"
             type="button"
             @click="props.onEditCurrentChatCharacterProfile(selectedCharacter.name)"
@@ -358,7 +358,7 @@
           <span>返回游戏</span>
         </button>
         <button
-          v-if="selectedCharacter && !selectedCharacter.isIdentityConcealed"
+          v-if="selectedCharacter"
           class="viewer-dock-profile"
           type="button"
           :aria-label="selectedCharacter.hasProfileRecord ? '编辑角色档案' : '添加角色档案'"
@@ -1192,7 +1192,7 @@ const filteredCharacters = computed(() => {
     if (activeFilter.value === 'present' && !character.inScene) return false;
     if (activeFilter.value === 'away' && character.inScene) return false;
     if (!query) return true;
-    return [character.displayName, character.race, character.identity].some(value =>
+    return [character.name, character.race, character.identity].some(value =>
       value.toLocaleLowerCase('zh-Hans-CN').includes(query),
     );
   });
