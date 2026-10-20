@@ -131,7 +131,7 @@ test('资料库列表优先使用 avatarUrl 图片，并保留无头像时的姓
   const source = await readFile(new URL('../../src/char_info_viewer_runtime/RuntimeRoot.vue', import.meta.url), 'utf8');
 
   assert.match(source, /<img[\s\S]*v-if="character\.avatarUrl[^"]*"[\s\S]*:src="character\.avatarUrl"/);
-  assert.match(source, /v-else[\s\S]*character\.name\.slice\(0,\s*1\)/);
+  assert.match(source, /v-else[\s\S]*character\.displayName\.slice\(0,\s*1\)/);
   assert.match(source, /\.char-info-library-list-copy strong \{[^}]*font-size: 0\.94rem;[^}]*font-weight: 800;/u);
   assert.match(source, /\.char-info-library-list-copy small \{[^}]*font-size: 0\.8rem;[^}]*font-weight: 600;/u);
   assert.match(source, /\.char-info-library-presence \{[^}]*font-size: 0\.75rem;[^}]*font-weight: 750;/u);
@@ -231,4 +231,33 @@ test('世界书角色库与当前聊天角色库共用角色档案编辑器入�
   assert.match(overlaySource, /onReturnToLibrary: options\.onReturnToLibrary/u);
   assert.match(appSource, /v-if="modeSelection && props\.onReturnToLibrary"/u);
   assert.match(appSource, /← 返回角色资料库/u);
+});
+
+test('绑定匿名实体时只把公开信息传给角色资料库和 Viewer', () => {
+  const result = collectCurrentCharacterSnapshots(
+    { stat_data: { 关系列表: { 阿尔托莉雅: {
+      在场: true, 种族: '英灵', 身份: ['骑士王'], 等级: 26,
+      心里话: '真名不公开', 技能: { 宝具: { 名称: '誓约胜利之剑' } }, 好感度: 80,
+    } } } },
+    {
+      char_info: { identityRegistry: { version: 1, byId: {
+        npc_e8f213a4: {
+          id: 'npc_e8f213a4', realName: '阿尔托莉雅', publicName: 'Saber',
+          visibility: 'masked', aliases: ['剑士'], knownFields: ['在场'],
+          publicFacts: { 身份: '自称剑士' }, worldbookTargets: [{ book: '英灵资料', uid: 42 }],
+        },
+      } } },
+      status: { externalAvatars: { partners: { 阿尔托莉雅: { url: 'https://example.com/hidden.png' } } } },
+    },
+  );
+  assert.equal(result[0].name, '阿尔托莉雅'); // internal record key remains stable
+  assert.equal(result[0].displayName, 'Saber');
+  assert.equal(result[0].race, '未知');
+  assert.equal(result[0].identity, '自称剑士');
+  assert.equal(result[0].level, '未知');
+  assert.equal(result[0].avatarUrl, '');
+  assert.equal(result[0].innerThought, '');
+  assert.equal(result[0].affinity, null);
+  assert.equal(result[0].isIdentityConcealed, true);
+  assert.deepEqual(buildCurrentCharacterViewerData(result[0]), { 姓名: 'Saber', 在场: true, 身份: '自称剑士' });
 });

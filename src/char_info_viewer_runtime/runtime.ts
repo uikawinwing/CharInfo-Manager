@@ -206,7 +206,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     const sourcePriorities = state.settings.imageSourcePriorityEnabled ? state.settings.imageSourcePriority : [];
     const preloadUrls = baseCharacters.slice(0, 8).flatMap(character => [
       character.avatarUrl,
-      ...resolveCharacterVisualPreloadUrls(character.name, chatVariables, 1, sourcePriorities),
+      ...(character.isIdentityConcealed ? [] : resolveCharacterVisualPreloadUrls(character.name, chatVariables, 1, sourcePriorities)),
     ]);
     void preloadPortraitImages(preloadUrls);
     const nextUnread = new Set(library.unreadCharacterNames.filter(name => characterNames.has(name)));
@@ -223,6 +223,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
 
     void Promise.all(
       baseCharacters.map(async character => {
+        if (character.isIdentityConcealed) return;
         const remoteUrl = resolveCharacterRemoteGalleryUrl(chatVariables, character.name);
         if (!remoteUrl) return;
         try {
