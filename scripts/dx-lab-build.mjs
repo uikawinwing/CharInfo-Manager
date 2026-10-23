@@ -34,8 +34,10 @@ if (!fs.existsSync(webpackCli)) {
   process.exit(1);
 }
 
-fs.rmSync(workDir, { recursive: true, force: true });
 fs.mkdirSync(workDir, { recursive: true });
+// 清理本构建的临时 JS，不删除其他构建器在同一目录下的产物。
+const bundleFile = path.join(workDir, 'dx-lab.js');
+fs.rmSync(bundleFile, { force: true });
 
 // 1. 打包
 const args = [webpackCli, '--config', configFile, '--mode', 'production', '--stats', 'errors-warnings'];
@@ -52,12 +54,18 @@ execFileSync(process.execPath, args, {
   },
 });
 
-const bundleFile = path.join(workDir, 'dx-lab.js');
-if (!fs.existsSync(bundleFile)) {
-  console.error(`[dx-lab] bundle not found: ${bundleFile}`);
+// 新版 Toolchain 可能把 JS/CSS 直接内联在 index.html；旧版保留 dx-lab.js。
+const webpackHtmlFile = path.join(workDir, 'index.html');
+const webpackHtml = fs.existsSync(webpackHtmlFile) ? fs.readFileSync(webpackHtmlFile, 'utf8') : '';
+const embeddedScript = webpackHtml.match(/<script\b[^>]*>([\s\S]*?)<\/script>/i)?.[1] ?? '';
+const embeddedStyles = [...webpackHtml.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)]
+  .map(match => match[1])
+  .join('\n');
+if (!embeddedScript && !fs.existsSync(bundleFile)) {
+  console.error('[dx-lab] webpack emitted neither an inline script nor dx-lab.js');
   process.exit(1);
 }
-const bundle = fs.readFileSync(bundleFile, 'utf8');
+const bundle = embeddedScript || fs.readFileSync(bundleFile, 'utf8');
 
 // 2. 提取 platform token catalog（从当前源码自动生成，不维护第二份清单）
 const tokenCatalog = readTokenCatalog();
@@ -89,7 +97,7 @@ const manifest = {
 
 // 4. 组装 HTML
 const instructions = getLlmInstructions();
-const html = buildHtml({ bundle, manifest, tokenCatalog, instructions });
+const html = buildHtml({ bundle, embeddedStyles, manifest, tokenCatalog, instructions });
 
 // coreHash 需要在 manifest 写入后、对最终 HTML 计算：先写占位再回填。
 const withPlaceholder = html;
@@ -162,7 +170,7 @@ PRIORITY
      dx-lab-design-notes. Do not silently rewrite CORE.`;
 }
 
-function buildHtml({ bundle, manifest, tokenCatalog, instructions }) {
+function buildHtml({ bundle, embeddedStyles, manifest, tokenCatalog, instructions }) {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -187,6 +195,10 @@ ${escapeScriptContent(instructions)}
 ${escapeScriptContent(JSON.stringify(tokenCatalog, null, 2))}
 </script>
 <!-- DX-LAB:TOKEN-CATALOG:END -->
+
+<style id="dx-lab-core-style">
+${escapeScriptContent(embeddedStyles)}
+</style>
 
 <!-- DX-LAB:EDITABLE:THEME:BEGIN -->
 <style id="dx-lab-editable-theme">
@@ -229,7 +241,7 @@ ${escapeScriptContent(JSON.stringify(tokenCatalog, null, 2))}
 <!-- DX-LAB:EDITABLE:DECORATION-DOM:END -->
 
 <!-- DX LAB CORE — GENERATED — DO NOT EDIT -->
-<script>${escapeScriptContent(bundle)}</script>
+<script type="module">${escapeScriptContent(bundle)}</script>
 <!-- DX LAB CORE END -->
 </body>
 </html>

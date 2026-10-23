@@ -1,5 +1,13 @@
 # 命定之诗角色管理库（CharInfo Manager）
 
+## DX Lab 开发预览
+
+在仓库根目录运行 `pnpm watch:dx-lab`，首次构建并监听 `src/` 及 DX Lab 构建配置的变化，
+自动更新 `dist/char_info_dx_lab/charinfo-dx-lab.html`。
+通过 VS Code Live Preview 打开这份 HTML；也可双击打开后手动刷新浏览器。
+按 Ctrl+C 停止监听。命令使用共享 `../../Toolchain` 的既有依赖，
+不需要同时启动用于 SillyTavern 的 `pnpm watch`。
+
 一个用于 SillyTavern / 酒馆助手环境的角色管理库。它包含角色查看器、角色资料库与角色档案编辑器：把 `<char_info>`
 中的 YAML 角色资料渲染成可阅读的角色卡，并提供角色浏览、档案编辑、角色状态导入与聊天世界书操作。
 

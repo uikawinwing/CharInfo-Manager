@@ -6,6 +6,7 @@
     "bootstrap": "node --experimental-strip-types scripts/bootstrap-toolchain.ts",
 
     "build:dx-lab": "node scripts/dx-lab-build.mjs",
+    "watch:dx-lab": "node scripts/dx-lab-watch.mjs",
     "lab:inspect": "node scripts/dx-lab-inspect.mjs",
     "build:dev": "node ../../Toolchain/project-build.mjs dev",
     "build": "node ../../Toolchain/project-build.mjs build",
