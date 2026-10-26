@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <!--
+      共享 Toolchain 把 vue external 成全局 `Vue`（供酒馆运行时复用），
+      因此独立预览页必须先提供这个全局构建。
+    -->
+    <meta charset="utf-8" />
+    <script src="https://testingcf.jsdelivr.net/npm/vue@3.5.42/dist/vue.global.prod.js"></script>
+    <!-- webpack 会把打包后的样式与脚本内联到这里 -->
+  </head>
+  <body>
+    <div class="preview-stage">
+      <div class="preview-toolbar">
+        <div class="preview-toolbar-group">
+          <span class="preview-toolbar-label">生命层级</span>
+          <div class="preview-tier-buttons" id="tier-buttons"></div>
+        </div>
+
+        <div class="preview-toolbar-group">
+          <span class="preview-toolbar-label">视口</span>
+          <button class="preview-toolbar-button" type="button" data-device="desktop">桌面</button>
+          <button class="preview-toolbar-button" type="button" data-device="mobile">移动</button>
+        </div>
+
+        <div class="preview-toolbar-group">
+          <span class="preview-toolbar-label">收起模式</span>
+          <button class="preview-toolbar-button" type="button" data-collapse="on">开启</button>
+          <button class="preview-toolbar-button" type="button" data-collapse="off">关闭</button>
+        </div>
+
+        <div class="preview-toolbar-group">
+          <span class="preview-toolbar-label">粒子特效</span>
+          <button class="preview-toolbar-button" type="button" data-effects="on">开启</button>
+          <button class="preview-toolbar-button" type="button" data-effects="off">关闭</button>
+        </div>
+      </div>
+
+      <div class="preview-viewport" id="viewport">
+        <div class="preview-card" id="card"></div>
+      </div>
+
+      <p class="preview-note">
+        这里挂载的是 <code>char_info_viewer/App.vue</code> 本体（previewMode）。卡内层级、五维点击、页签、收起/展开、导入菜单与现有版本完全一致；
+        顶部工具条只用于切换生命层级、视口宽度与开关，不影响卡内逻辑。
+      </p>
+    </div>
+  </body>
+</html>

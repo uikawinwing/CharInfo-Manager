@@ -99,28 +99,7 @@
       />
 
       <div v-else :class="[wrapperClasses, { 'portrait-mode': isPortraitLayout, 'compact-card-active': isCardCollapsed }]">
-        <div class="frame-layer" :class="{ show: tierNumber >= 5 }" aria-hidden="true">
-          <svg class="frame-svg frame-top" viewBox="0 0 400 100" preserveAspectRatio="none">
-            <path d="M 5,100 A 195,80 0 0,1 395,100" />
-            <path d="M 15,100 A 185,70 0 0,1 385,100" stroke-width="1" opacity="0.6" />
-            <line x1="60" y1="60" x2="60" y2="90" stroke-width="1" />
-            <line x1="340" y1="60" x2="340" y2="90" stroke-width="1" />
-            <circle cx="60" cy="92" r="3" fill="var(--tier-color)" stroke="none" />
-            <circle cx="340" cy="92" r="3" fill="var(--tier-color)" stroke="none" />
-            <path
-              d="M 200,2 L 205,15 L 220,20 L 205,25 L 200,38 L 195,25 L 180,20 L 195,15 Z"
-              fill="var(--tier-color)"
-              stroke="none"
-            />
-          </svg>
-          <svg class="frame-svg frame-body" viewBox="0 0 400 100" preserveAspectRatio="none">
-            <line x1="5" y1="0" x2="5" y2="100" />
-            <line x1="395" y1="0" x2="395" y2="100" />
-            <line x1="15" y1="0" x2="15" y2="98" stroke-width="1" opacity="0.6" />
-            <line x1="385" y1="0" x2="385" y2="98" stroke-width="1" opacity="0.6" />
-            <line x1="5" y1="100" x2="395" y2="100" />
-          </svg>
-        </div>
+        <TierFrame :tier="tierNumber" />
 
         <div ref="bgLayerRef" class="card-background-layer">
           <canvas v-if="props.effectsEnabled" ref="canvasRef" class="particle-canvas"></canvas>
@@ -589,6 +568,7 @@ import {
 import { parseCharacterYaml, parseCharacterYamlLoose } from './services/yamlParser';
 import type { CharacterData, FriendlyYamlError, ThemeResolved, ViewerSaveFeedback, ViewerSaveState } from './types';
 import IllustratedCharacterSheet from './components/illustrated/IllustratedCharacterSheet.vue';
+import TierFrame from './components/TierFrame.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -1785,42 +1765,6 @@ onBeforeUnmount(() => {
   border-color: rgba(var(--tier-color-rgb), 0.78);
   color: #fff;
   outline: none;
-}
-
-.frame-layer {
-  position: absolute;
-  top: -25px;
-  left: -5px;
-  width: calc(100% + 10px);
-  height: calc(100% + 50px);
-  z-index: 4;
-  pointer-events: none;
-  display: none;
-  flex-direction: column;
-}
-
-.frame-layer.show {
-  display: flex;
-}
-
-.frame-svg {
-  width: 100%;
-  fill: none;
-  stroke: var(--tier-color);
-  stroke-width: 2;
-  vector-effect: non-scaling-stroke;
-  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8)) drop-shadow(0 0 5px rgba(var(--tier-color-rgb), 0.8));
-}
-
-.frame-top {
-  width: 100%;
-  height: 100px;
-  flex-shrink: 0;
-}
-
-.frame-body {
-  width: 100%;
-  flex-grow: 1;
 }
 
 .card-background-layer {
