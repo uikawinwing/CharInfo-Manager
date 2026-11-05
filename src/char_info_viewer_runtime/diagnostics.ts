@@ -16,6 +16,9 @@ export type DiagnosticCheck = {
   status: DiagnosticStatus;
   title: string;
   detail: string;
+  code?: string;
+  location?: string;
+  excerpt?: string;
 };
 
 export type DiagnosticMediaCheck = {
@@ -73,6 +76,23 @@ function latestMatch(pattern: RegExp, source: string): RegExpExecArray | null {
   return collectMatches(pattern, source).at(-1) ?? null;
 }
 
+/** Ignore literal CharInfo mentions inside HTML comments without changing line offsets. */
+function stripDiagnosticComments(source: string): string {
+  return source.replace(/<!--[\s\S]*?(?:-->|$)/g, comment => comment.replace(/[^\r\n]/g, ' '));
+}
+
+function getDiagnosticExcerpt(source: string, index: number): { location: string; excerpt: string } {
+  const preceding = source.slice(0, index);
+  const line = preceding.split(/\r?\n/).length;
+  const lines = source.split(/\r?\n/);
+  const start = Math.max(0, line - 2);
+  const end = Math.min(lines.length, line + 2);
+  return {
+    location: `原始消息第 ${line} 行`,
+    excerpt: lines.slice(start, end).map((value, offset) => `${start + offset + 1}: ${value}`).join('\n').slice(0, 1200),
+  };
+}
+
 function describeMountFailure(entry: RuntimeMountDiagnosticEntry): string {
   const slotInjectionCode = 'TO' + 'KEN_INJECTION_FAILED';
   const messages: Record<string, string> = {
@@ -96,12 +116,23 @@ function describeMountFailure(entry: RuntimeMountDiagnosticEntry): string {
 
 function diagnoseScope(text: string, projectionCardCount: number, overflow: boolean): DiagnosticCheck[] {
   const checks: DiagnosticCheck[] = [];
-  const openTags = collectMatches(CHAR_INFO_OPEN_PATTERN, text);
-  const closeTags = collectMatches(CHAR_INFO_CLOSE_PATTERN, text);
-  const unsupportedOpen = openTags.find(match => !STRICT_CHAR_INFO_OPEN_PATTERN.test(match[0]));
-  const lastThinkClose = latestMatch(THINK_CLOSE_PATTERN, text);
+  const visibleText = stripDiagnosticComments(text);
+  const lastThinkClose = latestMatch(THINK_CLOSE_PATTERN, visibleText);
   const afterThink = lastThinkClose ? lastThinkClose.index + lastThinkClose[0].length : 0;
-  const unclosedThink = collectMatches(THINK_OPEN_PATTERN, text).find(match => match.index >= afterThink) ?? null;
+  const unclosedThink = collectMatches(THINK_OPEN_PATTERN, visibleText).find(match => match.index >= afterThink) ?? null;
+  const gametxtOpen = collectMatches(GAMETXT_OPEN_PATTERN, visibleText).find(match => match.index >= afterThink) ?? null;
+  const rangeStart = gametxtOpen ? gametxtOpen.index + gametxtOpen[0].length : afterThink;
+  const gametxtClose = gametxtOpen
+    ? collectMatches(GAMETXT_CLOSE_PATTERN, visibleText).find(match => match.index >= rangeStart) ?? null
+    : null;
+  const rangeEnd = gametxtClose?.index ?? (
+    gametxtOpen ? visibleText.length :
+      collectMatches(GAMETXT_CLOSE_PATTERN, visibleText).find(match => match.index >= afterThink)?.index ?? visibleText.length
+  );
+  const inScope = visibleText.slice(rangeStart, rangeEnd);
+  const openTags = collectMatches(CHAR_INFO_OPEN_PATTERN, inScope);
+  const closeTags = collectMatches(CHAR_INFO_CLOSE_PATTERN, inScope);
+  const unsupportedOpen = openTags.find(match => !STRICT_CHAR_INFO_OPEN_PATTERN.test(match[0]));
 
   if (openTags.length === 0) {
     checks.push({
@@ -121,14 +152,18 @@ function diagnoseScope(text: string, projectionCardCount: number, overflow: bool
     });
   }
 
-  if (openTags.length > closeTags.length) {
+  if (openTags.length !== closeTags.length) {
+    const unmatched = openTags.length > closeTags.length ? openTags.at(-1) : closeTags.at(-1);
+    const evidence = unmatched ? getDiagnosticExcerpt(text, rangeStart + unmatched.index) : undefined;
     checks.push({
       status: 'fail',
-      title: 'CharInfo 没有完整闭合',
-      detail: `开始标签 ${openTags.length} 个，结束标签 ${closeTags.length} 个。`,
+      code: 'TAG_UNBALANCED',
+      title: 'CharInfo 标签数量不匹配',
+      detail: `有效正文内开始标签 ${openTags.length} 个、结束标签 ${closeTags.length} 个；已忽略 HTML 注释中的文字引用。`,
+      ...evidence,
     });
   } else {
-    checks.push({ status: 'pass', title: 'CharInfo 标签已闭合', detail: `结束标签 ${closeTags.length} 个。` });
+    checks.push({ status: 'pass', code: 'TAG_BALANCED', title: 'CharInfo 标签已闭合', detail: `有效正文内检测到 ${openTags.length} 对标签（不统计注释）。` });
   }
 
   if (unclosedThink) {
@@ -140,15 +175,9 @@ function diagnoseScope(text: string, projectionCardCount: number, overflow: bool
     return checks;
   }
 
-  const gametxtOpen = collectMatches(GAMETXT_OPEN_PATTERN, text).find(match => match.index >= afterThink) ?? null;
   if (gametxtOpen) {
-    const rangeStart = gametxtOpen.index + gametxtOpen[0].length;
-    GAMETXT_CLOSE_PATTERN.lastIndex = rangeStart;
-    const gametxtClose = GAMETXT_CLOSE_PATTERN.exec(text);
-    GAMETXT_CLOSE_PATTERN.lastIndex = 0;
-    const rangeEnd = gametxtClose?.index ?? text.length;
-    const inside = text.slice(rangeStart, rangeEnd).match(COMPLETE_CHAR_INFO_PATTERN)?.length ?? 0;
-    const completeTotal = text.match(COMPLETE_CHAR_INFO_PATTERN)?.length ?? 0;
+    const inside = inScope.match(COMPLETE_CHAR_INFO_PATTERN)?.length ?? 0;
+    const completeTotal = visibleText.slice(afterThink).match(COMPLETE_CHAR_INFO_PATTERN)?.length ?? 0;
     if (!gametxtClose) {
       checks.push({
         status: 'warn',
@@ -223,7 +252,7 @@ function findSimilarProfileName(profiles: Record<string, unknown> | null, name: 
   );
 }
 
-async function probeMediaSource(url: string): Promise<DiagnosticMediaCheck> {
+export async function probeMediaSource(url: string): Promise<DiagnosticMediaCheck> {
   const media = normalizePortraitMediaUrlForBrowser(url);
   if (!media) return { url, status: 'fail', detail: 'URL 格式或媒体类型不受支持。' };
 
@@ -279,7 +308,8 @@ async function diagnoseCharacter(
     const legacyRoot = findLegacyProfileRoot(chatVariables, name);
     const similarName = findSimilarProfileName(profiles, name);
     checks.push({
-      status: 'fail',
+      status: similarName || legacyRoot ? 'warn' : 'info',
+      code: 'PROFILE_NOT_CONFIGURED',
       title: `没有找到 char_info.profiles[${JSON.stringify(name)}]`,
       detail: similarName
         ? `找到可能相关的档案 ${JSON.stringify(similarName)}；Viewer 使用角色全名精确匹配。`
@@ -339,7 +369,8 @@ async function diagnoseCharacter(
     });
   } else {
     checks.push({
-      status: 'fail',
+      status: 'info',
+      code: 'PORTRAIT_NOT_CONFIGURED',
       title: '角色档案没有形成可用立绘',
       detail: remoteGalleryUrl
         ? `角色档案存在，但远程/本地图库没有解析出角色卡可用图片。${remoteGalleryDetail ? ` ${remoteGalleryDetail}` : ''}`
@@ -420,7 +451,9 @@ export async function runCharInfoDiagnostics(options: RunDiagnosticOptions): Pro
       checks.push({
         status: 'fail',
         title: `第 ${card.ordinal + 1} 张角色卡 YAML 解析失败`,
-        detail: parsed.error.line ? `${parsed.error.message}（第 ${parsed.error.line} 行）` : parsed.error.message,
+        detail: parsed.error.line !== undefined ? `${parsed.error.message}（卡片第 ${parsed.error.line + 1} 行）` : parsed.error.message,
+        code: 'YAML_PARSE_FAILED',
+        ...(parsed.error.line !== undefined ? getDiagnosticExcerpt(card.content, card.content.split(/\r?\n/).slice(0, parsed.error.line).join('\n').length) : {}),
       });
       continue;
     }

@@ -397,6 +397,8 @@
         </header>
 
         <div class="char-info-settings-fields">
+          <TroubleshootingWizard :state="state" :on-open-profile-editor="openProfileEditorFromWizard" />
+
           <label>
             <strong>显示楼层数</strong>
             <input
@@ -487,6 +489,8 @@
             <input v-model="debugEnabledDraft" type="checkbox" @change="applySettings" />
           </label>
 
+          <details class="char-info-settings-advanced">
+            <summary>高级诊断 · 查看详细检查记录</summary>
           <section class="char-info-settings-diagnostics" aria-labelledby="char-info-diagnostics-label">
             <div class="char-info-settings-diagnostics-head">
               <span>
@@ -517,6 +521,11 @@
                   <div>
                     <strong>{{ check.title }}</strong>
                     <p>{{ check.detail }}</p>
+                    <details v-if="check.location || check.excerpt" class="char-info-diagnostic-extra">
+                      <summary>查看详情</summary>
+                      <small v-if="check.location">{{ check.location }}</small>
+                      <pre v-if="check.excerpt">{{ check.excerpt }}</pre>
+                    </details>
                   </div>
                 </article>
               </div>
@@ -555,6 +564,7 @@
               </section>
             </div>
           </section>
+          </details>
 
           <section class="char-info-settings-priority char-info-collapse-settings" aria-labelledby="char-info-collapse-mode-label">
             <label class="char-info-settings-switch char-info-settings-priority-switch">
@@ -724,6 +734,7 @@ import { managerThemeClass } from '../char_info_shared/managerTheme';
 import ViewerApp from '../char_info_viewer/App.vue';
 import type { ViewerSaveFeedback } from '../char_info_viewer/types';
 import WorldbookCharacterLibrary from './WorldbookCharacterLibrary.vue';
+import TroubleshootingWizard from './TroubleshootingWizard.vue';
 import { normalizeImageSourcePriorityEntries } from '../char_info_viewer/services/imageSourcePriority';
 import { buildCurrentCharacterViewerData } from './currentCharacterLibrary';
 import { runCharInfoDiagnostics, type CharInfoDiagnosticReport, type DiagnosticStatus } from './diagnostics';
@@ -845,6 +856,11 @@ function openCharacter(name: string): void {
 function closeCharacterLibrary(): void {
   mobileFiltersExpanded.value = false;
   props.onCloseLibrary();
+}
+
+function openProfileEditorFromWizard(characterName: string): void {
+  props.onCloseSettings();
+  props.onEditCurrentChatCharacterProfile(characterName);
 }
 
 function editCharacterProfileFromHeader(): void {
@@ -1527,6 +1543,18 @@ onBeforeUnmount(() => {
   padding: 10px 12px;
 }
 
+.char-info-settings-advanced {
+  display: grid;
+  min-width: 0;
+  border: 1px solid var(--ci-border);
+  border-radius: 12px;
+}
+.char-info-settings-advanced > summary {
+  padding: 13px 14px;
+  font-size: .8rem;
+  font-weight: 650;
+  cursor: pointer;
+}
 .char-info-settings-diagnostics {
   display: grid;
   gap: 12px;
@@ -1600,6 +1628,10 @@ onBeforeUnmount(() => {
 .char-info-diagnostic-item strong {
   font-size: 0.78rem;
 }
+.char-info-diagnostic-extra { margin-top: 7px; }
+.char-info-diagnostic-extra summary { cursor: pointer; font-size: .72rem; color: var(--ci-primary); }
+.char-info-diagnostic-extra pre { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--ci-input); border-radius: 7px; padding: 8px; font-size: .7rem; }
+.char-info-diagnostic-extra small { display: block; margin-top: 5px; }
 
 .char-info-diagnostic-item p {
   margin: 3px 0 0;
