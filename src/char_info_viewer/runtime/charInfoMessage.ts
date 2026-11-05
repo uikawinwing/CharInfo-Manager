@@ -35,6 +35,9 @@ type CharInfoBlockMatch = {
 };
 
 const CHAR_INFO_BLOCK_PATTERN = /<char_info\s*>[\s\S]*?<\/char_info\s*>/gi;
+// Only use field-shaped lines to identify a candidate; YAML errors belong to Viewer's repair flow.
+const NAME_FIELD_PATTERN = /(?:^|\n)[ \t]*(?:-[ \t]*)?(?:姓名|名字)[ \t]*[:：]/u;
+const BASIC_FIELD_PATTERN = /(?:^|\n)[ \t]*(?:-[ \t]*)?(?:生命层级|生命層級|等级|等級|种族|種族)[ \t]*[:：]/u;
 const THINK_OPEN_PATTERN = /<think\b[^>]*>/gi;
 const THINK_CLOSE_PATTERN = /<\/think\s*>/gi;
 const GAMETXT_OPEN_PATTERN = /<gametxt\b[^>]*>/gi;
@@ -109,6 +112,8 @@ export function projectCharInfoMessage({
     ) {
       const start = range.start + match.index;
       const content = match[0];
+      const body = content.replace(/^<char_info\s*>/i, '').replace(/<\/char_info\s*>$/i, '').replace(/\r\n/g, '\n');
+      if (!NAME_FIELD_PATTERN.test(body) || !BASIC_FIELD_PATTERN.test(body)) continue;
       matches.push({ start, end: start + content.length, content });
       if (matches.length > cardLimit) {
         CHAR_INFO_BLOCK_PATTERN.lastIndex = 0;

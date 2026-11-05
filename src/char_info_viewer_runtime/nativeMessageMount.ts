@@ -44,10 +44,11 @@ export type TextRangeMatch = {
 
 export type MountedNativeCardHost = {
   host: HTMLElement;
+  mode: 'dom-element' | 'text-range' | 'fallback-anchor';
   restore(): void;
 };
 
-export type NativeMessageMountDiagnosticCode = 'CARD_MOUNT_FAILED' | 'MOUNT_SUCCESS';
+export type NativeMessageMountDiagnosticCode = 'CARD_MOUNT_FAILED' | 'CARD_MOUNT_FALLBACK' | 'MOUNT_SUCCESS';
 
 export type NativeMessageMountDiagnostic = {
   code: NativeMessageMountDiagnosticCode;
@@ -346,25 +347,100 @@ function createSafeBoundaryRange(root: HTMLElement, card: CharInfoCardPart): Ran
   return range;
 }
 
-function mountOneCard(root: HTMLElement, card: CharInfoCardPart): MountedNativeCardHost | null {
-  const range = createSafeBoundaryRange(root, card);
-  if (!range) return null;
+function collectNativeCharInfoElements(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>('char_info')).filter(element => {
+    try {
+      return !element.closest(BLOCKED_NATIVE_SCOPE_SELECTOR);
+    } catch {
+      return false;
+    }
+  });
+}
 
-  const originalContent = range.extractContents();
+function getNameField(text: string): string {
+  return text.replace(/\r\n/g, '\n').match(/(?:^|\n)[ \t]*(?:-[ \t]*)?(?:姓名|名字)[ \t]*[:：][ \t]*([^\r\n]*)/u)?.[1]?.trim() ?? '';
+}
+
+function createOwnedHost(root: HTMLElement, card: CharInfoCardPart): HTMLElement {
   const host = root.ownerDocument.createElement('div');
   host.className = 'char-info-runtime-host';
   host.dataset.charInfoRuntimeOwned = '1';
   host.dataset.charInfoCardId = card.id;
-  range.insertNode(host);
-  range.detach();
+  return host;
+}
 
+function mountOneCard(
+  root: HTMLElement,
+  card: CharInfoCardPart,
+  nativeElements: readonly HTMLElement[],
+  usedElements: Set<HTMLElement>,
+  cardCount: number,
+): MountedNativeCardHost | null {
+  const body = getCharInfoBody(card.content);
+  if (!body || !root.isConnected) return null;
+
+  const name = getNameField(body);
+  // Prefer an actual tag boundary. Markdown may rewrite everything *inside* it.
+  const namedElement = name
+    ? nativeElements.find(element =>
+        !usedElements.has(element) &&
+        (element.textContent ?? '').includes(name) &&
+        /姓名|名字/u.test(element.textContent ?? ''),
+      )
+    : null;
+  const ordinalElement = nativeElements.length === cardCount ? nativeElements[card.ordinal] : undefined;
+  const ordinalText = ordinalElement?.textContent ?? '';
+  const ordinalName = getNameField(ordinalText);
+  const element = namedElement ??
+    (ordinalElement && !usedElements.has(ordinalElement) && /姓名|名字/u.test(ordinalText) &&
+    (!ordinalName || ordinalName === name)
+      ? ordinalElement
+      : null);
+
+  const host = createOwnedHost(root, card);
   let restored = false;
+  if (element) {
+    usedElements.add(element);
+    element.replaceWith(host);
+    return {
+      host,
+      mode: 'dom-element',
+      restore() {
+        if (restored) return;
+        restored = true;
+        if (host.isConnected) host.replaceWith(element);
+      },
+    };
+  }
+
+  // Keep the existing text-range fast path for formats that flatten the tags.
+  const range = createSafeBoundaryRange(root, card);
+  if (range) {
+    const originalContent = range.extractContents();
+    range.insertNode(host);
+    range.detach();
+    return {
+      host,
+      mode: 'text-range',
+      restore() {
+        if (restored) return;
+        restored = true;
+        if (host.isConnected) host.replaceWith(originalContent);
+      },
+    };
+  }
+
+  // The raw card is real even if ST/another renderer rewrote its DOM. Do not
+  // delete unrelated prose or code to guess a boundary; leave raw display and
+  // append the Viewer so its existing YAML repair button remains reachable.
+  root.appendChild(host);
   return {
     host,
+    mode: 'fallback-anchor',
     restore() {
       if (restored) return;
       restored = true;
-      if (host.isConnected) host.replaceWith(originalContent);
+      host.remove();
     },
   };
 }
@@ -375,8 +451,10 @@ export function mountCharInfoCardHosts(
   options: NativeMessageMountOptions = {},
 ): MountedNativeCardHost[] | null {
   const mounted: MountedNativeCardHost[] = [];
+  const nativeElements = collectNativeCharInfoElements(root);
+  const usedElements = new Set<HTMLElement>();
   for (const card of cards) {
-    const cardMount = mountOneCard(root, card);
+    const cardMount = mountOneCard(root, card, nativeElements, usedElements, cards.length);
     if (!cardMount) {
       options.onDiagnostic?.({
         code: 'CARD_MOUNT_FAILED',
@@ -385,8 +463,14 @@ export function mountCharInfoCardHosts(
       mounted.reverse().forEach(item => item.restore());
       return null;
     }
+    if (cardMount.mode === 'fallback-anchor') {
+      options.onDiagnostic?.({ code: 'CARD_MOUNT_FALLBACK', details: { cardId: card.id, reason: 'dom-boundary-unavailable' } });
+    }
     mounted.push(cardMount);
   }
-  options.onDiagnostic?.({ code: 'MOUNT_SUCCESS', details: { hostCount: mounted.length } });
+  options.onDiagnostic?.({
+    code: 'MOUNT_SUCCESS',
+    details: { hostCount: mounted.length, modes: mounted.map(item => item.mode) },
+  });
   return mounted;
 }
