@@ -54,6 +54,7 @@ async function mountInPage(raw: string, html: string) {
           onDiagnostic: (value: any) => diagnostics.push(value.code),
         });
         const during = root.textContent;
+        const duringHtml = root.innerHTML;
         const hosts = root.querySelectorAll('[data-char-info-runtime-owned="1"]').length;
         const modes = mounts?.map((mount: any) => mount.mode) ?? [];
         mounts
@@ -66,6 +67,7 @@ async function mountInPage(raw: string, html: string) {
           modes,
           diagnostics,
           during,
+          duringHtml,
           after: root.innerHTML,
           before,
           tagRestored: firstTag ? root.querySelector('char_info') === firstTag : null,
@@ -146,6 +148,103 @@ test('never replaces an unrelated native tag when its identifying fields are mis
   assert.equal(result.cards, 1);
   assert.deepEqual(result.modes, ['fallback-anchor']);
   assert.equal(result.tagRestored, true);
+  assert.equal(result.after, result.before);
+});
+
+test('replaces two Markdown-expanded cards at their original narrative positions', async () => {
+  const raw = [
+    '<gametxt>',
+    '布尔柳克村旁的部队正在渡河。',
+    '<char_info>',
+    '姓名: 第5步兵团1营D连线列集群',
+    '生命层级: 第一层级',
+    '等级: 2',
+    '属性:',
+    '  力量: 3 + 0 + 0 = 3',
+    '装备:',
+    '  - 名称: 斯奈德步枪',
+    '    描述: 装备后膛线膛步枪的帝国线列步兵集群。',
+    '</char_info>',
+    '南岸上空的浓烟越来越重。',
+    '<char_info>',
+    '姓名: 诺斯加德野战炮兵阵地集群',
+    '生命层级: 第一层级',
+    '等级: 2',
+    '装备:',
+    '  - 名称: 炮兵服',
+    '    描述: 诺斯加德野战炮兵穿着的灰色厚呢大衣。',
+    '    位置: 身体',
+    '</char_info>',
+    '卡文迪什上尉向前挥动佩刀。',
+    '</gametxt>',
+  ].join('\n');
+  const html = [
+    '<p>布尔柳克村旁的部队正在渡河。</p>',
+    '<p>姓名: 第5步兵团1营D连线列集群</p>',
+    '<p>生命层级: 第一层级</p>',
+    '<p>等级: 2</p>',
+    '<p>属性:</p>',
+    '<p>力量: 3 + 0 + 0 = 3</p>',
+    '<p>装备:</p>',
+    '<p>名称: 斯奈德步枪</p>',
+    '<p>描述: 装备后膛线膛步枪的帝国线列步兵集群。</p>',
+    '<p>南岸上空的浓烟越来越重。</p>',
+    '<p>姓名: 诺斯加德野战炮兵阵地集群</p>',
+    '<p>生命层级: 第一层级</p>',
+    '<p>等级: 2</p>',
+    '<p>装备:</p>',
+    '<p>名称: 炮兵服</p>',
+    '<p>描述: 诺斯加德野战炮兵穿着的灰色厚呢大衣。</p>',
+    '<p>位置: 身体</p>',
+    '<p>卡文迪什上尉向前挥动佩刀。</p>',
+  ].join('');
+
+  const result = await mountInPage(raw, html);
+  assert.equal(result.cards, 2);
+  assert.equal(result.hosts, 2);
+  assert.deepEqual(result.modes, ['text-range', 'text-range']);
+  const first = result.duringHtml.indexOf('data-char-info-card-id="0:0:0"');
+  const second = result.duringHtml.indexOf('data-char-info-card-id="0:0:1"');
+  assert.ok(result.duringHtml.indexOf('布尔柳克村旁') < first);
+  assert.ok(first < result.duringHtml.indexOf('南岸上空'));
+  assert.ok(result.duringHtml.indexOf('南岸上空') < second);
+  assert.ok(second < result.duringHtml.indexOf('卡文迪什上尉'));
+  assert.doesNotMatch(result.during, /姓名: 第5步兵团|姓名: 诺斯加德/);
+  assert.equal(result.after, result.before);
+});
+
+test('inserts Viewer at the name when the end of a card cannot be located', async () => {
+  const raw = '<char_info>\n姓名: Iris\n生命层级: 第一层级\n装备: [not rendered YAML\n</char_info>';
+  const html = '<p>前文</p><p>姓名: Iris</p><p>生命层级: 第一层级</p><p>后文</p>';
+  const result = await mountInPage(raw, html);
+  assert.deepEqual(result.modes, ['field-anchor']);
+  assert.ok(result.duringHtml.indexOf('前文') < result.duringHtml.indexOf('data-char-info-card-id'));
+  assert.ok(result.duringHtml.indexOf('data-char-info-card-id') < result.duringHtml.indexOf('姓名: Iris'));
+  assert.ok(result.duringHtml.indexOf('data-char-info-card-id') < result.duringHtml.indexOf('后文'));
+  assert.equal(result.after, result.before);
+});
+
+test('two same-name fallback cards remain next to their respective source fields', async () => {
+  const raw = [
+    '<char_info>姓名: Iris\n生命层级: 第一层级\n装备: [first omitted</char_info>',
+    'Between',
+    '<char_info>姓名: Iris\n生命层级: 第二层级\n装备: [second omitted</char_info>',
+  ].join('\n');
+  const html = [
+    '<p>Before</p>',
+    '<p>姓名: Iris</p><p>生命层级: 第一层级</p>',
+    '<p>Between</p>',
+    '<p>姓名: Iris</p><p>生命层级: 第二层级</p>',
+    '<p>After</p>',
+  ].join('');
+  const result = await mountInPage(raw, html);
+  assert.deepEqual(result.modes, ['field-anchor', 'field-anchor']);
+  const first = result.duringHtml.indexOf('data-char-info-card-id="0:0:0"');
+  const second = result.duringHtml.indexOf('data-char-info-card-id="0:0:1"');
+  assert.ok(result.duringHtml.indexOf('Before') < first);
+  assert.ok(first < result.duringHtml.indexOf('Between'));
+  assert.ok(result.duringHtml.indexOf('Between') < second);
+  assert.ok(second < result.duringHtml.indexOf('After'));
   assert.equal(result.after, result.before);
 });
 
