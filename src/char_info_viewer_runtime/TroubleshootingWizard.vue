@@ -321,40 +321,40 @@ async function copyReport(): Promise<void> {
 </script>
 
 <style scoped>
-.ci-help { display: grid; gap: 12px; padding: 12px 14px; border: 1px solid var(--ci-border-strong); border-radius: 12px; background: var(--ci-surface); color: var(--ci-text); }
-.ci-help-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.ci-help-header > span { display: grid; gap: 4px; min-width: 0; }
+.ci-help { display: grid; min-width: 0; gap: 12px; padding: 14px; border: 1px solid var(--ci-border-strong); border-radius: 12px; background: var(--ci-surface); color: var(--ci-text); }
+.ci-help-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; }
+.ci-help-header > span { display: grid; min-width: 0; gap: 5px; }
+.ci-help-header > button { min-width: 100px; justify-self: end; white-space: nowrap; }
 .ci-help-header strong { font-size: .9rem; }
-.ci-help-header small, .ci-help-hint, .ci-help-footer { color: var(--ci-text-muted); font-size: .73rem; line-height: 1.6; }
+.ci-help-header small, .ci-help-hint, .ci-help-footer { color: var(--ci-text-muted); font-size: .85rem; line-height: 1.5; }
 .ci-help-body, .ci-help-panel { display: grid; gap: 12px; min-width: 0; }
-.ci-help-caption { margin: 0; font-size: .76rem; color: var(--ci-primary); font-weight: 700; }
+.ci-help-caption { margin: 0; font-size: .85rem; color: var(--ci-primary); font-weight: 700; }
 .ci-help-options { display: grid; gap: 7px; }
-.ci-help-options button { width: 100%; text-align: left; border-radius: 10px; white-space: normal; line-height: 1.4; }
+.ci-help-options button { width: 100%; min-height: 44px; text-align: left; border-radius: 10px; white-space: normal; font-size: .9rem; line-height: 1.45; }
 .ci-help-options button.chosen { border-color: var(--ci-primary); background: var(--ci-primary-soft); }
 .ci-help-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .ci-help-field { display: grid !important; gap: 7px !important; align-items: stretch !important; min-height: unset !important; }
-.ci-help-field strong, .ci-help-feedback strong { font-size: .78rem; }
-.ci-help-field select, .ci-help-feedback select, .ci-help-feedback textarea { box-sizing: border-box; width: 100%; max-width: 100%; min-height: 40px; padding: 9px 10px; border: 1px solid var(--ci-border); border-radius: 9px; background: var(--ci-input); color: var(--ci-text); font: inherit; font-size: .78rem; }
+.ci-help-field strong, .ci-help-feedback strong { font-size: .88rem; }
+.ci-help-field select, .ci-help-feedback select, .ci-help-feedback textarea { box-sizing: border-box; width: 100%; max-width: 100%; min-height: 40px; padding: 9px 10px; border: 1px solid var(--ci-border); border-radius: 9px; background: var(--ci-input); color: var(--ci-text); font: inherit; font-size: .88rem; }
 .ci-help-hint, .ci-help-footer { margin: 0; }
 .ci-help-footer { border-top: 1px solid var(--ci-border); padding-top: 9px; }
 .ci-help-finding { display: grid; gap: 6px; padding: 11px; border: 1px solid var(--ci-border); border-radius: 10px; }
-.ci-help-finding strong { font-size: .82rem; }
-.ci-help-finding p { margin: 0; font-size: .77rem; line-height: 1.6; }
+.ci-help-finding strong { font-size: .92rem; }
+.ci-help-finding p { margin: 0; font-size: .85rem; line-height: 1.55; }
 .severity-confirmed { border-color: var(--ci-danger); }
 .severity-suspected { border-color: var(--ci-warning); }
 .severity-expected { border-color: var(--ci-success); }
-.ci-help-panel h4 { margin: 0; font-size: .82rem; }
-.ci-help-steps { display: grid; gap: 8px; margin: 0; padding-left: 23px; font-size: .76rem; line-height: 1.6; }
+.ci-help-panel h4 { margin: 0; font-size: .92rem; }
+.ci-help-steps { display: grid; gap: 8px; margin: 0; padding-left: 23px; font-size: .86rem; line-height: 1.55; }
 .ci-help-detail { min-width: 0; padding: 10px; border: 1px solid var(--ci-border); border-radius: 9px; }
-.ci-help-detail summary { cursor: pointer; font-size: .75rem; }
-.ci-help-detail p { font-size: .7rem; color: var(--ci-text-muted); }
+.ci-help-detail summary { cursor: pointer; font-size: .84rem; }
+.ci-help-detail p { font-size: .78rem; color: var(--ci-text-muted); }
 .ci-help-detail pre { padding: 8px; overflow-wrap: anywhere; white-space: pre-wrap; font-size: .69rem; background: var(--ci-input); border-radius: 8px; }
 .ci-help-feedback { display: grid; gap: 9px; padding: 10px; border: 1px solid var(--ci-border); border-radius: 10px; }
 .ci-help-feedback textarea { min-height: 110px; resize: vertical; }
-.ci-help-error { color: var(--ci-danger); font-size: .74rem; }
+.ci-help-error { color: var(--ci-danger); font-size: .84rem; }
 @media (max-width: 540px) {
-  .ci-help-header { align-items: flex-start; }
-  .ci-help-header button { flex-shrink: 0; }
+  .ci-help-header { align-items: start; }
   .ci-help-actions button { flex: 1 1 auto; }
 }
 </style>

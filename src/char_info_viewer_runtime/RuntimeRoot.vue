@@ -1381,6 +1381,7 @@ onBeforeUnmount(() => {
   display: grid;
   width: 100%;
   height: 100%;
+  box-sizing: border-box;
   padding: 18px;
   overflow: auto;
   place-items: safe center;
@@ -1394,12 +1395,15 @@ onBeforeUnmount(() => {
   display: flex;
   max-height: calc(100dvh - 36px);
   flex-direction: column;
-  width: min(100%, 520px);
+  width: min(100%, 560px);
+  box-sizing: border-box;
   overflow: hidden;
   border: 1px solid var(--ci-border-strong);
   border-radius: 18px;
   background: radial-gradient(circle at 0% 0%, rgb(var(--ci-primary-rgb) / 12%), transparent 42%), var(--ci-bg);
   box-shadow: 0 20px 70px var(--ci-shadow);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .char-info-settings-dialog header,
@@ -1429,7 +1433,11 @@ onBeforeUnmount(() => {
 
 .char-info-settings-dialog button {
   min-height: 38px;
+  flex-shrink: 0;
+  white-space: nowrap;
   padding: 7px 14px;
+  font: inherit;
+  font-size: 0.92rem;
   border: 1px solid rgba(232, 210, 171, 0.24);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.06);
@@ -1456,6 +1464,7 @@ onBeforeUnmount(() => {
 
 .char-info-settings-fields {
   display: grid;
+  min-width: 0;
   min-height: 0;
   gap: 10px;
   padding: 18px;
@@ -1464,6 +1473,8 @@ onBeforeUnmount(() => {
 
 .char-info-settings-fields label {
   display: flex;
+  min-width: 0;
+  box-sizing: border-box;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
@@ -1476,12 +1487,15 @@ onBeforeUnmount(() => {
 
 .char-info-settings-fields label > span {
   display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
   gap: 4px;
 }
 
 .char-info-settings-fields small {
   color: var(--ci-text-muted);
-  font-size: 0.72rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
 }
 
 .char-info-settings-fields input[type='number'],
@@ -1746,8 +1760,15 @@ onBeforeUnmount(() => {
 
 .char-info-settings-fields .char-info-settings-priority-toggle-wrap {
   display: flex;
+  min-width: max-content;
+  flex: 0 0 auto;
   align-items: center;
   gap: 8px;
+}
+
+.char-info-settings-priority-toggle-wrap small {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .char-info-settings-switch input.char-info-settings-priority-toggle {
