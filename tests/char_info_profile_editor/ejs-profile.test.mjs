@@ -30,6 +30,17 @@ const profile = {
   ],
 };
 
+test('待上传文件只允许编辑阶段暂缓缺图检查，正式生成仍拒绝缺图档案', () => {
+  const draft = createEmptyProfile('傲雪');
+  assert.ok(validateProfile(draft).length > 0);
+  assert.deepEqual(validateProfile(draft, { pendingRemoteUpload: true }), []);
+  assert.throws(() => buildManagedEjsBlock(draft));
+  assert.ok(validateProfile({ ...draft, avatarUrl: 'http://example.com/a.png' }, { pendingRemoteUpload: true }).length > 0);
+  const uploaded = { ...draft, remoteGalleryUrl: 'https://imgbed-staging.uika.cc.cd/api/public/album-gallery/12345678-1234-4234-8234-123456789abc' };
+  assert.deepEqual(validateProfile(uploaded), []);
+  assert.ok(buildManagedEjsBlock(uploaded).includes('gallery_pack_url'));
+});
+
 test('metadata v2 会规范化可选字段、移除空故事栏目并保持作者顺序', () => {
   const normalized = normalizeProfile({
     ...profile,
@@ -229,21 +240,31 @@ test('首次保存生成的 managed EJS 同步状态栏头像与相簿，后续�
   );
 });
 
-test('状态栏相簿单向投影只使用受支持静态格式，并允许视频使用静态 fallback', () => {
+test('状态栏相簿单向投影支持 WebP、AVIF、GIF 与 APNG，视频可使用图片 fallback', () => {
   const gallery = [
     { title: '视频主立绘', sources: ['https://files.catbox.moe/main.webm'] },
     {
-      title: '视频与静态 fallback',
+      title: '视频与图片 fallback',
       sources: ['https://files.catbox.moe/alt.mp4', 'https://files.catbox.moe/alt.webp?cache=1'],
     },
-    { title: '静态立绘', sources: ['https://files.catbox.moe/still.avif'] },
+    { title: 'AVIF 立绘', sources: ['https://files.catbox.moe/still.avif'] },
+    { title: 'GIF 动图', sources: ['https://files.catbox.moe/animated.gif'] },
+    { title: 'APNG 动图', sources: ['https://files.catbox.moe/animated.apng?v=2'] },
   ];
 
   assert.deepEqual(buildStatusGalleryImages(gallery), [
-    { title: '视频与静态 fallback', url: 'https://files.catbox.moe/alt.webp?cache=1' },
-    { title: '静态立绘', url: 'https://files.catbox.moe/still.avif' },
+    { title: '视频与图片 fallback', url: 'https://files.catbox.moe/alt.webp?cache=1' },
+    { title: 'AVIF 立绘', url: 'https://files.catbox.moe/still.avif' },
+    { title: 'GIF 动图', url: 'https://files.catbox.moe/animated.gif' },
+    { title: 'APNG 动图', url: 'https://files.catbox.moe/animated.apng?v=2' },
   ]);
   assert.equal(countUnsupportedStatusGalleryItems(gallery), 1);
+
+  const imageOnly = gallery.slice(2);
+  assert.equal(countUnsupportedStatusGalleryItems(imageOnly), 0, '受支持图片不应触发状态栏格式警告');
+  const ejs = buildManagedEjsBlock({ ...profile, gallery: imageOnly });
+  assert.ok(ejs.includes('".gif"'), '保存后受管理 EJS 应包含 GIF 类型');
+  assert.ok(ejs.includes('".apng"'), '保存后受管理 EJS 应包含 APNG 类型');
 });
 
 test('旧 v1 区块仍可读取，并在保存时自动迁移为 v2', () => {

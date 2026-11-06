@@ -143,7 +143,7 @@ test('世界书角色库保留紧凑列表与自适应图片卡片', () => {
   assert.match(librarySource, /\.character-library-grid \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/u);
 });
 
-test('相册步骤只提供外部图床快捷入口，不实现自动上传', () => {
+test('相册步骤保留外部图床快捷入口，并提供独立的 ImgBed 上传入口', () => {
   const galleryStepSource = readFileSync(
     new URL('../../src/char_info_profile_editor/components/GalleryStep.vue', import.meta.url),
     'utf8',
@@ -152,10 +152,10 @@ test('相册步骤只提供外部图床快捷入口，不实现自动上传', ()
   assert.match(galleryStepSource, /href="https:\/\/catbox\.moe\/"/);
   assert.match(galleryStepSource, /href="https:\/\/imgbb\.com\/"/);
   assert.match(galleryStepSource, /target="_blank"\s+rel="noopener noreferrer"/);
-  assert.match(galleryStepSource, /什么是图片直链？/u);
-  assert.match(galleryStepSource, /\.png \/ \.jpg \/ \.jpeg \/ \.webp \/ \.avif/u);
-  assert.match(galleryStepSource, /图床的相册页或分享页不是直链/u);
-  assert.doesNotMatch(galleryStepSource, /\/api\/files|uploadImage|uploadTo/);
+  assert.match(galleryStepSource, /粘贴能直接打开图片的 URL/u);
+  assert.match(galleryStepSource, /普通图片直链/u);
+  assert.match(galleryStepSource, /直接上传 ImgBed/u);
+  assert.match(galleryStepSource, /<ImgbedUploadPanel\b/u);
 });
 
 test('相册步骤兼容宿主 Vue，并移除旧独立扩展图库 UI', () => {

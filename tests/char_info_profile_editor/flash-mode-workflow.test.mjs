@@ -69,7 +69,7 @@ test('完整编辑 Step 1 可从当前聊天选角色或让系统自动建立保
   assert.match(profileEditorSource, /profile\.gallery\.some\(image => image\.sources\.some\(source => isSupportedRemoteMediaUrl\(source\)\)\)/u);
   assert.match(profileEditorSource, /profile\.remoteGalleryUrl\?\.trim\(\) && isHttpsUrl\(profile\.remoteGalleryUrl\)/u);
   assert.match(profileEditorSource, /请先填写角色全名/u);
-  assert.match(profileEditorSource, /请先添加至少一张有效图片/u);
+  assert.match(profileEditorSource, /请先添加图片直链，或在 ImgBed 上传并取得图库 URL/u);
 });
 
 test('入口和快速建立保持移动安全区，并用双色票券卡区分两种模式', () => {

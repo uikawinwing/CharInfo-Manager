@@ -99,10 +99,14 @@ test('角色档案编辑器样式不修改 ST 宿主页的 html 或 body', () =>
   assert.match(profileEditorSource, /\.manager-root \{[\s\S]*?font-family:/u);
 });
 
-test('角色档案编辑器桌面模式保持固定窗口高度，步骤内容只在内部滚动', () => {
+test('角色档案编辑器桌面模式利用可用空间，步骤内容只在内部滚动', () => {
   assert.match(
     profileEditorSource,
-    /\.manager-dialog \{[\s\S]*?height: min\(\d+px, calc\(100% - 8px\)\);[\s\S]*?max-height: calc\(100% - 8px\);/u,
+    /\.manager-dialog \{[\s\S]*?width: min\(1900px, 100%\);[\s\S]*?height: 92%;[\s\S]*?max-height: calc\(100% - 8px\);/u,
+  );
+  assert.match(
+    profileEditorSource,
+    /\.editor-panel > \.wizard-step-section \{\s*width: min\(100%, 1520px\);[\s\S]*?padding: 32px 40px 0;/u,
   );
   assert.match(profileEditorSource, /\.dialog-body \{[\s\S]*?min-height: 0;[\s\S]*?overflow: hidden;/u);
   assert.match(
