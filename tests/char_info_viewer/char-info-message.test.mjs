@@ -12,7 +12,7 @@ test('projects one char_info block while preserving surrounding message text', (
   const projection = projectCharInfoMessage({
     messageId: 12,
     swipeId: 2,
-    text: 'Before\n<char_info>\n姓名: Iris\n</char_info>\nAfter',
+    text: 'Before\n<char_info>\n姓名: Iris\n生命层级: 3\n</char_info>\nAfter',
   });
 
   assert.equal(projection.overflow, false);
@@ -20,7 +20,7 @@ test('projects one char_info block while preserving surrounding message text', (
     projection.parts.map(part => ({ kind: part.kind, content: part.content })),
     [
       { kind: 'text', content: 'Before\n' },
-      { kind: 'card', content: '<char_info>\n姓名: Iris\n</char_info>' },
+      { kind: 'card', content: '<char_info>\n姓名: Iris\n生命层级: 3\n</char_info>' },
       { kind: 'text', content: '\nAfter' },
     ],
   );
@@ -29,7 +29,7 @@ test('projects one char_info block while preserving surrounding message text', (
 });
 
 test('projects multiple complete blocks case-insensitively with stable ordinals', () => {
-  const text = '<CHAR_INFO>姓名: A</CHAR_INFO>\ntext\n<char_info>\n姓名: B\n</char_info>';
+  const text = '<CHAR_INFO>姓名: A\n等级: 2</CHAR_INFO>\ntext\n<char_info>\n姓名: B\n等级: 1\n</char_info>';
   const first = projectCharInfoMessage({ messageId: 7, swipeId: 0, text });
   const second = projectCharInfoMessage({ messageId: 7, swipeId: 0, text });
 
@@ -50,21 +50,21 @@ test('ignores char_info inside think and only captures char_info inside gametxt'
     '</think>',
     'intermediate text',
     '<gametxt>',
-    '<char_info>姓名: Iris</char_info>',
+    '<char_info>姓名: Iris\n生命层级: 3</char_info>',
     '</gametxt>',
     '<char_info>姓名: Tail</char_info>',
   ].join('\n');
 
   const projection = projectCharInfoMessage({ messageId: 20, swipeId: 0, text });
 
-  assert.deepEqual(projection.cards.map(card => card.content), ['<char_info>姓名: Iris</char_info>']);
+  assert.deepEqual(projection.cards.map(card => card.content), ['<char_info>姓名: Iris\n生命层级: 3</char_info>']);
 });
 
 test('ignores char_info after closing gametxt', () => {
-  const text = '<gametxt>\n<char_info>姓名: Iris</char_info>\n</gametxt>\n<char_info>姓名: Tail</char_info>';
+  const text = '<gametxt>\n<char_info>姓名: Iris\n生命层级: 3</char_info>\n</gametxt>\n<char_info>姓名: Tail</char_info>';
   const projection = projectCharInfoMessage({ messageId: 21, swipeId: 0, text });
 
-  assert.deepEqual(projection.cards.map(card => card.content), ['<char_info>姓名: Iris</char_info>']);
+  assert.deepEqual(projection.cards.map(card => card.content), ['<char_info>姓名: Iris\n生命层级: 3</char_info>']);
 });
 
 test('does not let a char_info opening tag in think cross into gametxt or later content', () => {
@@ -99,12 +99,30 @@ test('leaves an incomplete streaming block as ordinary text', () => {
 });
 
 test('refuses an absurd number of cards instead of partially rendering the message', () => {
-  const text = Array.from({ length: 5 }, (_, index) => `<char_info>姓名: ${index}</char_info>`).join('\n');
+  const text = Array.from({ length: 5 }, (_, index) => `<char_info>姓名: ${index}\n种族: 人类</char_info>`).join('\n');
   const projection = projectCharInfoMessage({ messageId: 9, swipeId: 1, text, maxCards: 4 });
 
   assert.equal(projection.overflow, true);
   assert.deepEqual(projection.cards, []);
   assert.deepEqual(projection.parts, [{ kind: 'text', content: text }]);
+});
+
+test('keeps a tag mention or incomplete character header as ordinary prose', () => {
+  const text = [
+    '<gametxt>',
+    'The narrator mentions <char_info>姓名、生命层级</char_info> as an example.',
+    '<char_info>姓名: Iris</char_info>',
+    '</gametxt>',
+  ].join('\n');
+  const projection = projectCharInfoMessage({ messageId: 24, swipeId: 0, text });
+  assert.deepEqual(projection.cards, []);
+  assert.deepEqual(projection.parts, [{ kind: 'text', content: text }]);
+});
+
+test('recognizes malformed YAML with core keys so the Viewer can offer manual repair', () => {
+  const content = '<char_info>\r\n姓名： Iris\r\n生命層級： 高\r\n装备: [broken YAML\r\n</char_info>';
+  const projection = projectCharInfoMessage({ messageId: 25, swipeId: 0, text: content });
+  assert.deepEqual(projection.cards.map(card => card.content), [content]);
 });
 
 test('runtime selects only the latest six loaded floors by default', () => {
