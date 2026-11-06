@@ -24,10 +24,11 @@ before(async () => {
 after(async () => { await browser?.close(); });
 
 async function measure(width: number) {
-  const page = await browser.newPage({ viewport: { width, height: 900 } });
+  const page = await browser.newPage({ viewport: { width, height: width <= 393 ? 852 : 900 } });
   try {
     const html = [
       '<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>',
+      'html, body { width: 100%; height: 100%; margin: 0; }',
       rootCss, wizardCss,
       '</style></head><body>',
       '<div class="char-info-settings-backdrop char-info-theme-dark">',
@@ -39,6 +40,20 @@ async function measure(width: number) {
       '<small>选出看到的现象，由脚本读取这条聊天的实际配置，再给出解决办法。</small>',
       '</span><button type="button">开始排查</button></div>',
       '</section>',
+      '<label class="settings-test-row"><span><strong>显示楼层数</strong></span><input type="number" value="6"></label>',
+      '<label class="settings-test-row"><span><strong>每个消息楼层最多支持</strong>',
+      '<small>超过此数量时，该楼层的 CharInfo Viewer 将暂不渲染并弹出提示。</small></span>',
+      '<input type="number" value="4"></label>',
+      '<label class="settings-test-row"><span><strong>视觉特效</strong>',
+      '<small>关闭可降低手机负担。</small></span><input type="checkbox" checked></label>',
+      '<label class="settings-test-row"><span><strong>界面主题</strong>',
+      '<small>深色与浅色使用同一套暖金视觉语言。</small></span><select><option>深色</option></select></label>',
+      '<label class="settings-test-row"><span><strong>文字大小</strong>',
+      '<small>只调整角色卡文字，不放大立绘或卡片尺寸。</small></span><select><option>标准</option></select></label>',
+      '<label class="settings-test-row"><span><strong>强制使用移动布局</strong>',
+      '<small>适用于较宽手机或窄屏浏览器；关闭时自动判断。</small></span><input type="checkbox"></label>',
+      '<label class="settings-test-row"><span><strong>Debug 模式</strong>',
+      '<small>在浏览器 Console 输出图片来源尝试、失败、超时、切换与成功记录。</small></span><input type="checkbox"></label>',
       '<label class="char-info-settings-unlimited"><span><strong>不限单楼层数量</strong>',
       '<small>大量 Viewer 同时渲染可能增加手机性能与内存负担。</small></span>',
       '<button type="button">已开启无限制</button></label>',
@@ -63,10 +78,12 @@ async function measure(width: number) {
     return await page.evaluate(() => {
       const doc = document;
       const dialog = doc.querySelector<HTMLElement>('.char-info-settings-dialog')!;
+      const fields = doc.querySelector<HTMLElement>('.char-info-settings-fields')!;
       const help = doc.querySelector<HTMLElement>('.ci-help')!;
       const button = doc.querySelector<HTMLElement>('.ci-help-header button')!;
       const statuses = [...doc.querySelectorAll<HTMLElement>('.char-info-settings-priority-toggle-wrap small')];
       const unlimited = doc.querySelector<HTMLElement>('.char-info-settings-unlimited button')!;
+      const rows = [...doc.querySelectorAll<HTMLElement>('.char-info-settings-fields > label')];
       const bounds = (node: Element) => {
         const box = node.getBoundingClientRect();
         return { left: box.left, right: box.right, width: box.width, height: box.height };
@@ -80,6 +97,7 @@ async function measure(width: number) {
       };
       return {
         dialog: bounds(dialog),
+        scrollable: { scrollHeight: fields.scrollHeight, clientHeight: fields.clientHeight, overflowY: getComputedStyle(fields).overflowY },
         help: bounds(help),
         button: bounds(button),
         buttonLines: textRects(button),
@@ -91,13 +109,25 @@ async function measure(width: number) {
           whitespace: getComputedStyle(node).whiteSpace,
           fontSize: parseFloat(getComputedStyle(node).fontSize),
         })),
+        rows: rows.map(row => {
+          const description = row.querySelector<HTMLElement>('small');
+          const title = row.querySelector<HTMLElement>('strong');
+          return {
+            label: title?.textContent ?? '',
+            top: row.getBoundingClientRect().top,
+            bottom: row.getBoundingClientRect().bottom,
+            height: row.getBoundingClientRect().height,
+            contentTop: title?.getBoundingClientRect().top ?? 0,
+            contentBottom: description?.getBoundingClientRect().bottom ?? title?.getBoundingClientRect().bottom ?? 0,
+          };
+        }),
         overflow: Math.max(doc.documentElement.scrollWidth, doc.body.scrollWidth),
       };
     });
   } finally { await page.close(); }
 }
 
-for (const width of [1680, 390, 320]) {
+for (const width of [1680, 393, 390, 320]) {
   test('settings text remains horizontal without horizontal overflow at viewport ' + width, async () => {
     const result = await measure(width);
     assert.equal(result.buttonLines, 1, 'Help entry button wrapped into columns');
@@ -115,5 +145,16 @@ for (const width of [1680, 390, 320]) {
       assert.ok(status.right <= result.dialog.right + 1);
     }
     assert.ok(result.overflow <= width + 1, 'Settings overflowed viewport: ' + JSON.stringify(result));
+    if (width <= 393) {
+      assert.equal(result.scrollable.overflowY, 'auto');
+      assert.ok(result.scrollable.scrollHeight > result.scrollable.clientHeight, 'Settings items must scroll rather than shrink');
+    }
+    for (const row of result.rows) {
+      assert.ok(row.contentTop >= row.top + 8, 'Missing top inset: ' + JSON.stringify(row));
+      assert.ok(row.contentBottom <= row.bottom - 8, 'Text hit card bottom: ' + JSON.stringify(row));
+    }
+    for (let i = 1; i < result.rows.length; i++) {
+      assert.ok(result.rows[i].top >= result.rows[i - 1].bottom + 1, 'Settings cards overlap');
+    }
   });
 }

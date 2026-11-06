@@ -1466,6 +1466,9 @@ onBeforeUnmount(() => {
   display: grid;
   min-width: 0;
   min-height: 0;
+  flex: 1 1 auto;
+  grid-auto-rows: max-content;
+  align-content: start;
   gap: 10px;
   padding: 18px;
   overflow-y: auto;
