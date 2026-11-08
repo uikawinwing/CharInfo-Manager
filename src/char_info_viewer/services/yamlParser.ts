@@ -25,6 +25,8 @@ const KEY_ALIAS_TO_SIMPLIFIED: Record<string, string> = {
   法則: '法则',
   標籤: '标签',
   品質: '品质',
+  數量: '数量',
+  持有數量: '持有数量',
   類型: '类型',
   分類: '分类',
   被動效果: '被动效果',
@@ -306,6 +308,7 @@ const MAPPING_LINE_PATTERN = /^(\s*)(-\s*)?([^\s：:][^：:]{0,40}?)\s*[：:]\s*
 const NAMED_LIST_COLLECTION_KEYS = new Set([
   '技能',
   '装备',
+  '背包',
   '道具',
   '特殊物品',
   '物品',
@@ -333,6 +336,7 @@ const NAMED_LIST_FIELD_KEYS = new Set([
 ]);
 
 const MULTILINE_TEXT_KEYS = new Set(['性格', '外貌特质', '衣物装饰', '背景故事', '描述', '效果']);
+const INVENTORY_COLLECTION_KEYS = new Set(['背包', '道具', '特殊物品', '物品']);
 
 type MappingLine = {
   indent: number;
@@ -428,6 +432,7 @@ function repairNamedListIndentation(lines: string[]): boolean {
 
     const itemIndent = collection.indent + 2;
     const fieldIndent = itemIndent + 2;
+    const isInventory = collection.indent === 0 && INVENTORY_COLLECTION_KEYS.has(collection.key);
     let blockEnd = lines.length;
 
     for (let j = i + 1; j < lines.length; j++) {
@@ -472,12 +477,28 @@ function repairNamedListIndentation(lines: string[]): boolean {
       }
 
       let nestedParentIndent: number | null = null;
+      let firstQuantity: { index: number; value: number } | null = null;
       for (let j = itemIndex + 1; j < itemEnd; j++) {
         const mapped = matchMappingLine(lines[j]);
         if (!mapped || mapped.dash) continue;
 
         if (nestedParentIndent !== null && mapped.indent > nestedParentIndent) continue;
         nestedParentIndent = null;
+
+        if (isInventory && mapped.key === '数量' && mapped.indent === fieldIndent) {
+          const quantity = mapped.value.match(/^(['"]?)(\d+(?:\.\d+)?)\1(?:\s+#.*)?\s*$/);
+          if (quantity) {
+            const value = Number(quantity[2]);
+            if (firstQuantity) {
+              // The remaining item fields can be recovered even when the count is ambiguous.
+              if (firstQuantity.value !== value) lines[firstQuantity.index] = `${' '.repeat(fieldIndent)}数量: null`;
+              lines[j] = '';
+              changed = true;
+            } else {
+              firstQuantity = { index: j, value };
+            }
+          }
+        }
 
         if (NAMED_LIST_FIELD_KEYS.has(mapped.key)) {
           if (mapped.indent !== fieldIndent) {

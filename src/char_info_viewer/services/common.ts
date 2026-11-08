@@ -41,6 +41,61 @@ export function normalizeDisplayText(input: unknown): string {
   return text;
 }
 
+export function textFromUnknown(value: unknown): string {
+  if (Array.isArray(value)) return value.map(textFromUnknown).filter(Boolean).join(' / ');
+  if (value && typeof value === 'object') {
+    return Object.entries(value)
+      .map(([key, val]) => {
+        const content = textFromUnknown(val);
+        return content ? `${key}: ${content}` : '';
+      })
+      .filter(Boolean)
+      .join('； ');
+  }
+  return typeof value === 'string' ? normalizeDisplayText(value) : String(value ?? '');
+}
+
+export function formatSkillCost(value: unknown): string {
+  if (typeof value === 'string') return getSmartArray(value).join(' / ') || textFromUnknown(value);
+  return textFromUnknown(value);
+}
+
+function isItemRecord(value: unknown): value is Record<string, any> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+export function asNamedObjectArray(input: unknown, allowInventoryShorthand = false): Record<string, any>[] {
+  if (Array.isArray(input)) {
+    return input.flatMap(item => {
+      if (isItemRecord(item)) return [item];
+      if (allowInventoryShorthand && typeof item === 'string' && item.trim()) return [{ 名称: item }];
+      return [];
+    });
+  }
+  if (!isItemRecord(input)) return [];
+  if (typeof input.名称 === 'string' && input.名称.trim()) return [input];
+
+  return Object.entries(input).flatMap(([name, item]) => {
+    if (isItemRecord(item)) return [{ ...item, 名称: textFromUnknown(item.名称) || name }];
+    if (allowInventoryShorthand && (typeof item === 'number' || (typeof item === 'string' && item.trim()))) {
+      if (Number.isFinite(Number(item))) return [{ 名称: name, 数量: item }];
+    }
+    return [];
+  });
+}
+
+export function asDivinityAbilityArray(input: unknown): Record<string, any>[] {
+  return asNamedObjectArray(input).map(item => {
+    if (item.效果 != null) return item;
+    const { 名称, ...effects } = item;
+    return { 名称, 效果: effects };
+  });
+}
+
+export function readItemQuantity(item: Record<string, unknown>): unknown {
+  return item.数量 !== undefined ? item.数量 : item.數量 ?? item.持有数量 ?? item.持有數量;
+}
+
 function splitSmartList(input: string): string[] {
   const items: string[] = [];
   let current = '';

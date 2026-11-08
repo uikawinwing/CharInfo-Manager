@@ -1,6 +1,16 @@
 import type { CharacterProfileMetadata, CharacterStorySection } from '../../char_info_shared/characterProfile';
 import type { CharacterData } from '../types';
-import { getSmartArray, hasArrayContent, hasText, normalizeDisplayText } from './common';
+import {
+  asDivinityAbilityArray,
+  asNamedObjectArray,
+  formatSkillCost,
+  getSmartArray,
+  hasArrayContent,
+  hasText,
+  normalizeDisplayText,
+  readItemQuantity,
+  textFromUnknown,
+} from './common';
 import { prioritizeImageSourceGroups } from './imageSourcePriority';
 import { normalizePortraitMediaUrlForBrowser } from './imageUrl';
 import { isSpecialNpcVisualData, resolveCharacterProfileMetadata } from './themeService';
@@ -97,28 +107,6 @@ export function pickField(source: unknown, ...keys: string[]): unknown {
   return undefined;
 }
 
-export function textFromUnknown(value: unknown): string {
-  if (value === undefined || value === null) return '';
-  if (typeof value === 'string') return normalizeDisplayText(value);
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-  if (Array.isArray(value)) {
-    return value
-      .map(v => textFromUnknown(v))
-      .filter(Boolean)
-      .join(' / ');
-  }
-  if (typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .map(([key, val]) => {
-        const content = textFromUnknown(val);
-        return content ? `${key}: ${content}` : '';
-      })
-      .filter(Boolean);
-    return entries.join('； ');
-  }
-  return String(value);
-}
-
 function finiteNumber(value: unknown): number | null {
   if (value === '' || value === null || value === undefined) return null;
   const parsed = Number(value);
@@ -141,26 +129,6 @@ function formatMvuResource(value: unknown): string {
 function resourceDisplayValue(legacyValue: unknown, mvuValue: unknown): string {
   const legacyText = textFromUnknown(legacyValue);
   return hasText(legacyText) ? legacyText : formatMvuResource(mvuValue);
-}
-
-function asObjectArray(input: unknown): ItemObject[] {
-  if (!Array.isArray(input)) return [];
-  return input.filter(item => item && typeof item === 'object') as ItemObject[];
-}
-
-export function asNamedObjectArray(input: unknown): ItemObject[] {
-  if (Array.isArray(input)) return asObjectArray(input);
-  if (!input || typeof input !== 'object') return [];
-
-  return Object.entries(input as Record<string, unknown>)
-    .filter(([, value]) => value && typeof value === 'object')
-    .map(([name, value]) => {
-      const item = value as Record<string, unknown>;
-      return {
-        ...item,
-        名称: textFromUnknown(item.名称) || name,
-      } as ItemObject;
-    });
 }
 
 function mergeNamedObjectArrays(primary: unknown, legacy: unknown): ItemObject[] {
@@ -333,9 +301,16 @@ export function itemTags(item: ItemObject): string[] {
 }
 
 export function itemCost(item: ItemObject): string {
-  const fromArray = getSmartArray(item?.消耗).join(' / ');
-  if (fromArray) return fromArray;
-  return textFromUnknown(item?.消耗);
+  return formatSkillCost(item.消耗);
+}
+
+export function itemQuantity(item: ItemObject): string {
+  const quantity = readItemQuantity(item);
+  return quantity === null ? '未确定' : textFromUnknown(quantity);
+}
+
+export function itemPosition(item: ItemObject): string {
+  return textFromUnknown(item.位置 ?? item.部位);
 }
 
 function lawEffectEntries(item: ItemObject, kind: '被动' | '主动'): EffectEntry[] {
@@ -457,10 +432,10 @@ export function buildCharacterViewModel(
   ].filter(resource => hasText(resource.value));
 
   const inventorySections: InventorySection[] = [
-    { key: 'backpack', title: '背包', items: asNamedObjectArray(data.背包) },
-    { key: 'props', title: '道具', items: asNamedObjectArray(data.道具) },
-    { key: 'special', title: '特殊物品', items: asNamedObjectArray(data.特殊物品) },
-    { key: 'items', title: '物品', items: asNamedObjectArray(data.物品) },
+    { key: 'backpack', title: '背包', items: asNamedObjectArray(data.背包, true) },
+    { key: 'props', title: '道具', items: asNamedObjectArray(data.道具, true) },
+    { key: 'special', title: '特殊物品', items: asNamedObjectArray(data.特殊物品, true) },
+    { key: 'items', title: '物品', items: asNamedObjectArray(data.物品, true) },
   ].filter(section => section.items.length > 0);
 
   const statusEffects = asNamedObjectArray(data.状态效果);
@@ -480,8 +455,8 @@ export function buildCharacterViewModel(
           };
         })()
       : null;
-  const divinityElements = asNamedObjectArray(divinityRoot.要素 || data.要素);
-  const divinityPowers = asNamedObjectArray(divinityRoot.权能 || data.权能);
+  const divinityElements = asDivinityAbilityArray(divinityRoot.要素 || data.要素);
+  const divinityPowers = asDivinityAbilityArray(divinityRoot.权能 || data.权能);
   const divinityLaws = mergeNamedObjectArrays(divinityRoot.法则, data.法则);
   const skills = asNamedObjectArray(data.技能);
   const equipments = asNamedObjectArray(data.装备);
@@ -523,8 +498,8 @@ export function buildCharacterViewModel(
       .map(tag => tag.trim().replace(/。+$/g, '').trim())
       .filter(Boolean)
       .join('，'),
-    appearanceText: normalizeDisplayText(pickField(data, '外貌特质', '外貌特质') || ''),
-    attireText: normalizeDisplayText(pickField(data, '衣物装饰', '衣物装饰') || ''),
+    appearanceText: textFromUnknown(pickField(data, '外貌特质', '外貌')),
+    attireText: textFromUnknown(pickField(data, '衣物装饰', '着装')),
     backstoryText,
     profileMetadata,
     storySections,
