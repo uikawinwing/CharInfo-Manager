@@ -133,9 +133,21 @@ function diagnoseScope(text: string, projectionCardCount: number, overflow: bool
   const openTags = collectMatches(CHAR_INFO_OPEN_PATTERN, inScope);
   const closeTags = collectMatches(CHAR_INFO_CLOSE_PATTERN, inScope);
   const unsupportedOpen = openTags.find(match => !STRICT_CHAR_INFO_OPEN_PATTERN.test(match[0]));
+  const hasCardOutsideGame = !unclosedThink && gametxtOpen && (
+    visibleText.slice(afterThink, gametxtOpen.index).search(COMPLETE_CHAR_INFO_PATTERN) >= 0 ||
+    (gametxtClose && visibleText.slice(rangeEnd + gametxtClose[0].length).search(COMPLETE_CHAR_INFO_PATTERN) >= 0)
+  );
+  const outsideGameCheck: DiagnosticCheck | null = hasCardOutsideGame
+    ? {
+        status: 'fail',
+        code: 'CHAR_INFO_OUTSIDE_GAMETXT',
+        title: 'CharInfo 不在游戏正文范围内',
+        detail: '存在完整 <char_info>，但它位于 <gametxt> 之前或 </gametxt> 之后，因此不会渲染。',
+      }
+    : null;
 
   if (openTags.length === 0) {
-    checks.push({
+    checks.push(outsideGameCheck ?? {
       status: 'fail',
       title: '没有找到 <char_info>',
       detail: '原始 assistant 消息中没有 CharInfo 开始标签。',
@@ -177,7 +189,6 @@ function diagnoseScope(text: string, projectionCardCount: number, overflow: bool
 
   if (gametxtOpen) {
     const inside = inScope.match(COMPLETE_CHAR_INFO_PATTERN)?.length ?? 0;
-    const completeTotal = visibleText.slice(afterThink).match(COMPLETE_CHAR_INFO_PATTERN)?.length ?? 0;
     if (!gametxtClose) {
       checks.push({
         status: 'warn',
@@ -187,12 +198,8 @@ function diagnoseScope(text: string, projectionCardCount: number, overflow: bool
     } else {
       checks.push({ status: 'pass', title: '游戏正文范围正常', detail: '找到 <gametxt>...</gametxt>。' });
     }
-    if (inside === 0 && completeTotal > 0) {
-      checks.push({
-        status: 'fail',
-        title: 'CharInfo 不在游戏正文范围内',
-        detail: '存在完整 <char_info>，但它位于 <gametxt> 之前或 </gametxt> 之后，因此不会渲染。',
-      });
+    if (inside === 0 && outsideGameCheck) {
+      checks.push(outsideGameCheck);
     } else if (inside > 0) {
       checks.push({
         status: 'pass',

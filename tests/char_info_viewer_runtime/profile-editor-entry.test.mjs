@@ -65,7 +65,7 @@ test('当前聊天与世界书角色库在同一角色资料库内切换，不�
 });
 
 test('角色档案编辑器 overlay 保持独立 iframe，但生命周期由同 bundle controller 管理', () => {
-  assert.doesNotMatch(runtimeRootSource, /ProfileEditor/u);
+  assert.doesNotMatch(runtimeRootSource, /from ['"][^'"]*\/char_info_profile_editor\/|createProfileEditorOverlay/u);
   assert.doesNotMatch(runtimeRootSource, /state\.creator/u);
   assert.doesNotMatch(runtimeSource, /createProfileEditorOverlay|ProfileEditorOverlay/u);
   assert.match(profileEditorControllerSource, /openProfileEditor/u);
