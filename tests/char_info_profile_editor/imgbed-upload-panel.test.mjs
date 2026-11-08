@@ -54,7 +54,7 @@ const renderer = createRenderer({
   },
 });
 const id = '12345678-1234-4234-8234-123456789abc';
-const url = `https://imgbed-staging.uika.cc.cd/api/public/album-gallery/${id}`;
+const url = `https://imgbed.uika.cc.cd/api/public/album-gallery/${id}`;
 const item = { id: 'existing', title: '原图', url: 'https://example.com/a.png', kind: 'image' };
 const result = { albumId: id, remoteGalleryUrl: url, characterName: '角色', items: [item] };
 const flush = async () => {
@@ -141,7 +141,7 @@ function fetchPack(name = '角色') {
 }
 
 test('ImgBed 图片列表只使用 160px WebP 缩略图，不请求 10MB 原图', async () => {
-  const original = 'https://imgbed-staging.uika.cc.cd/file/users/589790434960867328/example.png?v=123';
+  const original = 'https://imgbed.uika.cc.cd/file/users/589790434960867328/example.png?v=123';
   const view = mount(
     {
       readGallery: async () => ({
@@ -157,7 +157,7 @@ test('ImgBed 图片列表只使用 160px WebP 缩略图，不请求 10MB 原图'
   assert.ok(image, '编辑器应显示缩略图');
   assert.equal(
     image.src,
-    'https://imgbed-staging.uika.cc.cd/thumb/users/589790434960867328/example.png?variant=avatar',
+    'https://imgbed.uika.cc.cd/thumb/users/589790434960867328/example.png?variant=avatar',
   );
   assert.ok(!image.src.includes('/file/'), '不得下载原始 PNG');
   assert.equal(image.loading, 'lazy');
@@ -166,8 +166,8 @@ test('ImgBed 图片列表只使用 160px WebP 缩略图，不请求 10MB 原图'
 });
 
 test('优先使用公开图库给出的带版本号 160px WebP，失败才回退 720px，不加载原图', async () => {
-  const original = 'https://imgbed-staging.uika.cc.cd/file/users/owner/portrait.png?v=1';
-  const published = 'https://imgbed-staging.uika.cc.cd/thumb/users/owner/portrait.png?v=222';
+  const original = 'https://imgbed.uika.cc.cd/file/users/owner/portrait.png?v=1';
+  const published = 'https://imgbed.uika.cc.cd/thumb/users/owner/portrait.png?v=222';
   const view = mount(
     {
       readGallery: async () => ({
@@ -222,6 +222,7 @@ test('生成的 UUID 文件名对用户隐藏，手机列表保持紧凑行布�
   assert.ok(!walk(view.root, entry => entry.text?.includes(uuidTitle)), 'UUID 不得显示给用户');
   const firstRow = walk(view.root, entry => entry.tag === 'li' && entry.class === 'upload-media-row');
   assert.ok(firstRow, '图片列表应是独立的紧凑行');
+  assert.equal(walk(view.root, entry => entry.tag === 'input' && entry.type === 'checkbox'), undefined);
   const actions = walk(firstRow, entry => entry.role === 'group');
   assert.ok(actions, '排序和移除应属于同一行操作组');
   for (const label of ['上移', '下移', '移除']) {
@@ -266,8 +267,8 @@ test('未连接时必须显式点击连接，已有授权时不重复登录', as
 
 test('上传完成允许 ImgBed 以 WebP 展示 URL 返回同一张 PNG，不误判保存失败', async () => {
   clearRemoteGalleryCache();
-  const originalFile = 'https://imgbed-staging.uika.cc.cd/file/users/owner/portrait.png';
-  const displayWebp = 'https://imgbed-staging.uika.cc.cd/thumb/users/owner/portrait.png?variant=portrait&v=100';
+  const originalFile = 'https://imgbed.uika.cc.cd/file/users/owner/portrait.png';
+  const displayWebp = 'https://imgbed.uika.cc.cd/thumb/users/owner/portrait.png?variant=portrait&v=100';
   const saved = {
     ...result,
     items: [{ id: 'saved', title: '立绘', kind: 'image', url: originalFile }],
@@ -287,7 +288,7 @@ test('上传完成允许 ImgBed 以 WebP 展示 URL 返回同一张 PNG，不误
   await flush();
   assert.equal(view.props.remoteGalleryUrl, url);
   const displayed = walk(view.root, node => node.tag === 'img');
-  assert.equal(displayed.src, 'https://imgbed-staging.uika.cc.cd/thumb/users/owner/portrait.png?variant=avatar');
+  assert.equal(displayed.src, 'https://imgbed.uika.cc.cd/thumb/users/owner/portrait.png?variant=avatar');
   view.app.unmount();
   clearRemoteGalleryCache();
 });
@@ -299,6 +300,8 @@ test('可在图片管理页改名并点击上传，成功后自动回填远程�
   await flush();
   choose(view.root, [new File(['data'], 'a.png', { type: 'image/png' })]);
   await flush();
+  const nsfw = walk(view.root, node => node.tag === 'input' && node.type === 'checkbox');
+  assert.equal(nsfw.checked, false);
   click(view.root, '编辑第 1 张图片名称');
   await flush();
   const title = walk(view.root, node => node.tag === 'input' && node['aria-label'] === '第 1 张图片的图库名称');
@@ -309,6 +312,7 @@ test('可在图片管理页改名并点击上传，成功后自动回填远程�
   await flush();
   assert.equal(view.calls.length, 1);
   assert.equal(view.calls[0].files[0].title, '新的主立绘');
+  assert.equal(Object.hasOwn(view.calls[0].files[0], 'nsfw'), false);
   assert.equal(view.props.remoteGalleryUrl, url);
   view.app.unmount();
 });
@@ -405,7 +409,7 @@ test('外部修改图库后重新读取文件列表，且不会覆盖未上传�
   view.app.unmount();
 });
 
-test('上传失败保留文件并使用同一请求重试', async () => {
+test('上传失败保留文件与 NSFW 标记，并使用同一请求重试', async () => {
   clearRemoteGalleryCache();
   fetchPack();
   const calls = [];
@@ -417,17 +421,26 @@ test('上传失败保留文件并使用同一请求重试', async () => {
     },
   });
   await flush();
-  const file = new File(['data'], 'a.png', { type: 'image/png' });
+  const file = new File(['data'], 'a.webm', { type: 'video/webm' });
   choose(view.root, [file]);
   await flush();
+  const nsfw = walk(view.root, node => node.tag === 'input' && node.type === 'checkbox');
+  assert.equal(nsfw.checked, false);
+  nsfw.onChange({ target: { checked: true } });
+  await flush();
+  assert.equal(nsfw.checked, true);
   assert.equal(view.panel.hasPendingMedia, true);
   await assert.rejects(view.panel.save(), /上传失败/);
   assert.equal(view.props.remoteGalleryUrl, '');
   await flush();
+  assert.equal(nsfw.disabled, true);
+  assert.equal(nsfw.checked, true);
   assert.ok(walk(view.root, entry => entry.text?.includes('文件和请求已保留，请再次点击保存重试')));
   await view.panel.save();
   assert.equal(calls[0].requestId, calls[1].requestId);
   assert.equal(calls[1].files[0].file, file);
+  assert.equal(calls[0].files[0].nsfw, true);
+  assert.equal(calls[1].files[0].nsfw, true);
   assert.equal(view.props.remoteGalleryUrl, url);
   assert.equal(view.panel.hasPendingMedia, false);
   view.app.unmount();

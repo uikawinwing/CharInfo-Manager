@@ -21,7 +21,7 @@ const modules = {
   upload: compile('src/char_info_profile_editor/services/imgbedUploadBridge.ts'),
 };
 const jquery = readFileSync(require.resolve('jquery'), 'utf8');
-const imgbedOrigin = 'https://imgbed-staging.uika.cc.cd';
+const imgbedOrigin = 'https://imgbed.uika.cc.cd';
 
 test('ST COOP also severs a popup opened by the ImgBed iframe itself', async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });

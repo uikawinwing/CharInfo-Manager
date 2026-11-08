@@ -115,7 +115,7 @@
           </button>
           <a
             class="toolbar-button"
-            href="https://imgbed-staging.uika.cc.cd/account/?view=albums"
+            :href="`${IMG_BED_ORIGIN}/account/?view=albums`"
             target="_blank"
             rel="noopener noreferrer"
             >在 ImgBed 管理</a
@@ -403,6 +403,7 @@ import {
   createImgbedBridge,
   displayImgbedMediaTitle,
   IMG_BED_CONNECTION_TIMEOUT_MS,
+  IMG_BED_ORIGIN,
   parseImgbedGalleryUrl,
 } from '../services/imgbedBridge';
 

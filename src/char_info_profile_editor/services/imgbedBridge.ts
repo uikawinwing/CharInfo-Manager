@@ -1,4 +1,4 @@
-export const IMG_BED_ORIGIN = 'https://imgbed-staging.uika.cc.cd';
+export const IMG_BED_ORIGIN = 'https://imgbed.uika.cc.cd';
 export const IMG_BED_CONNECTION_TIMEOUT_MS = 12 * 60 * 1000;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;

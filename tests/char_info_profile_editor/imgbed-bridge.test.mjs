@@ -85,6 +85,7 @@ test('自动文件名只以图片序号显示，但保留人工命名', () => {
 });
 
 test('规范图库 URL 严格限定小写 UUID 和固定路径', () => {
+  assert.equal(IMG_BED_ORIGIN, 'https://imgbed.uika.cc.cd');
   assert.equal(canonicalImgbedGalleryUrl(id.toUpperCase()), url);
   assert.equal(parseImgbedGalleryUrl(url), id);
   for (const invalid of [
@@ -92,6 +93,7 @@ test('规范图库 URL 严格限定小写 UUID 和固定路径', () => {
     url + '#x',
     url.toUpperCase(),
     url.replace('https:', 'http:'),
+    url.replace(IMG_BED_ORIGIN, 'https://imgbed-staging.uika.cc.cd'),
     url.replace(id, 'bad'),
   ]) {
     assert.equal(parseImgbedGalleryUrl(invalid), null);

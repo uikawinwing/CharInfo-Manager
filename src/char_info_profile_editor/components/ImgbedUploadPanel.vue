@@ -113,7 +113,19 @@
                 改名
               </button>
             </template>
-            <span class="upload-media-meta">{{ item.file ? '待上传' : index === 0 ? '主立绘' : '已保存' }}</span>
+            <div class="upload-media-meta">
+              <span>{{ item.file ? '待上传' : index === 0 ? '主立绘' : '已保存' }}</span>
+              <label v-if="item.file" class="upload-nsfw-label">
+                <input
+                  type="checkbox"
+                  :checked="item.nsfw === true"
+                  :disabled="busy || !!requestId"
+                  :aria-label="`将第 ${index + 1} 个文件标记为 NSFW`"
+                  @change="item.nsfw = ($event.target as HTMLInputElement).checked"
+                />
+                <span>NSFW</span>
+              </label>
+            </div>
           </div>
           <div class="upload-media-actions" role="group" :aria-label="`第 ${index + 1} 张图片的操作`">
             <button
@@ -205,6 +217,7 @@
       </details>
     </section>
     <p v-if="uploadStage === 'success'" class="upload-saved" role="status">✓ 图库已更新，图片选择已同步</p>
+    <p v-if="hasPendingMedia" class="upload-guidance">勾选 NSFW 后，媒体会在 ImgBed 网页上默认模糊显示。</p>
     <p v-if="hasPendingMedia" class="upload-pending-note">有待上传图片 · 离开页面会丢失</p>
     <p v-if="visibleMessage" role="status">{{ visibleMessage }}</p>
   </section>
@@ -229,7 +242,7 @@ const props = defineProps<{
   galleryPreview?: RemoteGalleryPayload | null;
 }>();
 const emit = defineEmits<{ 'update:remoteGalleryUrl': [value: string] }>();
-type Entry = { id: string; title: string; kind: 'image' | 'video'; preview: string; file?: File };
+type Entry = { id: string; title: string; kind: 'image' | 'video'; preview: string; file?: File; nsfw?: boolean };
 const entries = ref<Entry[]>([]);
 const editingTitleIds = ref(new Set<string>());
 
@@ -631,7 +644,12 @@ async function save() {
         characterName: props.characterName.trim(),
         files: entries.value
           .filter(item => item.file)
-          .map(item => ({ id: item.id, file: item.file!, title: item.title.trim() })),
+          .map(item => ({
+            id: item.id,
+            file: item.file!,
+            title: item.title.trim(),
+            ...(item.nsfw ? { nsfw: true } : {}),
+          })),
         order: entries.value.map(item => (item.file ? { uploadId: item.id } : { itemId: item.id })),
       };
       if (request.characterName !== props.characterName.trim())
@@ -886,9 +904,23 @@ defineExpose({ save, reload, hasPendingMedia, hasUnsavedChanges });
   font-weight: 550;
 }
 .upload-panel .upload-media-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  column-gap: 8px;
   flex: 0 0 100%;
   font-size: 0.72rem;
   color: var(--text-secondary);
+}
+.upload-panel .upload-nsfw-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+}
+.upload-panel .upload-nsfw-label input {
+  margin: 0;
+  accent-color: var(--primary);
 }
 .upload-panel .upload-title-input {
   min-width: 0;

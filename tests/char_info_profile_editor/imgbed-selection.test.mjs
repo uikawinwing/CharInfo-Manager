@@ -82,7 +82,7 @@ const renderer = createRenderer({
 });
 
 const id = '12345678-1234-4234-8234-123456789abc';
-const url = `https://imgbed-staging.uika.cc.cd/api/public/album-gallery/${id}`;
+const url = `https://imgbed.uika.cc.cd/api/public/album-gallery/${id}`;
 const payload = name => ({
   format: 'char-info-gallery-pack',
   version: 1,
@@ -198,7 +198,7 @@ function mount(select, initialUrl = '') {
 test('ImgBed 图库可选择独立头像和封面，外部修改后刷新更新远程图片', async () => {
   clearRemoteGalleryCache();
   const originalFetch = globalThis.fetch;
-  const base = 'https://imgbed-staging.uika.cc.cd/thumb/users/owner/';
+  const base = 'https://imgbed.uika.cc.cd/thumb/users/owner/';
   const image = (name, version) => ({
     title: name,
     sources: [`${base}${name}.png?variant=portrait&v=${version}`],

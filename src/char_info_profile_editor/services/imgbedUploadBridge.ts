@@ -27,7 +27,7 @@ export type ImgbedUploadInput = {
   requestId: string;
   albumId: string | null;
   characterName: string;
-  files: { id: string; file: File; title: string }[];
+  files: { id: string; file: File; title: string; nsfw?: boolean }[];
   order: ({ itemId: string } | { uploadId: string })[];
 };
 export type ImgbedUploadProgress = {
@@ -581,6 +581,7 @@ export function createImgbedUploadBridge(hostWindow: Window, parentOrigin = host
             !ID.test(item.id) ||
             typeof item.title !== 'string' ||
             item.title.length > 500 ||
+            (item.nsfw !== undefined && typeof item.nsfw !== 'boolean') ||
             Object.prototype.toString.call(item.file) !== '[object File]' ||
             item.file.size === 0,
         ) ||

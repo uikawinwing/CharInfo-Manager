@@ -36,7 +36,7 @@ test('待上传文件只允许编辑阶段暂缓缺图检查，正式生成仍�
   assert.deepEqual(validateProfile(draft, { pendingRemoteUpload: true }), []);
   assert.throws(() => buildManagedEjsBlock(draft));
   assert.ok(validateProfile({ ...draft, avatarUrl: 'http://example.com/a.png' }, { pendingRemoteUpload: true }).length > 0);
-  const uploaded = { ...draft, remoteGalleryUrl: 'https://imgbed-staging.uika.cc.cd/api/public/album-gallery/12345678-1234-4234-8234-123456789abc' };
+  const uploaded = { ...draft, remoteGalleryUrl: 'https://imgbed.uika.cc.cd/api/public/album-gallery/12345678-1234-4234-8234-123456789abc' };
   assert.deepEqual(validateProfile(uploaded), []);
   assert.ok(buildManagedEjsBlock(uploaded).includes('gallery_pack_url'));
 });

@@ -358,12 +358,15 @@ test('File 直接交给 structured clone，校验进度和结果，超时后复�
   const env = setup();
   await connected(env);
   const request = input();
+  request.files[0].nsfw = true;
   const progress = [];
   const first = env.bridge.save(request, value => progress.push(value));
   await authorizeGalleryRequest(env);
   const sent = env.last();
   assert.equal(sent.files[0].file, request.files[0].file);
-  assert.ok(structuredClone(sent).files[0].file instanceof Blob);
+  const clonedFile = structuredClone(sent).files[0];
+  assert.ok(clonedFile.file instanceof Blob);
+  assert.equal(clonedFile.nsfw, true);
   env.emit('gallery.progress', {
     requestId: sent.requestId,
     sessionId: sent.sessionId,
@@ -390,6 +393,7 @@ test('File 直接交给 structured clone，校验进度和结果，超时后复�
   await authorizeGalleryRequest(env);
   assert.equal(env.last().requestId, sent.requestId);
   assert.equal(env.last().files[0].file, sent.files[0].file);
+  assert.equal(env.last().files[0].nsfw, true);
   env.emit('gallery.saved', {
     requestId: sent.requestId,
     sessionId: sent.sessionId,

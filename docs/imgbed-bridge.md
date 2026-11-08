@@ -1,17 +1,17 @@
 # ImgBed 弹窗连接：跨仓库集成约定
 
-本文保留旧窗口兼容协议。编辑器内选图和上传的新入口见 [编辑器内上传协议](imgbed-upload-protocol.md)；新协议仍待 ImgBed 接受方实现和 Staging 联调。
+本文保留旧窗口兼容协议。编辑器内选图和上传的新入口见 [编辑器内上传协议](imgbed-upload-protocol.md)。
 
 本文面向维护 CharInfo Manager 与 CloudFlare-ImgBed 的开发者。CharInfo 侧已实现 v1 协议；ImgBed 对应页面由另一仓库负责，本地模拟测试不表示其部署和 OAuth 跳转已通过联调。
 
 ## 信任边界与协议
 
-唯一可信 ImgBed 源为 `https://imgbed-staging.uika.cc.cd`，定义在 `src/char_info_profile_editor/services/imgbedBridge.ts`。导入的角色档案不能改变可信源。
+唯一可信 ImgBed 源为 `https://imgbed.uika.cc.cd`，定义在 `src/char_info_profile_editor/services/imgbedBridge.ts`。导入的角色档案不能改变可信源。
 
 酒馆宿主窗口在点击时同步打开：
 
 ```text
-https://imgbed-staging.uika.cc.cd/account/?view=albums&bridge=charinfo&bridge_version=1&bridge_nonce=<随机值>&opener_origin=<编码后的酒馆源>[&album=<小写UUID>]
+https://imgbed.uika.cc.cd/account/?view=albums&bridge=charinfo&bridge_version=1&bridge_nonce=<随机值>&opener_origin=<编码后的酒馆源>[&album=<小写UUID>]
 ```
 
 弹窗应保留 `window.opener`，并在登录及页面跳转中保留桥接参数。管理时携带当前相册 UUID，连接或切换时不携带。双方消息使用以下信封：
@@ -33,7 +33,7 @@ CharInfo 每 500 毫秒向精确的 ImgBed 源发送 `bridge.hello`，收到 `br
 
 弹窗被拦截、关闭、因登录跳转丢失 opener 或最终超时时，界面会引导玩家将 ImgBed 的公开图库 API URL 粘贴到现有“远程图库 URL”字段，不改动原档案。酒馆不能读取跨源窗口的 opener 来确认其是否丢失；此类中断可能表现为窗口关闭或在总时限结束后才提示超时。手动 URL 应使用上面的 `/api/public/album-gallery/<UUID>` 地址，而非相册管理页地址。
 
-CharInfo 只接受当前弹窗的精确窗口引用、精确源和一次性随机值；握手前不接收选择结果。`album.selected` 只允许小写 UUID，且 URL 必须逐字等于 `https://imgbed-staging.uika.cc.cd/api/public/album-gallery/<UUID>`，不能带凭据、查询或片段。旧 `/api/public/charinfo/` 和 `?view=gallery` 不作为新连接入口。
+CharInfo 只接受当前弹窗的精确窗口引用、精确源和一次性随机值；握手前不接收选择结果。`album.selected` 只允许小写 UUID，且 URL 必须逐字等于 `https://imgbed.uika.cc.cd/api/public/album-gallery/<UUID>`，不能带凭据、查询或片段。旧 `/api/public/charinfo/` 和 `?view=gallery` 不作为新连接入口。
 
 选择后匿名读取公开 URL（`credentials: 'omit'`，10 秒超时），通过既有 v1 解析器，并在共享缓存更新前确认 `packId`、`profileId` 均等于所选 UUID。姓名不同需在编辑器明确确认；不改角色姓名或正文。图片、视频、账户认证与所有私有写入由 ImgBed 管理。
 

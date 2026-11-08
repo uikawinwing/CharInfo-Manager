@@ -1,6 +1,6 @@
 # CharInfo Manager × ImgBed：编辑器内上传协议 v1
 
-本文是两仓库维护者的接口契约。CharInfo 实现位于 `src/char_info_profile_editor/services/imgbedUploadBridge.ts`，旧窗口协议仍见 [imgbed-bridge.md](imgbed-bridge.md)。配套 ImgBed 实现见其 `docs/charinfo-upload.md`。ImgBed 配套提交 `bed995cb` 已发布到 staging，真实 ST 已验证能在无 opener 情况下打开 Discord；完整账号授权及上传仍需人工完成验收。
+本文是两仓库维护者的接口契约。CharInfo 实现位于 `src/char_info_profile_editor/services/imgbedUploadBridge.ts`，旧窗口协议仍见 [imgbed-bridge.md](imgbed-bridge.md)。配套 ImgBed Worker 已部署到生产，真实 Discord 账号授权及上传仍需人工联调。
 
 ## 边界与现状
 
@@ -8,7 +8,7 @@ CharInfo 是角色姓名与档案文本的编辑来源。ImgBed 只管理账号�
 
 ImgBed 旧 `/account/` 使用 `charinfo-imgbed-bridge`，只能选已有图库。实际用户登录 Cookie 在 `functions/utils/auth/sessionManager.js:214` 使用 `HttpOnly; SameSite=Strict; Secure`；`SameSite=Lax` 是 OAuth 临时 Cookie。当前跨站写入保护必须保留。新接受方提供独立配对、授权及保存操作账本，不直接放开旧建库和上传 API。
 
-固定信任源是 `https://imgbed-staging.uika.cc.cd`，不能由导入的档案或 URL 改写。新页面：
+固定信任源是 `https://imgbed.uika.cc.cd`，不能由导入的档案或 URL 改写。新页面：
 
 - 隐藏 iframe：`/charinfo-upload/?parent_origin=<ST origin>&connection_id=<随机连接编号>`。
 - 编辑器检查并复用有效授权；无授权时显示「连接 ImgBed」按钮，只有明确点击后才准备专用按钮 iframe：`/charinfo-upload/launcher?parent_origin=<ST origin>&connection_id=<同一编号>`。用户直接点击唯一的“连接 ImgBed”，由 ImgBed 同源表单 POST 打开顶层授权页；未登录会自动前往 Discord，再返回核对与明确同意。不从 ST 传递私有票据或打开完整后台。
@@ -71,20 +71,20 @@ ST 对返回消息拒绝未列出的字段、数组信封、错误版本、错�
 
 ```ts
 type Item = { id: string; title: string; url: string; kind: 'image' | 'video' };
-type FileInput = { id: string; title: string; file: File };
+type FileInput = { id: string; title: string; file: File; nsfw?: boolean };
 type OrderItem = { itemId: string } | { uploadId: string };
 ```
 
-`Item.id` 是稳定图库成员标识；URL 必须 HTTPS 且不含用户名/密码。`files` 只包含新增文件。`order` 是最终完整顺序，每项引用已有 `itemId` 或新增 `uploadId`，不重复、不漏掉本次新文件。省略的旧成员仅解除图库关联，原文件保留。空 files 允许仅排序/移除成员；现有 albumId 必须原样复用，不能按姓名查找并合并其他角色。
+`Item.id` 是稳定图库成员标识；URL 必须 HTTPS 且不含用户名/密码。`files` 只包含新增文件。每个文件可选填 `nsfw`，缺省与 `false` 含义相同。编辑器只为已勾选的文件发送 `nsfw: true`，让该文件在 ImgBed 网页上默认模糊显示。`order` 是最终完整顺序，每项引用已有 `itemId` 或新增 `uploadId`，不重复、不漏掉本次新文件。省略的旧成员仅解除图库关联，原文件保留。空 files 允许仅排序/移除成员；现有 albumId 必须原样复用，不能按姓名查找并合并其他角色。
 
-`remoteGalleryUrl` 必须逐字等于 `https://imgbed-staging.uika.cc.cd/api/public/album-gallery/{albumId}`，不允许查询、片段或其他路径。服务端在保存成功后返回最终 items 顺序及与公开包 sources 一致的规范媒体 URL。ST 核对公开包成员数量及逐项顺序，并要求至少一个可在角色卡展示的媒体；不能以旧缓存或缺少新文件的半成品作为保存成功。ST 不把远程图片复制到本地备用图库。
+`remoteGalleryUrl` 必须逐字等于 `https://imgbed.uika.cc.cd/api/public/album-gallery/{albumId}`，不允许查询、片段或其他路径。服务端在保存成功后返回最终 items 顺序及与公开包 sources 一致的规范媒体 URL。ST 核对公开包成员数量及逐项顺序，并要求至少一个可在角色卡展示的媒体；不能以旧缓存或缺少新文件的半成品作为保存成功。ST 不把远程图片复制到本地备用图库。
 
-ImgBed 网站管理入口为 `https://imgbed-staging.uika.cc.cd/account/?view=albums`，可在其他浏览器登录对应 Discord 账号后管理相册。此地址不是写入角色档案的公开图库 URL，不得与 `/api/public/album-gallery/<UUID>` 混淆。
+ImgBed 网站管理入口为 `https://imgbed.uika.cc.cd/account/?view=albums`，可在其他浏览器登录对应 Discord 账号后管理相册。写入角色档案的是 `/api/public/album-gallery/<UUID>` 公开接口地址。
 
 ## 保存、重试与取消
 
 - 单连接同一时间只处理一个操作，授权及读写总时限 12 分钟；不因进度无限延时。尚未握手/授权时不发送文件。
-- ST 在首次保存时冻结 requestId、文件 ID、角色名、目标图库与顺序，网络错误或取消后重试同一快照。换账号不能重试原账号操作；不能给同一 requestId 发送不同内容。
+- ST 在首次保存时冻结 requestId、文件 ID、NSFW 标记、角色名、目标图库与顺序，网络错误或取消后重试同一快照。换账号不能重试原账号操作；不能给同一 requestId 发送不同内容。
 - ImgBed 应在任何建库或上传之前检查完整输入、文件签名及配额。只有确定整个操作尚无副作用的终止拒绝才能返回 `INPUT_REJECTED`；ST 将解除文件编辑锁，让玩家更换错误文件。部分上传失败或结果不确定绝不能使用此错误码。
 - **ImgBed 服务端必须持久记录 `(真实账号, requestId)` 及不可变请求摘要、已建立的 albumId、逐文件结果与最终成员版本。** 首次新建以该操作唯一标识确定，不能按角色姓名合并。重复请求返回已完成结果或继续未完成步骤。跨连接重新授权也必须能恢复同一账号的原操作。每个文件 ID 只扣一次配额。不能直接无条件重发当前建库/上传 API。
 - 成员最终更新须避免并发覆盖（图库版本/冲突检查由 ImgBed 内部负责）；部分失败返回 error，保留恢复记录，不返回半成品 saved。取消只能停后续步骤，已经上传文件留在账号中供恢复。
