@@ -77,6 +77,7 @@ test('设置开关和角色库强制移动布局沿用 720px 布局契约', () =
     runtimeRootSource,
     /function toggleMobileFilters\(\): void \{[\s\S]*?mobileFiltersExpanded\.value = !mobileFiltersExpanded\.value/u,
   );
+  assert.match(runtimeRootSource, /const mobileFiltersExpanded = ref\(true\)/u);
   assert.match(runtimeRootSource, /--ci-mobile-safe-top: max\(env\(safe-area-inset-top, 0px\), 28px\);/u);
   assert.match(runtimeRootSource, /--ci-mobile-safe-bottom: max\(env\(safe-area-inset-bottom, 0px\), 18px\);/u);
   assert.match(

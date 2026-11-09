@@ -156,8 +156,10 @@
             <input ref="searchInputRef" v-model.trim="searchText" type="search" placeholder="搜索姓名、种族或身份" />
           </label>
           <div
+            id="char-info-library-filters"
             class="char-info-library-filters"
             :class="{ 'mobile-expanded': mobileFiltersExpanded }"
+            role="group"
             aria-label="角色筛选"
           >
             <button
@@ -165,6 +167,7 @@
               :key="option.value"
               type="button"
               :class="{ active: activeFilter === option.value }"
+              :aria-pressed="activeFilter === option.value"
               @click="activeFilter = option.value"
             >
               {{ option.label }}
@@ -227,7 +230,8 @@
           </button>
           <button
             type="button"
-            aria-label="展开角色筛选"
+            :aria-label="mobileFiltersExpanded ? '收起角色筛选' : '展开角色筛选'"
+            aria-controls="char-info-library-filters"
             :aria-expanded="mobileFiltersExpanded"
             @click="toggleMobileFilters"
           >
@@ -774,7 +778,7 @@ const props = defineProps<{
 
 const searchText = ref('');
 const activeFilter = ref<LibraryFilter>('all');
-const mobileFiltersExpanded = ref(false);
+const mobileFiltersExpanded = ref(true);
 const activeWorldbookEditorTarget = ref('');
 const selectedCharacterName = ref('');
 const failedAvatarUrls = ref(new Set<string>());
@@ -854,7 +858,7 @@ function openCharacter(name: string): void {
 }
 
 function closeCharacterLibrary(): void {
-  mobileFiltersExpanded.value = false;
+  mobileFiltersExpanded.value = true;
   props.onCloseLibrary();
 }
 
@@ -1253,7 +1257,7 @@ watch(
   library => {
     searchText.value = '';
     activeFilter.value = 'all';
-    mobileFiltersExpanded.value = false;
+    mobileFiltersExpanded.value = true;
     selectedCharacterName.value = library?.characters[0]?.name ?? '';
   },
 );

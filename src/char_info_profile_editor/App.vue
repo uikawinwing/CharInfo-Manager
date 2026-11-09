@@ -1501,13 +1501,15 @@ function updatePrimaryFlashImageUrl(value: string) {
   syncFlashRoleUrls(previousUrl);
 }
 
-function refreshCurrentChatCharacters() {
-  currentChatCharacters.value = collectEncounteredCharacters(getVariables({ type: 'chat' }));
+async function refreshCurrentChatCharacters() {
+  if (typeof Mvu === 'undefined') return;
+  await waitGlobalInitialized('Mvu');
+  currentChatCharacters.value = collectEncounteredCharacters(Mvu.getMvuData({ type: 'message', message_id: 'latest' }));
 }
 
-function toggleProCurrentChatPicker() {
-  refreshCurrentChatCharacters();
+async function toggleProCurrentChatPicker() {
   proCurrentChatPickerOpen.value = !proCurrentChatPickerOpen.value;
+  if (proCurrentChatPickerOpen.value) await refreshCurrentChatCharacters();
 }
 
 function loadProfileFromCurrentChat(characterName: string): boolean {
@@ -1529,7 +1531,7 @@ async function chooseCharacterSource(source: CharacterSource) {
     selectedWorldbookName.value = '';
   }
   if (source === 'worldbook' && worldbooks.value.length === 0) await loadWorldbooks();
-  if (source === 'current-chat') refreshCurrentChatCharacters();
+  if (source === 'current-chat') await refreshCurrentChatCharacters();
   if (source === 'manual') replaceProfile(createEmptyProfile(profile.characterName.trim()));
 }
 
