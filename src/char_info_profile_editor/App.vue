@@ -496,7 +496,8 @@
             </section>
 
             <section class="safety-note">
-              <strong>🔒 只更新角色档案</strong>
+              <strong>档案保存范围</strong>
+              <p>保存时会写入立绘、配色和展示文案等档案资料。选择已有世界书条目时，原有角色设定正文会保留。</p>
             </section>
 
             <div class="wizard-step-actions">
@@ -539,16 +540,12 @@
 
                 <div class="metadata-field-grid">
                   <label class="field">
-                    <span class="field-label">
-                      <span class="field-label-main">角色姓名 <b>*</b></span>
-                      <small :class="{ warning: profile.characterName.length > 12 }">
-                        {{ profile.characterName.length }} 字
-                      </small>
-                    </span>
+                    <span class="field-label field-label-main">角色姓名 <b aria-hidden="true">*</b></span>
                     <input
                       v-model="profile.characterName"
                       type="text"
                       maxlength="80"
+                      required
                       autocomplete="off"
                       aria-describedby="character-name-guidance"
                       placeholder="例如：傲雪"
@@ -562,11 +559,11 @@
                     </small>
                   </label>
                   <label class="field">
-                    <span class="field-label">性别 <small>选填</small></span>
+                    <span class="field-label">性别</span>
                     <input v-model="profile.metadata.sex" type="text" autocomplete="off" placeholder="例如：女" />
                   </label>
                   <label class="field">
-                    <span class="field-label">种族 <small>选填</small></span>
+                    <span class="field-label">种族</span>
                     <input v-model="profile.metadata.race" type="text" autocomplete="off" placeholder="例如：东方龙裔" />
                   </label>
                 </div>
@@ -579,12 +576,7 @@
                   </div>
                 </div>
                 <label class="field">
-                  <span class="field-label">
-                    登场台词
-                    <small :class="{ warning: profile.entranceQuote.length > 48 }">
-                      {{ profile.entranceQuote.length }} 字
-                    </small>
-                  </span>
+                  <span class="field-label">登场台词</span>
                   <textarea
                     v-model="profile.entranceQuote"
                     rows="2"
@@ -599,51 +591,47 @@
                     建议 12–32 字；超过 48 字时，首页最多显示三行，完整内容仍会保存。
                   </small>
                 </label>
-              </section>
-
-              <section class="story-editor-panel">
-                <div class="story-editor-heading">
-                  <div>
-                    <h3>角色故事</h3>
+                <div class="story-editor-panel">
+                  <div class="story-editor-heading">
+                    <h4>角色故事</h4>
+                    <button type="button" class="secondary-button story-add-button" @click="addStorySection">＋ 添加故事段落</button>
                   </div>
-                  <button type="button" class="secondary-button story-add-button" @click="addStorySection">＋ 添加故事段落</button>
-                </div>
 
-                <p v-if="profile.metadata.storySections.length === 0" class="story-editor-empty">
-                  尚未添加故事段落。
-                </p>
+                  <p v-if="profile.metadata.storySections.length === 0" class="story-editor-empty">
+                    尚未添加故事段落。
+                  </p>
 
-                <div v-else class="story-section-list">
-                  <article
-                    v-for="(section, index) in profile.metadata.storySections"
-                    :key="section.id"
-                    class="story-section-card"
-                  >
-                    <header class="story-section-card-header">
-                      <strong>故事段落 {{ index + 1 }}</strong>
-                      <div class="story-section-actions">
-                        <button type="button" title="上移" :disabled="index === 0" @click="moveStorySection(index, -1)">↑</button>
-                        <button
-                          type="button"
-                          title="下移"
-                          :disabled="index === profile.metadata.storySections.length - 1"
-                          @click="moveStorySection(index, 1)"
-                        >
-                          ↓
-                        </button>
-                        <button type="button" class="danger" title="删除" @click="removeStorySection(index)">×</button>
-                      </div>
-                    </header>
-                    <label class="field">
-                      <span class="field-label">段落标题</span>
-                      <input v-model="section.title" type="text" autocomplete="off" placeholder="例如：初遇 · 雪夜" />
-                    </label>
-                    <label class="field">
-                      <span class="field-label">故事内容</span>
-                      <textarea v-model="section.content" rows="6" placeholder="填写故事内容。"></textarea>
-                    </label>
-                    <small class="field-guidance">标题和内容需同时填写。</small>
-                  </article>
+                  <div v-else class="story-section-list">
+                    <article
+                      v-for="(section, index) in profile.metadata.storySections"
+                      :key="section.id"
+                      class="story-section-card"
+                    >
+                      <header class="story-section-card-header">
+                        <strong>故事段落 {{ index + 1 }}</strong>
+                        <div class="story-section-actions">
+                          <button type="button" title="上移" :disabled="index === 0" @click="moveStorySection(index, -1)">↑</button>
+                          <button
+                            type="button"
+                            title="下移"
+                            :disabled="index === profile.metadata.storySections.length - 1"
+                            @click="moveStorySection(index, 1)"
+                          >
+                            ↓
+                          </button>
+                          <button type="button" class="danger" title="删除" @click="removeStorySection(index)">×</button>
+                        </div>
+                      </header>
+                      <label class="field">
+                        <span class="field-label field-label-main">段落标题 <b aria-hidden="true">*</b></span>
+                        <input v-model="section.title" type="text" autocomplete="off" required placeholder="例如：初遇 · 雪夜" />
+                      </label>
+                      <label class="field">
+                        <span class="field-label field-label-main">故事内容 <b aria-hidden="true">*</b></span>
+                        <textarea v-model="section.content" rows="6" required placeholder="填写故事内容。"></textarea>
+                      </label>
+                    </article>
+                  </div>
                 </div>
               </section>
 
@@ -662,15 +650,15 @@
 
                 <div class="metadata-field-grid author-metadata-grid">
                   <label class="field">
-                    <span class="field-label">作者 <small>选填</small></span>
+                    <span class="field-label">作者</span>
                     <input v-model="profile.metadata.author" type="text" autocomplete="off" placeholder="例如：作者名 / 社团名" />
                   </label>
                   <label class="field">
-                    <span class="field-label">版本 / 更新标记 <small>选填</small></span>
+                    <span class="field-label">版本 / 更新标记</span>
                     <input v-model="profile.metadata.version" type="text" autocomplete="off" placeholder="例如：v0.0.3 / 0816" />
                   </label>
                   <label class="field field-full">
-                    <span class="field-label">作者说明 <small>选填</small></span>
+                    <span class="field-label">作者说明</span>
                     <textarea
                       v-model="profile.metadata.authorNote"
                       rows="3"
@@ -3494,29 +3482,22 @@ h2 {
   font-weight: 700;
 }
 
-.field-label b {
-  color: var(--danger);
-}
-
 .field-label-main {
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
+  justify-content: flex-start;
   gap: 4px;
 }
 
 .field-label-main b {
   flex: 0 0 auto;
+  color: #ff5c65;
+  font-size: 14px;
   line-height: 1;
 }
 
-.field-label small {
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 500;
+.manager-root.char-info-theme-light .field-label-main b {
+  color: #c61e3c;
 }
 
-.field-label small.warning,
 .field-guidance.warning {
   color: var(--warning);
 }
@@ -3532,13 +3513,13 @@ h2 {
   gap: 8px;
 }
 
-.info-bubble {
+.manager-root :deep(.info-bubble) {
   position: relative;
   display: inline-flex;
   flex: 0 0 auto;
 }
 
-.info-bubble-button {
+.manager-root :deep(.info-bubble-button) {
   display: grid;
   width: 20px;
   height: 20px;
@@ -3553,14 +3534,14 @@ h2 {
   cursor: help;
 }
 
-.info-bubble-button:hover,
-.info-bubble-button:focus-visible {
+.manager-root :deep(.info-bubble-button:hover),
+.manager-root :deep(.info-bubble-button:focus-visible) {
   color: var(--primary);
   border-color: color-mix(in srgb, var(--primary) 48%, var(--border));
   outline: none;
 }
 
-.info-bubble-panel {
+.manager-root :deep(.info-bubble-panel) {
   position: absolute;
   z-index: 40;
   top: calc(100% + 7px);
@@ -3585,8 +3566,8 @@ h2 {
   pointer-events: none;
 }
 
-.info-bubble:hover .info-bubble-panel,
-.info-bubble:focus-within .info-bubble-panel {
+.manager-root :deep(.info-bubble:hover .info-bubble-panel),
+.manager-root :deep(.info-bubble:focus-within .info-bubble-panel) {
   visibility: visible;
   opacity: 1;
   transform: translateY(0);
@@ -3598,13 +3579,22 @@ h2 {
   line-height: 1.45;
 }
 
-.metadata-editor-panel,
-.story-editor-panel {
+.metadata-editor-panel {
   margin-top: 22px;
   padding: 18px;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: color-mix(in srgb, var(--surface-raised) 74%, transparent);
+}
+
+.presentation-editor-panel > .field {
+  margin-top: 12px;
+}
+
+.story-editor-panel {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
 }
 
 .metadata-editor-heading,
@@ -3617,7 +3607,7 @@ h2 {
 }
 
 .metadata-editor-heading h3,
-.story-editor-heading h3 {
+.story-editor-heading h4 {
   margin: 0;
   font-size: 15px;
 }
@@ -4943,7 +4933,7 @@ pre {
     overflow: hidden;
   }
 
-  .info-bubble-panel {
+  #{$root} :deep(.info-bubble-panel) {
     position: fixed;
     z-index: 60;
     top: 50%;
@@ -4961,8 +4951,8 @@ pre {
     -webkit-overflow-scrolling: touch;
   }
 
-  .info-bubble:hover .info-bubble-panel,
-  .info-bubble:focus-within .info-bubble-panel {
+  #{$root} :deep(.info-bubble:hover .info-bubble-panel),
+  #{$root} :deep(.info-bubble:focus-within .info-bubble-panel) {
     transform: translateY(-50%);
   }
 
@@ -5137,7 +5127,6 @@ pre {
   }
 
   .metadata-editor-panel,
-  .story-editor-panel,
   .avatar-source-panel {
     padding: 14px;
   }

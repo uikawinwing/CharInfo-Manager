@@ -16,16 +16,21 @@ function sectionBetween(start, end) {
   return appSource.slice(startIndex, endIndex);
 }
 
-test('角色档案编辑器 Step 2 按角色资料、展示文案、角色故事、作者署名组织字段', () => {
+test('角色档案编辑器 Step 2 将登场台词与角色故事归入展示文案', () => {
   const stepTwo = sectionBetween('id="manager-step-2"', 'id="manager-step-3"');
 
   const basicInfoIndex = stepTwo.indexOf('<h3>基本资料</h3>');
   const presentationIndex = stepTwo.indexOf('<h3>角色展示文案</h3>');
-  const storyIndex = stepTwo.indexOf('<h3>角色故事</h3>');
+  const storyIndex = stepTwo.indexOf('<h4>角色故事</h4>');
   const authorInfoIndex = stepTwo.indexOf('<h3>作者署名</h3>');
   assert.ok(basicInfoIndex >= 0 && basicInfoIndex < presentationIndex);
   assert.ok(presentationIndex < storyIndex);
   assert.ok(storyIndex < authorInfoIndex);
+  const presentation = sectionBetween(
+    '<section class="metadata-editor-panel presentation-editor-panel">',
+    '</section>',
+  );
+  assert.match(presentation, /v-model="profile\.entranceQuote"[\s\S]*?<h4>角色故事<\/h4>/u);
 
   assert.match(stepTwo, /v-model="profile\.characterName"/u);
   assert.match(stepTwo, /v-model="profile\.metadata\.sex"/u);

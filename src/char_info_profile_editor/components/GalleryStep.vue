@@ -201,6 +201,19 @@
     </section>
     <div v-if="sourceMode === 'links' || props.flashMode" class="image-host-links">
       <span>粘贴能直接打开图片的 URL</span>
+      <span class="info-bubble">
+        <button
+          type="button"
+          class="info-bubble-button"
+          aria-label="什么是图片直链？"
+          aria-describedby="gallery-direct-link-help"
+        >ⓘ</button>
+        <span id="gallery-direct-link-help" class="info-bubble-panel" role="tooltip">
+          打开图片直链时，浏览器会直接显示图片。若打开后看到相册或分享页，请复制图床提供的「直接链接」。
+          <code>https://files.catbox.moe/abc123.webp</code>
+          <code>https://i.ibb.co/example/portrait.png</code>
+        </span>
+      </span>
       <a href="https://catbox.moe/" target="_blank" rel="noopener noreferrer">Catbox</a>
       <a href="https://imgbb.com/" target="_blank" rel="noopener noreferrer">ImgBB</a>
     </div>
@@ -1502,20 +1515,14 @@ select:focus {
   background: rgba(255, 255, 255, 0.035);
 }
 
-.image-host-links > div {
-  display: grid;
-  flex: 1 1 260px;
-  gap: 2px;
+.image-host-links .info-bubble-panel {
+  font-size: 12px;
 }
 
-.image-host-links strong {
-  color: var(--text);
-  font-size: 0.82rem;
-}
-
-.image-host-links small {
-  color: var(--text-muted);
-  font-size: 0.7rem;
+.image-host-links code {
+  display: block;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
 }
 
 .image-host-links a,

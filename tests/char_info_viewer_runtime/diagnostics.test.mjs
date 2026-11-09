@@ -110,14 +110,14 @@ test('Q6/Q7 在角色档案编辑器提供就地信息气泡', () => {
 });
 
 test('移动端信息气泡固定在视口内并允许长内容滚动', () => {
-  assert.match(editor, /\.info-bubble-panel \{[\s\S]*position: fixed;[\s\S]*right: calc\(16px \+ var\(--ci-mobile-safe-right\)\);[\s\S]*left: calc\(16px \+ var\(--ci-mobile-safe-left\)\);/u);
+  assert.match(editor, /:deep\(\.info-bubble-panel\) \{\s*position: fixed;[^}]*right: calc\(16px \+ var\(--ci-mobile-safe-right\)\);[^}]*left: calc\(16px \+ var\(--ci-mobile-safe-left\)\);/u);
   assert.match(editor, /max-height: min\(60dvh, 420px\);/u);
   assert.match(editor, /overflow-y: auto;/u);
   assert.match(editor, /touch-action: pan-y;/u);
 });
 
 test('移动端上一步保持单行且角色姓名必填标记紧贴标签', () => {
-  assert.match(editor, /field-label-main">角色姓名 <b>\*<\/b><\/span>/u);
+  assert.match(editor, /field-label-main">角色姓名 <b aria-hidden="true">\*<\/b><\/span>/u);
   assert.match(editor, /\.wizard-step-actions \{[\s\S]*grid-template-columns: minmax\(104px, auto\) minmax\(0, 1fr\);/u);
   assert.match(editor, /\.wizard-step-actions \.wizard-back-button \{[\s\S]*white-space: nowrap;[\s\S]*word-break: keep-all;/u);
   assert.match(editor, /class="secondary-button wizard-back-button"/u);
