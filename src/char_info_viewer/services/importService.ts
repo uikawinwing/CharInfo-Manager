@@ -1,5 +1,14 @@
 import type { CharacterData } from '../types';
-import { getSmartArray, normalizeDisplayText, parseAttributeValue } from './common';
+import {
+  asDivinityAbilityArray,
+  asNamedObjectArray,
+  formatSkillCost,
+  getSmartArray,
+  normalizeDisplayText,
+  parseAttributeValue,
+  readItemQuantity,
+  textFromUnknown,
+} from './common';
 import { normalizeCharacterDataKeys } from './yamlParser';
 
 export type MessageVariableScope = { type: 'message'; message_id: number };
@@ -104,21 +113,22 @@ function parseEffectMap(effectVal: unknown): Record<string, string> {
   return { 描述: text };
 }
 
-function arrayToMap(
-  arr: unknown,
-  type: 'skill' | 'equip' | 'divinity' | 'backpack',
+function itemsToMap(
+  input: unknown,
+  type: 'skill' | 'equip' | 'ability' | 'divinity' | 'backpack',
 ): Record<string, Record<string, any>> {
-  const map: Record<string, Record<string, any>> = {};
-  if (!Array.isArray(arr)) return map;
+  const items = type === 'ability' ? asDivinityAbilityArray(input) : asNamedObjectArray(input, type === 'backpack');
+  const entries = new Map<string, Record<string, any>>();
 
-  arr.forEach(item => {
-    if (!item || typeof item !== 'object') return;
-    const anyItem = item as Record<string, any>;
+  for (const item of items) {
+    const itemName = ensureString(item.名称 || item.名稱).trim();
+    if (!itemName) continue;
+    if (type === 'ability') {
+      entries.set(itemName, parseEffectMap(item.效果));
+      continue;
+    }
 
-    const itemName = ensureString(anyItem.名称 || anyItem.名稱).trim();
-    if (!itemName) return;
-
-    const { 名称, 名稱, ...rest } = anyItem;
+    const { 名称, 名稱, ...rest } = item;
     const processed: Record<string, any> = { ...rest };
 
     const tags = processed.标签 ?? processed.標籤;
@@ -134,25 +144,25 @@ function arrayToMap(
       processed.品质 = processed.品质 || processed.品質 || '未知';
       processed.类型 = processed.分类 || processed.分類 || processed.类型 || processed.類型 || '未知';
       processed.描述 = processed.描述 || '';
-      processed.位置 = processed.位置 || '';
+      processed.位置 = textFromUnknown(processed.位置 ?? processed.部位);
     } else if (type === 'skill') {
       processed.品质 = processed.品质 || processed.品質 || '未知';
       processed.类型 = processed.类型 || processed.類型 || '未知';
-      processed.消耗 = processed.消耗 ? ensureString(processed.消耗) : '';
+      processed.消耗 = formatSkillCost(processed.消耗);
       processed.描述 = processed.描述 || '';
     } else if (type === 'backpack') {
-      const quantityRaw = processed.数量 ?? processed.數量 ?? processed.持有数量 ?? processed.持有數量 ?? 1;
-      const quantityValue = Number(quantityRaw);
+      const quantityRaw = readItemQuantity(processed);
+      const quantityValue = finiteResourceNumber(quantityRaw);
       processed.品质 = processed.品质 || processed.品質 || '未知';
       processed.类型 = processed.分类 || processed.分類 || processed.类型 || processed.類型 || '未知';
-      processed.数量 = Number.isFinite(quantityValue) && quantityValue > 0 ? quantityValue : 1;
+      processed.数量 = quantityRaw === null ? null : quantityValue !== null && quantityValue >= 0 ? quantityValue : 1;
       processed.描述 = processed.描述 || '';
     }
 
-    map[itemName] = processed;
-  });
+    entries.set(itemName, processed);
+  }
 
-  return map;
+  return Object.fromEntries(entries);
 }
 
 function mergeNamedMaps(...maps: Array<Record<string, Record<string, any>>>): Record<string, Record<string, any>> {
@@ -168,7 +178,8 @@ function mergeNamedMaps(...maps: Array<Record<string, Record<string, any>>>): Re
 
       const existingQty = Number(existing.数量);
       const nextQty = Number(value.数量);
-      const mergedQty = (Number.isFinite(existingQty) ? existingQty : 0) + (Number.isFinite(nextQty) ? nextQty : 0);
+      const totalQuantity = (Number.isFinite(existingQty) ? existingQty : 0) + (Number.isFinite(nextQty) ? nextQty : 0);
+      const quantity = totalQuantity > 0 ? totalQuantity : (value.数量 ?? existing.数量 ?? 1);
 
       merged[name] = {
         ...existing,
@@ -178,7 +189,7 @@ function mergeNamedMaps(...maps: Array<Record<string, Record<string, any>>>): Re
           ...(existing.效果 && typeof existing.效果 === 'object' ? existing.效果 : {}),
           ...(value.效果 && typeof value.效果 === 'object' ? value.效果 : {}),
         },
-        数量: mergedQty > 0 ? mergedQty : (value.数量 ?? existing.数量 ?? 1),
+        数量: existing.数量 === null || value.数量 === null ? null : quantity,
       };
     });
   });
@@ -434,8 +445,12 @@ export function mergeCharacterIntoMvuData(data: CharacterData, currentVars: Mvu.
   if (hasOwn(normalizedData, '职业')) mvuData.职业 = ensureArray(normalizedData.职业);
   if (hasOwn(normalizedData, '性格')) mvuData.性格 = ensureString(normalizedData.性格).trim();
   if (hasOwn(normalizedData, '喜爱')) mvuData.喜爱 = ensureString(normalizedData.喜爱).trim();
-  if (hasOwn(normalizedData, '外貌特质')) mvuData.外貌 = ensureString(normalizedData.外貌特质).trim();
-  if (hasOwn(normalizedData, '衣物装饰')) mvuData.着装 = ensureString(normalizedData.衣物装饰).trim();
+  if (hasOwn(normalizedData, '外貌特质') || hasOwn(normalizedData, '外貌')) {
+    mvuData.外貌 = textFromUnknown(normalizedData.外貌特质 ?? normalizedData.外貌);
+  }
+  if (hasOwn(normalizedData, '衣物装饰') || hasOwn(normalizedData, '着装')) {
+    mvuData.着装 = textFromUnknown(normalizedData.衣物装饰 ?? normalizedData.着装);
+  }
   if (hasOwn(normalizedData, '背景故事')) mvuData.背景故事 = normalizedData.背景故事 || '';
 
   applyCharInfoResources(normalizedData, mvuData);
@@ -451,15 +466,22 @@ export function mergeCharacterIntoMvuData(data: CharacterData, currentVars: Mvu.
   if (hasOwn(normalizedData, '状态效果')) mvuData.状态效果 = statusEffectsToMap(normalizedData.状态效果);
 
   if (['背包', '道具', '物品', '特殊物品'].some(key => hasOwn(normalizedData, key))) {
-    mvuData.背包 = mergeNamedMaps(
-      arrayToMap(normalizedData.背包, 'backpack'),
-      arrayToMap(normalizedData.道具, 'backpack'),
-      arrayToMap(normalizedData.物品, 'backpack'),
-      arrayToMap(normalizedData.特殊物品, 'backpack'),
+    const backpack = mergeNamedMaps(
+      itemsToMap(normalizedData.背包, 'backpack'),
+      itemsToMap(normalizedData.道具, 'backpack'),
+      itemsToMap(normalizedData.物品, 'backpack'),
+      itemsToMap(normalizedData.特殊物品, 'backpack'),
     );
+    for (const [name, item] of Object.entries(backpack)) {
+      if (item.数量 !== null) continue;
+      const previousQuantity = mvuData.背包[name]?.数量;
+      if (typeof previousQuantity === 'number') item.数量 = previousQuantity;
+      else delete backpack[name];
+    }
+    mvuData.背包 = backpack;
   }
-  if (hasOwn(normalizedData, '技能')) mvuData.技能 = arrayToMap(normalizedData.技能, 'skill');
-  if (hasOwn(normalizedData, '装备')) mvuData.装备 = arrayToMap(normalizedData.装备, 'equip');
+  if (hasOwn(normalizedData, '技能')) mvuData.技能 = itemsToMap(normalizedData.技能, 'skill');
+  if (hasOwn(normalizedData, '装备')) mvuData.装备 = itemsToMap(normalizedData.装备, 'equip');
 
   const divinityInput = isRecord(normalizedData.登神长阶) ? normalizedData.登神长阶 : {};
   const hasDivinityDetails = ['神位', '神国', '要素', '权能', '法则'].some(
@@ -484,15 +506,15 @@ export function mergeCharacterIntoMvuData(data: CharacterData, currentVars: Mvu.
       divinity.神国 = kingdom;
     }
     if (hasOwn(divinityInput, '要素') || hasOwn(normalizedData, '要素')) {
-      divinity.要素 = arrayToMap(divinityInput.要素 || normalizedData.要素, 'divinity');
+      divinity.要素 = itemsToMap(divinityInput.要素 || normalizedData.要素, 'ability');
     }
     if (hasOwn(divinityInput, '权能') || hasOwn(normalizedData, '权能')) {
-      divinity.权能 = arrayToMap(divinityInput.权能 || normalizedData.权能, 'divinity');
+      divinity.权能 = itemsToMap(divinityInput.权能 || normalizedData.权能, 'ability');
     }
     if (hasOwn(divinityInput, '法则') || hasOwn(normalizedData, '法则')) {
       divinity.法则 = mergeNamedMaps(
-        arrayToMap(normalizedData.法则, 'divinity'),
-        arrayToMap(divinityInput.法则, 'divinity'),
+        itemsToMap(normalizedData.法则, 'divinity'),
+        itemsToMap(divinityInput.法则, 'divinity'),
       );
     }
     mvuData.登神长阶 = divinity;

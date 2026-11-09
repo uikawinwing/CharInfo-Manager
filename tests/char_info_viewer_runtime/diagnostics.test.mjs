@@ -1,6 +1,25 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import test from 'node:test';
+
+const require = createRequire(import.meta.url);
+const { runCharInfoDiagnostics } = require('../../src/char_info_viewer_runtime/diagnostics.ts');
+const card = '<char_info>\n姓名: 洛汐\n生命层级: 第一层级\n</char_info>';
+
+function diagnose(text, options = {}) {
+  return runCharInfoDiagnostics({
+    messageId: 7,
+    swipeId: 0,
+    text,
+    maxCards: 4,
+    active: true,
+    mounted: true,
+    chatVariables: {},
+    mountDiagnostics: [],
+    ...options,
+  });
+}
 
 const diagnostics = await readFile(
   new URL('../../src/char_info_viewer_runtime/diagnostics.ts', import.meta.url),
@@ -23,16 +42,45 @@ test('故障诊断复用 Viewer 当前消息投影、YAML 与视觉解析链', (
   assert.match(diagnostics, /resolveCharacterVisualConfigWithExtensions/u);
   assert.match(diagnostics, /isSpecialNpcVisualData/u);
   assert.match(diagnostics, /resolveRemoteGalleryPresentation/u);
+  assert.match(runtime, /mountDiagnostics/u);
 });
 
-test('Q1 诊断覆盖 think、gametxt、闭合标签、楼层上限与 mount failure', () => {
-  assert.match(diagnostics, /THINK_OPEN_PATTERN/u);
-  assert.match(diagnostics, /GAMETXT_OPEN_PATTERN/u);
-  assert.match(diagnostics, /CharInfo 没有完整闭合/u);
-  assert.match(diagnostics, /单楼层 CharInfo 数量超过设置上限/u);
-  assert.match(diagnostics, /CharInfo 不在游戏正文范围内/u);
-  assert.match(diagnostics, /CharInfo 已识别，但 Viewer 没有挂载/u);
-  assert.match(runtime, /mountDiagnostics/u);
+test('Q1 区分正文内未闭合的角色卡与正文外的完整角色卡', async () => {
+  const incomplete = await diagnose('<gametxt>\n<char_info>\n姓名: 洛汐\n</gametxt>');
+  const unbalanced = incomplete.checks.find(check => check.code === 'TAG_UNBALANCED');
+  assert.equal(unbalanced?.status, 'fail');
+  assert.equal(unbalanced.location, '原始消息第 2 行');
+
+  for (const text of [
+    `${card}\n<gametxt>码头上空无一人。</gametxt>`,
+    `<gametxt>码头上空无一人。</gametxt>\n${card}`,
+  ]) {
+    const report = await diagnose(text);
+    assert.equal(report.checks[0].code, 'CHAR_INFO_OUTSIDE_GAMETXT');
+    assert.equal(report.checks[0].status, 'fail');
+    assert.equal(report.characters.length, 0);
+  }
+
+  const hidden = await diagnose(`<think>${card}</think><gametxt>正文</gametxt><!-- ${card} -->`);
+  assert.equal(hidden.checks.some(check => check.code === 'CHAR_INFO_OUTSIDE_GAMETXT'), false);
+  assert.equal(hidden.characters.length, 0);
+});
+
+test('Q1 诊断报告未闭合的推理区、楼层卡片上限与挂载失败', async () => {
+  const thinking = await diagnose(`<think><gametxt>${card}</gametxt>`);
+  assert.ok(thinking.checks.some(check => check.status === 'fail' && check.title.includes('<think>')));
+  assert.equal(thinking.characters.length, 0);
+
+  const overflow = await diagnose(`<gametxt>${card}${card}</gametxt>`, { maxCards: 1 });
+  assert.ok(overflow.checks.some(check => check.status === 'fail' && check.title.includes('数量超过设置上限')));
+  assert.equal(overflow.characters.length, 0);
+
+  const mount = await diagnose(`<gametxt>${card}</gametxt>`, {
+    mounted: false,
+    mountDiagnostics: [{ messageId: 7, time: 1, code: 'HOST_DISCONNECTED', details: {} }],
+  });
+  assert.equal(mount.characters.length, 1);
+  assert.ok(mount.checks.some(check => check.status === 'fail' && check.detail.includes('被外部 DOM 更新移除')));
 });
 
 test('Q2-Q4 诊断使用精确角色档案路径、旧变量提示与实际媒体探测', () => {

@@ -355,6 +355,7 @@
                       </span>
                     </div>
                     <p v-if="itemType(item)"><span class="card-label">类型:</span>{{ itemType(item) }}</p>
+                    <p v-if="itemPosition(item)"><span class="card-label">位置:</span>{{ itemPosition(item) }}</p>
                     <template v-if="itemEffectEntries(item).length > 0">
                       <p><span class="card-label">效果:</span></p>
                       <ul class="effect-list">
@@ -395,6 +396,7 @@
                         </span>
                       </div>
                       <p v-if="itemType(item)"><span class="card-label">类型:</span>{{ itemType(item) }}</p>
+                      <p v-if="itemQuantity(item)"><span class="card-label">数量:</span>{{ itemQuantity(item) }}</p>
                       <template v-if="itemEffectEntriesOrDescription(item).length > 0">
                         <p><span class="card-label">效果:</span></p>
                         <ul class="effect-list">
@@ -560,7 +562,9 @@ import {
   itemEffectEntriesOrDescription,
   itemEffectOrDescription,
   itemName,
+  itemPosition,
   itemQuality,
+  itemQuantity,
   itemTags,
   itemType,
   lawActiveEntries,
