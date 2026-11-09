@@ -1,4 +1,4 @@
-import type { CurrentCharacterSnapshot } from './currentCharacterLibrary';
+import type { CurrentCharacterSnapshot, InnerThoughtUpdate } from './currentCharacterLibrary';
 import type { CharInfoFloatingButtonPosition, CharInfoUiSettings } from './runtimeSettings';
 
 export type RuntimeCardView = {
@@ -24,6 +24,7 @@ export type RuntimeLibraryView = {
   viewerLoading: boolean;
   worldbookOpen: boolean;
   unreadCharacterNames: string[];
+  innerThoughtInbox: InnerThoughtUpdate[];
   floatingButtonPosition: CharInfoFloatingButtonPosition | null;
   loading: boolean;
   error: string;

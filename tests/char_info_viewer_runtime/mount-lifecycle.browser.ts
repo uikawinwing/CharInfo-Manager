@@ -111,7 +111,11 @@ function bootstrap(input: { sources: Record<string, string>; settings: any; inli
     '../char_info_profile_editor/controller': { closeProfileEditor() {}, openProfileEditor() {} },
     '../char_info_viewer/services/imagePreload': { preloadPortraitImages: async () => {} },
     '../char_info_viewer/services/themeService': { resolveCharacterVisualPreloadUrls: () => [] },
-    './currentCharacterLibrary': { collectChangedAffinityNames: () => [], collectCurrentCharacterSnapshots: () => [] },
+    './currentCharacterLibrary': {
+      collectChangedAffinityNames: () => [],
+      collectCurrentCharacterSnapshots: () => [],
+      updateInnerThoughtInbox: (inbox: unknown) => inbox,
+    },
     './RuntimeRoot.vue': { default: root },
     './runtimeSettings': {
       readRuntimeSettings: () => structuredClone(input.settings),

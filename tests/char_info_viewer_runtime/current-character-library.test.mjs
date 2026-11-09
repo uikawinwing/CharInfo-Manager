@@ -6,6 +6,7 @@ import {
   buildCurrentCharacterViewerData,
   collectChangedAffinityNames,
   collectCurrentCharacterSnapshots,
+  updateInnerThoughtInbox,
 } from '../../src/char_info_viewer_runtime/currentCharacterLibrary.ts';
 
 test('当前角色资料库只读取最新消息 MVU 的关系列表', () => {
@@ -94,6 +95,24 @@ test('只把既有角色实际发生的好感度变化标记为未读', () => {
 
   assert.deepEqual(collectChangedAffinityNames(next, previous), ['Iris']);
   assert.deepEqual(collectChangedAffinityNames(next, null), []);
+});
+
+test('心里话信箱只收录新的非空心里话，每个角色保留最近一次更新', () => {
+  const initial = new Map([['洛汐', '灯还亮着。'], ['白霜', '旧念头。']]);
+  const changed = new Map([['洛汐', '潮水涨了。'], ['白霜', ''], ['云舟', '终于到了。']]);
+  const empty = [];
+  assert.strictEqual(updateInnerThoughtInbox(empty, null, initial), empty);
+  const first = updateInnerThoughtInbox(empty, initial, changed);
+  assert.deepEqual(first, [
+    { name: '洛汐', text: '潮水涨了。', unread: true },
+    { name: '云舟', text: '终于到了。', unread: true },
+  ]);
+  first.forEach(entry => { entry.unread = false; });
+  assert.strictEqual(updateInnerThoughtInbox(first, changed, changed), first);
+  assert.deepEqual(updateInnerThoughtInbox(first, changed, new Map([['云舟', '找到码头了。']])), [
+    { name: '云舟', text: '找到码头了。', unread: true },
+    { name: '洛汐', text: '潮水涨了。', unread: false },
+  ]);
 });
 
 test('查看器资料保留当前快照，并把 MVU 外貌/着装字段转换为 Viewer 字段', () => {

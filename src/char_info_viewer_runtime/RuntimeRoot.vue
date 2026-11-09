@@ -156,9 +156,7 @@
             <input ref="searchInputRef" v-model.trim="searchText" type="search" placeholder="搜索姓名、种族或身份" />
           </label>
           <div
-            id="char-info-library-filters"
             class="char-info-library-filters"
-            :class="{ 'mobile-expanded': mobileFiltersExpanded }"
             role="group"
             aria-label="角色筛选"
           >
@@ -220,6 +218,34 @@
           </button>
         </div>
 
+        <section
+          v-show="innerThoughtInboxOpen"
+          id="char-info-inner-thought-inbox"
+          class="char-info-inner-thought-inbox"
+          aria-labelledby="char-info-inner-thought-inbox-title"
+        >
+          <h3 id="char-info-inner-thought-inbox-title">心里话信箱</h3>
+          <p v-if="!innerThoughtEntries.length">还没有新的心里话。</p>
+          <ul v-else>
+            <li v-for="entry in innerThoughtEntries" :key="entry.name">
+              <span class="char-info-library-avatar">
+                <img
+                  v-if="entry.avatarUrl && !failedAvatarUrls.has(entry.avatarUrl)"
+                  :src="entry.avatarUrl"
+                  alt=""
+                  loading="lazy"
+                  referrerpolicy="no-referrer"
+                  @error="onAvatarError(entry.avatarUrl)"
+                />
+                <span v-else aria-hidden="true">{{ entry.name.slice(0, 1) }}</span>
+              </span>
+              <div>
+                <strong>{{ entry.name }}</strong>
+                <p>{{ entry.text }}</p>
+              </div>
+            </li>
+          </ul>
+        </section>
         <nav class="char-info-library-mobile-dock" aria-label="角色资料库操作">
           <button type="button" aria-label="搜索角色" @click="focusLibrarySearch">
             <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -230,15 +256,20 @@
           </button>
           <button
             type="button"
-            :aria-label="mobileFiltersExpanded ? '收起角色筛选' : '展开角色筛选'"
-            aria-controls="char-info-library-filters"
-            :aria-expanded="mobileFiltersExpanded"
-            @click="toggleMobileFilters"
+            class="char-info-inner-thought-inbox-button"
+            :aria-label="unreadThoughtCount ? `信箱，${unreadThoughtCount} 条未读心里话` : '信箱'"
+            aria-controls="char-info-inner-thought-inbox"
+            :aria-expanded="innerThoughtInboxOpen"
+            @click="innerThoughtInboxOpen = !innerThoughtInboxOpen"
           >
-            <svg aria-hidden="true" viewBox="0 0 24 24">
-              <path d="M4 6h16M7 12h10M10 18h4" />
-            </svg>
-            <span>筛选</span>
+            <span class="char-info-inner-thought-inbox-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <path d="m4 7 8 6 8-6" />
+              </svg>
+              <span v-if="unreadThoughtCount" class="char-info-inner-thought-inbox-count">{{ unreadThoughtCount }}</span>
+            </span>
+            <span>信箱</span>
           </button>
           <button class="primary" type="button" aria-label="返回游戏并关闭角色资料库" @click="closeCharacterLibrary">
             <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -761,6 +792,7 @@ const props = defineProps<{
   onCloseLibrary: () => void;
   onCloseLibraryViewer: () => void;
   onRefreshLibrary: () => void;
+  onReadInnerThoughtInbox: () => void;
   onOpenLibraryList: () => void;
   onOpenLibraryCharacter: (name: string) => void;
   onOpenWorldbookLibrary: () => void;
@@ -778,7 +810,7 @@ const props = defineProps<{
 
 const searchText = ref('');
 const activeFilter = ref<LibraryFilter>('all');
-const mobileFiltersExpanded = ref(true);
+const innerThoughtInboxOpen = ref(false);
 const activeWorldbookEditorTarget = ref('');
 const selectedCharacterName = ref('');
 const failedAvatarUrls = ref(new Set<string>());
@@ -808,6 +840,13 @@ const diagnosticReport = ref<CharInfoDiagnosticReport | null>(null);
 const characterLibraryOpen = computed(() => {
   const library = props.state.library;
   return Boolean(library && (library.listOpen || library.viewerOpen || library.worldbookOpen));
+});
+const unreadThoughtCount = computed(() => props.state.library?.innerThoughtInbox.filter(entry => entry.unread).length ?? 0);
+const innerThoughtEntries = computed(() => {
+  const library = props.state.library;
+  if (!library) return [];
+  const avatars = new Map(library.characters.map(({ name, avatarUrl }) => [name, avatarUrl]));
+  return library.innerThoughtInbox.map(entry => ({ ...entry, avatarUrl: avatars.get(entry.name) }));
 });
 const activeImageSourcePriority = computed(() =>
   props.state.settings.imageSourcePriorityEnabled ? props.state.settings.imageSourcePriority : [],
@@ -858,7 +897,6 @@ function openCharacter(name: string): void {
 }
 
 function closeCharacterLibrary(): void {
-  mobileFiltersExpanded.value = true;
   props.onCloseLibrary();
 }
 
@@ -879,10 +917,6 @@ function editCharacterProfileFromHeader(): void {
 
 function focusLibrarySearch(): void {
   void nextTick(() => searchInputRef.value?.focus());
-}
-
-function toggleMobileFilters(): void {
-  mobileFiltersExpanded.value = !mobileFiltersExpanded.value;
 }
 
 function closeViewerWindow(): void {
@@ -1257,10 +1291,20 @@ watch(
   library => {
     searchText.value = '';
     activeFilter.value = 'all';
-    mobileFiltersExpanded.value = true;
     selectedCharacterName.value = library?.characters[0]?.name ?? '';
   },
 );
+
+watch(
+  () => Boolean(props.state.library?.listOpen && !props.state.library.viewerOpen && !props.state.library.worldbookOpen),
+  listOpen => {
+    if (!listOpen) innerThoughtInboxOpen.value = false;
+  },
+);
+
+watch([innerThoughtInboxOpen, unreadThoughtCount], ([open, unread]) => {
+  if (open && unread) props.onReadInnerThoughtInbox();
+});
 
 watch(
   () => props.state.settingsView,
@@ -2229,6 +2273,81 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 
+.char-info-inner-thought-inbox {
+  max-height: min(42%, 360px);
+  flex: 0 0 auto;
+  padding: 12px 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid var(--ci-border);
+  background: var(--ci-surface);
+}
+
+@media (min-width: 721px) {
+  .char-info-library-list-dialog:not(.force-mobile-layout) .char-info-inner-thought-inbox {
+    display: none;
+  }
+}
+
+.char-info-inner-thought-inbox h3 {
+  margin: 0 0 8px;
+  color: var(--ci-text);
+  font-size: 0.9rem;
+}
+
+.char-info-inner-thought-inbox ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.char-info-inner-thought-inbox li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--ci-border);
+  border-radius: 12px;
+  background: var(--ci-surface-raised);
+  font-size: 0.8rem;
+}
+
+.char-info-inner-thought-inbox p {
+  margin: 2px 0 0;
+  color: var(--ci-text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.char-info-library-mobile-dock .char-info-inner-thought-inbox-button[aria-expanded='true'] {
+  color: var(--ci-primary-strong);
+}
+
+.char-info-inner-thought-inbox-icon {
+  position: relative;
+  display: grid;
+}
+
+.char-info-inner-thought-inbox-count {
+  position: absolute;
+  top: -5px;
+  right: -11px;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 99px;
+  background: var(--ci-primary);
+  color: var(--ci-on-primary);
+  font-size: 0.62rem;
+  font-weight: 750;
+  line-height: 16px;
+  text-align: center;
+}
+
 .char-info-library-filters button:hover,
 .char-info-library-filters button.active {
   border-color: var(--ci-primary);
@@ -2723,12 +2842,7 @@ onBeforeUnmount(() => {
   }
 
   .char-info-library-filters {
-    display: none;
     margin: 10px 0 2px;
-  }
-
-  .char-info-library-filters.mobile-expanded {
-    display: flex;
   }
 
   .char-info-library-filters button {
@@ -2987,12 +3101,7 @@ onBeforeUnmount(() => {
 }
 
 .char-info-library-list-dialog.force-mobile-layout .char-info-library-filters {
-  display: none;
   margin: 10px 0 2px;
-}
-
-.char-info-library-list-dialog.force-mobile-layout .char-info-library-filters.mobile-expanded {
-  display: flex;
 }
 
 .char-info-library-list-dialog.force-mobile-layout .char-info-library-filters button {
