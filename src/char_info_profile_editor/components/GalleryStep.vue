@@ -3,7 +3,39 @@
     <p v-if="props.flashMode" class="flash-mode-guidance">
       粘贴图片直链即可。第一张会作为主立绘；第一张可用静态图片会自动用于头像和角色库封面。
     </p>
-    <section v-if="!props.flashMode" class="role-panel">
+    <section v-if="!props.flashMode" class="image-source-chooser">
+      <h3>图片来源</h3>
+      <div class="source-choice-grid" role="group" aria-label="添加图片的方式">
+        <button
+          type="button"
+          class="source-choice"
+          :class="{ active: sourceMode === 'links' }"
+          :aria-pressed="sourceMode === 'links'"
+          @click="sourceMode = 'links'"
+        >
+          <strong>普通图片直链</strong>
+          <small>粘贴图片直链</small>
+        </button>
+        <button
+          type="button"
+          class="source-choice"
+          :class="{ active: sourceMode === 'upload' }"
+          :aria-pressed="sourceMode === 'upload'"
+          @click="sourceMode = 'upload'"
+        >
+          <strong>直接上传 ImgBed</strong>
+          <small>从设备上传 · 可同步网站图库</small>
+        </button>
+      </div>
+      <p v-if="sourceMode === 'links' && remoteGalleryUrl.trim()" class="source-choice-notice">
+        此角色已经绑定远程图库。若只想使用第三方直链，请在 ImgBed 入口移除远程图库 URL。
+      </p>
+      <p v-if="sourceMode === 'links' && uploadPanel?.hasPendingMedia" class="source-choice-notice">
+        ImgBed 还有未上传的图片。请切回「直接上传 ImgBed」完成上传，或移除待上传文件后再保存档案。
+      </p>
+    </section>
+
+    <section v-if="!props.flashMode && sourceMode === 'links'" class="role-panel">
       <div class="panel-heading">
         <div>
           <h3>图片用途</h3>
@@ -59,57 +91,151 @@
       </label>
     </section>
 
-    <section v-if="!props.flashMode" class="gallery-storage-panel">
-      <div class="panel-heading">
-        <h3>远程图库</h3>
-        <p>填写 ImgBed 的公开图库 API URL 后，角色卡会从该 URL 读取整套图片；下方本地图片只作为断线 fallback。</p>
+    <section
+      v-if="!props.flashMode"
+      :style="{ display: sourceMode === 'upload' ? '' : 'none' }"
+      class="gallery-storage-panel"
+    >
+      <div class="imgbed-topline">
+        <div class="imgbed-topline-copy">
+          <strong>ImgBed 图库</strong>
+          <small v-if="imgbedPreview">已同步 · {{ imgbedPreview.gallery.length }} 张图片或视频</small>
+          <small v-else-if="imgbedAlbumId">已绑定图库</small>
+          <small v-else>连接后即可上传图片</small>
+        </div>
+        <div class="imgbed-topline-actions">
+          <button
+            v-if="imgbedAlbumId"
+            type="button"
+            class="toolbar-button"
+            :disabled="imgbedBusy || uploadPanel?.hasUnsavedChanges"
+            @click="refreshImgbed"
+          >
+            {{ imgbedBusy ? '刷新中…' : '↻ 刷新图库' }}
+          </button>
+          <a
+            class="toolbar-button"
+            :href="`${IMG_BED_ORIGIN}/account/?view=albums`"
+            target="_blank"
+            rel="noopener noreferrer"
+            >在 ImgBed 管理</a
+          >
+        </div>
       </div>
-      <label class="field">
-        <span class="field-label">远程图库 URL <small>选填</small></span>
-        <input
-          :value="remoteGalleryUrl"
-          type="url"
-          inputmode="url"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="https://…/api/public/gallery/<owner>/<album>"
-          @input="emit('update:remoteGalleryUrl', ($event.target as HTMLInputElement).value)"
-        />
-        <small>只接受 HTTPS 的远程图库协议（兼容格式名：char-info-gallery-pack v1）。留空时使用本地图片；远端读取不会写回聊天变量或世界书。</small>
-      </label>
+      <ImgbedUploadPanel
+        ref="uploadPanel"
+        :bridge="props.imgbedUploadBridge"
+        :remote-gallery-url="remoteGalleryUrl"
+        :character-name="characterName"
+        :gallery-preview="imgbedPreview"
+        @update:remote-gallery-url="updateRemoteUrl"
+      />
+      <p v-if="imgbedStatus" class="gallery-storage-message" role="status">{{ imgbedStatus }}</p>
+      <section v-if="imgbedPreview && imgbedAlbumId" class="role-panel imgbed-compact-roles">
+        <div class="panel-heading"><h3>图片用途</h3></div>
+        <div class="role-grid">
+          <label class="field">
+            <span class="field-label">主立绘</span>
+            <span class="imgbed-main-portrait" :title="remoteMainPortraitLabel">{{ remoteMainPortraitLabel }}</span>
+            <small>图库中第一张显示的图片，可在上方调整顺序</small>
+          </label>
+          <label class="field">
+            <span class="field-label">状态栏头像</span>
+            <select :value="currentRemoteAvatarChoice" aria-label="选择状态栏头像" @change="onRemoteAvatarChange">
+              <option value="default">图库默认头像</option>
+              <option v-for="option in remoteOptions" :key="option.index" :value="String(option.index)">
+                {{ option.label }}
+              </option>
+              <option v-if="currentRemoteAvatarChoice === 'existing'" value="existing">保留现有头像</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field-label">角色库封面</span>
+            <select :value="currentRemoteCoverChoice" aria-label="选择角色库封面" @change="onRemoteCoverChange">
+              <option value="default">图库默认封面</option>
+              <option v-for="option in remoteOptions" :key="option.index" :value="String(option.index)">
+                {{ option.label }}
+              </option>
+              <option v-if="currentRemoteCoverChoice === 'existing'" value="existing">保留现有封面</option>
+            </select>
+          </label>
+        </div>
+      </section>
+      <div v-if="pendingImgbedSelection" class="imgbed-confirm">
+        <p>此图库属于「{{ pendingImgbedSelection.payload.characterName }}」，确定用于当前角色？</p>
+        <button type="button" class="toolbar-button" @click="confirmImgbedSelection">确认使用</button>
+        <button type="button" class="toolbar-button" @click="cancelImgbedSelection">取消</button>
+      </div>
+      <details class="imgbed-extra-settings">
+        <summary>更换图库 / 手动设置</summary>
+        <div class="imgbed-actions">
+          <button type="button" class="toolbar-button" :disabled="imgbedBusy" @click="selectImgbed()">
+            {{ imgbedAlbumId ? '更换图库' : '选择已有图库' }}
+          </button>
+          <button
+            v-if="imgbedAlbumId"
+            type="button"
+            class="toolbar-button"
+            :disabled="imgbedBusy"
+            @click="disconnectImgbed"
+          >
+            解除图库绑定
+          </button>
+          <button v-if="imgbedBusy" type="button" class="toolbar-button" @click="cancelImgbedSelection">
+            取消操作
+          </button>
+        </div>
+        <label class="field">
+          <span class="field-label">图库 URL</span>
+          <input
+            :value="remoteGalleryUrl"
+            type="url"
+            inputmode="url"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="粘贴 ImgBed 公开图库链接"
+            @input="onRemoteGalleryInput"
+          />
+        </label>
+      </details>
     </section>
-
-    <div class="image-host-links">
-      <div>
-        <strong>什么是图片直链？</strong>
-        <small>
-          直链会直接打开图片本身，最常见会以 .png / .jpg / .jpeg / .webp / .avif 结尾，例如
-          https://example.com/image.png；图床的相册页或分享页不是直链。
-        </small>
-      </div>
-      <a href="https://catbox.moe/" target="_blank" rel="noopener noreferrer">打开 Catbox</a>
-      <a href="https://imgbb.com/" target="_blank" rel="noopener noreferrer">打开 ImgBB</a>
+    <div v-if="sourceMode === 'links' || props.flashMode" class="image-host-links">
+      <span>粘贴能直接打开图片的 URL</span>
+      <a href="https://catbox.moe/" target="_blank" rel="noopener noreferrer">Catbox</a>
+      <a href="https://imgbb.com/" target="_blank" rel="noopener noreferrer">ImgBB</a>
     </div>
 
-    <div v-if="!props.flashMode" class="batch-toolbar" :class="{ active: batchMode }">
+    <div v-if="!props.flashMode && sourceMode === 'links'" class="batch-toolbar" :class="{ active: batchMode }">
       <button type="button" class="toolbar-button" @click="toggleBatchMode">
         {{ batchMode ? '完成批量选择' : '批量选择' }}
       </button>
       <template v-if="batchMode">
         <span class="selection-count">已选择 {{ selectedIds.length }} 张</span>
-        <button type="button" class="toolbar-button" :disabled="selectedIds.length === 0" @click="applyBatchVisibility(true)">
+        <button
+          type="button"
+          class="toolbar-button"
+          :disabled="selectedIds.length === 0"
+          @click="applyBatchVisibility(true)"
+        >
           显示于角色卡
         </button>
-        <button type="button" class="toolbar-button" :disabled="selectedIds.length === 0" @click="applyBatchVisibility(false)">
+        <button
+          type="button"
+          class="toolbar-button"
+          :disabled="selectedIds.length === 0"
+          @click="applyBatchVisibility(false)"
+        >
           仅相册
         </button>
         <button type="button" class="toolbar-button quiet" @click="selectAll">全选</button>
-        <button type="button" class="toolbar-button quiet" :disabled="selectedIds.length === 0" @click="clearSelection">清空</button>
+        <button type="button" class="toolbar-button quiet" :disabled="selectedIds.length === 0" @click="clearSelection">
+          清空
+        </button>
       </template>
       <small v-if="batchMessage" class="batch-message">{{ batchMessage }}</small>
     </div>
 
-    <div class="gallery-list">
+    <div v-if="sourceMode === 'links' || props.flashMode" class="gallery-list">
       <article
         v-for="(image, index) in gallery"
         :key="image.id"
@@ -226,20 +352,39 @@
                   </span>
                 </span>
               </label>
-              <button type="button" class="add-source-button" @click="addImageSource(image)">＋ 添加备用图片地址</button>
+              <button type="button" class="add-source-button" @click="addImageSource(image)">
+                ＋ 添加备用图片地址
+              </button>
             </div>
           </div>
         </div>
 
         <div class="gallery-actions">
           <button type="button" title="上移" :disabled="index === 0" @click="moveImage(index, -1)">↑</button>
-          <button type="button" title="下移" :disabled="index === gallery.length - 1" @click="moveImage(index, 1)">↓</button>
-          <button class="danger" type="button" title="删除" :disabled="gallery.length === 1" @click="removeImage(index)">×</button>
+          <button type="button" title="下移" :disabled="index === gallery.length - 1" @click="moveImage(index, 1)">
+            ↓
+          </button>
+          <button
+            class="danger"
+            type="button"
+            title="删除"
+            :disabled="gallery.length === 1"
+            @click="removeImage(index)"
+          >
+            ×
+          </button>
         </div>
       </article>
     </div>
 
-    <button class="add-image-button" type="button" @click="addImage">＋ 添加一张图片</button>
+    <button
+      :style="{ display: sourceMode === 'links' || props.flashMode ? '' : 'none' }"
+      class="add-image-button"
+      type="button"
+      @click="addImage"
+    >
+      ＋ 添加一张图片
+    </button>
 
     <div v-if="!props.flashMode" class="step-actions">
       <button type="button" class="secondary-button wizard-back-button" @click="emit('previous')">上一步</button>
@@ -249,7 +394,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import ImgbedUploadPanel from './ImgbedUploadPanel.vue';
+import type { ImgbedUploadBridge } from '../services/imgbedUploadBridge';
+import type { RemoteGalleryImage, RemoteGalleryPayload } from '../../char_info_shared/remoteGallery';
+import { refreshRemoteGallery } from '../../char_info_viewer/services/remoteGalleryService';
+import {
+  createImgbedBridge,
+  displayImgbedMediaTitle,
+  IMG_BED_CONNECTION_TIMEOUT_MS,
+  IMG_BED_ORIGIN,
+  parseImgbedGalleryUrl,
+} from '../services/imgbedBridge';
 
 import {
   normalizePortraitMediaUrlForBrowser,
@@ -280,11 +436,22 @@ const props = withDefaults(
     characterName: string;
     debugEnabled: boolean;
     flashMode?: boolean;
+    imgbedBridge?: ReturnType<typeof createImgbedBridge>;
+    imgbedUploadBridge?: ImgbedUploadBridge;
   }>(),
   {
     flashMode: false,
+    imgbedBridge: undefined,
+    imgbedUploadBridge: undefined,
   },
 );
+
+const sourceMode = ref<'links' | 'upload'>(props.remoteGalleryUrl.trim() ? 'upload' : 'links');
+const uploadPanel = ref<InstanceType<typeof ImgbedUploadPanel> | null>(null);
+defineExpose({
+  saveUploads: () => uploadPanel.value?.save(),
+  hasPendingUploadMedia: computed(() => uploadPanel.value?.hasPendingMedia ?? false),
+});
 
 const emit = defineEmits<{
   'update:gallery': [value: EditableGalleryImage[]];
@@ -305,6 +472,296 @@ const coverSelection = ref('');
 const batchMode = ref(false);
 const selectedIds = ref<number[]>([]);
 const batchMessage = ref('');
+const imgbedAlbumId = computed(() => parseImgbedGalleryUrl(props.remoteGalleryUrl));
+const imgbedBusy = ref(false);
+const imgbedStatus = ref('');
+const imgbedPreview = ref<RemoteGalleryPayload | null>(null);
+type RemoteImageOption = {
+  index: number;
+  label: string;
+  preview: string;
+  avatarUrl: string;
+  coverUrl: string;
+};
+function sameRemoteImage(left: string, right: string): boolean {
+  if (!left || !right) return false;
+  try {
+    const a = new URL(left);
+    const b = new URL(right);
+    return a.origin === b.origin && a.pathname === b.pathname;
+  } catch {
+    return left === right;
+  }
+}
+function remoteVariantUrl(image: RemoteGalleryImage, variant: 'avatar' | 'library'): string {
+  const url =
+    image.thumbnail ||
+    image.sources.find(source => normalizePortraitMediaUrlForBrowser(source)?.kind === 'image') ||
+    '';
+  if (!url) return '';
+  try {
+    const parsed = new URL(url);
+    if (parsed.origin === new URL(props.remoteGalleryUrl).origin && parsed.pathname.startsWith('/thumb/')) {
+      parsed.searchParams.set('variant', variant);
+      return parsed.toString();
+    }
+  } catch {
+    // Unsupported external links use their existing thumbnail URL.
+  }
+  return url;
+}
+const remoteOptions = computed<RemoteImageOption[]>(() =>
+  (imgbedPreview.value?.gallery ?? []).flatMap((image, index) => {
+    const preview =
+      image.thumbnail ||
+      image.sources.find(source => normalizePortraitMediaUrlForBrowser(source)?.kind === 'image') ||
+      '';
+    if (!preview) return [];
+    return [
+      {
+        index,
+        label:
+          displayImgbedMediaTitle(image.title, index) === `图片 ${index + 1}`
+            ? `图片 ${index + 1}`
+            : `图片 ${index + 1} · ${image.title}`,
+        preview,
+        avatarUrl: remoteVariantUrl(image, 'avatar'),
+        coverUrl: remoteVariantUrl(image, 'library'),
+      },
+    ];
+  }),
+);
+function remoteChoice(currentUrl: string, defaultUrl: string): string {
+  if (!currentUrl || currentUrl === defaultUrl) return 'default';
+  const found = remoteOptions.value.find(item => sameRemoteImage(item.preview, currentUrl));
+  return found ? String(found.index) : 'existing';
+}
+const currentRemoteAvatarChoice = computed(() =>
+  remoteChoice(props.avatarUrl, imgbedPreview.value?.avatarThumbnail ?? ''),
+);
+const currentRemoteCoverChoice = computed(() =>
+  remoteChoice(props.coverUrl, imgbedPreview.value?.libraryThumbnail ?? ''),
+);
+const remoteMainPortraitLabel = computed(() => {
+  const images = imgbedPreview.value?.gallery ?? [];
+  const index = images.findIndex(image => image.viewerVisible !== false);
+  return index < 0 ? '暂无主立绘' : displayImgbedMediaTitle(images[index].title, index);
+});
+function onRemoteAvatarChange(event: Event) {
+  const chosen = (event.target as HTMLSelectElement).value;
+  if (chosen === 'existing') return;
+  const option = remoteOptions.value.find(item => String(item.index) === chosen);
+  emit('update:avatarUrl', option?.avatarUrl || imgbedPreview.value?.avatarThumbnail || '');
+}
+function onRemoteCoverChange(event: Event) {
+  const chosen = (event.target as HTMLSelectElement).value;
+  if (chosen === 'existing') return;
+  const option = remoteOptions.value.find(item => String(item.index) === chosen);
+  emit('update:coverUrl', option?.coverUrl || imgbedPreview.value?.libraryThumbnail || '');
+}
+function applyImgbedPreview(payload: RemoteGalleryPayload) {
+  const previous = imgbedPreview.value;
+  function refreshedChoice(
+    current: string,
+    oldDefault: string,
+    newDefault: string,
+    variant: 'avatar' | 'library',
+  ): string {
+    const currentUrl = current.trim();
+    if (!currentUrl || (oldDefault && currentUrl === oldDefault)) return newDefault || currentUrl;
+    const matches = (pack: RemoteGalleryPayload) =>
+      pack.gallery.find(image => sameRemoteImage(image.thumbnail || image.sources[0] || '', currentUrl));
+    const updated = matches(payload);
+    if (updated) return remoteVariantUrl(updated, variant);
+    if (previous && matches(previous)) return newDefault;
+    return currentUrl;
+  }
+  imgbedPreview.value = payload;
+  const avatarUrl = refreshedChoice(
+    props.avatarUrl,
+    previous?.avatarThumbnail || '',
+    payload.avatarThumbnail || '',
+    'avatar',
+  );
+  const coverUrl = refreshedChoice(
+    props.coverUrl,
+    previous?.libraryThumbnail || '',
+    payload.libraryThumbnail || '',
+    'library',
+  );
+  if (avatarUrl !== props.avatarUrl) emit('update:avatarUrl', avatarUrl);
+  if (coverUrl !== props.coverUrl) emit('update:coverUrl', coverUrl);
+}
+const pendingImgbedSelection = ref<{ url: string; payload: RemoteGalleryPayload } | null>(null);
+let imgbedOperation = 0;
+let imgbedAbort: AbortController | null = null;
+let emittedRemoteUrl: string | null = null;
+
+function cancelImgbedOperation() {
+  imgbedOperation += 1;
+  props.imgbedBridge?.cancel();
+  imgbedAbort?.abort();
+  imgbedAbort = null;
+  imgbedBusy.value = false;
+  pendingImgbedSelection.value = null;
+}
+
+watch(
+  () => props.characterName,
+  () => {
+    cancelImgbedOperation();
+    imgbedPreview.value = null;
+    imgbedStatus.value = '';
+  },
+  { flush: 'sync' },
+);
+watch(
+  () => props.remoteGalleryUrl,
+  value => {
+    if (value === emittedRemoteUrl) {
+      emittedRemoteUrl = null;
+      return;
+    }
+    emittedRemoteUrl = null;
+    cancelImgbedOperation();
+    imgbedPreview.value = null;
+    imgbedStatus.value = '';
+  },
+  { flush: 'sync' },
+);
+
+function updateRemoteUrl(value: string) {
+  const sameAlbum = value === props.remoteGalleryUrl && !!parseImgbedGalleryUrl(value);
+  emittedRemoteUrl = sameAlbum ? null : value;
+  emit('update:remoteGalleryUrl', value);
+  // The uploader also emits after saving an existing album, when its URL is unchanged.
+  if (sameAlbum) {
+    void nextTick().then(() => {
+      if (!uploadPanel.value?.hasUnsavedChanges) void refreshImgbed();
+    });
+  }
+}
+
+function onRemoteGalleryInput(event: Event) {
+  cancelImgbedOperation();
+  imgbedPreview.value = null;
+  imgbedStatus.value = '';
+  emit('update:remoteGalleryUrl', (event.target as HTMLInputElement).value);
+}
+
+async function loadImgbed(url: string, albumId: string, operation: number) {
+  imgbedAbort = new AbortController();
+  const payload = await refreshRemoteGallery(url, imgbedAbort.signal, candidate => {
+    if (parseImgbedGalleryUrl(url) !== albumId || candidate.packId !== albumId || candidate.profileId !== albumId) {
+      throw new Error('图库身份与所选相册不一致。');
+    }
+  });
+  if (operation !== imgbedOperation) return null;
+  return payload;
+}
+
+async function selectImgbed(albumId?: string) {
+  cancelImgbedOperation();
+  const operation = imgbedOperation;
+  if (!props.imgbedBridge) {
+    imgbedStatus.value = '无法打开 ImgBed，请在下方粘贴 ImgBed 公开图库 API URL。';
+    return;
+  }
+  imgbedBusy.value = true;
+  imgbedStatus.value = `请在 ${IMG_BED_CONNECTION_TIMEOUT_MS / 60_000} 分钟内在 ImgBed 完成登录并选择图库；可随时取消操作。`;
+  try {
+    const selected = await props.imgbedBridge.select(albumId);
+    if (operation !== imgbedOperation) return;
+    imgbedStatus.value = '正在验证图库…';
+    const payload = await loadImgbed(selected.remoteGalleryUrl, selected.albumId, operation);
+    if (!payload) return;
+    if (payload.characterName !== props.characterName.trim()) {
+      pendingImgbedSelection.value = { url: selected.remoteGalleryUrl, payload };
+      imgbedStatus.value = '请确认角色姓名不同的图库。';
+    } else {
+      updateRemoteUrl(selected.remoteGalleryUrl);
+      applyImgbedPreview(payload);
+      imgbedStatus.value = '';
+    }
+  } catch (error) {
+    if (operation !== imgbedOperation) return;
+    const code = (error as { code?: string }).code;
+    if (code === 'cancelled') {
+      imgbedStatus.value = '已取消选择图库；原有图库设置保持不变。';
+    } else if (code === 'closed') {
+      imgbedStatus.value = 'ImgBed 窗口已关闭或连接已中断。请重新连接，或在下方粘贴 ImgBed 公开图库 API URL。';
+    } else if (code === 'timeout') {
+      imgbedStatus.value = `连接已超过 ${IMG_BED_CONNECTION_TIMEOUT_MS / 60_000} 分钟。请重新连接，或在下方粘贴 ImgBed 公开图库 API URL。`;
+    } else if (code === 'blocked') {
+      imgbedStatus.value = '弹窗被浏览器拦截。请允许弹窗，或在下方粘贴 ImgBed 公开图库 API URL。';
+    } else if (code === 'unsupported') {
+      imgbedStatus.value = '浏览器无法建立或保持图库连接。请在下方粘贴 ImgBed 公开图库 API URL。';
+    } else {
+      imgbedStatus.value = '连接或验证图库失败，请重试或在下方粘贴 ImgBed 公开图库 API URL。';
+    }
+  } finally {
+    if (operation === imgbedOperation) imgbedBusy.value = false;
+  }
+}
+
+function confirmImgbedSelection() {
+  const selection = pendingImgbedSelection.value;
+  if (!selection) return;
+  updateRemoteUrl(selection.url);
+  applyImgbedPreview(selection.payload);
+  pendingImgbedSelection.value = null;
+  imgbedStatus.value = '';
+}
+
+function cancelImgbedSelection() {
+  cancelImgbedOperation();
+  imgbedPreview.value = null;
+  imgbedStatus.value = '已取消图库操作；原有图库设置保持不变。';
+}
+
+async function refreshImgbed() {
+  const url = props.remoteGalleryUrl;
+  const albumId = imgbedAlbumId.value;
+  if (!albumId) return;
+  if (uploadPanel.value?.hasUnsavedChanges) {
+    imgbedStatus.value = '请先完成或取消待处理的图库操作，再刷新。';
+    return;
+  }
+  cancelImgbedOperation();
+  const operation = imgbedOperation;
+  imgbedBusy.value = true;
+  imgbedStatus.value = '正在更新图库…';
+  try {
+    const payload = await loadImgbed(url, albumId, operation);
+    if (!payload || operation !== imgbedOperation) return;
+    await uploadPanel.value?.reload?.();
+    if (operation !== imgbedOperation) return;
+    applyImgbedPreview(payload);
+    imgbedStatus.value = `已更新 · ${payload.gallery.length} 张图片或视频`;
+  } catch (error) {
+    if (operation === imgbedOperation) {
+      imgbedStatus.value = `刷新失败：${error instanceof Error ? error.message : String(error)}`;
+    }
+  } finally {
+    if (operation === imgbedOperation) imgbedBusy.value = false;
+  }
+}
+watch(
+  () => [props.remoteGalleryUrl, sourceMode.value],
+  ([url, mode]) => {
+    if (!props.flashMode && mode === 'upload' && parseImgbedGalleryUrl(url) && !imgbedPreview.value) {
+      void refreshImgbed();
+    }
+  },
+  { immediate: true, flush: 'post' },
+);
+
+function disconnectImgbed() {
+  cancelImgbedOperation();
+  updateRemoteUrl('');
+  imgbedPreview.value = null;
+  imgbedStatus.value = '已解除绑定；ImgBed 网站的图片仍然保留。';
+}
 
 const staticImages = computed(() => gallery.value.filter(image => !!preferredStaticImageUrl(image)));
 const mainViewerImageId = computed(() => firstViewerImage(gallery.value)?.id ?? null);
@@ -363,11 +820,12 @@ function onAvatarSelectionChange(event: Event) {
   const value = (event.target as HTMLSelectElement).value;
   avatarSelection.value = value;
   if (value === 'custom') {
-    if (gallery.value.some(image => preferredStaticImageUrl(image) === props.avatarUrl.trim())) emit('update:avatarUrl', '');
+    if (gallery.value.some(image => preferredStaticImageUrl(image) === props.avatarUrl.trim()))
+      emit('update:avatarUrl', '');
     return;
   }
   const id = parseGallerySelectionId(value);
-  const image = id === null ? null : gallery.value.find(candidate => candidate.id === id) ?? null;
+  const image = id === null ? null : (gallery.value.find(candidate => candidate.id === id) ?? null);
   emit('update:avatarUrl', preferredStaticImageUrl(image));
 }
 
@@ -375,7 +833,7 @@ function onCoverSelectionChange(event: Event) {
   const value = (event.target as HTMLSelectElement).value;
   coverSelection.value = value;
   const id = parseGallerySelectionId(value);
-  const image = id === null ? null : gallery.value.find(candidate => candidate.id === id) ?? null;
+  const image = id === null ? null : (gallery.value.find(candidate => candidate.id === id) ?? null);
   emit('update:coverUrl', preferredStaticImageUrl(image));
 }
 
@@ -684,6 +1142,7 @@ function initializeGalleryPreviewObserver() {
 onMounted(initializeGalleryPreviewObserver);
 
 onBeforeUnmount(() => {
+  cancelImgbedOperation();
   clearGalleryVideoHoverTimer();
   galleryPreviewObserver?.disconnect();
   galleryPreviewObserver = null;
@@ -701,6 +1160,103 @@ onBeforeUnmount(() => {
 .gallery-step {
   display: grid;
   gap: 12px;
+}
+
+.imgbed-topline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.imgbed-topline-copy {
+  display: grid;
+  gap: 3px;
+}
+.imgbed-topline-copy strong {
+  color: var(--text);
+  font-size: 0.96rem;
+}
+.imgbed-topline-copy small {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+.imgbed-topline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.imgbed-compact-roles {
+  gap: 10px;
+  padding: 12px 14px;
+}
+.imgbed-main-portrait {
+  display: block;
+  overflow: hidden;
+  min-height: 42px;
+  padding: 11px 10px;
+  box-sizing: border-box;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+}
+.imgbed-extra-settings {
+  border-top: 1px solid var(--border);
+  padding-top: 11px;
+}
+.imgbed-extra-settings summary {
+  width: fit-content;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.imgbed-extra-settings .imgbed-actions {
+  margin: 12px 0;
+}
+.imgbed-extra-settings .field {
+  margin-top: 10px;
+}
+.gallery-storage-panel {
+  gap: 14px;
+}
+@media (max-width: 680px) {
+  .imgbed-role-grid {
+    grid-template-columns: 1fr;
+  }
+  .imgbed-topline-actions {
+    width: 100%;
+  }
+}
+.imgbed-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.imgbed-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.imgbed-preview img {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.imgbed-confirm p {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 12px;
+}
+.imgbed-confirm button + button {
+  margin-left: 8px;
 }
 
 .flash-mode-guidance {
@@ -761,6 +1317,82 @@ onBeforeUnmount(() => {
   line-height: 1.5;
 }
 
+.image-source-chooser {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.image-source-chooser h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+.source-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.source-choice {
+  display: grid;
+  gap: 8px;
+  padding: 15px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  color: var(--text);
+  background: var(--surface-soft);
+  text-align: left;
+  cursor: pointer;
+}
+.source-choice strong {
+  font-size: 0.92rem;
+}
+.source-choice small {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+.source-choice.active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+.source-choice-notice {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+.imgbed-website-link {
+  display: grid;
+  gap: 4px;
+  padding: 10px 0;
+}
+.imgbed-website-link a {
+  width: fit-content;
+  color: var(--primary);
+}
+.imgbed-website-link small {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+.imgbed-legacy-actions {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.imgbed-legacy-actions summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.imgbed-legacy-actions .imgbed-actions {
+  margin-top: 10px;
+}
+@media (max-width: 600px) {
+  .source-choice-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .role-grid,
 .gallery-storage-fields,
 .gallery-fields {
@@ -1037,7 +1669,6 @@ select:focus {
   font-size: 9px;
   line-height: 1;
 }
-
 
 .gallery-content {
   display: grid;

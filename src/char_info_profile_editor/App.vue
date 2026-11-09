@@ -770,7 +770,11 @@
 
             <div id="manager-step-4-content" class="mobile-step-content">
               <GalleryStep
+                ref="galleryStep"
+                :key="profileRevision"
                 v-model:gallery="profile.gallery"
+                :imgbed-bridge="props.imgbedBridge"
+                :imgbed-upload-bridge="props.imgbedUploadBridge"
                 :avatar-url="profile.avatarUrl"
                 :cover-url="profile.coverUrl"
                 :remote-gallery-url="profile.remoteGalleryUrl ?? ''"
@@ -918,6 +922,8 @@ import {
 import { DEFAULT_CHAR_INFO_THEME_MODE, managerThemeClass, type CharInfoThemeMode } from '../char_info_shared/managerTheme';
 import { copyTextWithDocumentSelection, copyTextWithFallback } from './clipboard';
 import GalleryStep from './components/GalleryStep.vue';
+import type { ImgbedUploadBridge } from './services/imgbedUploadBridge';
+import type { createImgbedBridge } from './services/imgbedBridge';
 import { preferredStaticImageUrl, type EditableGalleryImage } from './galleryEditor';
 import {
   buildManagedEjsBlock,
@@ -931,7 +937,6 @@ import {
   inspectManagedBlock,
   isHttpsUrl,
   normalizeProfile,
-  STATUS_GALLERY_IMAGE_EXTENSIONS,
   validateProfile,
   type CharacterProfileMetadata,
   type CharacterStorySection,
@@ -989,6 +994,8 @@ const props = withDefaults(
     themeMode?: CharInfoThemeMode;
     fontSizeAdjustment?: number;
     debugEnabled?: boolean;
+    imgbedBridge?: ReturnType<typeof createImgbedBridge>;
+    imgbedUploadBridge?: ImgbedUploadBridge;
     onForceRefresh?: () => void | Promise<void>;
     onReturnToLibrary?: () => void;
   }>(),
@@ -999,11 +1006,14 @@ const props = withDefaults(
     themeMode: DEFAULT_CHAR_INFO_THEME_MODE,
     fontSizeAdjustment: 0,
     debugEnabled: false,
+    imgbedBridge: undefined,
+    imgbedUploadBridge: undefined,
     onForceRefresh: undefined,
     onReturnToLibrary: undefined,
   },
 );
 const emit = defineEmits<{ close: [] }>();
+const galleryStep = ref<InstanceType<typeof GalleryStep> | null>(null);
 const steps: { id: StepId; shortLabel: string; title: string }[] = [
   { id: 1, shortLabel: '来源', title: '选择角色来源' },
   { id: 2, shortLabel: '档案', title: '填写角色档案' },
@@ -1068,6 +1078,7 @@ const viewerPreviewCanvasRef = ref<HTMLElement | null>(null);
 let viewerPreviewResizeObserver: ResizeObserver | null = null;
 
 const profile = reactive<EditableProfile>(toEditableProfile(createEmptyProfile()));
+const profileRevision = ref(0);
 
 function toEditableProfile(value: CharacterProfile): EditableProfile {
   return {
@@ -1142,6 +1153,7 @@ function toSerializableProfile(): CharacterProfile {
 }
 
 function replaceProfile(value: CharacterProfile) {
+  profileRevision.value += 1;
   const editable = toEditableProfile(value);
   profile.characterName = editable.characterName;
   profile.avatarUrl = editable.avatarUrl;
@@ -1327,7 +1339,13 @@ const entryStateDescription = computed(() => {
   return '保存后不会改动角色原有设定。';
 });
 
-const validationErrors = computed(() => [...new Set(validateProfile(toFullSerializableProfile()))]);
+const validationErrors = computed(() => [
+  ...new Set(
+    validateProfile(toFullSerializableProfile(), {
+      pendingRemoteUpload: !!galleryStep.value?.hasPendingUploadMedia,
+    }),
+  ),
+]);
 
 const generatedCode = computed(() => {
   if (validationErrors.value.length > 0) return '';
@@ -1350,6 +1368,7 @@ const canSave = computed(
     (proAutoTarget.value || hasSelectedWorldbookTarget.value) &&
     !writeBlocked.value &&
     validationErrors.value.length === 0 &&
+    !galleryStep.value?.hasPendingUploadMedia &&
     !saving.value &&
     !applyingSavedProfile.value,
 );
@@ -1872,7 +1891,7 @@ function canVisitStep(step: StepId): boolean {
   if (step === 1) return true;
   if (step === 2) return hasSelectedWorldbookTarget.value || proAutoTarget.value;
   if (!profile.characterName.trim()) return false;
-  if (step === 5) return hasValidProfileMedia.value;
+  if (step === 5) return hasValidProfileMedia.value && !galleryStep.value?.hasPendingUploadMedia;
   return true;
 }
 
@@ -1897,7 +1916,8 @@ function goToStep(step: StepId) {
   if (!canVisitStep(step)) {
     if (step === 2) showEditorNotice('请选择一个角色来源，或选择“没有 / 我懒得找”让系统自动建立保存位置。');
     else if (!profile.characterName.trim()) showEditorNotice('请先填写角色全名。');
-    else if (step === 5) showEditorNotice('请先添加至少一张有效图片，或填写有效的远程图库 URL。');
+    else if (step === 5 && galleryStep.value?.hasPendingUploadMedia) showEditorNotice('还有未上传的 ImgBed 文件，请先在第 4 步点击「上传并保存图库」。');
+    else if (step === 5) showEditorNotice('请先添加图片直链，或在 ImgBed 上传并取得图库 URL。');
     return;
   }
   editorNotice.value = '';
@@ -2075,6 +2095,8 @@ async function saveToEntry() {
 
   try {
     const normalizedProfile = normalizeProfile(toSerializableProfile());
+    const errors = validateProfile(normalizedProfile);
+    if (errors.length) throw new Error(errors[0]);
     let persistenceSummary = '';
 
     if (hasExistingTarget && entry) {
@@ -2196,9 +2218,8 @@ async function applyCurrentProfileToCurrentChat(): Promise<boolean> {
     }
 
     if (unsupportedStatusGalleryItems > 0) {
-      const supportedFormats = STATUS_GALLERY_IMAGE_EXTENSIONS.map(extension => extension.slice(1)).join(' / ');
       showEditorNotice(
-        `即时写入成功，但状态栏相簿目前仅支援 ${supportedFormats}。${unsupportedStatusGalleryItems} 个其他格式媒体不会进入状态栏相簿；CharInfo 相簿仍已完整写入。`,
+        `状态栏相簿已同步 ${expectedStatusGalleryImages.length} 张图片；另有 ${unsupportedStatusGalleryItems} 项视频或无法识别为图片的媒体未同步到状态栏（仍保留在 CharInfo 相簿）。`,
       );
     }
 
@@ -2368,8 +2389,8 @@ button {
   position: relative;
   z-index: 1;
   display: flex;
-  width: min(1420px, 100%);
-  height: min(720px, calc(100% - 8px));
+  width: min(1900px, 100%);
+  height: 92%;
   max-height: calc(100% - 8px);
   overflow: hidden;
   flex-direction: column;
@@ -3371,7 +3392,7 @@ button {
 }
 
 .editor-panel > .wizard-step-section {
-  width: min(100%, 1080px);
+  width: min(100%, 1520px);
   min-height: 100%;
   margin: 0 auto;
   padding: 32px 40px 0;

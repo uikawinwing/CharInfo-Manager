@@ -166,7 +166,7 @@ test('角色档案编辑器的步骤阻挡提示渲染在编辑器 iframe 内，
   assert.match(source, /v-if="editorNotice" class="editor-notice" role="alert" aria-live="assertive"/u);
   assert.match(source, /function showEditorNotice\(message: string\)/u);
   assert.match(source, /!profile\.characterName\.trim\(\)\) showEditorNotice\('请先填写角色全名。'\)/u);
-  assert.match(source, /step === 5\) showEditorNotice\('请先添加至少一张有效图片/u);
+  assert.match(source, /step === 5\) showEditorNotice\('请先添加图片直链，或在 ImgBed 上传并取得图库 URL/u);
   assert.doesNotMatch(source, /toastr\.warning/u);
 });
 
@@ -214,7 +214,8 @@ test('角色档案编辑器即时写入当前 draft 时强校验 CharInfo、状�
   assert.match(appSource, /status\.externalGalleries 中的状态栏相簿没有正确写入/u);
   assert.match(appSource, /status\.externalAvatars 中的状态栏头像没有正确写入/u);
   assert.match(appSource, /showEditorNotice/u);
-  assert.match(appSource, /状态栏相簿目前仅支援/u);
+  assert.match(appSource, /视频或无法识别为图片的媒体未同步到状态栏/u);
+  assert.doesNotMatch(appSource, /状态栏相簿目前仅支援/u);
   assert.match(appSource, /await props\.onForceRefresh\?\.\(\)/);
   assert.match(appSource, /保存并立即生效/u);
   assert.match(appSource, /世界书中的保存内容不会丢失/u);
