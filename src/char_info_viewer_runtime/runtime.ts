@@ -9,7 +9,7 @@ import { preloadPortraitImages } from '../char_info_viewer/services/imagePreload
 import { resolveRemoteGalleryPresentation } from '../char_info_viewer/services/remoteGalleryService';
 import { resolveCharacterVisualPreloadUrls } from '../char_info_viewer/services/themeService';
 import RuntimeRoot from './RuntimeRoot.vue';
-import { collectChangedAffinityNames, collectCurrentCharacterSnapshots } from './currentCharacterLibrary';
+import { collectChangedAffinityNames, collectCurrentCharacterSnapshots, updateInnerThoughtInbox } from './currentCharacterLibrary';
 import {
   mountCharInfoCardHosts,
   type MountedNativeCardHost,
@@ -137,6 +137,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   let libraryRefreshPending = false;
   let libraryRefreshPromise: Promise<void> | null = null;
   const pendingAffinityNames = new Set<string>();
+  let previousInnerThoughts: ReadonlyMap<string, string> | null = null;
   let lifecycleRevision = 0;
   let started = false;
 
@@ -192,6 +193,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     library.viewerLoading = false;
     library.worldbookOpen = false;
     library.unreadCharacterNames = [];
+    library.innerThoughtInbox = [];
+    previousInnerThoughts = null;
     library.loading = false;
     library.error = '';
   };
@@ -219,6 +222,9 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     const snapshotRevision = library.revision;
     library.characters = baseCharacters;
     library.unreadCharacterNames = Array.from(nextUnread);
+    const innerThoughts = new Map(baseCharacters.map(({ name, innerThought }) => [name, innerThought]));
+    library.innerThoughtInbox = updateInnerThoughtInbox(library.innerThoughtInbox, previousInnerThoughts, innerThoughts);
+    previousInnerThoughts = innerThoughts;
     library.error = '';
 
     void Promise.all(
@@ -284,6 +290,11 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     void refreshLibrary();
   };
 
+  const readInnerThoughtInbox = () => {
+    if (!state.library) return;
+    for (const update of state.library.innerThoughtInbox) update.unread = false;
+  };
+
   const openLibraryCharacter = async (name: string) => {
     const library = state.library;
     if (!library?.characters.some(character => character.name === name)) return;
@@ -332,6 +343,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       viewerLoading: false,
       worldbookOpen: false,
       unreadCharacterNames: [],
+      innerThoughtInbox: [],
       floatingButtonPosition: readRuntimeFloatingButtonPosition(getVariables({ type: 'script' })),
       loading: false,
       error: '',
@@ -341,6 +353,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   const destroyLibrary = () => {
     libraryRefreshPending = false;
     pendingAffinityNames.clear();
+    previousInnerThoughts = null;
     state.library?.host.remove();
     state.library = null;
   };
@@ -797,6 +810,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     listen(tavern_events.CHARACTER_MESSAGE_RENDERED, messageId => {
       advanceRecentFloor(messageId);
       enqueueMessage(messageId, 'CHARACTER_MESSAGE_RENDERED', { lifecycleDriven: true });
+      if (messageId === getLastMessageId()) void refreshLibrary();
     });
     listen(tavern_events.MESSAGE_RECEIVED, messageId => {
       advanceRecentFloor(messageId);
@@ -811,6 +825,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     });
     listen(tavern_events.MESSAGE_UPDATED, messageId => {
       enqueueMessage(messageId, 'MESSAGE_UPDATED', { lifecycleDriven: true });
+      if (messageId === getLastMessageId()) void refreshLibrary();
     });
     listen(tavern_events.MESSAGE_SWIPED, messageId => {
       enqueueMessage(messageId, 'MESSAGE_SWIPED', { lifecycleDriven: true });
@@ -847,6 +862,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         onCloseLibrary: closeLibrary,
         onCloseLibraryViewer: closeLibraryViewer,
         onRefreshLibrary: () => void forceRefreshCharInfo(),
+        onReadInnerThoughtInbox: readInnerThoughtInbox,
         onOpenLibraryList: openLibraryList,
         onOpenLibraryCharacter: openLibraryCharacter,
         onOpenWorldbookLibrary: openWorldbookLibrary,

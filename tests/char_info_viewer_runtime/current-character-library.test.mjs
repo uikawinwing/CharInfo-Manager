@@ -6,6 +6,7 @@ import {
   buildCurrentCharacterViewerData,
   collectChangedAffinityNames,
   collectCurrentCharacterSnapshots,
+  updateInnerThoughtInbox,
 } from '../../src/char_info_viewer_runtime/currentCharacterLibrary.ts';
 
 test('当前角色资料库只读取最新消息 MVU 的关系列表', () => {
@@ -96,6 +97,24 @@ test('只把既有角色实际发生的好感度变化标记为未读', () => {
   assert.deepEqual(collectChangedAffinityNames(next, null), []);
 });
 
+test('心里话信箱只收录新的非空心里话，每个角色保留最近一次更新', () => {
+  const initial = new Map([['洛汐', '灯还亮着。'], ['白霜', '旧念头。']]);
+  const changed = new Map([['洛汐', '潮水涨了。'], ['白霜', ''], ['云舟', '终于到了。']]);
+  const empty = [];
+  assert.strictEqual(updateInnerThoughtInbox(empty, null, initial), empty);
+  const first = updateInnerThoughtInbox(empty, initial, changed);
+  assert.deepEqual(first, [
+    { name: '洛汐', text: '潮水涨了。', unread: true },
+    { name: '云舟', text: '终于到了。', unread: true },
+  ]);
+  first.forEach(entry => { entry.unread = false; });
+  assert.strictEqual(updateInnerThoughtInbox(first, changed, changed), first);
+  assert.deepEqual(updateInnerThoughtInbox(first, changed, new Map([['云舟', '找到码头了。']])), [
+    { name: '云舟', text: '找到码头了。', unread: true },
+    { name: '洛汐', text: '潮水涨了。', unread: false },
+  ]);
+});
+
 test('查看器资料保留当前快照，并把 MVU 外貌/着装字段转换为 Viewer 字段', () => {
   const nested = { 装备: { 武器: ['法杖'] } };
   const snapshot = collectCurrentCharacterSnapshots({
@@ -166,7 +185,7 @@ test('角色档案编辑器的步骤阻挡提示渲染在编辑器 iframe 内，
   assert.match(source, /v-if="editorNotice" class="editor-notice" role="alert" aria-live="assertive"/u);
   assert.match(source, /function showEditorNotice\(message: string\)/u);
   assert.match(source, /!profile\.characterName\.trim\(\)\) showEditorNotice\('请先填写角色全名。'\)/u);
-  assert.match(source, /step === 5\) showEditorNotice\('请先添加至少一张有效图片/u);
+  assert.match(source, /step === 5\) showEditorNotice\('请先添加图片直链，或在 ImgBed 上传并取得图库 URL/u);
   assert.doesNotMatch(source, /toastr\.warning/u);
 });
 
@@ -214,7 +233,8 @@ test('角色档案编辑器即时写入当前 draft 时强校验 CharInfo、状�
   assert.match(appSource, /status\.externalGalleries 中的状态栏相簿没有正确写入/u);
   assert.match(appSource, /status\.externalAvatars 中的状态栏头像没有正确写入/u);
   assert.match(appSource, /showEditorNotice/u);
-  assert.match(appSource, /状态栏相簿目前仅支援/u);
+  assert.match(appSource, /视频或无法识别为图片的媒体未同步到状态栏/u);
+  assert.doesNotMatch(appSource, /状态栏相簿目前仅支援/u);
   assert.match(appSource, /await props\.onForceRefresh\?\.\(\)/);
   assert.match(appSource, /保存并立即生效/u);
   assert.match(appSource, /世界书中的保存内容不会丢失/u);

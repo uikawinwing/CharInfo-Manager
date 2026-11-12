@@ -11,6 +11,12 @@ export type CurrentCharacterSnapshot = {
   data: Record<string, unknown>;
 };
 
+export type InnerThoughtUpdate = {
+  name: string;
+  text: string;
+  unread: boolean;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -116,6 +122,23 @@ export function collectChangedAffinityNames(nextMvuData: unknown, previousMvuDat
       return [name];
     })
     .sort((left, right) => left.localeCompare(right, 'zh-Hans-CN'));
+}
+
+export function updateInnerThoughtInbox(
+  inbox: InnerThoughtUpdate[],
+  previous: ReadonlyMap<string, string> | null,
+  current: ReadonlyMap<string, string>,
+): InnerThoughtUpdate[] {
+  if (!previous) return inbox;
+
+  const updates: InnerThoughtUpdate[] = [];
+  for (const [name, text] of current) {
+    if (text && text !== previous.get(name)) updates.push({ name, text, unread: true });
+  }
+  if (updates.length === 0) return inbox;
+
+  const updatedNames = new Set(updates.map(update => update.name));
+  return [...updates, ...inbox.filter(update => !updatedNames.has(update.name))];
 }
 
 export function buildCurrentCharacterViewerData(snapshot: CurrentCharacterSnapshot): Record<string, unknown> {
