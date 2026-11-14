@@ -142,6 +142,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { projectCharInfoMessage } from '../char_info_viewer/runtime/charInfoMessage';
+import { selectRecentMessageIds } from '../char_info_viewer/runtime/recentMessages';
 import { parseCharacterYaml } from '../char_info_viewer/services/yamlParser';
 import {
   createWizardPrompt,
@@ -283,7 +284,7 @@ async function checkIssue(): Promise<void> {
   const loaded = Array.from(window.parent.document.querySelectorAll<HTMLElement>('#chat > .mes[mesid]'))
     .map(element => Number(element.getAttribute('mesid')))
     .filter(Number.isInteger).sort((a, b) => a - b);
-  const activeIds = new Set(loaded.slice(-props.state.settings.activeFloorLimit));
+  const activeIds = new Set(selectRecentMessageIds(loaded, props.state.settings.activeFloorLimit));
   const raw = getVariables({ type: 'chat' });
   const options: WizardOptions = {
     symptom: symptom.value,

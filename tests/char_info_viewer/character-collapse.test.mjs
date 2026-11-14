@@ -7,6 +7,18 @@ import {
   parseCharacterFieldRules,
 } from '../../src/char_info_viewer/services/characterCollapse.ts';
 
+test('可视化规则比较字段值，缺失字段不会触发不包含', () => {
+  const data = { 种族: '高等精灵', 身份: ['旅人', '商人'], 姓名: 'A*' };
+  const match = (path, condition, value) => matchesCharacterFieldRules(data, [{ path, condition, value }]);
+  assert.equal(match('种族', 'includes', '精灵'), true);
+  assert.equal(match('种族', 'equals', '精灵'), false);
+  assert.equal(match('身份', 'excludes', '商'), false);
+  assert.equal(match('身份', 'excludes', '王'), true);
+  assert.equal(match('职业', 'excludes', '王'), false);
+  assert.equal(match('姓名', 'equals', 'A*'), true);
+  assert.equal(match('种族', 'equals', '*精灵'), false);
+});
+
 const baseOptions = {
   enabled: true,
   alwaysExpandRules: '',

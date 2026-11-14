@@ -47,6 +47,7 @@ type RunDiagnosticOptions = {
   active: boolean;
   mounted: boolean;
   chatVariables: Record<string, unknown>;
+  generatedPortraits?: ReadonlyMap<string, string>;
   mountDiagnostics: readonly RuntimeMountDiagnosticEntry[];
 };
 
@@ -296,6 +297,7 @@ export async function probeMediaSource(url: string): Promise<DiagnosticMediaChec
 async function diagnoseCharacter(
   data: CharacterData,
   chatVariables: Record<string, unknown>,
+  generatedPortrait?: string,
 ): Promise<DiagnosticCharacterReport> {
   const name = typeof data.姓名 === 'string' ? data.姓名.trim() : '';
   const checks: DiagnosticCheck[] = [];
@@ -340,14 +342,14 @@ async function diagnoseCharacter(
         detail: '当前 Viewer 会忽略正文里的 角色图片 / 立绘 / image 等字段；图片必须来自角色档案。',
       });
     }
-    return { name, checks, media };
+    if (!generatedPortrait) return { name, checks, media };
+  } else {
+    checks.push({
+      status: 'pass',
+      title: '找到当前聊天角色档案',
+      detail: `char_info.profiles[${JSON.stringify(name)}] 已存在。`,
+    });
   }
-
-  checks.push({
-    status: 'pass',
-    title: '找到当前聊天角色档案',
-    detail: `char_info.profiles[${JSON.stringify(name)}] 已存在。`,
-  });
 
   let remoteGalleryDetail = '';
   const profileRecord = asRecord(rawProfile);
@@ -364,7 +366,14 @@ async function diagnoseCharacter(
     }
   }
 
-  const resolved = await resolveCharacterVisualConfigWithExtensions(data, chatVariables);
+  const resolved = await resolveCharacterVisualConfigWithExtensions(data, chatVariables, generatedPortrait);
+  if (generatedPortrait && resolved.角色图片 === generatedPortrait) {
+    checks.push({
+      status: 'pass',
+      title: '已关联生成立绘',
+      detail: '角色卡读取的是当前聊天中保存的生成立绘。',
+    });
+  }
   const sourceGroups = Array.isArray(resolved.__char_info_image_source_groups)
     ? resolved.__char_info_image_source_groups.filter(group => Array.isArray(group) && group.length > 0)
     : [];
@@ -469,7 +478,7 @@ export async function runCharInfoDiagnostics(options: RunDiagnosticOptions): Pro
       title: `第 ${card.ordinal + 1} 张角色卡 YAML 正常`,
       detail: '角色资料可以被 Viewer parser 读取。',
     });
-    characters.push(await diagnoseCharacter(parsed.data, options.chatVariables));
+    characters.push(await diagnoseCharacter(parsed.data, options.chatVariables, options.generatedPortraits?.get(card.id)));
   }
 
   return { messageId: options.messageId, checks, characters };

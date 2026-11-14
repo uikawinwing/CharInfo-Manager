@@ -1,4 +1,5 @@
 import { remoteMediaKindFromUrl, type RemoteMediaKind } from '../../char_info_shared/remoteMediaUrl.ts';
+import { normalizeGeneratedPortraitUrl } from '../../char_info_shared/generatedPortraitUrl.ts';
 
 const CATBOX_FILE_HOST = 'files.catbox.moe';
 const CATBOX_IMAGE_PROXY_ORIGIN = 'https://wsrv.nl/';
@@ -40,6 +41,8 @@ export function normalizeHttpImageUrlForBrowser(url: string): string {
 
 export function normalizePortraitMediaUrlForBrowser(url: string): NormalizedPortraitMedia | null {
   const trimmed = url.trim();
+  const generated = normalizeGeneratedPortraitUrl(trimmed);
+  if (generated) return { url: generated, kind: 'image' };
   const kind = remoteMediaKindFromUrl(trimmed);
   if (!kind) return null;
 

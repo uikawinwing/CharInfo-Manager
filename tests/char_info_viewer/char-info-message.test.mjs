@@ -128,6 +128,7 @@ test('recognizes malformed YAML with core keys so the Viewer can offer manual re
 test('runtime selects only the latest six loaded floors by default', () => {
   assert.deepEqual(selectRecentMessageIds([0, 1, 2, 3, 4, 5, 6, 7]), [2, 3, 4, 5, 6, 7]);
   assert.deepEqual(selectRecentMessageIds([3, 4]), [3, 4]);
+  assert.deepEqual(selectRecentMessageIds([0, 1, 2, 3, 4, 5, 6, 7], 0), [0, 1, 2, 3, 4, 5, 6, 7]);
 });
 
 test('locates a collapsed body after display formatting changes whitespace and list markers', () => {

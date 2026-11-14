@@ -538,6 +538,7 @@
           </div>
         </div>
       </div>
+      <slot name="portrait-actions" :authored="authoredPortrait" />
     </template>
 
     <div v-else class="loading-card">等待 YAML 数据...</div>
@@ -547,6 +548,7 @@
 <script setup lang="ts">
 import { waitUntil } from 'async-wait-until';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
+import { hasStatusPortrait } from '../char_info_shared/characterProfile';
 
 import {
   ATTRIBUTE_KEYS,
@@ -578,7 +580,7 @@ import {
   statusEffectType,
   type TabKey,
 } from './services/characterViewModel';
-import { evaluateCharacterCollapse } from './services/characterCollapse';
+import { evaluateCharacterCollapse, type CollapseRuleSource } from './services/characterCollapse';
 import { resolveRemoteGalleryConfig } from './services/remoteGalleryService';
 import { importToMvuVariables, saveToChatWorldbook } from './services/importService';
 import { createParticleEngine, type ParticleEngine } from './services/particleEngine';
@@ -586,6 +588,7 @@ import {
   applyTheme,
   cloneCharacterDataWithVisualOverrides,
   hasDeprecatedVisualSyntax,
+  hasViewerPortrait,
   resolveCharacterVisualConfigWithExtensions,
   resolveCharacterVisualPreview,
   resolveTheme,
@@ -606,8 +609,8 @@ const props = withDefaults(
     debugEnabled?: boolean;
     imageSourcePriority?: string[];
     collapseModeEnabled?: boolean;
-    alwaysExpandRules?: string;
-    autoCollapseRules?: string;
+    alwaysExpandRules?: CollapseRuleSource;
+    autoCollapseRules?: CollapseRuleSource;
     levelGapCollapseEnabled?: boolean;
     levelGapCollapseThreshold?: number;
     playerLevel?: number | null;
@@ -615,6 +618,8 @@ const props = withDefaults(
     previewMode?: boolean;
     previewData?: CharacterData;
     visualConfigOverride?: { characterName: string; config: unknown };
+    generatedPortraitUrl?: string;
+    onGeneratedPortraitLoadError?: () => void;
     saveFeedback?: (feedback: ViewerSaveFeedback) => void;
     saveState?: ViewerSaveState;
   }>(),
@@ -636,6 +641,8 @@ const props = withDefaults(
     previewMode: false,
     previewData: undefined,
     visualConfigOverride: undefined,
+    generatedPortraitUrl: '',
+    onGeneratedPortraitLoadError: undefined,
     saveFeedback: undefined,
     saveState: undefined,
   },
@@ -654,6 +661,8 @@ const initializingViewer = ref(true);
 const theme = ref<ThemeResolved | null>(null);
 const activeTab = ref<TabKey>('profile');
 let previewBaseData: CharacterData | null = null;
+let visualUpdateId = 0;
+const authoredPortrait = ref(false);
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const bgLayerRef = ref<HTMLElement | null>(null);
@@ -898,6 +907,13 @@ watch(
   { deep: true },
 );
 
+watch(() => props.generatedPortraitUrl, async () => {
+  if (!previewBaseData || props.previewMode) return;
+  await applyParsedCharacterData(previewBaseData, parseMode.value, parseWarnings.value);
+  await nextTick();
+  setupParticleEngine();
+});
+
 async function initFromYaml() {
   const yamlText = props.yamlText.trim();
 
@@ -939,6 +955,9 @@ async function applyParsedCharacterData(
   mode: 'strict' | 'loose',
   warnings: string[] = [],
 ) {
+  const updateId = ++visualUpdateId;
+  const chatVariables = props.previewMode ? {} : getVariables({ type: 'chat' });
+  const generatedUrl = props.generatedPortraitUrl;
   const previewVisualConfig = props.previewMode
     ? await resolveRemoteGalleryConfig(props.visualConfigOverride?.config)
     : undefined;
@@ -948,7 +967,11 @@ async function applyParsedCharacterData(
         props.visualConfigOverride?.characterName ?? '',
         previewVisualConfig,
       )
-    : await resolveCharacterVisualConfigWithExtensions(data, getVariables({ type: 'chat' }));
+    : await resolveCharacterVisualConfigWithExtensions(data, chatVariables, generatedUrl);
+  if (updateId !== visualUpdateId) return;
+  const name = typeof data.姓名 === 'string' ? data.姓名.trim() : '';
+  authoredPortrait.value = hasStatusPortrait(chatVariables, name) ||
+    (resolvedData.角色图片 !== generatedUrl && hasViewerPortrait(resolvedData));
   const hasLegacyInlineImageSyntax = hasDeprecatedVisualSyntax(resolvedData);
   deprecatedVisualSyntaxWarning.value = hasLegacyInlineImageSyntax
     ? '检测到正文旧版角色图片字段。v0.3.0 起角色查看器已忽略该字段；角色档案只读取 char_info.profiles。请在角色档案编辑器中重新保存为新版档案。'
@@ -969,6 +992,9 @@ async function applyParsedCharacterData(
 }
 
 function useIllustratedFallback() {
+  if (props.generatedPortraitUrl && sheetData.value?.角色图片 === props.generatedPortraitUrl) {
+    props.onGeneratedPortraitLoadError?.();
+  }
   illustratedFallbackActive.value = true;
   nextTick(() => setupParticleEngine());
 }

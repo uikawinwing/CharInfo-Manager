@@ -21,10 +21,28 @@
           :level-gap-collapse-enabled="state.settings.levelGapCollapseEnabled"
           :level-gap-collapse-threshold="state.settings.levelGapCollapseThreshold"
           :player-level="readPlayerLevel(message.messageId)"
+          :generated-portrait-url="storyPortraitViews.get(card.key)?.url"
+          :on-generated-portrait-load-error="() => reportPortraitLoadError(storyPortraitViews.get(card.key)?.target)"
           :save-state="state.saveStateByCard[card.key]"
           :save-feedback="feedback => props.saveFeedbackHandler(card.key, feedback)"
           embedded
-        />
+        >
+          <template #portrait-actions="{ authored }">
+            <PortraitControls
+              v-if="portraitControlsEnabled && !authored && storyPortraitViews.get(card.key)"
+              :key="storyPortraitViews.get(card.key)!.target.key"
+              :target="storyPortraitViews.get(card.key)!.target"
+              :job="portraitJobsByKey.get(storyPortraitViews.get(card.key)!.target.key)"
+              :previous-request="portraitRequestsByImage.get(storyPortraitViews.get(card.key)!.url)"
+              :image-url="storyPortraitViews.get(card.key)!.url"
+              :availability="state.portraitAvailability"
+              :active-format="state.portraitFormat"
+              :prepare-prompt="portraits.preparePrompt"
+              @prepare="portraits.updateAvailability"
+              @submit="(description, prompt) => portraits.submit(storyPortraitViews.get(card.key)!.target, description, prompt)"
+            />
+          </template>
+        </ViewerApp>
       </div>
     </Teleport>
   </template>
@@ -80,7 +98,13 @@
         >
           <div class="char-info-character-library-title">
             <h2>角色资料库</h2>
-            <p v-if="state.library.worldbookOpen">世界书角色</p>
+            <div v-if="state.library.worldbookOpen" class="char-info-character-library-summary">
+              <span>世界书角色</span>
+              <span class="char-info-character-library-count" role="status">
+                <strong>{{ worldbookLibrarySummary.filtered }}</strong>
+                <span>{{ worldbookLibrarySummary.filtered === worldbookLibrarySummary.total ? '个角色' : `/ ${worldbookLibrarySummary.total} 个角色` }}</span>
+              </span>
+            </div>
             <p v-else>
               当前聊天角色 · 筛选：{{ activeFilterLabel }} · {{ filteredCharacters.length }}/{{ libraryCharacterCount }} 位角色
             </p>
@@ -139,6 +163,7 @@
             @close="closeCharacterLibrary"
             @open-current-chat="onOpenCurrentChatLibrary"
             @selection-changed="worldbookName => (activeWorldbookEditorTarget = worldbookName)"
+            @summary-changed="summary => (worldbookLibrarySummary = summary)"
             @edit="onEditWorldbookCharacter"
           />
 
@@ -358,9 +383,27 @@
           :debug-enabled="state.settings.debugEnabled"
           :image-source-priority="activeImageSourcePriority"
           :entrance-quote-override="selectedCharacter.innerThought"
+          :generated-portrait-url="selectedPortrait?.url"
+          :on-generated-portrait-load-error="() => reportPortraitLoadError(selectedPortrait?.target)"
           embedded
           read-only
-        />
+        >
+          <template #portrait-actions="{ authored }">
+            <PortraitControls
+              v-if="portraitControlsEnabled && !authored && selectedPortrait"
+              :key="selectedPortrait.target.key"
+              :target="selectedPortrait.target"
+              :job="portraitJobsByKey.get(selectedPortrait.target.key)"
+              :previous-request="portraitRequestsByImage.get(selectedPortrait.url)"
+              :image-url="selectedPortrait.url"
+              :availability="state.portraitAvailability"
+              :active-format="state.portraitFormat"
+              :prepare-prompt="portraits.preparePrompt"
+              @prepare="portraits.updateAvailability"
+              @submit="(description, prompt) => selectedPortrait && portraits.submit(selectedPortrait.target, description, prompt)"
+            />
+          </template>
+        </ViewerApp>
         <div v-else class="char-info-library-placeholder">
           <span aria-hidden="true">◇</span>
           <p>
@@ -431,330 +474,489 @@
           <button type="button" aria-label="关闭查看器设置" @click="onCloseSettings">×</button>
         </header>
 
-        <div class="char-info-settings-fields">
-          <TroubleshootingWizard :state="state" :on-open-profile-editor="openProfileEditorFromWizard" />
-
-          <label>
-            <strong>显示楼层数</strong>
-            <input
-              v-model.number="floorLimitDraft"
-              type="number"
-              :min="MIN_ACTIVE_FLOOR_LIMIT"
-              :max="MAX_ACTIVE_FLOOR_LIMIT"
-              inputmode="numeric"
-              @change="applySettings"
-            />
-          </label>
-
-          <label>
-            <span>
-              <strong>每个消息楼层最多支持</strong>
-              <small>超过此数量时，该楼层的 CharInfo Viewer 将暂不渲染并弹出提示。</small>
-            </span>
-            <input
-              v-model.number="maxCardsPerMessageDraft"
-              type="number"
-              :min="MIN_MAX_CARDS_PER_MESSAGE"
-              :max="MAX_MAX_CARDS_PER_MESSAGE"
-              :disabled="unlimitedCardsPerMessageDraft"
-              inputmode="numeric"
-              @change="applySettings"
-            />
-          </label>
-
-          <label>
-            <span>
-              <strong>不限单楼层数量</strong>
-              <small>警告：大量 Viewer 同时渲染可能明显增加性能与内存负担。</small>
-            </span>
+        <div class="char-info-settings-body">
+          <nav class="char-info-settings-nav" aria-label="设置分类">
+            <template v-for="section in settingsSections" :key="section.id">
+            <span v-if="section.id === 'performance'" class="char-info-settings-nav-heading">查看器设定</span>
             <button
               type="button"
-              :class="{ 'char-info-settings-danger-active': unlimitedCardsPerMessageDraft }"
-              @click="toggleUnlimitedCardsPerMessage"
+              :class="{ 'char-info-settings-nav-debug': section.id === 'diagnostics' }"
+              :aria-current="activeSettingsSection === section.id ? 'true' : undefined"
+              :aria-controls="settingsPanelId(section.id)"
+              @click="selectSettingsSection(section.id)"
             >
-              {{ unlimitedCardsPerMessageDraft ? '已开启无限制' : '无限制' }}
+              {{ section.label }}
             </button>
-          </label>
+            </template>
+          </nav>
 
-          <label class="char-info-settings-switch">
-            <span>
-              <strong>视觉特效</strong>
-              <small>关闭可降低手机负担。</small>
-            </span>
-            <input v-model="effectsEnabledDraft" type="checkbox" @change="applySettings" />
-          </label>
+          <div ref="settingsContent" class="char-info-settings-fields">
+            <h3 id="char-info-settings-section-heading">{{ activeSettingsLabel }}</h3>
 
-          <label>
-            <span>
-              <strong>界面主题</strong>
-              <small>深色与浅色使用同一套暖金视觉语言。</small>
-            </span>
-            <select v-model="themeModeDraft" @change="applySettings">
-              <option value="dark">深色</option>
-              <option value="light">浅色</option>
-            </select>
-          </label>
-
-          <label>
-            <span>
-              <strong>文字大小</strong>
-              <small>只调整角色卡文字，不放大立绘或卡片尺寸。</small>
-            </span>
-            <select v-model.number="fontSizeAdjustmentDraft" @change="applySettings">
-              <option :value="-1">较小</option>
-              <option :value="0">标准</option>
-              <option :value="2">较大</option>
-              <option :value="4">特大</option>
-            </select>
-          </label>
-
-          <label class="char-info-settings-switch">
-            <span>
-              <strong>强制使用移动布局</strong>
-              <small>适用于较宽手机或窄屏浏览器；关闭时自动判断。</small>
-            </span>
-            <input v-model="forceMobileLayoutDraft" type="checkbox" @change="applySettings" />
-          </label>
-
-          <label class="char-info-settings-switch">
-            <span>
-              <strong>Debug 模式</strong>
-              <small>在浏览器 Console 输出图片来源尝试、失败、超时、切换与成功记录。</small>
-            </span>
-            <input v-model="debugEnabledDraft" type="checkbox" @change="applySettings" />
-          </label>
-
-          <details class="char-info-settings-advanced">
-            <summary>高级诊断 · 查看详细检查记录</summary>
-          <section class="char-info-settings-diagnostics" aria-labelledby="char-info-diagnostics-label">
-            <div class="char-info-settings-diagnostics-head">
-              <span>
-                <strong id="char-info-diagnostics-label">故障诊断</strong>
-                <small>检查最近一条包含 CharInfo 的 assistant 消息、角色档案和图片来源。</small>
-              </span>
-              <button type="button" :disabled="diagnosticRunning" @click="runDiagnostics">
-                {{ diagnosticRunning ? '检查中…' : '运行诊断' }}
-              </button>
-            </div>
-
-            <p v-if="diagnosticError" class="char-info-diagnostic-error">{{ diagnosticError }}</p>
-
-            <div v-if="diagnosticReport" class="char-info-diagnostic-report">
-              <div class="char-info-diagnostic-report-title">
-                <strong>消息 #{{ diagnosticReport.messageId }}</strong>
-                <small>只读检查，不会修改聊天变量或世界书。</small>
+            <section
+              v-show="activeSettingsSection === 'library'"
+              :id="settingsPanelId('library')"
+              class="char-info-settings-panel"
+              aria-labelledby="char-info-settings-section-heading"
+            >
+              <div class="char-info-settings-rows">
+                <label>
+                  <span>
+                    <strong>界面主题</strong>
+                  </span>
+                  <select v-model="themeModeDraft" @change="applySettings">
+                    <option value="dark">深色</option>
+                    <option value="light">浅色</option>
+                  </select>
+                </label>
               </div>
 
-              <div class="char-info-diagnostic-list">
-                <article
-                  v-for="check in diagnosticReport.checks"
-                  :key="`${check.status}:${check.title}:${check.detail}`"
-                  class="char-info-diagnostic-item"
-                  :class="`is-${check.status}`"
-                >
-                  <span class="char-info-diagnostic-status">{{ diagnosticStatusLabel(check.status) }}</span>
-                  <div>
-                    <strong>{{ check.title }}</strong>
-                    <p>{{ check.detail }}</p>
-                    <details v-if="check.location || check.excerpt" class="char-info-diagnostic-extra">
-                      <summary>查看详情</summary>
-                      <small v-if="check.location">{{ check.location }}</small>
-                      <pre v-if="check.excerpt">{{ check.excerpt }}</pre>
-                    </details>
-                  </div>
-                </article>
-              </div>
+              <section class="char-info-settings-priority" aria-labelledby="char-info-image-source-priority-label">
+                <label class="char-info-settings-switch char-info-settings-priority-switch">
+                  <span>
+                    <strong id="char-info-image-source-priority-label">图片来源优先级</strong>
+                    <small>开启后，查看器会优先尝试排在前面的网站；关闭时保持作者原本的图片顺序。</small>
+                  </span>
+                  <span class="char-info-settings-priority-toggle-wrap">
+                    <small>{{ imageSourcePriorityEnabledDraft ? '已开启' : '已关闭' }}</small>
+                    <input
+                      v-model="imageSourcePriorityEnabledDraft"
+                      class="char-info-settings-priority-toggle"
+                      type="checkbox"
+                      role="switch"
+                      aria-label="启用图片来源优先级"
+                      @change="toggleImageSourcePriority"
+                    />
+                  </span>
+                </label>
 
-              <section
-                v-for="character in diagnosticReport.characters"
-                :key="character.name"
-                class="char-info-diagnostic-character"
-              >
-                <h3>{{ character.name }}</h3>
-                <div class="char-info-diagnostic-list">
-                  <article
-                    v-for="check in character.checks"
-                    :key="`${check.status}:${check.title}:${check.detail}`"
-                    class="char-info-diagnostic-item"
-                    :class="`is-${check.status}`"
-                  >
-                    <span class="char-info-diagnostic-status">{{ diagnosticStatusLabel(check.status) }}</span>
-                    <div>
-                      <strong>{{ check.title }}</strong>
-                      <p>{{ check.detail }}</p>
+                <div v-if="imageSourcePriorityEnabledDraft" class="char-info-settings-priority-editor">
+                  <p>一个输入框只填一个图片网站。数字越小，优先级越高。</p>
+                  <div class="char-info-settings-priority-list">
+                    <div
+                      v-for="(priority, index) in imageSourcePriorityDraft"
+                      :key="index"
+                      class="char-info-settings-priority-row"
+                    >
+                      <span class="char-info-settings-priority-index" aria-hidden="true">{{ index + 1 }}</span>
+                      <input
+                        v-model.trim="imageSourcePriorityDraft[index]"
+                        type="text"
+                        :aria-label="`第 ${index + 1} 个图片网站`"
+                        placeholder="例如：files.catbox.moe"
+                        spellcheck="false"
+                        @change="applySettings"
+                      />
+                      <div class="char-info-settings-priority-actions">
+                        <button
+                          type="button"
+                          :disabled="index === 0"
+                          :aria-label="`上移第 ${index + 1} 个图片网站`"
+                          title="上移"
+                          @click="moveImageSourcePriority(index, -1)"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          :disabled="index === imageSourcePriorityDraft.length - 1"
+                          :aria-label="`下移第 ${index + 1} 个图片网站`"
+                          title="下移"
+                          @click="moveImageSourcePriority(index, 1)"
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          :aria-label="`删除第 ${index + 1} 个图片网站`"
+                          title="删除"
+                          @click="removeImageSourcePriority(index)"
+                        >
+                          ×
+                        </button>
+                      </div>
                     </div>
-                  </article>
-                </div>
-
-                <details v-if="character.media.length" class="char-info-diagnostic-media">
-                  <summary>图片来源实测 · {{ character.media.length }} 个</summary>
-                  <div>
-                    <p v-for="source in character.media" :key="source.url" :class="`is-${source.status}`">
-                      <strong>{{ source.status === 'pass' ? '可读取' : '失败' }}</strong>
-                      <code>{{ source.url }}</code>
-                      <span>{{ source.detail }}</span>
-                    </p>
                   </div>
-                </details>
+                  <div class="char-info-settings-priority-footer">
+                    <button type="button" @click="useRecommendedImageSourcePriority">使用推荐顺序</button>
+                    <button type="button" @click="addImageSourcePriority">＋ 添加图片来源</button>
+                  </div>
+                </div>
               </section>
-            </div>
-          </section>
-          </details>
 
-          <section class="char-info-settings-priority char-info-collapse-settings" aria-labelledby="char-info-collapse-mode-label">
-            <label class="char-info-settings-switch char-info-settings-priority-switch">
-              <span>
-                <strong id="char-info-collapse-mode-label">折叠模式</strong>
-                <small>普通角色卡可按字段规则或等级差自动显示紧凑卡；立绘角色卡不受影响。</small>
-              </span>
-              <span class="char-info-settings-priority-toggle-wrap">
-                <small>{{ collapseModeEnabledDraft ? '已开启' : '已关闭' }}</small>
-                <input
-                  v-model="collapseModeEnabledDraft"
-                  class="char-info-settings-priority-toggle"
-                  type="checkbox"
-                  role="switch"
-                  aria-label="启用角色卡折叠模式"
-                  @change="applySettings"
-                />
-              </span>
-            </label>
+              <div class="char-info-settings-callout">
+                <span><strong>图床功能</strong><small>在 ImgBed 登录并管理图库。</small></span>
+                <a class="char-info-settings-link" href="https://imgbed.uika.cc.cd/account/" target="_blank" rel="noopener noreferrer">登录 ImgBed</a>
+              </div>
+            </section>
 
-            <div v-if="collapseModeEnabledDraft" class="char-info-settings-priority-editor char-info-collapse-settings-editor">
-              <p>每行一个 <code>key: value</code>。先按 key 定位角色字段，只匹配该字段的 value；value 可用 <code>*</code> 通配，多行条件任意一条命中即可。</p>
-
-              <label class="char-info-collapse-rule-field">
-                <span>
-                  <strong>始终展开</strong>
-                  <small>优先级最高。适合想一直看到完整资料的种族、身份或角色。</small>
-                </span>
-                <textarea
-                  v-model="alwaysExpandRulesDraft"
-                  rows="3"
-                  :placeholder="'种族: *精灵\n身份: 重要NPC'"
-                  spellcheck="false"
-                  @change="applySettings"
-                ></textarea>
-              </label>
-
-              <label class="char-info-collapse-rule-field">
-                <span>
-                  <strong>自动折叠</strong>
-                  <small>适合普通魔物类型；不需要逐个填写怪物姓名。</small>
-                </span>
-                <textarea
-                  v-model="autoCollapseRulesDraft"
-                  rows="3"
-                  :placeholder="'种族: 魔物*\n种族: 哥布林*\n种族: 史莱姆*'"
-                  spellcheck="false"
-                  @change="applySettings"
-                ></textarea>
-              </label>
-
-              <label class="char-info-settings-switch char-info-collapse-level-rule">
-                <span>
-                  <strong>借过一下</strong>
-                  <small>角色比主角低指定等级以上时自动折叠；「始终展开」仍优先。</small>
-                </span>
-                <input v-model="levelGapCollapseEnabledDraft" type="checkbox" @change="applySettings" />
-              </label>
-
-              <label v-if="levelGapCollapseEnabledDraft" class="char-info-collapse-level-gap">
-                <span>
-                  <strong>等级差</strong>
-                  <small>主角等级读取自消息变量 <code>stat_data.主角.等级</code>。</small>
-                </span>
-                <input
-                  v-model.number="levelGapCollapseThresholdDraft"
-                  type="number"
-                  :min="MIN_COLLAPSE_LEVEL_GAP"
-                  :max="MAX_COLLAPSE_LEVEL_GAP"
-                  inputmode="numeric"
-                  @change="applySettings"
-                />
-              </label>
-            </div>
-          </section>
-
-          <section class="char-info-settings-priority" aria-labelledby="char-info-image-source-priority-label">
-            <label class="char-info-settings-switch char-info-settings-priority-switch">
-              <span>
-                <strong id="char-info-image-source-priority-label">图片来源优先级</strong>
-                <small>开启后，查看器会优先尝试排在前面的网站；关闭时保持作者原本的图片顺序。</small>
-              </span>
-              <span class="char-info-settings-priority-toggle-wrap">
-                <small>{{ imageSourcePriorityEnabledDraft ? '已开启' : '已关闭' }}</small>
-                <input
-                  v-model="imageSourcePriorityEnabledDraft"
-                  class="char-info-settings-priority-toggle"
-                  type="checkbox"
-                  role="switch"
-                  aria-label="启用图片来源优先级"
-                  @change="toggleImageSourcePriority"
-                />
-              </span>
-            </label>
-
-            <div v-if="imageSourcePriorityEnabledDraft" class="char-info-settings-priority-editor">
-              <p>一个输入框只填一个图片网站。数字越小，优先级越高。</p>
-              <div class="char-info-settings-priority-list">
-                <div
-                  v-for="(priority, index) in imageSourcePriorityDraft"
-                  :key="index"
-                  class="char-info-settings-priority-row"
-                >
-                  <span class="char-info-settings-priority-index" aria-hidden="true">{{ index + 1 }}</span>
+            <section
+              v-show="activeSettingsSection === 'performance'"
+              :id="settingsPanelId('performance')"
+              class="char-info-settings-panel"
+              aria-labelledby="char-info-settings-section-heading"
+            >
+              <div class="char-info-settings-rows">
+                <label>
+                  <span>
+                    <strong>显示楼层数</strong>
+                    <small>从最新楼层开始计数。设为 0 时，渲染酒馆已加载的所有楼层。</small>
+                  </span>
                   <input
-                    v-model.trim="imageSourcePriorityDraft[index]"
-                    type="text"
-                    :aria-label="`第 ${index + 1} 个图片网站`"
-                    placeholder="例如：files.catbox.moe"
-                    spellcheck="false"
+                    v-model.number="floorLimitDraft"
+                    type="number"
+                    :min="MIN_ACTIVE_FLOOR_LIMIT"
+                    :max="MAX_ACTIVE_FLOOR_LIMIT"
+                    inputmode="numeric"
                     @change="applySettings"
                   />
-                  <div class="char-info-settings-priority-actions">
-                    <button
-                      type="button"
-                      :disabled="index === 0"
-                      :aria-label="`上移第 ${index + 1} 个图片网站`"
-                      title="上移"
-                      @click="moveImageSourcePriority(index, -1)"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      :disabled="index === imageSourcePriorityDraft.length - 1"
-                      :aria-label="`下移第 ${index + 1} 个图片网站`"
-                      title="下移"
-                      @click="moveImageSourcePriority(index, 1)"
-                    >
-                      ↓
-                    </button>
-                    <button
-                      type="button"
-                      :aria-label="`删除第 ${index + 1} 个图片网站`"
-                      title="删除"
-                      @click="removeImageSourcePriority(index)"
-                    >
-                      ×
-                    </button>
-                  </div>
+                </label>
+
+                <label>
+                  <span>
+                    <strong>单层最大渲染数量</strong>
+                    <small>设为 0 时不限张数。超过上限的楼层会暂停渲染。</small>
+                  </span>
+                  <input
+                    v-model.number="maxCardsPerMessageDraft"
+                    type="number"
+                    :min="MIN_MAX_CARDS_PER_MESSAGE"
+                    :max="MAX_MAX_CARDS_PER_MESSAGE"
+                    inputmode="numeric"
+                    @change="applySettings"
+                  />
+                </label>
+
+                <label class="char-info-settings-switch">
+                  <span>
+                    <strong>视觉特效</strong>
+                    <small>关闭可降低手机负担。</small>
+                  </span>
+                  <input v-model="effectsEnabledDraft" type="checkbox" @change="applySettings" />
+                </label>
+              </div>
+            </section>
+
+            <section
+              v-show="activeSettingsSection === 'appearance'"
+              :id="settingsPanelId('appearance')"
+              class="char-info-settings-panel"
+              aria-labelledby="char-info-settings-section-heading"
+            >
+              <div class="char-info-settings-rows">
+                <label>
+                  <span>
+                    <strong>文字大小</strong>
+                    <small>只调整角色卡文字，不放大立绘或卡片尺寸。</small>
+                  </span>
+                  <select v-model.number="fontSizeAdjustmentDraft" @change="applySettings">
+                    <option :value="-1">较小</option>
+                    <option :value="0">标准</option>
+                    <option :value="2">较大</option>
+                    <option :value="4">特大</option>
+                  </select>
+                </label>
+
+                <label class="char-info-settings-switch">
+                  <span>
+                    <strong>在角色卡中强制使用移动布局</strong>
+                    <small>关闭时，角色卡会按窗口宽度自动调整。</small>
+                  </span>
+                  <input v-model="forceMobileLayoutDraft" type="checkbox" @change="applySettings" />
+                </label>
+              </div>
+
+              <section class="char-info-settings-priority char-info-collapse-settings" aria-labelledby="char-info-collapse-mode-label">
+                <label class="char-info-settings-switch char-info-settings-priority-switch">
+                  <span>
+                    <strong id="char-info-collapse-mode-label">折叠模式</strong>
+                    <small>普通角色卡可按字段规则或等级差自动显示紧凑卡；立绘角色卡不受影响。</small>
+                  </span>
+                  <span class="char-info-settings-priority-toggle-wrap">
+                    <small>{{ collapseModeEnabledDraft ? '已开启' : '已关闭' }}</small>
+                    <input
+                      v-model="collapseModeEnabledDraft"
+                      class="char-info-settings-priority-toggle"
+                      type="checkbox"
+                      role="switch"
+                      aria-label="启用角色卡折叠模式"
+                      @change="applySettings"
+                    />
+                  </span>
+                </label>
+
+                <div v-if="collapseModeEnabledDraft" class="char-info-settings-priority-editor char-info-collapse-settings-editor">
+                  <section v-for="group in collapseRuleGroups" :key="group.label" class="char-info-rule-group">
+                    <div class="char-info-settings-subheading">
+                      <strong>{{ group.label }}</strong>
+                      <button type="button" @click="addCollapseRule(group.rules)">添加规则</button>
+                    </div>
+                    <p v-if="!group.rules.length">还没有规则。</p>
+                    <div v-for="(rule, index) in group.rules" :key="index" class="char-info-rule-row">
+                      <select v-model="rule.path" :aria-label="`${group.label}第 ${index + 1} 条规则的字段`" @change="applySettings">
+                        <option v-if="!collapseRuleFields.includes(rule.path)" :value="rule.path">{{ rule.path }}</option>
+                        <option v-for="field in collapseRuleFields" :key="field" :value="field">{{ field }}</option>
+                      </select>
+                      <select v-model="rule.condition" :aria-label="`${group.label}第 ${index + 1} 条规则的条件`" @change="applySettings">
+                        <option value="equals">等于</option>
+                        <option value="includes">包含</option>
+                        <option value="excludes">不包含</option>
+                        <option v-if="rule.condition === 'pattern'" value="pattern">原通配条件</option>
+                      </select>
+                      <input v-model="rule.value" type="text" placeholder="填写值" :aria-label="`${group.label}第 ${index + 1} 条规则的值`" @change="applySettings" />
+                      <button type="button" :aria-label="`删除${group.label}第 ${index + 1} 条规则`" @click="removeCollapseRule(group.rules, index)">删除</button>
+                    </div>
+                  </section>
+                  <p>同组任一规则命中即生效。「始终展开」优先。字段不存在时，「不包含」也不会命中。</p>
+
+                  <label class="char-info-settings-switch char-info-collapse-level-rule">
+                    <span>
+                    <strong>按等级差自动折叠</strong>
+                      <small>角色比主角低指定等级以上时自动折叠；「始终展开」仍优先。</small>
+                    </span>
+                    <input v-model="levelGapCollapseEnabledDraft" type="checkbox" @change="applySettings" />
+                  </label>
+
+                  <label v-if="levelGapCollapseEnabledDraft" class="char-info-collapse-level-gap">
+                    <span>
+                      <strong>等级差</strong>
+                      <small>主角等级读取自消息变量 <code>stat_data.主角.等级</code>。</small>
+                    </span>
+                    <input
+                      v-model.number="levelGapCollapseThresholdDraft"
+                      type="number"
+                      :min="MIN_COLLAPSE_LEVEL_GAP"
+                      :max="MAX_COLLAPSE_LEVEL_GAP"
+                      inputmode="numeric"
+                      @change="applySettings"
+                    />
+                  </label>
                 </div>
+              </section>
+            </section>
+
+            <section
+              v-show="activeSettingsSection === 'generation'"
+              :id="settingsPanelId('generation')"
+              class="char-info-settings-panel"
+              aria-labelledby="char-info-settings-section-heading"
+            >
+              <details class="char-info-settings-advanced">
+                <summary>柏宝绘需要配置什么？</summary>
+                <p>在柏宝绘选择生图渠道。ComfyUI 用户需要设置工作流、模型和 LoRA。CharInfo 负责改写和预览提示词、发起生图，并把结果关联到当前聊天的 NPC。</p>
+              </details>
+              <div class="char-info-settings-rows">
+                <label class="char-info-settings-switch">
+                  <span>
+                    <strong>连接柏宝绘</strong>
+                    <small v-if="useBaiBaiDraft">{{ state.portraitAvailability?.message || '柏宝绘已就绪。' }}</small>
+                    <small v-else>开启后使用柏宝绘当前选中的生图渠道。</small>
+                  </span>
+                  <input
+                    v-model="useBaiBaiDraft"
+                    class="char-info-settings-priority-toggle"
+                    type="checkbox"
+                    role="switch"
+                    aria-label="连接柏宝绘"
+                    @change="applySettings"
+                  />
+                </label>
+
+                <label class="char-info-settings-switch">
+                  <span>
+                    <strong>自动生成新 NPC 的立绘</strong>
+                    <small>只处理新回复中首次出现且没有立绘的角色；命中「折叠模式 → 自动折叠」规则时跳过，不调用标签或生图 API。</small>
+                  </span>
+                  <input
+                    v-model="autoGeneratePortraitsDraft"
+                    type="checkbox"
+                    :disabled="!useBaiBaiDraft"
+                    @change="applySettings"
+                  />
+                </label>
               </div>
-              <div class="char-info-settings-priority-footer">
-                <button type="button" @click="useRecommendedImageSourcePriority">使用推荐顺序</button>
-                <button type="button" @click="addImageSourcePriority">＋ 添加图片来源</button>
+              <section class="char-info-settings-rows" aria-labelledby="portrait-api-heading">
+                <div class="char-info-settings-subheading">
+                  <strong id="portrait-api-heading">生成标签的 API</strong>
+                  <small>{{ portraitOptionsDraft.independentApi ? '使用选中的独立 API' : '使用当前酒馆 API' }}</small>
+                </div>
+                <label class="char-info-settings-switch">
+                  <span><strong>独立 API</strong><small>选择酒馆连接配置，或自填 OpenAI 兼容接口。</small></span>
+                  <input v-model="portraitOptionsDraft.independentApi" type="checkbox" role="switch" @change="applySettings" />
+                </label>
+                <label v-if="portraitOptionsDraft.independentApi" class="char-info-portrait-api-source">
+                  <span><strong>连接方式</strong></span>
+                  <select v-model="portraitOptionsDraft.apiSource" @change="applySettings">
+                    <option value="profile">酒馆连接配置</option>
+                    <option value="custom">自定义 · OpenAI 兼容</option>
+                  </select>
+                </label>
+                <div v-if="portraitOptionsDraft.independentApi && portraitOptionsDraft.apiSource === 'custom'" class="char-info-portrait-api-fields">
+                  <label class="char-info-collapse-rule-field">
+                    <span><strong>API URL</strong><small>填写含 /v1 的基础地址，或完整的 /chat/completions 地址。接口需允许浏览器跨域访问。</small></span>
+                    <input v-model="portraitOptionsDraft.apiUrl" type="url" placeholder="https://api.example.com/v1" @change="applySettings" />
+                  </label>
+                  <label class="char-info-collapse-rule-field">
+                    <span><strong>API Key</strong><small>保存在当前脚本设置中；无需鉴权的本地接口可留空。</small></span>
+                    <input v-model="portraitOptionsDraft.apiKey" type="password" autocomplete="new-password" @change="applySettings" />
+                  </label>
+                  <label class="char-info-collapse-rule-field">
+                    <span><strong>模型名称</strong></span>
+                    <input v-model="portraitOptionsDraft.apiModel" type="text" autocomplete="off" @change="applySettings" />
+                  </label>
+                </div>
+                <label v-if="portraitOptionsDraft.independentApi && portraitOptionsDraft.apiSource === 'profile'">
+                  <span><strong>API 配置</strong><small v-if="!portraitConnections.length">请先在酒馆连接管理器保存可用的连接。</small></span>
+                  <select v-model="portraitOptionsDraft.profileId" @focus="refreshPortraitConnections" @change="applySettings">
+                    <option value="">选择连接</option>
+                    <option v-if="portraitOptionsDraft.profileId && !portraitConnections.some(item => item.id === portraitOptionsDraft.profileId)" :value="portraitOptionsDraft.profileId">原配置已不可用</option>
+                    <option v-for="profile in portraitConnections" :key="profile.id" :value="profile.id">{{ profile.name }}</option>
+                  </select>
+                </label>
+              </section>
+              <details class="char-info-settings-advanced">
+                <summary>提示词</summary>
+                <label class="char-info-collapse-rule-field">
+                  <span><strong>默认构图要求</strong><small>决定立绘的镜头、姿态和场景，适用于两种模型。</small></span>
+                  <textarea v-model="portraitRewriteInstructionsDraft" rows="6" @change="applySettings"></textarea>
+                </label>
+                <label v-for="field in portraitPromptFields" :key="field.key" class="char-info-collapse-rule-field">
+                  <span><strong>{{ field.label }}</strong><small v-if="field.hint">{{ field.hint }}</small></span>
+                  <textarea v-model="portraitOptionsDraft[field.key]" :rows="field.rows" @change="applySettings"></textarea>
+                </label>
+                <button type="button" @click="restorePortraitRewriteInstructions">恢复默认提示词</button>
+              </details>
+              <details class="char-info-settings-advanced">
+                <summary>提示词历史</summary>
+                <p v-if="!portraitHistory.length">当前聊天暂无提示词记录。</p>
+                <div v-else class="char-info-diagnostic-list char-info-settings-job-list">
+                  <article v-for="(entry, index) in portraitHistory" :key="index" class="char-info-diagnostic-item">
+                    <span class="char-info-diagnostic-status">{{ PORTRAIT_PHASE_LABELS[entry.phase] }}</span>
+                    <details>
+                      <summary>{{ entry.name }} · {{ new Date(entry.time).toLocaleString('zh-CN') }}</summary>
+                      <p v-if="entry.issue">{{ entry.issue.stage }} · {{ entry.issue.message }}</p>
+                      <p v-if="entry.description" class="char-info-portrait-request-text"><strong>角色描述</strong><br />{{ entry.description }}</p>
+                      <p v-if="entry.prompt" class="char-info-portrait-request-text"><strong>{{ entry.prompt.format === 'nai' ? '画面标签' : 'Anima 标签' }}</strong><br />{{ entry.prompt.tags }}</p>
+                      <p v-if="entry.prompt?.detail" class="char-info-portrait-request-text"><strong>{{ entry.prompt.format === 'nai' ? '角色标签' : '英文画面描述' }}</strong><br />{{ entry.prompt.detail }}</p>
+                      <p v-if="entry.prompt?.negative" class="char-info-portrait-request-text"><strong>负面提示词</strong><br />{{ entry.prompt.negative }}</p>
+                    </details>
+                  </article>
+                </div>
+              </details>
+              <details class="char-info-settings-advanced">
+                <summary>图片历史</summary>
+                <p v-if="!portraitImageHistory.length">当前聊天暂无生成图片。</p>
+                <div v-else class="char-info-settings-image-history">
+                  <a v-for="(entry, index) in portraitImageHistory" :key="index" :href="entry.imageUrl" target="_blank" rel="noopener noreferrer">
+                    <img :src="entry.imageUrl" :alt="entry.name + '的立绘'" loading="lazy" />
+                    <span>{{ entry.name }}</span>
+                    <small>{{ new Date(entry.time).toLocaleString('zh-CN') }}</small>
+                  </a>
+                </div>
+              </details>
+            </section>
+
+            <section
+              v-show="activeSettingsSection === 'diagnostics'"
+              :id="settingsPanelId('diagnostics')"
+              class="char-info-settings-panel"
+              aria-labelledby="char-info-settings-section-heading"
+            >
+              <TroubleshootingWizard :state="state" :on-open-profile-editor="openProfileEditorFromWizard" />
+
+              <div class="char-info-settings-rows">
+                <label class="char-info-settings-switch">
+                  <span>
+                    <strong>调试日志</strong>
+                    <small>在浏览器 Console 输出图片来源尝试、失败、超时、切换与成功记录。</small>
+                  </span>
+                  <input v-model="debugEnabledDraft" type="checkbox" @change="applySettings" />
+                </label>
               </div>
-            </div>
-          </section>
+
+              <section class="char-info-settings-diagnostics" aria-labelledby="char-info-diagnostics-label">
+                <div class="char-info-settings-diagnostics-head">
+                  <span>
+                    <strong id="char-info-diagnostics-label">故障诊断</strong>
+                    <small>检查最近一条包含 CharInfo 的 assistant 消息、角色档案和图片来源。</small>
+                  </span>
+                  <button type="button" :disabled="diagnosticRunning" @click="runDiagnostics">
+                    {{ diagnosticRunning ? '检查中…' : '运行诊断' }}
+                  </button>
+                </div>
+
+                <p v-if="diagnosticError" class="char-info-diagnostic-error">{{ diagnosticError }}</p>
+
+                <div v-if="diagnosticReport" class="char-info-diagnostic-report">
+                  <div class="char-info-diagnostic-report-title">
+                    <strong>消息 #{{ diagnosticReport.messageId }}</strong>
+                    <small>只读检查，不会修改聊天变量或世界书。</small>
+                  </div>
+
+                  <div class="char-info-diagnostic-list">
+                    <article
+                      v-for="check in diagnosticReport.checks"
+                      :key="`${check.status}:${check.title}:${check.detail}`"
+                      class="char-info-diagnostic-item"
+                      :class="`is-${check.status}`"
+                    >
+                      <span class="char-info-diagnostic-status">{{ diagnosticStatusLabel(check.status) }}</span>
+                      <div>
+                        <strong>{{ check.title }}</strong>
+                        <p>{{ check.detail }}</p>
+                        <details v-if="check.location || check.excerpt" class="char-info-diagnostic-extra">
+                          <summary>查看详情</summary>
+                          <small v-if="check.location">{{ check.location }}</small>
+                          <pre v-if="check.excerpt">{{ check.excerpt }}</pre>
+                        </details>
+                      </div>
+                    </article>
+                  </div>
+
+                  <section
+                    v-for="character in diagnosticReport.characters"
+                    :key="character.name"
+                    class="char-info-diagnostic-character"
+                  >
+                    <h3>{{ character.name }}</h3>
+                    <div class="char-info-diagnostic-list">
+                      <article
+                        v-for="check in character.checks"
+                        :key="`${check.status}:${check.title}:${check.detail}`"
+                        class="char-info-diagnostic-item"
+                        :class="`is-${check.status}`"
+                      >
+                        <span class="char-info-diagnostic-status">{{ diagnosticStatusLabel(check.status) }}</span>
+                        <div>
+                          <strong>{{ check.title }}</strong>
+                          <p>{{ check.detail }}</p>
+                        </div>
+                      </article>
+                    </div>
+
+                    <details v-if="character.media.length" class="char-info-diagnostic-media">
+                      <summary>图片来源实测 · {{ character.media.length }} 个</summary>
+                      <div>
+                        <p v-for="source in character.media" :key="source.url" :class="`is-${source.status}`">
+                          <strong>{{ source.status === 'pass' ? '可读取' : '失败' }}</strong>
+                          <code>{{ source.url }}</code>
+                          <span>{{ source.detail }}</span>
+                        </p>
+                      </div>
+                    </details>
+                  </section>
+                </div>
+              </section>
+            </section>
+          </div>
         </div>
 
-        <p v-if="settingsMessage" class="char-info-settings-feedback" aria-live="polite">{{ settingsMessage }}</p>
-
         <footer>
-          <button type="button" @click="resetSettings">恢复默认</button>
-          <button type="button" class="primary" @click="onCloseSettings">完成</button>
+          <p class="char-info-settings-feedback" role="status">{{ settingsMessage }}</p>
+          <div class="char-info-settings-footer-actions">
+            <button type="button" @click="resetSettings">恢复默认</button>
+            <button type="button" class="primary" @click="onCloseSettings">完成</button>
+          </div>
         </footer>
       </section>
     </div>
@@ -770,9 +972,18 @@ import ViewerApp from '../char_info_viewer/App.vue';
 import type { ViewerSaveFeedback } from '../char_info_viewer/types';
 import WorldbookCharacterLibrary from './WorldbookCharacterLibrary.vue';
 import TroubleshootingWizard from './TroubleshootingWizard.vue';
+import PortraitControls from './PortraitControls.vue';
 import { normalizeImageSourcePriorityEntries } from '../char_info_viewer/services/imageSourcePriority';
 import { buildCurrentCharacterViewerData } from './currentCharacterLibrary';
 import { runCharInfoDiagnostics, type CharInfoDiagnosticReport, type DiagnosticStatus } from './diagnostics';
+import type { PortraitTarget } from './portraitData';
+import { PORTRAIT_PHASE_LABELS } from './portraitJobs';
+import { PortraitError } from './portraitProvider';
+import { DEFAULT_PORTRAIT_REWRITE_INSTRUCTIONS } from './portraitPrompt';
+import { listPortraitConnections, PortraitOptionsSchema } from './portraitSettings';
+import { editableCollapseRules, type CollapseRule } from '../char_info_viewer/services/characterCollapse';
+import { selectRecentMessageIds } from '../char_info_viewer/runtime/recentMessages';
+import type { PortraitRuntime } from './portraitRuntime';
 import {
   DEFAULT_IMAGE_SOURCE_PRIORITY,
   MAX_ACTIVE_FLOOR_LIMIT,
@@ -789,6 +1000,7 @@ type LibraryFilter = 'all' | 'present' | 'away';
 
 const props = defineProps<{
   state: RuntimeViewState;
+  portraits: PortraitRuntime;
   onCloseLibrary: () => void;
   onCloseLibraryViewer: () => void;
   onRefreshLibrary: () => void;
@@ -812,6 +1024,7 @@ const searchText = ref('');
 const activeFilter = ref<LibraryFilter>('all');
 const innerThoughtInboxOpen = ref(false);
 const activeWorldbookEditorTarget = ref('');
+const worldbookLibrarySummary = ref({ filtered: 0, total: 0 });
 const selectedCharacterName = ref('');
 const failedAvatarUrls = ref(new Set<string>());
 const dragPosition = ref<{ left: number; top: number } | null>(null);
@@ -820,20 +1033,77 @@ const viewerWindowRef = ref<HTMLElement | null>(null);
 const viewerWindowPosition = ref<{ left: number; top: number } | null>(null);
 const floorLimitDraft = ref(props.state.settings.activeFloorLimit);
 const maxCardsPerMessageDraft = ref(props.state.settings.maxCardsPerMessage);
-const unlimitedCardsPerMessageDraft = ref(props.state.settings.unlimitedCardsPerMessage);
 const effectsEnabledDraft = ref(props.state.settings.effectsEnabled);
 const forceMobileLayoutDraft = ref(props.state.settings.forceMobileLayout);
 const themeModeDraft = ref(props.state.settings.themeMode);
 const fontSizeAdjustmentDraft = ref(props.state.settings.fontSizeAdjustment);
 const debugEnabledDraft = ref(props.state.settings.debugEnabled);
 const collapseModeEnabledDraft = ref(props.state.settings.collapseModeEnabled);
-const alwaysExpandRulesDraft = ref(props.state.settings.alwaysExpandRules);
-const autoCollapseRulesDraft = ref(props.state.settings.autoCollapseRules);
+const alwaysExpandRulesDraft = ref(editableCollapseRules(props.state.settings.alwaysExpandRules));
+const autoCollapseRulesDraft = ref(editableCollapseRules(props.state.settings.autoCollapseRules));
+const collapseRuleFields = ['姓名', '种族', '性别', '身份', '职业', '等级', '生命层级', '性格', '喜爱', '外貌特质', '衣物装饰', '背景故事', '神位'];
+const collapseRuleGroups = computed(() => [
+  { label: '始终展开', rules: alwaysExpandRulesDraft.value },
+  { label: '自动折叠', rules: autoCollapseRulesDraft.value },
+]);
 const levelGapCollapseEnabledDraft = ref(props.state.settings.levelGapCollapseEnabled);
 const levelGapCollapseThresholdDraft = ref(props.state.settings.levelGapCollapseThreshold);
 const imageSourcePriorityEnabledDraft = ref(props.state.settings.imageSourcePriorityEnabled);
 const imageSourcePriorityDraft = ref([...props.state.settings.imageSourcePriority]);
+const useBaiBaiDraft = ref(props.state.settings.portraitProvider === 'baibai');
+const autoGeneratePortraitsDraft = ref(props.state.settings.autoGeneratePortraits);
+const portraitRewriteInstructionsDraft = ref(props.state.settings.portraitRewriteInstructions);
+const portraitOptionsDraft = ref({ ...props.state.settings.portraitOptions });
+const portraitConnections = ref<ReturnType<typeof listPortraitConnections>>([]);
+const portraitPromptFields = [
+  { key: 'common', label: '额外系统提示词', hint: '作为共用指令发送给生成标签的 API，可留空。', rows: 3 },
+  { key: 'anima', label: 'Anima 生成指令', hint: '', rows: 6 },
+  { key: 'nai', label: 'NovelAI 生成指令', hint: '', rows: 6 },
+  { key: 'positive', label: '固定正面提示词', hint: '加入每次立绘请求。', rows: 3 },
+  { key: 'negative', label: '固定负面提示词', hint: '用于 ComfyUI。NovelAI 的负面提示词在柏宝绘渠道中设置。', rows: 3 },
+] as const;
+const portraitHistory = computed(() => {
+  void props.state.portraitJobs;
+  void props.state.portraitRevision;
+  return props.portraits.history();
+});
+const portraitImageHistory = computed(() => portraitHistory.value.filter(entry => entry.imageUrl));
+const portraitRequestsByImage = computed(() => new Map(portraitImageHistory.value.map(entry => [entry.imageUrl, entry])));
 const settingsMessage = ref('');
+const settingsSections = [
+  { id: 'library', label: '管理库' },
+  { id: 'performance', label: '渲染与性能' },
+  { id: 'appearance', label: '界面与外观' },
+  { id: 'generation', label: '文生图' },
+  { id: 'diagnostics', label: '调试' },
+] as const;
+type SettingsSection = (typeof settingsSections)[number]['id'];
+const activeSettingsSection = ref<SettingsSection>('library');
+const activeSettingsLabel = computed(() => settingsSections.find(section => section.id === activeSettingsSection.value)?.label);
+const settingsContent = ref<HTMLElement | null>(null);
+
+function settingsPanelId(section: SettingsSection) {
+  return `char-info-settings-panel-${section}`;
+}
+
+function selectSettingsSection(section: SettingsSection) {
+  activeSettingsSection.value = section;
+  if (section === 'generation') refreshPortraitConnections();
+  settingsContent.value?.scrollTo({ top: 0 });
+}
+
+function refreshPortraitConnections() {
+  portraitConnections.value = listPortraitConnections();
+}
+
+function addCollapseRule(rules: CollapseRule[]) {
+  rules.push({ path: '种族', condition: 'equals', value: '' });
+}
+
+function removeCollapseRule(rules: CollapseRule[], index: number) {
+  rules.splice(index, 1);
+  applySettings();
+}
 const diagnosticRunning = ref(false);
 const diagnosticError = ref('');
 const diagnosticReport = ref<CharInfoDiagnosticReport | null>(null);
@@ -851,6 +1121,25 @@ const innerThoughtEntries = computed(() => {
 const activeImageSourcePriority = computed(() =>
   props.state.settings.imageSourcePriorityEnabled ? props.state.settings.imageSourcePriority : [],
 );
+const portraitControlsEnabled = computed(() => props.state.settings.portraitProvider !== 'none');
+const portraitJobsByKey = computed(() => new Map(props.state.portraitJobs.map(job => [job.key, job])));
+const storyPortraitViews = computed(() => {
+  void props.state.portraitRevision;
+  const variables = getVariables({ type: 'chat' });
+  return new Map(props.state.messages.flatMap(message => message.cards.map(card => [
+    card.key,
+    props.portraits.storyView(card.portrait, variables),
+  ] as const)));
+});
+
+function reportPortraitLoadError(target: PortraitTarget | undefined) {
+  if (!target) return;
+  props.portraits.reportImageFailure(target, new PortraitError(
+    '读取图片',
+    'VIEWER_IMAGE_FAILED',
+    '角色卡无法读取已生成的立绘，请检查酒馆图片访问权限，或重新生成。',
+  ));
+}
 
 function readPlayerLevel(messageId: number): number | null {
   try {
@@ -1092,26 +1381,28 @@ function keepFloatingUiInViewport(): void {
 function replaceSettingsDraft(settings: CharInfoUiSettings): void {
   floorLimitDraft.value = settings.activeFloorLimit;
   maxCardsPerMessageDraft.value = settings.maxCardsPerMessage;
-  unlimitedCardsPerMessageDraft.value = settings.unlimitedCardsPerMessage;
   effectsEnabledDraft.value = settings.effectsEnabled;
   forceMobileLayoutDraft.value = settings.forceMobileLayout;
   themeModeDraft.value = settings.themeMode;
   fontSizeAdjustmentDraft.value = settings.fontSizeAdjustment;
   debugEnabledDraft.value = settings.debugEnabled;
   collapseModeEnabledDraft.value = settings.collapseModeEnabled;
-  alwaysExpandRulesDraft.value = settings.alwaysExpandRules;
-  autoCollapseRulesDraft.value = settings.autoCollapseRules;
+  alwaysExpandRulesDraft.value = editableCollapseRules(settings.alwaysExpandRules);
+  autoCollapseRulesDraft.value = editableCollapseRules(settings.autoCollapseRules);
   levelGapCollapseEnabledDraft.value = settings.levelGapCollapseEnabled;
   levelGapCollapseThresholdDraft.value = settings.levelGapCollapseThreshold;
   imageSourcePriorityEnabledDraft.value = settings.imageSourcePriorityEnabled;
   imageSourcePriorityDraft.value = [...settings.imageSourcePriority];
+  useBaiBaiDraft.value = settings.portraitProvider === 'baibai';
+  autoGeneratePortraitsDraft.value = settings.autoGeneratePortraits;
+  portraitRewriteInstructionsDraft.value = settings.portraitRewriteInstructions;
+  portraitOptionsDraft.value = { ...settings.portraitOptions };
 }
 
-function toggleUnlimitedCardsPerMessage(): void {
-  unlimitedCardsPerMessageDraft.value = !unlimitedCardsPerMessageDraft.value;
-  if (unlimitedCardsPerMessageDraft.value) {
-    toastr.warning('已开启单楼层 Viewer 无限制。大量 CharInfo 同时渲染可能明显增加性能与内存负担。');
-  }
+function restorePortraitRewriteInstructions() {
+  portraitRewriteInstructionsDraft.value = DEFAULT_PORTRAIT_REWRITE_INSTRUCTIONS;
+  const { independentApi, profileId, apiSource, apiUrl, apiKey, apiModel } = portraitOptionsDraft.value;
+  portraitOptionsDraft.value = PortraitOptionsSchema.parse({ independentApi, profileId, apiSource, apiUrl, apiKey, apiModel });
   applySettings();
 }
 
@@ -1120,7 +1411,7 @@ function applySettings(): void {
   const settings = props.onUpdateSettings({
     activeFloorLimit: Number(floorLimitDraft.value),
     maxCardsPerMessage: Number(maxCardsPerMessageDraft.value),
-    unlimitedCardsPerMessage: unlimitedCardsPerMessageDraft.value,
+    unlimitedCardsPerMessage: Number(maxCardsPerMessageDraft.value) === 0,
     effectsEnabled: effectsEnabledDraft.value,
     forceMobileLayout: forceMobileLayoutDraft.value,
     themeMode: themeModeDraft.value,
@@ -1133,6 +1424,10 @@ function applySettings(): void {
     levelGapCollapseThreshold: Number(levelGapCollapseThresholdDraft.value),
     imageSourcePriorityEnabled: imageSourcePriorityEnabledDraft.value,
     imageSourcePriority: priorityNormalization.priorities,
+    portraitProvider: useBaiBaiDraft.value ? 'baibai' : 'none',
+    autoGeneratePortraits: autoGeneratePortraitsDraft.value,
+    portraitRewriteInstructions: portraitRewriteInstructionsDraft.value,
+    portraitOptions: portraitOptionsDraft.value,
   });
   replaceSettingsDraft(settings);
   settingsMessage.value = priorityNormalization.rejectedCount
@@ -1194,7 +1489,7 @@ async function runDiagnostics(): Promise<void> {
       .map(element => Number(element.getAttribute('mesid')))
       .filter(Number.isInteger)
       .sort((left, right) => left - right);
-    const activeMessageIds = new Set(loadedMessageIds.slice(-props.state.settings.activeFloorLimit));
+    const activeMessageIds = new Set(selectRecentMessageIds(loadedMessageIds, props.state.settings.activeFloorLimit));
 
     let candidate: { messageId: number; message: ChatMessage; swipeId: number } | null = null;
     for (const messageId of [...loadedMessageIds].reverse()) {
@@ -1228,6 +1523,7 @@ async function runDiagnostics(): Promise<void> {
       active: activeMessageIds.has(candidate.messageId),
       mounted: props.state.messages.some(message => message.messageId === candidate!.messageId),
       chatVariables,
+      generatedPortraits: new Map(Array.from(storyPortraitViews.value, ([key, portrait]) => [key, portrait?.url ?? ''])),
       mountDiagnostics: props.state.mountDiagnostics,
     });
   } catch (error) {
@@ -1265,6 +1561,11 @@ const selectedCharacter = computed(() => {
     filteredCharacters.value[0] ??
     null
   );
+});
+
+const selectedPortrait = computed(() => {
+  void props.state.portraitRevision;
+  return props.portraits.libraryView(selectedCharacter.value ?? undefined, getVariables({ type: 'chat' }));
 });
 
 const selectedCharacterYaml = computed(() => {
@@ -1310,6 +1611,7 @@ watch(
   () => props.state.settingsView,
   settingsView => {
     if (!settingsView) return;
+    activeSettingsSection.value = 'library';
     replaceSettingsDraft(props.state.settings);
     settingsMessage.value = '';
   },
@@ -1441,9 +1743,9 @@ onBeforeUnmount(() => {
 
 .char-info-settings-dialog {
   display: flex;
-  max-height: calc(100dvh - 36px);
+  height: min(720px, calc(100dvh - 36px));
   flex-direction: column;
-  width: min(100%, 560px);
+  width: min(100%, 960px);
   box-sizing: border-box;
   overflow: hidden;
   border: 1px solid var(--ci-border-strong);
@@ -1510,16 +1812,181 @@ onBeforeUnmount(() => {
   color: #ffb1b1;
 }
 
-.char-info-settings-fields {
+.char-info-settings-body {
   display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: 184px minmax(0, 1fr);
+  min-height: 0;
+}
+
+.char-info-settings-nav {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+  padding: 20px 12px;
+  border-inline-end: 1px solid var(--ci-border);
+  background: var(--ci-surface);
+}
+
+.char-info-settings-nav-heading {
+  margin: 12px 12px 2px;
+  color: var(--ci-text-muted);
+  font-size: 0.76rem;
+}
+
+.char-info-settings-subheading,
+.char-info-settings-callout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+}
+
+.char-info-settings-rows > .char-info-settings-subheading,
+.char-info-settings-callout {
+  padding: 12px 14px;
+}
+
+.char-info-settings-callout {
+  border: 1px solid var(--ci-border);
+  border-radius: 12px;
+  background: var(--ci-surface);
+}
+
+.char-info-settings-callout span {
+  display: grid;
+  gap: 4px;
+}
+
+.char-info-settings-link {
+  color: var(--ci-primary);
+  text-underline-offset: 4px;
+}
+
+.char-info-rule-group {
+  display: grid;
+  gap: 8px;
+}
+
+.char-info-rule-group > p {
+  margin: 0;
+  color: var(--ci-text-muted);
+}
+
+.char-info-rule-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.6fr) auto;
+  gap: 8px;
+}
+
+.char-info-settings-fields .char-info-rule-row select,
+.char-info-rule-row input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.char-info-rule-row input {
+  padding: 7px 9px;
+  border: 1px solid var(--ci-border);
+  border-radius: 9px;
+  background: var(--ci-input);
+  color: var(--ci-text);
+}
+
+.char-info-settings-image-history {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 12px;
+  margin: 0 14px 12px;
+}
+
+.char-info-settings-image-history a {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+  color: var(--ci-text);
+  overflow-wrap: anywhere;
+}
+
+.char-info-settings-image-history img {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.char-info-settings-dialog .char-info-settings-nav button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ci-text-muted);
+  font-weight: 600;
+  text-align: start;
+}
+
+.char-info-settings-dialog .char-info-settings-nav button:hover {
+  background: rgb(var(--ci-primary-rgb) / 8%);
+  color: var(--ci-text);
+}
+
+.char-info-settings-dialog .char-info-settings-nav button[aria-current] {
+  border-color: var(--ci-border);
+  box-shadow: inset 3px 0 var(--ci-primary);
+  background: rgb(var(--ci-primary-rgb) / 12%);
+  color: var(--ci-text);
+}
+
+.char-info-settings-dialog .char-info-settings-nav-debug {
+  margin-block-start: 12px;
+}
+
+.char-info-settings-nav button:focus-visible {
+  outline: 2px solid var(--ci-primary);
+  outline-offset: 2px;
+}
+
+.char-info-settings-fields {
   min-width: 0;
   min-height: 0;
-  flex: 1 1 auto;
-  grid-auto-rows: max-content;
-  align-content: start;
-  gap: 10px;
-  padding: 18px;
+  padding: 22px 26px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.char-info-settings-fields > h3 {
+  margin: 0 0 16px;
+  color: var(--ci-text);
+  font-family: Georgia, 'Noto Serif SC', serif;
+  font-size: 1.18rem;
+}
+
+.char-info-settings-panel {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.char-info-settings-rows {
+  overflow: hidden;
+  border: 1px solid var(--ci-border);
+  border-radius: 12px;
+  background: var(--ci-surface);
+}
+
+.char-info-settings-fields .char-info-settings-rows > label {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.char-info-settings-fields .char-info-settings-rows > label + label {
+  border-top: 1px solid var(--ci-border);
 }
 
 .char-info-settings-fields label {
@@ -1568,6 +2035,19 @@ onBeforeUnmount(() => {
   width: 112px;
 }
 
+.char-info-settings-fields .char-info-portrait-api-source select {
+  width: 220px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.char-info-portrait-api-fields {
+  display: grid;
+  gap: 16px;
+  padding: 14px;
+  border-top: 1px solid var(--ci-border);
+}
+
 .char-info-collapse-settings-editor code {
   color: var(--ci-primary);
   font-family: ui-monospace, 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
@@ -1576,6 +2056,8 @@ onBeforeUnmount(() => {
 
 .char-info-settings-fields .char-info-collapse-rule-field {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: stretch;
   align-items: stretch;
   gap: 8px;
   min-height: 0;
@@ -1584,10 +2066,10 @@ onBeforeUnmount(() => {
   background: transparent;
 }
 
-.char-info-collapse-rule-field textarea {
+.char-info-collapse-rule-field :is(textarea, input) {
+  box-sizing: border-box;
   width: 100%;
-  min-height: 82px;
-  resize: vertical;
+  min-width: 0;
   padding: 9px 10px;
   border: 1px solid var(--ci-border);
   border-radius: 9px;
@@ -1597,7 +2079,13 @@ onBeforeUnmount(() => {
   line-height: 1.45;
 }
 
-.char-info-collapse-rule-field textarea:focus {
+.char-info-collapse-rule-field textarea {
+  height: 160px;
+  min-height: 160px;
+  resize: none;
+}
+
+.char-info-collapse-rule-field :is(textarea, input):focus {
   border-color: var(--ci-primary);
   outline: none;
 }
@@ -1619,6 +2107,13 @@ onBeforeUnmount(() => {
   font-size: .8rem;
   font-weight: 650;
   cursor: pointer;
+}
+
+.char-info-settings-advanced > label,
+.char-info-settings-advanced > button,
+.char-info-settings-job-list,
+.char-info-settings-advanced > p {
+  margin: 0 14px 12px;
 }
 .char-info-settings-diagnostics {
   display: grid;
@@ -1688,6 +2183,11 @@ onBeforeUnmount(() => {
 
 .char-info-diagnostic-item > div {
   min-width: 0;
+}
+
+.char-info-portrait-request-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .char-info-diagnostic-item strong {
@@ -1952,16 +2452,21 @@ onBeforeUnmount(() => {
 }
 
 .char-info-settings-feedback {
-  min-height: 20px;
   margin: 0;
-  padding: 0 18px;
-  color: #8ed9b6;
+  color: var(--ci-text-muted);
   font-size: 0.76rem;
 }
 
 .char-info-settings-dialog footer {
-  justify-content: flex-end;
   padding-top: 12px;
+  border-top: 1px solid var(--ci-border);
+}
+
+.char-info-settings-footer-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  margin-inline-start: auto;
 }
 
 .char-info-library-overlay {
@@ -2722,8 +3227,45 @@ onBeforeUnmount(() => {
     padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
   }
 
+  .char-info-settings-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .char-info-settings-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 3px;
+    padding: 8px;
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--ci-border);
+  }
+
+  .char-info-settings-dialog .char-info-settings-nav button {
+    padding: 6px 2px;
+    white-space: normal;
+    font-size: clamp(0.72rem, 3.1vw, 0.9rem);
+    text-align: center;
+  }
+
+  .char-info-settings-nav-heading {
+    display: none;
+  }
+
+  .char-info-settings-dialog .char-info-settings-nav-debug {
+    margin-block-start: 0;
+  }
+
+  .char-info-rule-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .char-info-settings-dialog .char-info-settings-nav button[aria-current] {
+    box-shadow: inset 0 -2px var(--ci-primary);
+  }
+
   .char-info-settings-fields {
     padding: 12px;
+    scrollbar-gutter: auto;
   }
 
   .char-info-settings-priority-row {
@@ -3305,9 +3847,9 @@ onBeforeUnmount(() => {
 .char-info-character-library-header {
   display: grid;
   min-height: 78px;
-  padding: 12px 16px;
+  padding: 20px 32px;
   flex: 0 0 auto;
-  grid-template-columns: minmax(220px, 1fr) minmax(340px, 480px) auto;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 16px;
   border-bottom: 1px solid var(--ci-border);
@@ -3323,6 +3865,31 @@ onBeforeUnmount(() => {
 
 .char-info-character-library-title {
   min-width: 0;
+}
+
+.char-info-character-library-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-top: 6px;
+  color: var(--ci-text-muted);
+  font-size: 0.8rem;
+}
+
+.char-info-character-library-count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--ci-text-secondary);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.char-info-character-library-count strong {
+  color: var(--ci-primary);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .char-info-character-library-title h2,
@@ -3346,12 +3913,15 @@ onBeforeUnmount(() => {
 }
 
 .char-info-character-library-switch {
-  width: 100%;
+  width: 320px;
+  max-width: 100%;
+  justify-self: center;
 }
 
 .char-info-character-library-actions {
   display: flex;
   align-items: center;
+  justify-self: end;
   gap: 6px;
 }
 
@@ -3486,6 +4056,7 @@ onBeforeUnmount(() => {
   }
 
   .char-info-character-library-switch {
+    width: 100%;
     grid-column: 1 / -1;
     grid-row: 2;
   }
@@ -3541,6 +4112,7 @@ onBeforeUnmount(() => {
 }
 
 .char-info-character-library.force-mobile-layout .char-info-character-library-switch {
+  width: 100%;
   grid-column: 1 / -1;
   grid-row: 2;
 }

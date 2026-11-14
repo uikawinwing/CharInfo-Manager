@@ -1,11 +1,15 @@
 import type { CurrentCharacterSnapshot, InnerThoughtUpdate } from './currentCharacterLibrary';
 import type { CharInfoFloatingButtonPosition, CharInfoUiSettings } from './runtimeSettings';
+import type { PortraitJobStatus } from './portraitJobs';
+import type { PortraitFormat } from './portraitPrompt';
+import type { StoryPortrait } from './portraitRuntime';
 
 export type RuntimeCardView = {
   key: string;
   renderKey: string;
   yamlText: string;
   host: HTMLElement;
+  portrait?: StoryPortrait;
 };
 
 export type RuntimeMessageView = {
@@ -55,4 +59,8 @@ export type RuntimeViewState = {
   settingsView: RuntimeSettingsView | null;
   saveStateByCard: Record<string, RuntimeSaveState>;
   mountDiagnostics: RuntimeMountDiagnosticEntry[];
+  portraitRevision: number;
+  portraitJobs: PortraitJobStatus[];
+  portraitAvailability: { code: string; message: string } | null;
+  portraitFormat: PortraitFormat;
 };

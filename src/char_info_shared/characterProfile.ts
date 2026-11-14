@@ -98,6 +98,21 @@ export function countUnsupportedStatusGalleryItems(gallery: readonly GalleryImag
   return gallery.length - buildStatusGalleryImages(gallery).length;
 }
 
+export function hasStatusPortrait(variables: Record<string, unknown>, name: string): boolean {
+  const record = (value: unknown): Record<string, unknown> =>
+    value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  const status = record(variables.status);
+  const avatars = record(record(status.externalAvatars).partners);
+  const galleries = record(record(status.externalGalleries).partners);
+  const avatar = Object.hasOwn(avatars, name) ? record(avatars[name]).url : undefined;
+  const images = Object.hasOwn(galleries, name) ? record(galleries[name]).images : undefined;
+  if (typeof avatar === 'string' && /^https?:\/\//i.test(avatar.trim()) && URL.canParse(avatar)) return true;
+  return Array.isArray(images) && images.some(image => {
+    const url = record(image).url;
+    return typeof url === 'string' && isSupportedRemoteImageUrl(url);
+  });
+}
+
 const LEGACY_MANAGED_BLOCK_START = '<%# char-info-ejs-builder:start:v1 %>';
 const LEGACY_MANAGED_BLOCK_END = '<%# char-info-ejs-builder:end:v1 %>';
 const LEGACY_DATA_MARKER_PREFIX = '<%# char-info-ejs-builder:data:v1:';
