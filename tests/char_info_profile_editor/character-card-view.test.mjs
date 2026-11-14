@@ -15,10 +15,11 @@ test('世界书角色库提供紧凑列表与图片卡片视图', () => {
   assert.match(librarySource, /'image-card-view': layout === 'cards'/u);
 });
 
-test('图片卡片自动适应桌面宽度，并在手机收束为单列', () => {
-  assert.match(librarySource, /\.character-library-grid\.image-card-view \{ grid-template-columns: repeat\(auto-fit, minmax\(180px, 1fr\)\);/u);
+test('图片卡片自动适应桌面宽度，手机显示两列，列表每行一位角色', () => {
+  assert.match(librarySource, /\.character-library-grid\.image-card-view \{[^}]*grid-template-columns: repeat\(auto-fill, minmax\(min\(100%, 240px\), 1fr\)\);/u);
   assert.match(librarySource, /\.character-library-grid\.image-card-view\.card-columns-6/u);
-  assert.match(librarySource, /\.character-library-grid \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/u);
+  assert.match(librarySource, /\.character-library-grid\.image-card-view\[class\*='card-columns-'\] \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/u);
+  assert.match(librarySource, /\.character-library-grid\.list-view \{ grid-template-columns: minmax\(0, 1fr\);/u);
 });
 
 test('角色封面保留懒加载、备用地址回退与无图占位', () => {

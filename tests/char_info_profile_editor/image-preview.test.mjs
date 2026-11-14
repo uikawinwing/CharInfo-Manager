@@ -139,8 +139,8 @@ test('世界书角色库保留紧凑列表与自适应图片卡片', () => {
   assert.match(librarySource, /const layout = ref<'list' \| 'cards'>\('list'\)/u);
   assert.match(librarySource, /图片卡片/u);
   assert.match(librarySource, /loading="lazy"/u);
-  assert.match(librarySource, /\.character-library-grid\.image-card-view \{ grid-template-columns: repeat\(auto-fit/u);
-  assert.match(librarySource, /\.character-library-grid \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/u);
+  assert.match(librarySource, /\.character-library-grid\.image-card-view \{[^}]*grid-template-columns: repeat\(auto-fill/u);
+  assert.match(librarySource, /\.character-library-grid\.list-view \{ grid-template-columns: minmax\(0, 1fr\);/u);
 });
 
 test('相册步骤保留外部图床快捷入口，并提供独立的 ImgBed 上传入口', () => {

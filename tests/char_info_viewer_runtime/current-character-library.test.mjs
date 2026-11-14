@@ -199,7 +199,7 @@ test('当前角色库先显示基础资料，再异步逐个补远程 avatarThum
   assert.ok(baseRenderIndex < remoteResolveIndex);
   assert.match(source, /const snapshotRevision = library\.revision/u);
   assert.match(source, /library\.revision !== snapshotRevision/u);
-  assert.match(source, /avatarUrl: presentation\.avatarUrl/u);
+  assert.match(source, /const avatarUrl = presentation\?\.avatarUrl \|\| generated/u);
 });
 
 test('手动刷新会重读变量并强制重挂当前 CharInfo floors', async () => {

@@ -7,7 +7,7 @@ import {
   prioritizeImageSourceGroups,
   prioritizeImageSources,
 } from '../../src/char_info_viewer/services/imageSourcePriority.ts';
-import { mergeRuntimeSettings, readRuntimeSettings } from '../../src/char_info_viewer_runtime/runtimeSettings.ts';
+import { defaultRuntimeSettings, mergeRuntimeSettings, readRuntimeSettings } from '../../src/char_info_viewer_runtime/runtimeSettings.ts';
 
 const runtimeRootSource = readFileSync(
   new URL('../../src/char_info_viewer_runtime/RuntimeRoot.vue', import.meta.url),
@@ -75,8 +75,8 @@ test('图片源优先级随既有 char_info_runtime.settings 持久化，且保�
 
   assert.deepEqual(readRuntimeSettings(merged), {
     activeFloorLimit: 8,
-    maxCardsPerMessage: 4,
-    unlimitedCardsPerMessage: false,
+    maxCardsPerMessage: 0,
+    unlimitedCardsPerMessage: true,
     effectsEnabled: false,
     forceMobileLayout: false,
     themeMode: 'dark',
@@ -89,6 +89,10 @@ test('图片源优先级随既有 char_info_runtime.settings 持久化，且保�
     levelGapCollapseThreshold: 5,
     imageSourcePriorityEnabled: true,
     imageSourcePriority: ['files.catbox.moe'],
+    portraitProvider: 'none',
+    autoGeneratePortraits: false,
+    portraitRewriteInstructions: defaultRuntimeSettings().portraitRewriteInstructions,
+    portraitOptions: defaultRuntimeSettings().portraitOptions,
   });
   assert.equal(merged.unrelated, true);
   assert.equal(merged.char_info_runtime.cacheVersion, 3);

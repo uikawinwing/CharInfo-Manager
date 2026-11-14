@@ -2,12 +2,16 @@ import { z } from 'zod';
 
 import { CHAR_INFO_THEME_MODES, DEFAULT_CHAR_INFO_THEME_MODE, type CharInfoThemeMode } from '../char_info_shared/managerTheme.ts';
 import { normalizeImageSourcePriority } from '../char_info_viewer/services/imageSourcePriority.ts';
+import { COLLAPSE_CONDITIONS, type CollapseRuleSource } from '../char_info_viewer/services/characterCollapse.ts';
+import { PORTRAIT_PROVIDERS, type PortraitProviderId } from './portraitProvider.ts';
+import { DEFAULT_PORTRAIT_REWRITE_INSTRUCTIONS, LEGACY_PORTRAIT_REWRITE_INSTRUCTIONS } from './portraitPrompt.ts';
+import { PortraitOptionsSchema, type PortraitOptions } from './portraitSettings.ts';
 
 export const DEFAULT_ACTIVE_FLOOR_LIMIT = 6;
-export const MIN_ACTIVE_FLOOR_LIMIT = 1;
+export const MIN_ACTIVE_FLOOR_LIMIT = 0;
 export const MAX_ACTIVE_FLOOR_LIMIT = 20;
-export const DEFAULT_MAX_CARDS_PER_MESSAGE = 4;
-export const MIN_MAX_CARDS_PER_MESSAGE = 1;
+export const DEFAULT_MAX_CARDS_PER_MESSAGE = 0;
+export const MIN_MAX_CARDS_PER_MESSAGE = 0;
 export const MAX_MAX_CARDS_PER_MESSAGE = 20;
 export const DEFAULT_IMAGE_SOURCE_PRIORITY = ['files.catbox.moe', 'i.ibb.co'];
 export const DEFAULT_COLLAPSE_LEVEL_GAP = 5;
@@ -27,12 +31,16 @@ export type CharInfoUiSettings = {
   fontSizeAdjustment: number;
   debugEnabled: boolean;
   collapseModeEnabled: boolean;
-  alwaysExpandRules: string;
-  autoCollapseRules: string;
+  alwaysExpandRules: CollapseRuleSource;
+  autoCollapseRules: CollapseRuleSource;
   levelGapCollapseEnabled: boolean;
   levelGapCollapseThreshold: number;
   imageSourcePriorityEnabled: boolean;
   imageSourcePriority: string[];
+  portraitProvider: PortraitProviderId;
+  autoGeneratePortraits: boolean;
+  portraitRewriteInstructions: string;
+  portraitOptions: PortraitOptions;
 };
 
 export type CharInfoFloatingButtonPosition = {
@@ -43,7 +51,7 @@ export type CharInfoFloatingButtonPosition = {
 const DEFAULT_SETTINGS: CharInfoUiSettings = {
   activeFloorLimit: DEFAULT_ACTIVE_FLOOR_LIMIT,
   maxCardsPerMessage: DEFAULT_MAX_CARDS_PER_MESSAGE,
-  unlimitedCardsPerMessage: false,
+  unlimitedCardsPerMessage: true,
   effectsEnabled: true,
   forceMobileLayout: false,
   themeMode: DEFAULT_CHAR_INFO_THEME_MODE,
@@ -56,7 +64,16 @@ const DEFAULT_SETTINGS: CharInfoUiSettings = {
   levelGapCollapseThreshold: DEFAULT_COLLAPSE_LEVEL_GAP,
   imageSourcePriorityEnabled: false,
   imageSourcePriority: [...DEFAULT_IMAGE_SOURCE_PRIORITY],
+  portraitProvider: 'none',
+  autoGeneratePortraits: false,
+  portraitRewriteInstructions: DEFAULT_PORTRAIT_REWRITE_INSTRUCTIONS,
+  portraitOptions: PortraitOptionsSchema.parse(undefined),
 };
+
+const CollapseRuleSchema = z.union([
+  z.string(),
+  z.array(z.object({ path: z.string(), condition: z.enum(COLLAPSE_CONDITIONS), value: z.string() })),
+]);
 
 const SettingsSchema = z
   .object({
@@ -84,8 +101,8 @@ const SettingsSchema = z
       .catch(DEFAULT_SETTINGS.fontSizeAdjustment),
     debugEnabled: z.boolean().catch(DEFAULT_SETTINGS.debugEnabled),
     collapseModeEnabled: z.boolean().catch(DEFAULT_SETTINGS.collapseModeEnabled),
-    alwaysExpandRules: z.string().catch(DEFAULT_SETTINGS.alwaysExpandRules),
-    autoCollapseRules: z.string().catch(DEFAULT_SETTINGS.autoCollapseRules),
+    alwaysExpandRules: CollapseRuleSchema.catch(DEFAULT_SETTINGS.alwaysExpandRules),
+    autoCollapseRules: CollapseRuleSchema.catch(DEFAULT_SETTINGS.autoCollapseRules),
     levelGapCollapseEnabled: z.boolean().catch(DEFAULT_SETTINGS.levelGapCollapseEnabled),
     levelGapCollapseThreshold: z.coerce
       .number()
@@ -99,6 +116,11 @@ const SettingsSchema = z
       .default([...DEFAULT_SETTINGS.imageSourcePriority])
       .transform(normalizeImageSourcePriority)
       .catch([...DEFAULT_SETTINGS.imageSourcePriority]),
+    portraitProvider: z.enum(PORTRAIT_PROVIDERS).catch(DEFAULT_SETTINGS.portraitProvider),
+    autoGeneratePortraits: z.boolean().catch(DEFAULT_SETTINGS.autoGeneratePortraits),
+    portraitRewriteInstructions: z.string().trim().min(1).catch(DEFAULT_SETTINGS.portraitRewriteInstructions)
+      .transform(value => LEGACY_PORTRAIT_REWRITE_INSTRUCTIONS.includes(value) ? DEFAULT_SETTINGS.portraitRewriteInstructions : value),
+    portraitOptions: PortraitOptionsSchema.catch(DEFAULT_SETTINGS.portraitOptions),
   })
   .prefault(DEFAULT_SETTINGS);
 
@@ -114,6 +136,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function normalizeRuntimeSettings(value: unknown): CharInfoUiSettings {
   const source = isRecord(value) ? value : {};
   const normalized = SettingsSchema.parse(source);
+  if (source.unlimitedCardsPerMessage === true) normalized.maxCardsPerMessage = 0;
+  normalized.unlimitedCardsPerMessage = normalized.maxCardsPerMessage === 0;
 
   // 旧版本只保存优先级列表。迁移时保持其原有启用行为；全新设置默认关闭，避免改变图片顺序。
   if (
@@ -173,5 +197,6 @@ export function defaultRuntimeSettings(): CharInfoUiSettings {
   return {
     ...DEFAULT_SETTINGS,
     imageSourcePriority: [...DEFAULT_SETTINGS.imageSourcePriority],
+    portraitOptions: { ...DEFAULT_SETTINGS.portraitOptions },
   };
 }
