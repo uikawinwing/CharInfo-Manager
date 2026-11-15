@@ -1,10 +1,13 @@
 import type { CharacterData, ThemeResolved } from '../types';
 import {
+  hasStatusPortrait,
   normalizeProfileMetadata,
   type CharacterProfileMetadata,
 } from '../../char_info_shared/characterProfile.ts';
 import { resolveRemoteGalleryConfig } from './remoteGalleryService.ts';
-import { prioritizeImageSourceGroups } from './imageSourcePriority';
+import { prioritizeImageSourceGroups } from './imageSourcePriority.ts';
+import { normalizeGeneratedPortraitUrl } from '../../char_info_shared/generatedPortraitUrl.ts';
+import { normalizePortraitMediaUrlForBrowser } from './imageUrl.ts';
 
 const SPECIAL_NPC_VISUAL_BRAND = Symbol('char_info_special_npc_visual');
 const DEPRECATED_VISUAL_SYNTAX_BRAND = Symbol('char_info_deprecated_visual_syntax');
@@ -424,14 +427,27 @@ export function resolveCharacterVisualConfig(
 export async function resolveCharacterVisualConfigWithExtensions(
   data: CharacterData,
   chatVariables: Record<string, unknown>,
+  generatedPortrait?: string,
 ): Promise<CharacterData> {
   const hasLegacySyntax = hasUntrustedImageSyntax(data);
   const baseData = stripUntrustedImageData(data);
   const namedProfileResolution = resolveNamedProfile(data, chatVariables);
-  if (!namedProfileResolution) return hasLegacySyntax ? brandDeprecatedVisualSyntaxData(baseData) : baseData;
+  const profile = namedProfileResolution ? await resolveRemoteGalleryConfig(namedProfileResolution.profile) : undefined;
+  const resolved = finalizeNamedVisualResolution(baseData, profile, hasLegacySyntax);
+  const generated = normalizeGeneratedPortraitUrl(generatedPortrait);
+  if (!generated || hasViewerPortrait(resolved) || hasStatusPortrait(chatVariables, resolveCharacterName(data))) {
+    return resolved;
+  }
 
-  const extendedVisualConfig = await resolveRemoteGalleryConfig(namedProfileResolution.profile);
-  return finalizeNamedVisualResolution(baseData, extendedVisualConfig, hasLegacySyntax);
+  const illustrated = brandSpecialNpcVisualData(applyImageSourceGroups(resolved, [[generated]], false));
+  const metadata = resolveCharacterProfileMetadata(resolved);
+  if (metadata) attachCharacterProfileMetadata(illustrated, metadata);
+  return hasLegacySyntax ? brandDeprecatedVisualSyntaxData(illustrated) : illustrated;
+}
+
+export function hasViewerPortrait(data: CharacterData): boolean {
+  const urls = data.__char_info_image_source_groups;
+  return Array.isArray(urls) && urls.some(group => group.some(url => normalizePortraitMediaUrlForBrowser(url)));
 }
 
 export function harmonizeAccent(

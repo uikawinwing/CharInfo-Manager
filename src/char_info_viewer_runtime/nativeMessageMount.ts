@@ -44,10 +44,11 @@ export type TextRangeMatch = {
 
 export type MountedNativeCardHost = {
   host: HTMLElement;
+  mode: 'dom-element' | 'text-range' | 'field-anchor' | 'fallback-anchor';
   restore(): void;
 };
 
-export type NativeMessageMountDiagnosticCode = 'CARD_MOUNT_FAILED' | 'MOUNT_SUCCESS';
+export type NativeMessageMountDiagnosticCode = 'CARD_MOUNT_FAILED' | 'CARD_MOUNT_FALLBACK' | 'MOUNT_SUCCESS';
 
 export type NativeMessageMountDiagnostic = {
   code: NativeMessageMountDiagnosticCode;
@@ -296,7 +297,85 @@ function hasTextAfter(node: Text, offset: number, container: Element): boolean {
   return hasText;
 }
 
-function createSafeBoundaryRange(root: HTMLElement, card: CharInfoCardPart): Range | null {
+type FieldAnchor = {
+  nodes: Text[];
+  match: CollapsedTextRangeMatch;
+};
+
+type UsedFieldAnchors = WeakMap<Text, Set<number>>;
+
+function findFieldAnchor(root: HTMLElement, body: string, used: UsedFieldAnchors): FieldAnchor | null {
+  const name = getNameField(body);
+  if (!name) return null;
+  const nodes = collectRenderableTextNodes(root);
+  const chunks = nodes.map(node => node.nodeValue ?? '');
+  const collapsedText = chunks.join('').replace(/\s+/g, '');
+
+  for (const label of ['姓名', '名字']) {
+    for (const separator of [':', '：']) {
+      let from = 0;
+      for (;;) {
+        const match = findCollapsedTextOccurrence(chunks, label + separator + name, from);
+        if (!match) break;
+        from = match.collapsedStart + 1;
+        const node = nodes[match.startNodeIndex];
+        if (!node || used.get(node)?.has(match.startOffset)) continue;
+
+        // Require a second character field nearby, not a name mentioned in prose.
+        const nextText = collapsedText.slice(match.collapsedEnd, match.collapsedEnd + 350);
+        if (!/(?:生命层级|生命層級|等级|等級|种族|種族)[:：]/u.test(nextText)) continue;
+        return { nodes, match };
+      }
+    }
+  }
+  return null;
+}
+
+function markFieldAnchorUsed(anchor: FieldAnchor, used: UsedFieldAnchors): void {
+  const node = anchor.nodes[anchor.match.startNodeIndex];
+  if (!node) return;
+  const offsets = used.get(node) ?? new Set<number>();
+  offsets.add(anchor.match.startOffset);
+  used.set(node, offsets);
+}
+
+function createFieldBoundaryMatch(anchor: FieldAnchor, body: string): TextRangeMatch | null {
+  const lines = body.trimEnd().split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const lastLine = lines.at(-1) ?? '';
+  const lastLength = normalizeRenderedBoundary(lastLine).length;
+  if (lastLength < 5) return null;
+
+  const chunks = anchor.nodes.map(node => node.nodeValue ?? '');
+  const end = findCollapsedTextOccurrence(chunks, lastLine, anchor.match.collapsedEnd);
+  if (!end) return null;
+
+  // Short endings such as "位置: 身体" need a distinctive penultimate line to
+  // avoid stopping at a matching field from a different item.
+  if (lastLength < 12) {
+    const previous = lines.at(-2) ?? '';
+    if (normalizeRenderedBoundary(previous).length < 16) return null;
+    const previousMatch = findCollapsedTextOccurrence(chunks, previous, anchor.match.collapsedEnd);
+    if (!previousMatch || previousMatch.collapsedEnd > end.collapsedStart ||
+        end.collapsedStart - previousMatch.collapsedEnd > 200) return null;
+  }
+
+  // Never consume a second card's name line when two cards share a floor.
+  const collapsed = chunks.join('').replace(/\s+/g, '');
+  const middle = collapsed.slice(anchor.match.collapsedEnd, end.collapsedStart);
+  if (/(?:姓名|名字)[:：]/u.test(middle)) return null;
+  return {
+    startNodeIndex: anchor.match.startNodeIndex,
+    startOffset: anchor.match.startOffset,
+    endNodeIndex: end.endNodeIndex,
+    endOffset: end.endOffset,
+  };
+}
+
+function createSafeBoundaryRange(
+  root: HTMLElement,
+  card: CharInfoCardPart,
+  usedAnchors: UsedFieldAnchors,
+): Range | null {
   const body = getCharInfoBody(card.content);
   if (!body) {
     reportMountFailure(root, card, 'empty-char-info-body');
@@ -305,9 +384,11 @@ function createSafeBoundaryRange(root: HTMLElement, card: CharInfoCardPart): Ran
 
   const nodes = collectRenderableTextNodes(root);
   const chunks = nodes.map(node => node.nodeValue ?? '');
-  const match = getDisplayLocatorCandidates(root, card, body)
+  const exactMatch = getDisplayLocatorCandidates(root, card, body)
     .map(candidate => findCollapsedTextRange(chunks, candidate))
     .find((candidate): candidate is TextRangeMatch => candidate !== null);
+  const fieldAnchor = exactMatch ? null : findFieldAnchor(root, body, usedAnchors);
+  const match = exactMatch ?? (fieldAnchor ? createFieldBoundaryMatch(fieldAnchor, body) : null);
   if (!match) {
     reportMountFailure(root, card, 'locator-text-not-found');
     return null;
@@ -346,25 +427,128 @@ function createSafeBoundaryRange(root: HTMLElement, card: CharInfoCardPart): Ran
   return range;
 }
 
-function mountOneCard(root: HTMLElement, card: CharInfoCardPart): MountedNativeCardHost | null {
-  const range = createSafeBoundaryRange(root, card);
-  if (!range) return null;
+function collectNativeCharInfoElements(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>('char_info')).filter(element => {
+    try {
+      return !element.closest(BLOCKED_NATIVE_SCOPE_SELECTOR);
+    } catch {
+      return false;
+    }
+  });
+}
 
-  const originalContent = range.extractContents();
+function getNameField(text: string): string {
+  return text.replace(/\r\n/g, '\n').match(/(?:^|\n)[ \t]*(?:-[ \t]*)?(?:姓名|名字)[ \t]*[:：][ \t]*([^\r\n]*)/u)?.[1]?.trim() ?? '';
+}
+
+function createOwnedHost(root: HTMLElement, card: CharInfoCardPart): HTMLElement {
   const host = root.ownerDocument.createElement('div');
   host.className = 'char-info-runtime-host';
   host.dataset.charInfoRuntimeOwned = '1';
   host.dataset.charInfoCardId = card.id;
-  range.insertNode(host);
-  range.detach();
+  return host;
+}
 
+function mountOneCard(
+  root: HTMLElement,
+  card: CharInfoCardPart,
+  nativeElements: readonly HTMLElement[],
+  usedElements: Set<HTMLElement>,
+  usedAnchors: UsedFieldAnchors,
+  cardCount: number,
+): MountedNativeCardHost | null {
+  const body = getCharInfoBody(card.content);
+  if (!body || !root.isConnected) return null;
+
+  const name = getNameField(body);
+  // Prefer an actual tag boundary. Markdown may rewrite everything *inside* it.
+  const namedElement = name
+    ? nativeElements.find(element =>
+        !usedElements.has(element) &&
+        (element.textContent ?? '').includes(name) &&
+        /姓名|名字/u.test(element.textContent ?? ''),
+      )
+    : null;
+  const ordinalElement = nativeElements.length === cardCount ? nativeElements[card.ordinal] : undefined;
+  const ordinalText = ordinalElement?.textContent ?? '';
+  const ordinalName = getNameField(ordinalText);
+  const element = namedElement ??
+    (ordinalElement && !usedElements.has(ordinalElement) && /姓名|名字/u.test(ordinalText) &&
+    (!ordinalName || ordinalName === name)
+      ? ordinalElement
+      : null);
+
+  const host = createOwnedHost(root, card);
   let restored = false;
+  if (element) {
+    usedElements.add(element);
+    element.replaceWith(host);
+    return {
+      host,
+      mode: 'dom-element',
+      restore() {
+        if (restored) return;
+        restored = true;
+        if (host.isConnected) host.replaceWith(element);
+      },
+    };
+  }
+
+  // Keep the existing text-range fast path for formats that flatten the tags.
+  const range = createSafeBoundaryRange(root, card, usedAnchors);
+  if (range) {
+    const originalContent = range.extractContents();
+    range.insertNode(host);
+    range.detach();
+    return {
+      host,
+      mode: 'text-range',
+      restore() {
+        if (restored) return;
+        restored = true;
+        if (host.isConnected) host.replaceWith(originalContent);
+      },
+    };
+  }
+
+  // When Markdown rewrites the card body, preserve its text but place the
+  // actionable Viewer at the character's visible name field, not at floor end.
+  const anchor = findFieldAnchor(root, body, usedAnchors);
+  if (anchor) {
+    const node = anchor.nodes[anchor.match.startNodeIndex];
+    if (node) {
+      markFieldAnchorUsed(anchor, usedAnchors);
+      const block = node.parentElement?.closest('p, li, div, blockquote');
+      if (block && block !== root && !hasTextBefore(node, anchor.match.startOffset, block)) {
+        block.before(host);
+      } else {
+        const insertion = root.ownerDocument.createRange();
+        insertion.setStart(node, anchor.match.startOffset);
+        insertion.collapse(true);
+        insertion.insertNode(host);
+        insertion.detach();
+      }
+      return {
+        host,
+        mode: 'field-anchor',
+        restore() {
+          if (restored) return;
+          restored = true;
+          host.remove();
+        },
+      };
+    }
+  }
+
+  // No trustworthy boundary remains; leave the original display untouched.
+  root.appendChild(host);
   return {
     host,
+    mode: 'fallback-anchor',
     restore() {
       if (restored) return;
       restored = true;
-      if (host.isConnected) host.replaceWith(originalContent);
+      host.remove();
     },
   };
 }
@@ -375,8 +559,11 @@ export function mountCharInfoCardHosts(
   options: NativeMessageMountOptions = {},
 ): MountedNativeCardHost[] | null {
   const mounted: MountedNativeCardHost[] = [];
+  const nativeElements = collectNativeCharInfoElements(root);
+  const usedElements = new Set<HTMLElement>();
+  const usedAnchors: UsedFieldAnchors = new WeakMap<Text, Set<number>>();
   for (const card of cards) {
-    const cardMount = mountOneCard(root, card);
+    const cardMount = mountOneCard(root, card, nativeElements, usedElements, usedAnchors, cards.length);
     if (!cardMount) {
       options.onDiagnostic?.({
         code: 'CARD_MOUNT_FAILED',
@@ -385,8 +572,14 @@ export function mountCharInfoCardHosts(
       mounted.reverse().forEach(item => item.restore());
       return null;
     }
+    if (cardMount.mode === 'fallback-anchor' || cardMount.mode === 'field-anchor') {
+      options.onDiagnostic?.({ code: 'CARD_MOUNT_FALLBACK', details: { cardId: card.id, reason: cardMount.mode } });
+    }
     mounted.push(cardMount);
   }
-  options.onDiagnostic?.({ code: 'MOUNT_SUCCESS', details: { hostCount: mounted.length } });
+  options.onDiagnostic?.({
+    code: 'MOUNT_SUCCESS',
+    details: { hostCount: mounted.length, modes: mounted.map(item => item.mode) },
+  });
   return mounted;
 }

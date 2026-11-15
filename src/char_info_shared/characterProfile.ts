@@ -69,7 +69,7 @@ export const DEFAULT_TIER_COLOR = '#B7D9E8';
 export const CHAR_INFO_PROFILE_SCHEMA_VERSION = 2;
 export const MANAGED_BLOCK_START = '<%# char-info-ejs-builder:start:v2 %>';
 export const MANAGED_BLOCK_END = '<%# char-info-ejs-builder:end:v2 %>';
-export const STATUS_GALLERY_IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.avif'] as const;
+export const STATUS_GALLERY_IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.apng', '.webp', '.avif'] as const;
 
 export interface StatusGalleryImage {
   title: string;
@@ -96,6 +96,21 @@ export function buildStatusGalleryImages(gallery: readonly GalleryImage[]): Stat
 
 export function countUnsupportedStatusGalleryItems(gallery: readonly GalleryImage[]): number {
   return gallery.length - buildStatusGalleryImages(gallery).length;
+}
+
+export function hasStatusPortrait(variables: Record<string, unknown>, name: string): boolean {
+  const record = (value: unknown): Record<string, unknown> =>
+    value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  const status = record(variables.status);
+  const avatars = record(record(status.externalAvatars).partners);
+  const galleries = record(record(status.externalGalleries).partners);
+  const avatar = Object.hasOwn(avatars, name) ? record(avatars[name]).url : undefined;
+  const images = Object.hasOwn(galleries, name) ? record(galleries[name]).images : undefined;
+  if (typeof avatar === 'string' && /^https?:\/\//i.test(avatar.trim()) && URL.canParse(avatar)) return true;
+  return Array.isArray(images) && images.some(image => {
+    const url = record(image).url;
+    return typeof url === 'string' && isSupportedRemoteImageUrl(url);
+  });
 }
 
 const LEGACY_MANAGED_BLOCK_START = '<%# char-info-ejs-builder:start:v1 %>';
@@ -200,7 +215,7 @@ export function normalizeHex(value: string): string {
   return normalized.startsWith('#') ? normalized : `#${normalized}`;
 }
 
-export function validateProfile(profile: CharacterProfile): string[] {
+export function validateProfile(profile: CharacterProfile, options: { pendingRemoteUpload?: boolean } = {}): string[] {
   const errors: string[] = [];
   const characterName = profile.characterName.trim();
   if (!characterName) errors.push('角色姓名不能为空。');
@@ -223,7 +238,8 @@ export function validateProfile(profile: CharacterProfile): string[] {
   if (profile.remoteGalleryUrl?.trim() && !isHttpsUrl(profile.remoteGalleryUrl)) {
     errors.push('远程图库必须使用有效的 HTTPS URL。');
   }
-  const hasRemoteGallery = !!profile.remoteGalleryUrl?.trim() && isHttpsUrl(profile.remoteGalleryUrl);
+  const hasRemoteGallery =
+    options.pendingRemoteUpload || (!!profile.remoteGalleryUrl?.trim() && isHttpsUrl(profile.remoteGalleryUrl));
   if (profile.avatarUrl.trim() && isHttpsUrl(profile.avatarUrl) && !isSupportedRemoteImageUrl(profile.avatarUrl)) {
     errors.push('头像只支持 PNG / JPG / JPEG / GIF / APNG / WebP / AVIF 图片直链。');
   }

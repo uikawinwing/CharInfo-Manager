@@ -23,14 +23,14 @@ test('桌面角色库保留来源、世界书、搜索、筛选、排序与显�
   assert.match(librarySource, /class="character-library-meta-controls"/u);
   assert.match(librarySource, /v-model="sortOrder"/u);
   assert.match(librarySource, /class="character-library-layout-switch"/u);
-  assert.match(librarySource, /\.character-library-toolbar \{ position: sticky;/u);
+  assert.doesNotMatch(librarySource, /\.character-library-toolbar \{[^}]*position: sticky;/u);
 });
 
 test('桌面角色库使用可读字号，并且禁用角色不会把整张卡片文字降透明度', () => {
   assert.match(librarySource, /\.character-library-card-copy strong \{[^}]*font-size: 15px;[^}]*font-weight: 800;/u);
   assert.match(librarySource, /\.character-library-card-copy small \{[^}]*font-size: 13px;[^}]*font-weight: 600;/u);
   assert.match(librarySource, /\.character-library-card-meta i \{[^}]*font-size: 12px;[^}]*font-weight: 700;/u);
-  assert.match(librarySource, /\.character-library-card\.disabled \.character-cover-button \{ opacity: \.72; \}/u);
+  assert.match(librarySource, /\.character-library-card\.disabled \.character-cover-button \{[^}]*opacity: \.72;/u);
   assert.doesNotMatch(librarySource, /\.character-library-card\.disabled \{[^}]*opacity:/u);
 });
 
@@ -38,7 +38,7 @@ test('玩家可以在角色库中打开详情并独立启用或禁用世界书�
   assert.match(librarySource, /class="character-library-card"[\s\S]*?@click="openDetails\(character\)"/u);
   assert.match(librarySource, /@click\.stop="toggleCharacter\(character\)"/u);
   assert.match(librarySource, /setCharacterEntryEnabled/u);
-  assert.match(librarySource, /character\.entry\.enabled \? '已启用' : '已禁用'/u);
+  assert.match(librarySource, /role="switch"[\s\S]*?:aria-checked="character\.entry\.enabled"/u);
 });
 
 test('世界书角色库优先使用受管理 metadata，正文与条目名只作为回退资料', () => {
@@ -58,7 +58,7 @@ test('世界书角色库优先使用受管理 metadata，正文与条目名只�
     /\.character-library-card-author \{[^}]*background: rgb\(var\(--ci-primary-rgb\) \/ 10%\);[^}]*border-radius: 999px;[^}]*font-size: 12px;/u,
   );
   assert.doesNotMatch(librarySource, /<i v-if="character\.(?:sex|author|version)"/u);
-  assert.match(librarySource, /class="character-detail-profile-meta"[\s\S]*?作者 · \{\{ detailCharacter\.author \}\}[\s\S]*?版本 · \{\{ detailCharacter\.version \}\}/u);
+  assert.match(librarySource, /class="character-detail-profile-meta"[\s\S]*?<dt>作者<\/dt><dd>\{\{ detailCharacter\.author \}\}<\/dd>[\s\S]*?<dt>版本<\/dt><dd>\{\{ detailCharacter\.version \}\}<\/dd>/u);
 });
 
 test('角色库排序支持原始顺序、姓名、种族、作者和状态优先级', () => {
@@ -79,7 +79,7 @@ test('手机角色库使用固定宿主坐标系、安全区底栏，并保留�
   assert.match(librarySource, /\.library-header, \.force-mobile-layout \.library-header \{ display: block; width: 100%; min-width: 0;/u);
   assert.match(librarySource, /\.mobile-library-worldbook select \{ width: 100%; min-width: 0; max-width: 100%;/u);
   assert.match(librarySource, /class="mobile-library-dock" aria-label="角色库操作"/u);
-  assert.match(librarySource, /ref="libraryPage" class="library-page" @scroll\.passive="onLibraryPageScroll"/u);
+  assert.match(librarySource, /ref="libraryPage" class="character-library-results" @scroll\.passive="onLibraryPageScroll"/u);
   assert.match(librarySource, /v-if="showBackToTop && !detailCharacter"[\s\S]*class="mobile-library-back-to-top"[\s\S]*aria-label="返回角色库顶部"[\s\S]*@click="scrollLibraryToTop"/u);
   assert.match(librarySource, /showBackToTop\.value = \(libraryPage\.value\?\.scrollTop \?\? 0\) > 320/u);
   assert.match(librarySource, /libraryPage\.value\?\.scrollTo\(\{ top: 0, behavior: 'smooth' \}\)/u);
@@ -104,7 +104,7 @@ test('手机角色库使用固定宿主坐标系、安全区底栏，并保留�
 test('手机角色详情锚定 CharInfo 全屏宿主，并将图库和只读条目内容改为单列', () => {
   assert.match(librarySource, /\.character-detail-layer \{ position: absolute; z-index: 3; inset: 0;/u);
   assert.match(librarySource, /\.character-detail-dialog \{ width: 100%; height: 100%; min-width: 0; min-height: 0; max-width: none; max-height: none; box-sizing: border-box;/u);
-  assert.match(librarySource, /\.character-detail-body \{ display: block; overflow-y: auto; \}/u);
+  assert.match(librarySource, /\.character-detail-body \{ display: block;[^}]*overflow-y: auto; \}/u);
   assert.match(librarySource, /\.manager-root:not\(\.embedded\) \.character-detail-header \{[\s\S]*?var\(--ci-mobile-safe-top\)/u);
   assert.match(librarySource, /\.manager-root\.embedded \.character-detail-header \{ padding: 14px; \}/u);
   assert.match(librarySource, /\.character-detail-footer \{[\s\S]*?calc\(14px \+ var\(--ci-mobile-safe-bottom\)\)/u);

@@ -2,6 +2,7 @@ import { createPinia } from 'pinia';
 import { createApp, markRaw, reactive, type App } from 'vue';
 
 import { createScriptIdDiv, teleportStyle } from '@util/script';
+import { hasStatusPortrait } from '../char_info_shared/characterProfile';
 import { closeProfileEditor as destroyProfileEditor, openProfileEditor } from '../char_info_profile_editor/controller';
 import { projectCharInfoMessage } from '../char_info_viewer/runtime/charInfoMessage';
 import { selectRecentMessageIds } from '../char_info_viewer/runtime/recentMessages';
@@ -9,12 +10,14 @@ import { preloadPortraitImages } from '../char_info_viewer/services/imagePreload
 import { resolveRemoteGalleryPresentation } from '../char_info_viewer/services/remoteGalleryService';
 import { resolveCharacterVisualPreloadUrls } from '../char_info_viewer/services/themeService';
 import RuntimeRoot from './RuntimeRoot.vue';
-import { collectChangedAffinityNames, collectCurrentCharacterSnapshots } from './currentCharacterLibrary';
+import { collectChangedAffinityNames, collectCurrentCharacterSnapshots, updateInnerThoughtInbox } from './currentCharacterLibrary';
 import {
   mountCharInfoCardHosts,
   type MountedNativeCardHost,
   type NativeMessageMountDiagnostic,
 } from './nativeMessageMount';
+import { createPortraitRuntime, readStoryPortraits } from './portraitRuntime';
+import { createUpdateController, type UpdateController } from './selfUpdate';
 import {
   defaultRuntimeSettings,
   mergeRuntimeFloatingButtonPosition,
@@ -89,8 +92,9 @@ function readMessage(messageId: number): { message: ChatMessage; swipeId: number
   return { message, swipeId };
 }
 
-export function createCharInfoRuntime(): CharInfoRuntime {
+export function createCharInfoRuntime(updates: UpdateController = createUpdateController({ storage: window.parent.localStorage })): CharInfoRuntime {
   const state = reactive<RuntimeViewState>({
+    update: { ...updates.state },
     messages: [],
     visualRevision: 0,
     library: null,
@@ -98,6 +102,10 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     settingsView: null,
     saveStateByCard: {},
     mountDiagnostics: [],
+    portraitRevision: 0,
+    portraitJobs: [],
+    portraitAvailability: null,
+    portraitFormat: 'anima',
   });
 
   const traceMount = (
@@ -137,6 +145,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   let libraryRefreshPending = false;
   let libraryRefreshPromise: Promise<void> | null = null;
   const pendingAffinityNames = new Set<string>();
+  let previousInnerThoughts: ReadonlyMap<string, string> | null = null;
   let lifecycleRevision = 0;
   let started = false;
 
@@ -192,6 +201,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     library.viewerLoading = false;
     library.worldbookOpen = false;
     library.unreadCharacterNames = [];
+    library.innerThoughtInbox = [];
+    previousInnerThoughts = null;
     library.loading = false;
     library.error = '';
   };
@@ -201,7 +212,13 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     if (!library) return;
 
     const chatVariables = getVariables({ type: 'chat' });
-    const baseCharacters = collectCurrentCharacterSnapshots(mvuData, chatVariables);
+    const baseCharacters = collectCurrentCharacterSnapshots(mvuData, chatVariables).map(character => {
+      if (character.avatarUrl || hasStatusPortrait(chatVariables, character.name) ||
+        resolveCharacterVisualPreloadUrls(character.name, chatVariables).length > 0 ||
+        resolveCharacterRemoteGalleryUrl(chatVariables, character.name)) return character;
+      const generated = portraits.libraryView(character, chatVariables, false)?.url;
+      return generated ? { ...character, avatarUrl: generated } : character;
+    });
     const characterNames = new Set(baseCharacters.map(character => character.name));
     const sourcePriorities = state.settings.imageSourcePriorityEnabled ? state.settings.imageSourcePriority : [];
     const preloadUrls = baseCharacters.slice(0, 8).flatMap(character => [
@@ -219,23 +236,27 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     const snapshotRevision = library.revision;
     library.characters = baseCharacters;
     library.unreadCharacterNames = Array.from(nextUnread);
+    const innerThoughts = new Map(baseCharacters.map(({ name, innerThought }) => [name, innerThought]));
+    library.innerThoughtInbox = updateInnerThoughtInbox(library.innerThoughtInbox, previousInnerThoughts, innerThoughts);
+    previousInnerThoughts = innerThoughts;
     library.error = '';
 
     void Promise.all(
       baseCharacters.map(async character => {
         const remoteUrl = resolveCharacterRemoteGalleryUrl(chatVariables, character.name);
         if (!remoteUrl) return;
-        try {
-          const presentation = await resolveRemoteGalleryPresentation(remoteUrl);
-          if (!presentation?.avatarUrl) return;
-          if (!started || state.library !== library || library.revision !== snapshotRevision) return;
-          library.characters = library.characters.map(current =>
-            current.name === character.name ? { ...current, avatarUrl: presentation.avatarUrl } : current,
-          );
-          void preloadPortraitImages([presentation.avatarUrl]);
-        } catch {
-          // 远程头像失败时保留已经显示的本地资料，不阻塞角色库。
-        }
+        const presentation = await resolveRemoteGalleryPresentation(remoteUrl).catch(() => null);
+        if (!started || state.library !== library || library.revision !== snapshotRevision) return;
+        const generated = !presentation?.gallery.length && !character.avatarUrl && !hasStatusPortrait(chatVariables, character.name)
+          && resolveCharacterVisualPreloadUrls(character.name, chatVariables).length === 0
+          ? portraits.libraryView(character, chatVariables, false)?.url
+          : '';
+        const avatarUrl = presentation?.avatarUrl || generated;
+        if (!avatarUrl) return;
+        library.characters = library.characters.map(current =>
+          current.name === character.name ? { ...current, avatarUrl } : current,
+        );
+        void preloadPortraitImages([avatarUrl]);
       }),
     );
   };
@@ -273,6 +294,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     libraryRefreshPromise ??= runLibraryRefresh(library);
     return libraryRefreshPromise;
   };
+  const portraits = createPortraitRuntime(state, () => void refreshLibrary());
 
   const openLibraryList = () => {
     if (!started) return;
@@ -282,6 +304,11 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     state.library.worldbookOpen = false;
     state.library.listOpen = true;
     void refreshLibrary();
+  };
+
+  const readInnerThoughtInbox = () => {
+    if (!state.library) return;
+    for (const update of state.library.innerThoughtInbox) update.unread = false;
   };
 
   const openLibraryCharacter = async (name: string) => {
@@ -332,6 +359,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       viewerLoading: false,
       worldbookOpen: false,
       unreadCharacterNames: [],
+      innerThoughtInbox: [],
       floatingButtonPosition: readRuntimeFloatingButtonPosition(getVariables({ type: 'script' })),
       loading: false,
       error: '',
@@ -341,6 +369,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
   const destroyLibrary = () => {
     libraryRefreshPending = false;
     pendingAffinityNames.clear();
+    previousInnerThoughts = null;
     state.library?.host.remove();
     state.library = null;
   };
@@ -362,6 +391,13 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     state.settings.levelGapCollapseThreshold = nextSettings.levelGapCollapseThreshold;
     state.settings.imageSourcePriorityEnabled = nextSettings.imageSourcePriorityEnabled;
     state.settings.imageSourcePriority = nextSettings.imageSourcePriority;
+    state.settings.portraitProvider = nextSettings.portraitProvider;
+    state.settings.autoGeneratePortraits = nextSettings.autoGeneratePortraits;
+    state.settings.portraitRewriteInstructions = nextSettings.portraitRewriteInstructions;
+    state.settings.portraitOptions = nextSettings.portraitOptions;
+    state.settings.autoUpdateEnabled = nextSettings.autoUpdateEnabled;
+    updates.setAutoUpdate(nextSettings.autoUpdateEnabled);
+    portraits.settingsChanged();
     replaceVariables(mergeRuntimeSettings(getVariables({ type: 'script' }), nextSettings), { type: 'script' });
     scanRecentFloors();
     return nextSettings;
@@ -436,6 +472,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     closeProfileEditor();
     closeLibrary();
     if (state.settingsView) return;
+    portraits.updateAvailability();
 
     const host = window.parent.document.createElement('div');
     host.className = SETTINGS_HOST_CLASS;
@@ -542,7 +579,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       if (overflowWarnings.get(messageId) !== warningSignature) {
         overflowWarnings.set(messageId, warningSignature);
         toastr.warning(
-          `第 ${messageId} 楼的 CharInfo 数量超过当前上限 ${state.settings.maxCardsPerMessage}，因此该楼层暂不渲染。可在「查看器设置」提高「每个消息楼层最多支持」或开启「不限单楼层数量」。`,
+          `第 ${messageId} 楼的 CharInfo 数量超过当前上限 ${state.settings.maxCardsPerMessage}。可在「渲染与性能」调整「单层最大渲染数量」，设为 0 即可解除限制。`,
         );
       }
       console.warn(`[CharInfo Runtime] 第 ${messageId} 楼包含过多 char_info，已保留原始消息。`);
@@ -626,6 +663,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     };
     mountedMessages.set(messageId, mounted);
 
+    const storyPortraits = readStoryPortraits(messageId, source.swipeId, projection.cards);
     upsertView({
       messageId,
       renderKey: projection.cards.map(card => card.renderKey).join('|'),
@@ -634,6 +672,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         renderKey: card.renderKey,
         yamlText: card.content,
         host: markRaw(cardMounts[index].host),
+        portrait: storyPortraits.get(card.renderKey),
       })),
     });
   };
@@ -797,30 +836,40 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     listen(tavern_events.CHARACTER_MESSAGE_RENDERED, messageId => {
       advanceRecentFloor(messageId);
       enqueueMessage(messageId, 'CHARACTER_MESSAGE_RENDERED', { lifecycleDriven: true });
+      if (messageId === getLastMessageId()) void refreshLibrary();
     });
     listen(tavern_events.MESSAGE_RECEIVED, messageId => {
       advanceRecentFloor(messageId);
       enqueueMessage(messageId, 'MESSAGE_RECEIVED', { lifecycleDriven: true });
+      portraits.messageReceived(messageId);
     });
+    listen(tavern_events.GENERATION_STARTED, (type, _options, dryRun) => portraits.generationStarted(type, dryRun));
+    listen(tavern_events.GENERATION_STOPPED, portraits.generationStopped);
     listen(tavern_events.GENERATION_ENDED, messageId => {
       enqueueMessage(messageId, 'GENERATION_ENDED', { lifecycleDriven: true });
       void refreshLibrary();
+      portraits.generationEnded();
     });
     listen(tavern_events.MESSAGE_EDITED, messageId => {
+      portraits.invalidateMessage(messageId);
       enqueueMessage(messageId, 'MESSAGE_EDITED', { lifecycleDriven: true });
     });
     listen(tavern_events.MESSAGE_UPDATED, messageId => {
       enqueueMessage(messageId, 'MESSAGE_UPDATED', { lifecycleDriven: true });
+      if (messageId === getLastMessageId()) void refreshLibrary();
     });
     listen(tavern_events.MESSAGE_SWIPED, messageId => {
+      portraits.invalidateMessage(messageId);
       enqueueMessage(messageId, 'MESSAGE_SWIPED', { lifecycleDriven: true });
       void refreshLibrary();
     });
     listen(tavern_events.MESSAGE_DELETED, messageId => {
+      portraits.invalidateMessage(messageId);
       removeMessage(messageId);
       scheduleRecentScan();
     });
     listen(tavern_events.CHAT_CHANGED, () => {
+      portraits.reset();
       closeProfileEditor();
       resetLibraryForChat();
       closeSettings();
@@ -837,16 +886,23 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       if (started) return;
       started = true;
       const startRevision = ++lifecycleRevision;
+      eventStops.push(updates.subscribe(view => { state.update = view; }));
 
       initializeLibrary();
+      portraits.updateAvailability();
+      window.parent.addEventListener('st-baibai-image:ready', portraits.updateAvailability);
+      eventStops.push(() => window.parent.removeEventListener('st-baibai-image:ready', portraits.updateAvailability));
       const $appRoot = createScriptIdDiv().addClass('char-info-runtime-root').appendTo('body');
       appRoot = $appRoot[0];
       destroyTeleportedStyle = teleportStyle().destroy;
       app = createApp(RuntimeRoot, {
         state,
+        updates,
+        portraits,
         onCloseLibrary: closeLibrary,
         onCloseLibraryViewer: closeLibraryViewer,
         onRefreshLibrary: () => void forceRefreshCharInfo(),
+        onReadInnerThoughtInbox: readInnerThoughtInbox,
         onOpenLibraryList: openLibraryList,
         onOpenLibraryCharacter: openLibraryCharacter,
         onOpenWorldbookLibrary: openWorldbookLibrary,
@@ -885,6 +941,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
         listen(Mvu.events.VARIABLE_UPDATE_ENDED, (variables, variablesBeforeUpdate) => {
           void refreshLibrary(collectChangedAffinityNames(variables, variablesBeforeUpdate));
           scheduleVisualCardRefresh();
+          portraits.mvuUpdated(variables, variablesBeforeUpdate);
         });
         void refreshLibrary();
         scheduleVisualCardRefresh();
@@ -895,6 +952,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       if (!started) return;
       started = false;
       lifecycleRevision += 1;
+      portraits.reset();
       const mountedMessageIds = options.restoreNativeMessages === false ? [] : Array.from(mountedMessages.keys());
 
       if (dirtyFlushTimer) clearTimeout(dirtyFlushTimer);

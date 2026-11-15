@@ -65,7 +65,7 @@ test('当前聊天与世界书角色库在同一角色资料库内切换，不�
 });
 
 test('角色档案编辑器 overlay 保持独立 iframe，但生命周期由同 bundle controller 管理', () => {
-  assert.doesNotMatch(runtimeRootSource, /ProfileEditor/u);
+  assert.doesNotMatch(runtimeRootSource, /from ['"][^'"]*\/char_info_profile_editor\/|createProfileEditorOverlay/u);
   assert.doesNotMatch(runtimeRootSource, /state\.creator/u);
   assert.doesNotMatch(runtimeSource, /createProfileEditorOverlay|ProfileEditorOverlay/u);
   assert.match(profileEditorControllerSource, /openProfileEditor/u);
@@ -99,10 +99,14 @@ test('角色档案编辑器样式不修改 ST 宿主页的 html 或 body', () =>
   assert.match(profileEditorSource, /\.manager-root \{[\s\S]*?font-family:/u);
 });
 
-test('角色档案编辑器桌面模式保持固定窗口高度，步骤内容只在内部滚动', () => {
+test('角色档案编辑器桌面模式利用可用空间，步骤内容只在内部滚动', () => {
   assert.match(
     profileEditorSource,
-    /\.manager-dialog \{[\s\S]*?height: min\(\d+px, calc\(100% - 8px\)\);[\s\S]*?max-height: calc\(100% - 8px\);/u,
+    /\.manager-dialog \{[\s\S]*?width: min\(1900px, 100%\);[\s\S]*?height: 92%;[\s\S]*?max-height: calc\(100% - 8px\);/u,
+  );
+  assert.match(
+    profileEditorSource,
+    /\.editor-panel > \.wizard-step-section \{\s*width: min\(100%, 1520px\);[\s\S]*?padding: 32px 40px 0;/u,
   );
   assert.match(profileEditorSource, /\.dialog-body \{[\s\S]*?min-height: 0;[\s\S]*?overflow: hidden;/u);
   assert.match(

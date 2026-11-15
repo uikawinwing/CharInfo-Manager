@@ -2,8 +2,8 @@ import type { CharacterData } from '../types';
 
 export type CharacterCollapseOptions = {
   enabled: boolean;
-  alwaysExpandRules: string;
-  autoCollapseRules: string;
+  alwaysExpandRules: CollapseRuleSource;
+  autoCollapseRules: CollapseRuleSource;
   levelGapEnabled: boolean;
   levelGap: number;
   playerLevel: number | null | undefined;
@@ -18,6 +18,10 @@ type CharacterFieldRule = {
   path: string;
   expected: string;
 };
+
+export const COLLAPSE_CONDITIONS = ['equals', 'includes', 'excludes', 'pattern'] as const;
+export type CollapseRule = { path: string; condition: (typeof COLLAPSE_CONDITIONS)[number]; value: string };
+export type CollapseRuleSource = string | CollapseRule[];
 
 function normalizeText(value: unknown): string {
   return String(value ?? '').trim();
@@ -47,10 +51,19 @@ export function parseCharacterFieldRules(source: string): CharacterFieldRule[] {
     .filter((rule): rule is CharacterFieldRule => rule !== null);
 }
 
+export function editableCollapseRules(source: CollapseRuleSource): CollapseRule[] {
+  if (Array.isArray(source)) return source.map(rule => ({ ...rule }));
+  return parseCharacterFieldRules(source).map(({ path, expected }) => ({
+    path,
+    condition: expected.includes('*') ? 'pattern' : 'equals',
+    value: expected,
+  }));
+}
+
 function readPath(source: unknown, path: string): unknown {
   return path.split('.').reduce<unknown>((current, key) => {
     if (!current || typeof current !== 'object' || Array.isArray(current)) return undefined;
-    return (current as Record<string, unknown>)[key];
+    return Object.hasOwn(current, key) ? (current as Record<string, unknown>)[key] : undefined;
   }, source);
 }
 
@@ -69,17 +82,33 @@ function textMatches(actual: string, expected: string): boolean {
   return new RegExp('^' + pattern + '$', 'u').test(actual);
 }
 
-function valueMatches(value: unknown, expected: string): boolean {
+function valueMatches(value: unknown, expected: string, exact = false): boolean {
   if (Array.isArray(value)) {
-    return value.some(item => valueMatches(item, expected));
+    return value.some(item => valueMatches(item, expected, exact));
   }
   if (value === null || value === undefined || typeof value === 'object') return false;
-  return textMatches(normalizeText(value), expected);
+  const text = normalizeText(value);
+  return exact ? text === expected : textMatches(text, expected);
 }
 
-export function matchesCharacterFieldRules(data: CharacterData, source: string): boolean {
-  const rules = parseCharacterFieldRules(source);
-  return rules.some(rule => valueMatches(readPath(data, rule.path), rule.expected));
+function fieldContains(value: unknown, expected: string): boolean {
+  if (Array.isArray(value)) return value.some(item => fieldContains(item, expected));
+  if (value == null || typeof value === 'object') return false;
+  const text = normalizeText(value);
+  return Boolean(text) && text.includes(expected);
+}
+
+export function matchesCharacterFieldRules(data: CharacterData, source: CollapseRuleSource): boolean {
+  const rules = typeof source === 'string' ? editableCollapseRules(source) : source;
+  return rules.some(({ path, condition, value }) => {
+    const expected = value.trim();
+    if (!path || !expected) return false;
+    const actual = readPath(data, path);
+    if (condition === 'equals') return valueMatches(actual, expected, true);
+    if (condition === 'pattern') return valueMatches(actual, expected);
+    if (condition === 'includes') return fieldContains(actual, expected);
+    return fieldContains(actual, '') && !fieldContains(actual, expected);
+  });
 }
 
 function parseFiniteLevel(value: unknown): number | null {

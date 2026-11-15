@@ -11,7 +11,7 @@
             <path d="M6.5 9.2 9 10m6.5 0 2.5-.8m-11.5 4 2.5.8m6.5 0 2.5-.8" />
           </svg>
           <h1 id="manager-title">世界书角色库</h1>
-          <span class="phase-badge">{{ worldbookCharacters.length }}</span>
+          <span class="phase-badge" role="status">{{ filteredCharacters.length }} / {{ worldbookCharacters.length }} 个角色</span>
         </div>
 
         <div class="character-source-switch" role="group" aria-label="选择角色资料来源">
@@ -19,33 +19,12 @@
           <button type="button" class="active" aria-pressed="true">世界书角色</button>
         </div>
 
-        <div class="library-header-worldbook">
-          <label>
-            <span>世界书</span>
-            <select v-model="selectedWorldbookName" :disabled="loadingWorldbooks || worldbooks.length === 0">
-              <option :value="ALL_CURRENT_WORLDBOOKS">全部当前世界书</option>
-              <option v-for="worldbook in worldbooks" :key="worldbook" :value="worldbook">
-                {{ worldbook }}{{ characterWorldbooks.includes(worldbook) ? '（当前角色）' : '' }}
-              </option>
-            </select>
-          </label>
-          <button
-            class="icon-button library-refresh-button"
-            type="button"
-            aria-label="重新读取角色库"
-            :disabled="loadingWorldbooks || loadingEntries"
-            @click="loadWorldbooks"
-          >
-            ↻
-          </button>
-        </div>
-
         <div class="header-actions">
           <button class="close-button" type="button" aria-label="关闭" @click="emit('close')">×</button>
         </div>
       </header>
 
-      <section ref="libraryPage" class="library-page" @scroll.passive="onLibraryPageScroll">
+      <section class="library-page">
         <div class="mobile-library-context">
           <div class="character-source-switch" role="group" aria-label="选择角色资料来源">
             <button type="button" aria-pressed="false" @click="emit('openCurrentChat')">当前聊天角色</button>
@@ -62,8 +41,27 @@
           </label>
         </div>
 
-        <div v-if="worldbookCharacters.length" class="character-library">
-          <div class="character-library-toolbar">
+        <div class="character-library">
+          <aside class="character-library-toolbar" aria-label="角色库筛选与显示">
+            <div class="character-library-search-row">
+              <div class="library-header-worldbook">
+                <label>
+                  <span>世界书</span>
+                  <select v-model="selectedWorldbookName" :disabled="loadingWorldbooks || worldbooks.length === 0">
+                    <option :value="ALL_CURRENT_WORLDBOOKS">全部当前世界书</option>
+                    <option v-for="worldbook in worldbooks" :key="worldbook" :value="worldbook">
+                      {{ worldbook }}{{ characterWorldbooks.includes(worldbook) ? '（当前角色）' : '' }}
+                    </option>
+                  </select>
+                </label>
+                <button
+                  class="icon-button library-refresh-button"
+                  type="button"
+                  aria-label="重新读取角色库"
+                  :disabled="loadingWorldbooks || loadingEntries"
+                  @click="loadWorldbooks"
+                >↻</button>
+              </div>
             <label class="library-search-field">
               <svg aria-hidden="true" viewBox="0 0 24 24">
                 <circle cx="10.7" cy="10.7" r="6.4" />
@@ -74,10 +72,11 @@
                 v-model="searchText"
                 type="search"
                 autocomplete="off"
-                placeholder="搜索角色、种族、作者或版本"
-                aria-label="搜索角色封面库"
+                placeholder="搜索姓名、种族或作者"
+                aria-label="搜索角色姓名、种族、作者或版本"
               />
             </label>
+            </div>
 
             <div v-if="mobileFilterOpen" class="mobile-library-filter-panel" aria-label="筛选角色">
               <div class="mobile-library-filter-options" role="group" aria-label="筛选角色状态">
@@ -108,7 +107,7 @@
               </label>
             </div>
 
-            <div class="character-library-control-row">
+            <div v-if="worldbookCharacters.length" class="character-library-control-row">
               <div class="character-library-filter-buttons" role="group" aria-label="筛选角色状态">
                 <span class="character-library-control-label">状态</span>
                 <button
@@ -142,20 +141,20 @@
 
               <div class="character-library-view-options">
                 <div class="character-library-layout-switch" role="group" aria-label="选择角色库显示方式">
-                  <button type="button" :aria-pressed="layout === 'list'" @click="layout = 'list'">
+                  <button type="button" aria-label="紧凑列表" :aria-pressed="layout === 'list'" @click="layout = 'list'">
                     <svg aria-hidden="true" viewBox="0 0 24 24">
                       <path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" />
                     </svg>
-                    <span>紧凑列表</span>
+                    <span>列表</span>
                   </button>
-                  <button type="button" :aria-pressed="layout === 'cards'" @click="layout = 'cards'">
+                  <button type="button" aria-label="图片卡片" :aria-pressed="layout === 'cards'" @click="layout = 'cards'">
                     <svg aria-hidden="true" viewBox="0 0 24 24">
                       <rect x="4" y="4" width="6" height="6" rx=".8" />
                       <rect x="14" y="4" width="6" height="6" rx=".8" />
                       <rect x="4" y="14" width="6" height="6" rx=".8" />
                       <rect x="14" y="14" width="6" height="6" rx=".8" />
                     </svg>
-                    <span>图片卡片</span>
+                    <span>卡片</span>
                   </button>
                 </div>
                 <label v-if="layout === 'cards'" class="character-card-columns">
@@ -167,14 +166,21 @@
                 </label>
               </div>
 
-              <div class="character-library-summary">找到 {{ filteredCharacters.length }} 个角色</div>
             </div>
-          </div>
+          </aside>
 
+          <div ref="libraryPage" class="character-library-results" @scroll.passive="onLibraryPageScroll">
+          <div v-if="layout === 'list' && worldbookCharacters.length" class="character-library-list-heading" aria-hidden="true">
+            <span></span>
+            <span>角色</span>
+            <span>启用</span>
+          </div>
           <div
             class="character-library-grid"
+            role="list"
+            :aria-label="layout === 'list' ? '角色列表' : '角色卡片'"
             :class="[
-              { 'image-card-view': layout === 'cards' },
+              { 'image-card-view': layout === 'cards', 'list-view': layout === 'list' },
               cardColumns === 'auto' ? '' : `card-columns-${cardColumns}`,
             ]"
           >
@@ -182,6 +188,7 @@
               v-for="character in filteredCharacters"
               :key="character.key"
               class="character-library-card"
+              role="listitem"
               :class="{
                 disabled: !character.entry.enabled,
                 encountered: character.encountered,
@@ -215,44 +222,59 @@
                 class="character-library-card-copy"
                 role="button"
                 tabindex="0"
-                :aria-label="`查看 ${characterName(character)}`"
+                :title="`查看 ${characterName(character)}的角色详情`"
                 @click.stop="openDetails(character)"
                 @keydown.enter.prevent="openDetails(character)"
                 @keydown.space.prevent="openDetails(character)"
               >
-                <strong>{{ characterName(character) }}</strong>
-                <small>{{ character.description || '资料待补全' }}</small>
-                <span class="character-library-card-meta">
-                  <i>{{ character.race || '种族未知' }}</i>
-                  <i v-if="layout === 'cards'" class="entry-status">{{ character.entry.enabled ? '已启用' : '已禁用' }}</i>
-                  <i v-if="character.encountered" class="encountered">已遇到</i>
-                  <i v-if="!character.hasProfileRecord" class="visual-missing">未配置档案</i>
+                <div class="character-library-card-identity">
+                  <span class="character-library-accessible-label">查看角色详情：</span>
+                  <strong>{{ characterName(character) }}</strong>
+                  <small>{{ character.description || '资料待补全' }}</small>
+                </div>
+                <span v-if="layout === 'cards'" class="character-library-card-meta">
+                  <span class="character-library-card-tags">
+                    <span class="character-library-accessible-label">种族：</span>
+                    <i>{{ character.race || '种族未知' }}</i>
+                    <i v-if="character.encountered" class="encountered">已遇到</i>
+                    <i v-if="!character.hasProfileRecord" class="visual-missing">未配置档案</i>
+                  </span>
+                  <span v-if="character.author" class="character-library-author-field">
+                    <span class="character-library-accessible-label">作者：</span>
+                    <span class="character-library-card-author">{{ character.author }}</span>
+                  </span>
                 </span>
-                <span v-if="character.author" class="character-library-card-author">{{ character.author }}</span>
               </div>
-
               <button
                 class="character-entry-toggle"
+                :class="{ 'character-entry-status': layout === 'cards' }"
                 type="button"
                 role="switch"
                 :aria-checked="character.entry.enabled"
-                :aria-label="`${character.entry.enabled ? '禁用' : '启用'} ${characterName(character)}`"
+                :aria-label="`${characterName(character)}的世界书条目`"
+                :aria-busy="togglingKeys.has(character.key)"
+                :title="`点击${character.entry.enabled ? '禁用' : '启用'} ${characterName(character)}的世界书条目`"
                 :disabled="togglingKeys.has(character.key)"
                 @click.stop="toggleCharacter(character)"
               >
-                <span></span>
+                <span v-if="layout === 'list'" aria-hidden="true"></span>
+                <template v-else>
+                  <i class="character-entry-status-dot" aria-hidden="true"></i>
+                  {{ togglingKeys.has(character.key) ? '保存中…' : character.entry.enabled ? '已启用' : '已禁用' }}
+                </template>
               </button>
             </article>
           </div>
 
-          <p v-if="!filteredCharacters.length" class="character-library-no-results">当前筛选条件下没有角色。</p>
+          <p v-if="worldbookCharacters.length && !filteredCharacters.length" class="character-library-no-results">当前筛选条件下没有角色。</p>
           <p v-if="toggleMessage" class="character-library-feedback" aria-live="polite">{{ toggleMessage }}</p>
-        </div>
 
-        <div v-else-if="selectedWorldbookName && !loadingEntries" class="character-library-empty library-page-empty">
+        <div v-if="selectedWorldbookName && !loadingEntries && !worldbookCharacters.length" class="character-library-empty library-page-empty">
           <strong>这个世界书暂时没有可显示的角色。</strong>
         </div>
         <p v-if="error" class="message error">{{ error }}</p>
+          </div>
+        </div>
 
         <button
           v-if="showBackToTop && !detailCharacter"
@@ -312,15 +334,6 @@
               {{ detailCharacter.entry.enabled ? '已启用' : '已禁用' }}
             </span>
             <h2 id="character-detail-title">{{ characterName(detailCharacter) }}</h2>
-            <p>世界书：{{ detailCharacter.worldbookName }} · 条目：{{ detailCharacter.entry.name }}</p>
-            <p
-              v-if="detailCharacter.race || detailCharacter.author || detailCharacter.version"
-              class="character-detail-profile-meta"
-            >
-              <span v-if="detailCharacter.race">{{ detailCharacter.race }}</span>
-              <span v-if="detailCharacter.author">作者 · {{ detailCharacter.author }}</span>
-              <span v-if="detailCharacter.version">版本 · {{ detailCharacter.version }}</span>
-            </p>
           </div>
           <button class="close-button" type="button" aria-label="关闭角色详情" @click="closeDetails">×</button>
         </header>
@@ -406,6 +419,19 @@
             <p v-if="!detailGalleryItems.length" class="character-detail-gallery-empty">这个角色尚未配置图库。</p>
           </section>
 
+          <aside class="character-detail-metadata" aria-labelledby="character-detail-metadata-title">
+            <div class="character-detail-section-heading">
+              <h3 id="character-detail-metadata-title">档案信息</h3>
+            </div>
+            <dl class="character-detail-profile-meta">
+              <div v-if="detailCharacter.race"><dt>种族</dt><dd>{{ detailCharacter.race }}</dd></div>
+              <div v-if="detailCharacter.author"><dt>作者</dt><dd>{{ detailCharacter.author }}</dd></div>
+              <div v-if="detailCharacter.version"><dt>版本</dt><dd>{{ detailCharacter.version }}</dd></div>
+              <div><dt>世界书</dt><dd>{{ detailCharacter.worldbookName }}</dd></div>
+              <div><dt>条目</dt><dd>{{ detailCharacter.entry.name }}</dd></div>
+            </dl>
+          </aside>
+
           <section class="character-detail-content" aria-labelledby="character-detail-content-title">
             <div class="character-detail-section-heading">
               <div><span>角色设定</span><h3 id="character-detail-content-title">角色条目内容</h3></div>
@@ -480,6 +506,7 @@ const emit = defineEmits<{
   close: [];
   openCurrentChat: [];
   selectionChanged: [worldbookName: string];
+  summaryChanged: [summary: { filtered: number; total: number }];
   edit: [worldbookName: string, entryUid: number];
 }>();
 
@@ -597,6 +624,9 @@ const availableRaces = computed(() =>
     left.localeCompare(right, 'zh-CN'),
   ),
 );
+watch([() => filteredCharacters.value.length, () => worldbookCharacters.value.length], ([filtered, total]) => {
+  emit('summaryChanged', { filtered, total });
+}, { immediate: true });
 const detailCharacter = computed(() => worldbookCharacters.value.find(character => character.key === detailKey.value) ?? null);
 const detailEntryBody = computed(() => {
   const character = detailCharacter.value;
@@ -1113,7 +1143,7 @@ onBeforeUnmount(() => {
 }
 button, input, select { color: inherit; font: inherit; }
 button { cursor: pointer; }
-select { color: var(--text); background: var(--ci-input); border: 1px solid var(--border); border-radius: 8px; }
+select { margin: 0; color: var(--text); background: var(--ci-input); border: 1px solid var(--border); border-radius: 8px; }
 .manager-dialog {
   position: relative; display: flex; width: min(1420px, 100%); height: calc(100% - 8px); max-height: calc(100% - 8px); min-height: 0;
   overflow: hidden; flex-direction: column; background: radial-gradient(circle at 0 0, rgb(var(--ci-primary-rgb) / 8%), transparent 28rem), var(--bg);
@@ -1124,19 +1154,22 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
 .header-title { display: flex; min-width: 0; align-items: center; gap: 10px; }
 .header-title h1 { margin: 0; font-size: clamp(22px, 3vw, 31px); }
 .library-title-icon { width: 31px; height: 31px; flex: 0 0 auto; fill: none; stroke: var(--primary); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
-.phase-badge { padding: 5px 8px; color: var(--primary); background: var(--primary-soft); border: 1px solid rgb(var(--ci-primary-rgb) / 25%); border-radius: 999px; font-size: 12px; font-weight: 800; }
+.phase-badge { color: var(--primary); font-size: 16px; font-weight: 700; white-space: nowrap; }
 .character-source-switch { display: grid; padding: 3px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; background: var(--ci-input); border: 1px solid var(--border); border-radius: 10px; }
 .character-source-switch button { min-height: 34px; padding: 6px 8px; color: var(--text-muted); background: transparent; border: 1px solid transparent; border-radius: 7px; font-size: 13px; font-weight: 800; }
 .character-source-switch button:hover, .character-source-switch button.active { color: var(--primary); background: var(--primary-soft); border-color: rgb(var(--ci-primary-rgb) / 34%); }
 .library-header .character-source-switch { grid-column: 1 / -1; grid-row: 2; }
-.library-header-worldbook { display: flex; min-width: 0; grid-column: 2; grid-row: 1; align-items: flex-end; gap: 8px; }
-.library-header-worldbook label { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 4px; }
-.library-header-worldbook label > span { color: var(--text-muted); font-size: 12px; font-weight: 800; }
-.library-header-worldbook select { width: 100%; min-height: 40px; padding: 7px 10px; font-size: 13px; font-weight: 700; }
+.library-header-worldbook { display: flex; min-width: 0; align-items: flex-end; gap: 12px; }
+.library-header-worldbook label { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 8px; }
+.library-header-worldbook label > span { color: var(--text-muted); font-size: 12px; font-weight: 600; line-height: 18px; }
+.library-header-worldbook select { width: 100%; min-height: 48px; padding: 9px 12px; font-size: 14px; font-weight: 600; }
+.library-header-worldbook .library-refresh-button { width: 48px; height: 48px; flex: 0 0 auto; }
 .header-actions { display: flex; grid-column: 3; grid-row: 1; align-items: center; justify-content: flex-end; gap: 10px; }
 .close-button, .icon-button { display: grid; width: 42px; height: 42px; padding: 0; place-items: center; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 10px; }
 .close-button { font-size: 25px; line-height: 1; }
-.library-page { width: 100%; min-width: 0; min-height: 0; padding: 12px 22px 28px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--border-strong) var(--surface); scrollbar-width: thin; }
+.library-page { display: flex; width: 100%; min-width: 0; min-height: 0; padding: 24px; flex: 1; flex-direction: column; overflow: hidden; }
+.character-library { display: grid; min-height: 0; min-width: 0; flex: 1; grid-template-columns: 240px minmax(0, 1fr); gap: 24px; }
+.character-library-results { min-width: 0; min-height: 0; padding-right: 8px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--border-strong) var(--surface); scrollbar-width: thin; scrollbar-gutter: stable; container-type: inline-size; container-name: character-list; }
 .mobile-library-context, .mobile-library-filter-panel, .mobile-library-dock { display: none; }
 .mobile-library-back-to-top {
   position: absolute;
@@ -1156,32 +1189,34 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
   transition: bottom 120ms ease;
 }
 .mobile-library-back-to-top svg { width: 21px; height: 21px; fill: none; stroke: currentcolor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
-.character-library-toolbar { position: sticky; z-index: 2; top: 0; display: flex; margin: -12px 0 18px; padding: 12px 0 18px; flex-direction: column; gap: 18px; background: var(--bg); }
+.character-library-toolbar { display: flex; min-height: 0; padding: 18px; flex-direction: column; gap: 24px; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; scrollbar-width: thin; scrollbar-color: var(--border-strong) var(--surface); }
+.character-library-search-row { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 20px; }
 .library-search-field { display: flex; min-height: 48px; padding: 0 13px; align-items: center; gap: 10px; background: linear-gradient(90deg, var(--surface-raised), var(--surface)); border: 1px solid var(--border-strong); border-radius: 10px; }
 .library-search-field:focus-within { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-soft); }
 .library-search-field svg { width: 21px; height: 21px; flex: 0 0 auto; fill: none; stroke: var(--text-muted); stroke-linecap: round; stroke-width: 1.8; }
 .library-search-field input { width: 100%; min-width: 0; min-height: 44px; padding: 0; color: var(--text); background: transparent; border: 0; outline: 0; font-size: 14px; font-weight: 550; }
 .library-search-field input::placeholder { color: var(--text-muted); opacity: 1; }
-.character-library-control-row { display: grid; align-items: center; grid-template-columns: minmax(360px, 1fr) minmax(360px, 430px) auto minmax(132px, auto); gap: 18px; }
-.character-library-filter-buttons { display: flex; min-width: 0; padding: 6px 10px; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.character-library-control-row { display: flex; flex-direction: column; align-items: stretch; gap: 24px; }
+.character-library-filter-buttons { display: grid; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.character-library-filter-buttons .character-library-control-label { grid-column: 1 / -1; margin-bottom: 2px; }
 .character-library-control-label { color: var(--text-muted); font-size: 13px; font-weight: 650; white-space: nowrap; }
-.character-library-filter-buttons button { min-height: 32px; padding: 6px 15px; color: var(--text-secondary); background: transparent; border: 1px solid transparent; border-radius: 7px; font-size: 13px; font-weight: 650; }
+.character-library-filter-buttons button { min-height: 40px; padding: 8px 14px; color: var(--text-secondary); background: transparent; border: 1px solid transparent; border-radius: 7px; font-size: 14px; font-weight: 650; }
 .character-library-filter-buttons button[aria-pressed='true'] { color: var(--ci-on-primary); background: var(--primary); border-color: var(--primary); font-weight: 800; }
-.character-library-meta-controls { display: grid; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.character-race-filter, .character-order-select { display: flex; min-width: 0; align-items: center; gap: 7px; color: var(--text-muted); font-size: 13px; font-weight: 650; }
-.character-race-filter select, .character-order-select select { width: 100%; min-width: 0; min-height: 40px; padding: 7px 10px; font-size: 13px; font-weight: 600; }
-.character-library-view-options { display: flex; align-items: center; gap: 8px; }
-.character-library-layout-switch { display: flex; padding: 4px; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
-.character-library-layout-switch button { display: inline-flex; min-height: 34px; padding: 7px 13px; align-items: center; justify-content: center; gap: 6px; color: var(--text-secondary); background: transparent; border: 1px solid transparent; border-radius: 6px; font-size: 13px; font-weight: 650; }
+.character-library-meta-controls { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.character-race-filter, .character-order-select { display: flex; min-width: 0; flex-direction: column; align-items: stretch; gap: 8px; color: var(--text-muted); font-size: 13px; font-weight: 650; }
+.character-race-filter > span, .character-order-select > span { white-space: nowrap; }
+.character-race-filter select, .character-order-select select { width: 100%; min-width: 0; min-height: 44px; padding: 9px 12px; font-size: 14px; font-weight: 600; }
+.character-library-view-options { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.character-library-layout-switch { display: grid; padding: 4px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.character-library-layout-switch button { display: inline-flex; min-height: 36px; padding: 8px 13px; align-items: center; justify-content: center; gap: 8px; color: var(--text-secondary); background: transparent; border: 1px solid transparent; border-radius: 6px; font-size: 13px; font-weight: 650; }
 .character-library-layout-switch svg { width: 16px; height: 16px; fill: none; stroke: currentcolor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
 .character-library-layout-switch button[aria-pressed='true'] { color: var(--primary); background: var(--primary-soft); border-color: rgb(var(--ci-primary-rgb) / 58%); font-weight: 800; }
-.character-card-columns { display: flex; align-items: center; gap: 7px; color: var(--text-muted); font-size: 12px; font-weight: 650; }
-.character-card-columns select { min-height: 34px; padding: 6px 9px; font-size: 12px; font-weight: 600; }
-.character-library-summary { display: flex; justify-content: flex-end; color: var(--text-muted); font-size: 13px; font-weight: 700; white-space: nowrap; }
-.character-library-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.character-card-columns { display: flex; flex-direction: column; align-items: stretch; gap: 8px; color: var(--text-muted); font-size: 13px; font-weight: 650; white-space: nowrap; }
+.character-card-columns select { min-height: 44px; padding: 9px 12px; font-size: 14px; font-weight: 600; }
+.character-library-grid { display: grid; align-content: start; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 20px; }
 .character-library-card { display: grid; min-width: 0; min-height: 104px; padding: 10px; align-items: center; grid-template-columns: 74px minmax(0, 1fr) auto; gap: 10px; background: linear-gradient(145deg, var(--surface-raised), var(--surface)); border: 1px solid var(--border); border-radius: 8px; transition: border-color 160ms ease, box-shadow 160ms ease; }
 .character-library-card.encountered { border-color: rgb(var(--ci-primary-rgb) / 38%); }
-.character-library-card.disabled .character-cover-button { opacity: .72; }
+.character-library-card.disabled .character-cover-button { opacity: .72; filter: grayscale(.7); }
 .character-cover-button { display: grid; width: 74px; height: 82px; padding: 0; overflow: hidden; place-items: center; color: var(--text-muted); background: linear-gradient(145deg, var(--surface-soft), var(--surface-raised)); border: 0; border-radius: 8px; }
 .character-cover-button img { width: 100%; height: 100%; object-fit: cover; }
 .character-cover-placeholder { display: grid; width: 100%; height: 100%; padding: 6px; place-items: center; align-content: center; gap: 2px; color: var(--text-secondary); background: linear-gradient(145deg, var(--surface-soft), var(--surface-raised)); }
@@ -1192,44 +1227,68 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
 .character-library-card-copy strong { color: var(--text); font-size: 15px; font-weight: 800; line-height: 1.25; }
 .character-library-card-copy small { color: var(--text-secondary); font-size: 13px; font-weight: 600; line-height: 1.4; }
 .character-library-card-meta { display: flex; min-width: 0; flex-wrap: wrap; gap: 4px; }
+.character-library-card-tags { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 4px; }
 .character-library-card-meta i { padding: 2px 5px; overflow: hidden; color: var(--text-muted); background: var(--surface-raised); border-radius: 5px; font-size: 12px; font-weight: 700; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
 .character-library-card-meta i.encountered { color: var(--success); background: rgb(120 213 156 / 10%); }
 .character-library-card-author { display: inline-flex; max-width: 100%; padding: 3px 7px; align-self: flex-start; overflow: hidden; color: var(--primary); background: rgb(var(--ci-primary-rgb) / 10%); border: 1px solid rgb(var(--ci-primary-rgb) / 24%); border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
-.character-entry-toggle { position: relative; width: 38px; height: 22px; padding: 2px; background: var(--surface-soft); border: 1px solid var(--border-strong); border-radius: 999px; }
-.character-entry-toggle span { display: block; width: 16px; height: 16px; background: var(--text-secondary); border-radius: 50%; transition: transform 160ms ease; }
-.character-entry-toggle[aria-checked='true'] { background: var(--primary-strong); border-color: var(--primary); }
-.character-entry-toggle[aria-checked='true'] span { background: var(--text); transform: translateX(16px); }
+.character-library-card.disabled .character-library-card-copy :is(strong, small, i, .character-library-card-author) { color: var(--text-muted); }
+.character-library-card.disabled .character-library-card-copy strong { font-weight: 600; }
+.character-library-card.disabled .character-library-card-author { background: var(--surface-soft); border-color: transparent; }
+.character-entry-toggle { display: inline-flex; width: 46px; height: 28px; padding: 4px; align-items: center; flex: 0 0 auto; background: #646b74; border: 0; border-radius: 999px; }
+.character-entry-toggle span { display: block; width: 20px; height: 20px; background: #fff; border-radius: 50%; box-shadow: 0 1px 3px rgb(0 0 0 / 22%); }
+.character-entry-toggle[aria-checked='true'] { background: #65c784; }
+.character-entry-toggle[aria-checked='true'] span { transform: translateX(18px); }
+.character-entry-toggle:hover:not(:disabled) { filter: brightness(1.1); }
+.character-entry-toggle:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.character-entry-toggle:active:not(:disabled) { filter: brightness(.9); }
+.character-entry-toggle:disabled { cursor: wait; opacity: .65; }
 .character-library-no-results, .character-library-empty, .message { margin: 12px 0 0; padding: 14px; color: var(--text-muted); text-align: center; background: var(--surface-raised); border-radius: 9px; font-size: 13px; font-weight: 600; }
 .message.error { color: var(--ci-danger); }
-.character-library-grid.image-card-view { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+.character-library-grid.image-card-view { align-items: stretch; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 20px; }
 .character-library-grid.image-card-view.card-columns-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .character-library-grid.image-card-view.card-columns-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .character-library-grid.image-card-view.card-columns-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .character-library-grid.image-card-view.card-columns-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .character-library-grid.image-card-view.card-columns-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-.image-card-view .character-library-card { position: relative; display: grid; padding: 0; align-items: stretch; grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); gap: 0; overflow: hidden; }
-.image-card-view .character-cover-button { width: 100%; height: auto; aspect-ratio: 4 / 5; border-radius: 0; }
-.image-card-view .character-library-card-copy { padding: 10px 11px 12px; }
-.image-card-view .character-entry-toggle { position: absolute; z-index: 1; top: 9px; right: 9px; background: var(--ci-header); }
+.image-card-view .character-library-card { position: relative; display: grid; padding: 0; align-items: stretch; grid-template-columns: 1fr; grid-template-rows: auto 1fr 44px; gap: 0; overflow: hidden; border-radius: 12px; }
+.image-card-view .character-library-card:not(.disabled) { border-color: var(--primary); }
+.image-card-view .character-cover-button { width: 100%; height: auto; aspect-ratio: 3 / 4; min-height: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); border-radius: 0; background: var(--surface-soft); }
+.image-card-view .character-cover-button img { min-width: 0; min-height: 0; object-fit: cover; object-position: center top; }
+.image-card-view .character-library-card-copy { padding: 12px 14px; gap: 8px; }
+.image-card-view .character-library-card-copy strong { flex-shrink: 0; font-size: 16px; line-height: 1.4; }
+.image-card-view .character-library-card-copy small { display: -webkit-box; flex-shrink: 0; overflow: hidden; font-size: 13px; line-height: 1.5; white-space: normal; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.image-card-view .character-library-card-meta { flex-wrap: nowrap; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.image-card-view .character-library-card-tags { flex: 1; overflow: hidden; }
+.image-card-view .character-library-card-meta i { padding: 0; background: transparent; font-weight: 500; line-height: 1.4; }
+.image-card-view .character-library-card-author { max-width: 48%; padding: 2px 6px; align-self: center; border: 0; border-radius: 3px; background: var(--surface-soft); font-weight: 500; }
+.character-entry-toggle.character-entry-status { width: 100%; height: 44px; padding: 8px 14px; justify-content: flex-start; gap: 8px; border-top: 1px solid var(--border); border-radius: 0; background: transparent; color: var(--text-muted); font-size: 13px; }
+.character-entry-status[aria-checked='true'] { background: var(--primary-soft); color: var(--primary); }
+.character-entry-status-dot { width: 8px; height: 8px; flex: 0 0 auto; border: 1px solid currentcolor; border-radius: 50%; }
+.character-entry-status[aria-checked='true'] .character-entry-status-dot { background: currentcolor; box-shadow: 0 0 8px rgb(var(--ci-primary-rgb) / 40%); }
+.character-entry-status:focus-visible { outline-offset: -3px; }
 .character-detail-layer { position: absolute; z-index: 3; inset: 0; display: grid; padding: 24px; overflow: auto; place-items: center; background: var(--ci-overlay); backdrop-filter: blur(12px); }
 .character-detail-dialog { display: flex; width: min(1240px, 100%); max-height: min(900px, calc(100vh - 48px)); min-height: 0; overflow: hidden; flex-direction: column; background: radial-gradient(circle at 0 0, rgb(var(--ci-primary-rgb) / 9%), transparent 30rem), var(--bg); border: 1px solid var(--border-strong); border-radius: 18px; box-shadow: 0 30px 90px rgb(0 0 0 / 62%); }
 .character-detail-header { display: flex; padding: 20px 24px; align-items: flex-start; justify-content: space-between; gap: 20px; background: var(--ci-header); border-bottom: 1px solid var(--border); }
 .character-detail-header h2, .character-detail-header p { margin: 0; }
 .character-detail-header h2 { margin-top: 7px; font-size: clamp(24px, 3.5vw, 36px); }
 .character-detail-header p { margin-top: 6px; color: var(--text-muted); font-size: 13px; font-weight: 550; }
-.character-detail-profile-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; }
-.character-detail-profile-meta span { white-space: nowrap; }
+.character-detail-profile-meta { display: grid; margin: 0; gap: 20px; }
+.character-detail-profile-meta div { display: grid; min-width: 0; gap: 6px; }
+.character-detail-profile-meta dt { color: var(--text-muted); font-size: 12px; font-weight: 600; }
+.character-detail-profile-meta dd { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
 .character-detail-status { display: inline-flex; padding: 4px 8px; color: var(--success); background: rgb(120 213 156 / 10%); border: 1px solid rgb(120 213 156 / 25%); border-radius: 999px; font-size: 12px; font-weight: 800; }
-.character-detail-status.disabled { color: var(--text-muted); }
-.character-detail-body { display: grid; min-height: 0; overflow: hidden; grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr); }
-.character-detail-gallery, .character-detail-content { min-height: 0; padding: 20px; overflow-y: auto; }
-.character-detail-content { background: var(--surface); border-left: 1px solid var(--border); }
+.character-detail-status.disabled { color: var(--text-muted); background: var(--surface-soft); border-color: var(--border); }
+.character-detail-body { display: grid; min-height: 0; padding: 24px; align-items: start; overflow-y: auto; grid-template-columns: minmax(0, 1fr) 260px; grid-template-areas: 'gallery metadata' 'content metadata'; gap: 24px; scrollbar-gutter: stable; }
+.character-detail-gallery, .character-detail-content, .character-detail-metadata { min-width: 0; padding: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.character-detail-gallery { grid-area: gallery; }
+.character-detail-content { grid-area: content; }
+.character-detail-metadata { position: sticky; top: 0; grid-area: metadata; }
 .character-detail-section-heading { display: flex; margin-bottom: 14px; align-items: flex-end; justify-content: space-between; gap: 16px; }
 .character-detail-section-heading span { color: var(--primary); font-size: 12px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
 .character-detail-section-heading h3 { margin: 3px 0 0; font-size: 18px; }
 .character-detail-section-heading b { color: var(--text-muted); font-size: 12px; font-weight: 650; }
 .character-detail-gallery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
-.character-detail-gallery-grid figure { min-width: 0; margin: 0; overflow: hidden; background: var(--surface-raised); border: 1px solid var(--border); border-radius: 12px; }
+.character-detail-gallery-grid figure { width: 100%; max-width: 220px; min-width: 0; margin: 0; overflow: hidden; background: var(--surface-raised); border: 1px solid var(--border); border-radius: 12px; }
 .character-detail-media { position: relative; display: grid; aspect-ratio: 3 / 4; overflow: hidden; place-items: center; color: var(--text-muted); background: var(--surface-soft); font-size: 12px; font-weight: 550; }
 .character-detail-media img, .character-detail-media video { width: 100%; height: 100%; object-fit: cover; }
 .character-detail-video-preview { position: relative; display: grid; width: 100%; height: 100%; padding: 0; place-items: center; overflow: hidden; color: var(--text-muted); background: var(--surface-soft); border: 0; cursor: pointer; }
@@ -1244,7 +1303,7 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
 .character-detail-gallery-grid figcaption { padding: 9px 10px; }
 .character-detail-gallery-empty { padding: 18px; color: var(--text-muted); text-align: center; background: var(--surface-raised); border: 1px dashed var(--border); border-radius: 10px; }
 .character-detail-content-note { margin: 0 0 12px; color: var(--text-muted); font-size: 12px; font-weight: 550; }
-.character-detail-content pre { min-height: 260px; margin: 0; padding: 15px; overflow: auto; color: var(--text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--ci-input); border: 1px solid var(--border); border-radius: 11px; font: 13px/1.65 "Cascadia Code", Consolas, monospace; }
+.character-detail-content pre { margin: 0; padding: 16px; color: var(--text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--ci-input); border: 1px solid var(--border); border-radius: 11px; font: 14px/1.8 "Cascadia Code", Consolas, monospace; }
 .character-detail-footer { display: flex; padding: 14px 20px; align-items: center; justify-content: flex-end; gap: 10px; background: var(--ci-header); border-top: 1px solid var(--border); }
 .primary-button, .secondary-button { min-height: 40px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-soft); }
 .primary-button { color: var(--ci-on-primary); background: var(--primary); border-color: var(--primary); font-weight: 800; }
@@ -1253,10 +1312,7 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
   .manager-root { padding: 10px; }
   .manager-dialog { height: calc(100% - 2px); }
   .library-header { grid-template-columns: minmax(170px, 1fr) minmax(230px, 330px) auto; gap: 14px; }
-  .character-library-control-row { grid-template-columns: minmax(300px, 1fr) minmax(310px, 360px) auto; gap: 12px; }
-  .character-library-summary { grid-column: 1 / -1; }
   .character-library-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .phase-badge { display: none; }
 }
 
 @media (max-width: 720px) {
@@ -1266,7 +1322,10 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
   .library-header .library-title-icon, .library-header > .character-source-switch, .library-header > .library-header-worldbook, .library-header > .header-actions { display: none; }
   .library-header .header-title { width: 100%; }
   .library-header h1 { font-size: 21px; }
-  .library-page { padding: 12px 16px calc(104px + var(--ci-mobile-safe-bottom)); }
+  .library-page { padding: 16px; }
+  .character-library { display: flex; flex-direction: column; gap: 16px; }
+  .character-library-toolbar { max-height: 50%; padding: 12px; flex: 0 0 auto; }
+  .character-library-results { padding-right: 0; padding-bottom: calc(96px + var(--ci-mobile-safe-bottom)); flex: 1; }
   .mobile-library-context { display: grid; width: 100%; min-width: 0; margin-bottom: 12px; gap: 10px; }
   .mobile-library-context .character-source-switch { width: 100%; min-width: 0; max-width: 100%; }
   .mobile-library-context .character-source-switch button { min-width: 0; min-height: 46px; font-size: 13px; }
@@ -1274,12 +1333,16 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
   .mobile-library-worldbook > span { color: var(--text-muted); font-size: 11px; font-weight: 800; }
   .mobile-library-worldbook select { width: 100%; min-width: 0; max-width: 100%; min-height: 46px; padding: 8px; font-weight: 700; }
   .character-library-control-row { display: none; }
+  .character-library-search-row { grid-template-columns: 1fr; }
+  .character-library-search-row .library-header-worldbook { display: none; }
   .mobile-library-filter-panel { display: grid; margin-top: 10px; padding: 12px; gap: 10px; background: var(--surface-raised); border: 1px solid var(--border); border-radius: 12px; }
   .mobile-library-filter-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .mobile-library-filter-options button { min-height: 44px; color: var(--text-secondary); background: var(--surface-soft); border: 1px solid var(--border); border-radius: 9px; }
   .mobile-library-filter-options button[aria-pressed='true'] { color: var(--ci-on-primary); background: var(--primary); }
   .character-library-grid { grid-template-columns: 1fr; }
-  .character-library-grid.image-card-view, .character-library-grid.image-card-view[class*='card-columns-'] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .character-library-grid.image-card-view, .character-library-grid.image-card-view[class*='card-columns-'] { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .image-card-view .character-library-card-copy { padding: 10px; }
+  .image-card-view .character-library-card-copy strong { font-size: 15px; }
   .character-library-card { min-height: 82px; padding: 8px; grid-template-columns: 58px minmax(0, 1fr) auto; gap: 8px; }
   .character-cover-button { width: 58px; height: 64px; border-radius: 8px; }
   .mobile-library-dock { position: absolute; z-index: 5; right: 0; bottom: 0; left: 0; display: grid; min-height: calc(76px + var(--ci-mobile-safe-bottom)); padding: 7px 7px calc(8px + var(--ci-mobile-safe-bottom)); grid-template-columns: 1fr 1fr 1.18fr 1fr 1fr; align-items: end; gap: 3px; background: var(--ci-header); border-top: 1px solid var(--border); }
@@ -1293,9 +1356,9 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
     padding: calc(14px + var(--ci-mobile-safe-top)) calc(14px + var(--ci-mobile-safe-right)) 14px calc(14px + var(--ci-mobile-safe-left));
   }
   .manager-root.embedded .character-detail-header { padding: 14px; }
-  .character-detail-body { display: block; overflow-y: auto; }
-  .character-detail-gallery, .character-detail-content { padding: 15px; overflow: visible; }
-  .character-detail-content { border-top: 1px solid var(--border); border-left: 0; }
+  .character-detail-body { display: block; padding: 16px; overflow-y: auto; }
+  .character-detail-gallery, .character-detail-content, .character-detail-metadata { padding: 16px; }
+  .character-detail-metadata { position: static; margin: 16px 0; }
   .character-detail-gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .character-detail-footer {
     padding: 14px calc(20px + var(--ci-mobile-safe-right)) calc(14px + var(--ci-mobile-safe-bottom)) calc(20px + var(--ci-mobile-safe-left));
@@ -1313,7 +1376,10 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
 .force-mobile-layout .library-header > .header-actions { display: none; }
 .force-mobile-layout .library-header .header-title { width: 100%; }
 .force-mobile-layout .library-header h1 { font-size: 21px; }
-.force-mobile-layout .library-page { padding: 12px 16px calc(104px + var(--ci-mobile-safe-bottom)); }
+.force-mobile-layout .library-page { padding: 16px; }
+.force-mobile-layout .character-library { display: flex; flex-direction: column; gap: 16px; }
+.force-mobile-layout .character-library-toolbar { max-height: 50%; padding: 12px; flex: 0 0 auto; }
+.force-mobile-layout .character-library-results { padding-right: 0; padding-bottom: calc(96px + var(--ci-mobile-safe-bottom)); flex: 1; }
 .force-mobile-layout .mobile-library-context { display: grid; margin-bottom: 12px; gap: 10px; }
 .force-mobile-layout .mobile-library-context .character-source-switch { width: 100%; }
 .force-mobile-layout .mobile-library-context .character-source-switch button { min-height: 46px; font-size: 13px; }
@@ -1321,15 +1387,21 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
 .force-mobile-layout .mobile-library-worldbook > span { color: var(--text-muted); font-size: 11px; font-weight: 800; }
 .force-mobile-layout .mobile-library-worldbook select { min-height: 46px; padding: 8px; font-weight: 700; }
 .force-mobile-layout .character-library-control-row { display: none; }
+.force-mobile-layout .character-library-search-row { grid-template-columns: 1fr; }
+.force-mobile-layout .character-library-search-row .library-header-worldbook { display: none; }
 .force-mobile-layout .mobile-library-filter-panel { display: grid; margin-top: 10px; padding: 12px; gap: 10px; background: var(--surface-raised); border: 1px solid var(--border); border-radius: 12px; }
 .force-mobile-layout .mobile-library-filter-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .force-mobile-layout .mobile-library-filter-options button { min-height: 44px; color: var(--text-secondary); background: var(--surface-soft); border: 1px solid var(--border); border-radius: 9px; }
 .force-mobile-layout .mobile-library-filter-options button[aria-pressed='true'] { color: var(--ci-on-primary); background: var(--primary); }
 .force-mobile-layout .character-library-grid { grid-template-columns: 1fr; }
 .force-mobile-layout .character-library-grid.image-card-view,
-.force-mobile-layout .character-library-grid.image-card-view[class*='card-columns-'] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.force-mobile-layout .character-library-grid.image-card-view[class*='card-columns-'] { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.force-mobile-layout .image-card-view .character-library-card-copy { padding: 10px; }
+.force-mobile-layout .image-card-view .character-library-card-copy strong { font-size: 15px; }
 .force-mobile-layout .character-library-card { min-height: 82px; padding: 8px; grid-template-columns: 58px minmax(0, 1fr) auto; gap: 8px; }
 .force-mobile-layout .character-cover-button { width: 58px; height: 64px; border-radius: 8px; }
+.force-mobile-layout .image-card-view .character-library-card { padding: 0; grid-template-columns: 1fr; gap: 0; }
+.force-mobile-layout .image-card-view .character-cover-button { width: 100%; height: auto; border-radius: 0; }
 .force-mobile-layout .mobile-library-dock { position: absolute; z-index: 5; right: 0; bottom: 0; left: 0; display: grid; min-height: calc(76px + var(--ci-mobile-safe-bottom)); padding: 7px 7px calc(8px + var(--ci-mobile-safe-bottom)); grid-template-columns: 1fr 1fr 1.18fr 1fr 1fr; align-items: end; gap: 3px; background: var(--ci-header); border-top: 1px solid var(--border); }
 .force-mobile-layout .mobile-library-back-to-top { display: grid; }
 .force-mobile-layout .mobile-library-dock > button { display: grid; min-height: 50px; padding: 5px 2px; place-items: center; gap: 3px; color: var(--text-secondary); background: transparent; border: 0; border-radius: 11px; font-size: 11px; font-weight: 800; }
@@ -1341,10 +1413,11 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
   padding: calc(14px + var(--ci-mobile-safe-top)) calc(14px + var(--ci-mobile-safe-right)) 14px calc(14px + var(--ci-mobile-safe-left));
 }
 .force-mobile-layout.embedded .character-detail-header { padding: 14px; }
-.force-mobile-layout .character-detail-body { display: block; overflow-y: auto; }
+.force-mobile-layout .character-detail-body { display: block; padding: 16px; overflow-y: auto; }
 .force-mobile-layout .character-detail-gallery,
-.force-mobile-layout .character-detail-content { padding: 15px; overflow: visible; }
-.force-mobile-layout .character-detail-content { border-top: 1px solid var(--border); border-left: 0; }
+.force-mobile-layout .character-detail-content,
+.force-mobile-layout .character-detail-metadata { padding: 16px; }
+.force-mobile-layout .character-detail-metadata { position: static; margin: 16px 0; }
 .force-mobile-layout .character-detail-gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .force-mobile-layout .character-detail-footer {
   padding: 14px calc(20px + var(--ci-mobile-safe-right)) calc(14px + var(--ci-mobile-safe-bottom)) calc(20px + var(--ci-mobile-safe-left));
@@ -1375,21 +1448,13 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
 }
 
 .manager-root.embedded .library-header {
-  min-height: 64px;
-  padding: 10px 16px;
-  grid-template-columns: minmax(280px, 430px) minmax(0, 1fr);
-  gap: 14px;
+  display: none;
 }
 
 .manager-root.embedded .header-title,
 .manager-root.embedded .library-header > .character-source-switch,
-.manager-root.embedded .close-button {
+.manager-root.embedded .library-header .close-button {
   display: none;
-}
-
-.manager-root.embedded .library-header-worldbook {
-  grid-column: 1;
-  grid-row: 1;
 }
 
 .manager-root.embedded .header-actions {
@@ -1434,5 +1499,32 @@ select { color: var(--text); background: var(--ci-input); border: 1px solid var(
 
 .manager-root.embedded.force-mobile-layout .mobile-library-context .character-source-switch {
   display: none;
+}
+
+.character-library-card-identity { display: flex; min-width: 0; flex-direction: column; gap: 5px; }
+.character-library-author-field { display: contents; }
+.character-library-accessible-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.image-card-view .character-library-card-identity { gap: 8px; }
+.character-library-list-heading { position: sticky; z-index: 2; top: 0; display: grid; padding: 18px 16px; grid-template-columns: 56px minmax(0, 1fr) 40px; gap: 20px; border: 1px solid var(--border); border-radius: 10px 10px 0 0; background: var(--surface-raised); color: var(--text-muted); font-size: 12px; font-weight: 600; line-height: 18px; }
+.character-library-grid.list-view { grid-template-columns: minmax(0, 1fr); gap: 0; overflow: hidden; border: 1px solid var(--border); border-top: 0; border-radius: 0 0 10px 10px; }
+.list-view .character-library-card { min-height: 96px; padding: 12px 16px; align-items: start; grid-template-columns: 56px minmax(0, 1fr) 40px; gap: 20px; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: var(--surface); }
+.list-view .character-library-card:last-child { border-bottom: 0; }
+.list-view .character-library-card:hover { background: var(--surface-raised); }
+.list-view .character-cover-button { width: 56px; height: 72px; border-radius: 6px; }
+.list-view .character-cover-silhouette { width: 34px; height: 42px; }
+.list-view .character-library-card-copy { display: flex; gap: 8px; }
+.list-view .character-library-card-identity { gap: 6px; }
+.list-view .character-library-card-copy strong { font-size: 16px; line-height: 24px; }
+.list-view .character-library-card-copy small { font-weight: 500; line-height: 1.5; }
+.list-view .character-entry-toggle { position: relative; width: 40px; height: 24px; padding: 4px; align-self: start; }
+.list-view .character-entry-toggle::before { position: absolute; inset: -10px -2px; content: ''; }
+.list-view .character-entry-toggle span { width: 16px; height: 16px; }
+.list-view .character-entry-toggle[aria-checked='false'] span { background: #c5cbd0; }
+.list-view .character-entry-toggle[aria-checked='true'] span { transform: translateX(16px); }
+
+@container character-list (max-width: 780px) {
+  .character-library-list-heading { padding: 18px 12px; grid-template-columns: 56px minmax(0, 1fr) 40px; gap: 12px; }
+  .list-view .character-library-card { padding: 12px; gap: 12px; }
+  .list-view .character-library-card-copy small { display: -webkit-box; white-space: normal; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 }
 </style>

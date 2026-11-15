@@ -33,6 +33,8 @@
       </div>
 
       <p v-if="cost && !isSkillVariant" class="illustrated-line"><span>消耗</span>{{ cost }}</p>
+      <p v-if="position" class="illustrated-line"><span>位置</span>{{ position }}</p>
+      <p v-if="quantity" class="illustrated-line"><span>数量</span>{{ quantity }}</p>
 
       <ul v-if="effects.length > 0" class="illustrated-effect-list">
         <li v-for="entry in effects" :key="`${entry.name}-${entry.content}`" class="illustrated-effect-item">
@@ -60,7 +62,9 @@ import {
   itemDescription,
   itemEffectEntriesOrDescription,
   itemName,
+  itemPosition,
   itemQuality,
+  itemQuantity,
   itemTags,
   itemType,
   qualityClass,
@@ -85,6 +89,8 @@ const props = withDefaults(
 const tags = computed(() => itemTags(props.item));
 const quality = computed(() => itemQuality(props.item));
 const typeText = computed(() => itemType(props.item));
+const position = computed(() => itemPosition(props.item));
+const quantity = computed(() => itemQuantity(props.item));
 const isSkillVariant = computed(() => props.variant === 'skill');
 const isHoldingVariant = computed(() => props.variant === 'holding');
 const isCompactVariant = computed(() => isSkillVariant.value || isHoldingVariant.value);

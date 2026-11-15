@@ -62,14 +62,16 @@ test('快速建立和完整编辑都支持自动保存位置，并在持久化�
 test('完整编辑 Step 1 可从当前聊天选角色或让系统自动建立保存位置', () => {
   assert.match(profileEditorSource, /从当前聊天选角色/u);
   assert.match(profileEditorSource, /没有 \/ 我懒得找 → 自动建立/u);
-  assert.match(profileEditorSource, /collectEncounteredCharacters\(getVariables\(\{ type: 'chat' \}\)\)/u);
+  assert.match(profileEditorSource, /await waitGlobalInitialized\('Mvu'\);\s*currentChatCharacters\.value = collectEncounteredCharacters\(Mvu\.getMvuData\(\{ type: 'message', message_id: 'latest' \}\)\)/u);
+  assert.match(profileEditorSource, /if \(proCurrentChatPickerOpen\.value\) await refreshCurrentChatCharacters\(\)/u);
+  assert.match(profileEditorSource, /if \(source === 'current-chat'\) await refreshCurrentChatCharacters\(\)/u);
   assert.match(profileEditorSource, /function chooseCurrentChatCharacter\(character: EncounteredCharacterRecord\)/u);
   assert.match(profileEditorSource, /if \(source !== 'worldbook'\) \{[\s\S]*?selectedEntryUid\.value = null;[\s\S]*?selectedWorldbookName\.value = '';/u);
   assert.match(profileEditorSource, /function canVisitStep\(step: StepId\)[\s\S]*?step === 5[\s\S]*?hasValidProfileMedia\.value/u);
   assert.match(profileEditorSource, /profile\.gallery\.some\(image => image\.sources\.some\(source => isSupportedRemoteMediaUrl\(source\)\)\)/u);
   assert.match(profileEditorSource, /profile\.remoteGalleryUrl\?\.trim\(\) && isHttpsUrl\(profile\.remoteGalleryUrl\)/u);
   assert.match(profileEditorSource, /请先填写角色全名/u);
-  assert.match(profileEditorSource, /请先添加至少一张有效图片/u);
+  assert.match(profileEditorSource, /请先添加图片直链，或在 ImgBed 上传并取得图库 URL/u);
 });
 
 test('入口和快速建立保持移动安全区，并用双色票券卡区分两种模式', () => {

@@ -3,6 +3,8 @@ import { createApp, type App as VueApp } from 'vue';
 import { createScriptIdIframe, teleportStyle } from '@util/script';
 import { DEFAULT_CHAR_INFO_THEME_MODE, type CharInfoThemeMode } from '../char_info_shared/managerTheme';
 import App from './App.vue';
+import { createImgbedBridge } from './services/imgbedBridge';
+import { createImgbedUploadBridge } from './services/imgbedUploadBridge';
 
 const MANAGER_IFRAME_SRCDOC =
   '<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>*,*::before,*::after{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;padding:0;overflow:hidden;background:transparent}</style></head><body></body></html>';
@@ -40,6 +42,8 @@ export function createProfileEditorOverlay(
   let managerViewportCleanup: (() => void) | null = null;
   let managerController: ProfileEditorController | null = null;
   let managerRootElement: HTMLElement | null = null;
+  let imgbedBridge: ReturnType<typeof createImgbedBridge> | null = null;
+  let imgbedUploadBridge: ReturnType<typeof createImgbedUploadBridge> | null = null;
   let forceMobileLayout = options.forceMobileLayout ?? false;
 
   const getHostWindow = (): Window => (window.parent !== window ? window.parent : window);
@@ -75,6 +79,10 @@ export function createProfileEditorOverlay(
   };
 
   const teardown = () => {
+    imgbedUploadBridge?.destroy();
+    imgbedUploadBridge = null;
+    imgbedBridge?.destroy();
+    imgbedBridge = null;
     managerViewportCleanup?.();
     mountedApp?.unmount();
     mountedApp = null;
@@ -138,7 +146,11 @@ export function createProfileEditorOverlay(
         mountPoint.id = 'char-info-profile-editor';
         iframeDocument.body.appendChild(mountPoint);
 
+        imgbedBridge = createImgbedBridge(hostWindow);
+        imgbedUploadBridge = createImgbedUploadBridge(window, hostWindow.location.origin);
         mountedApp = createApp(App, {
+          imgbedBridge,
+          imgbedUploadBridge,
           initialView: 'editor',
           initialWorldbookName: options.worldbookName,
           initialEntryUid: options.entryUid,
