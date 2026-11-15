@@ -43,6 +43,7 @@ test('运行时设置使用稳定默认值并修复越界输入', () => {
     autoGeneratePortraits: false,
     portraitRewriteInstructions: DEFAULT_PORTRAIT_REWRITE_INSTRUCTIONS,
     portraitOptions: defaultRuntimeSettings().portraitOptions,
+    autoUpdateEnabled: true,
   });
   assert.deepEqual(
     normalizeRuntimeSettings({
@@ -69,6 +70,7 @@ test('运行时设置使用稳定默认值并修复越界输入', () => {
       autoGeneratePortraits: false,
       portraitRewriteInstructions: DEFAULT_PORTRAIT_REWRITE_INSTRUCTIONS,
       portraitOptions: defaultRuntimeSettings().portraitOptions,
+      autoUpdateEnabled: true,
     },
   );
   assert.deepEqual(
@@ -97,6 +99,7 @@ test('运行时设置使用稳定默认值并修复越界输入', () => {
       autoGeneratePortraits: false,
       portraitRewriteInstructions: DEFAULT_PORTRAIT_REWRITE_INSTRUCTIONS,
       portraitOptions: defaultRuntimeSettings().portraitOptions,
+      autoUpdateEnabled: true,
     },
   );
 });
@@ -105,6 +108,20 @@ test('切换界面主题会同步当前运行时 reactive state，避免浅色�
   const runtimeSource = await readFile(new URL('../../src/char_info_viewer_runtime/runtime.ts', import.meta.url), 'utf8');
 
   assert.match(runtimeSource, /state\.settings\.themeMode = nextSettings\.themeMode;/u);
+});
+
+test('自动更新默认启用，关闭后保存在原有脚本设置中', () => {
+  assert.equal(normalizeRuntimeSettings({ autoUpdateEnabled: 'false' }).autoUpdateEnabled, true);
+  const original = {
+    unrelated: { keep: true },
+    char_info_runtime: { settings: { effectsEnabled: false }, floatingButtonPosition: { left: 18, top: 24 } },
+  };
+  const saved = mergeRuntimeSettings(original, { ...readRuntimeSettings(original), autoUpdateEnabled: false });
+
+  assert.equal(readRuntimeSettings(saved).autoUpdateEnabled, false);
+  assert.equal(readRuntimeSettings(saved).effectsEnabled, false);
+  assert.deepEqual(saved.unrelated, original.unrelated);
+  assert.deepEqual(saved.char_info_runtime.floatingButtonPosition, original.char_info_runtime.floatingButtonPosition);
 });
 
 test('文字大小设置可持久化，并限制在安全的角色卡字号范围', async () => {
@@ -173,6 +190,7 @@ test('运行时设置只读写脚本变量命名空间，并保留其他脚本�
     autoGeneratePortraits: false,
     portraitRewriteInstructions: DEFAULT_PORTRAIT_REWRITE_INSTRUCTIONS,
     portraitOptions: defaultRuntimeSettings().portraitOptions,
+    autoUpdateEnabled: true,
   });
   assert.deepEqual(
     mergeRuntimeSettings(original, {
@@ -206,6 +224,7 @@ test('运行时设置只读写脚本变量命名空间，并保留其他脚本�
           autoGeneratePortraits: true,
           portraitRewriteInstructions: 'Preserve the eye color.',
           portraitOptions: defaultRuntimeSettings().portraitOptions,
+          autoUpdateEnabled: true,
         },
       },
     },

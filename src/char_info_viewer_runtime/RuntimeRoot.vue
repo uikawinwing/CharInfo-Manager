@@ -857,6 +857,20 @@
             </section>
 
             <section
+              v-show="activeSettingsSection === 'updates'"
+              :id="settingsPanelId('updates')"
+              class="char-info-settings-panel"
+              aria-labelledby="char-info-settings-section-heading"
+            >
+              <UpdateSettings
+                :state="state.update"
+                :auto-update-enabled="autoUpdateEnabledDraft"
+                @update:auto-update-enabled="autoUpdateEnabledDraft = $event; applySettings()"
+                @check="updates.check(true)"
+              />
+            </section>
+
+            <section
               v-show="activeSettingsSection === 'diagnostics'"
               :id="settingsPanelId('diagnostics')"
               class="char-info-settings-panel"
@@ -973,6 +987,8 @@ import type { ViewerSaveFeedback } from '../char_info_viewer/types';
 import WorldbookCharacterLibrary from './WorldbookCharacterLibrary.vue';
 import TroubleshootingWizard from './TroubleshootingWizard.vue';
 import PortraitControls from './PortraitControls.vue';
+import UpdateSettings from './UpdateSettings.vue';
+import type { UpdateController } from './selfUpdate';
 import { normalizeImageSourcePriorityEntries } from '../char_info_viewer/services/imageSourcePriority';
 import { buildCurrentCharacterViewerData } from './currentCharacterLibrary';
 import { runCharInfoDiagnostics, type CharInfoDiagnosticReport, type DiagnosticStatus } from './diagnostics';
@@ -1001,6 +1017,7 @@ type LibraryFilter = 'all' | 'present' | 'away';
 const props = defineProps<{
   state: RuntimeViewState;
   portraits: PortraitRuntime;
+  updates: UpdateController;
   onCloseLibrary: () => void;
   onCloseLibraryViewer: () => void;
   onRefreshLibrary: () => void;
@@ -1054,6 +1071,7 @@ const useBaiBaiDraft = ref(props.state.settings.portraitProvider === 'baibai');
 const autoGeneratePortraitsDraft = ref(props.state.settings.autoGeneratePortraits);
 const portraitRewriteInstructionsDraft = ref(props.state.settings.portraitRewriteInstructions);
 const portraitOptionsDraft = ref({ ...props.state.settings.portraitOptions });
+const autoUpdateEnabledDraft = ref(props.state.settings.autoUpdateEnabled);
 const portraitConnections = ref<ReturnType<typeof listPortraitConnections>>([]);
 const portraitPromptFields = [
   { key: 'common', label: '额外系统提示词', hint: '作为共用指令发送给生成标签的 API，可留空。', rows: 3 },
@@ -1075,6 +1093,7 @@ const settingsSections = [
   { id: 'performance', label: '渲染与性能' },
   { id: 'appearance', label: '界面与外观' },
   { id: 'generation', label: '文生图' },
+  { id: 'updates', label: '更新' },
   { id: 'diagnostics', label: '调试' },
 ] as const;
 type SettingsSection = (typeof settingsSections)[number]['id'];
@@ -1397,6 +1416,7 @@ function replaceSettingsDraft(settings: CharInfoUiSettings): void {
   autoGeneratePortraitsDraft.value = settings.autoGeneratePortraits;
   portraitRewriteInstructionsDraft.value = settings.portraitRewriteInstructions;
   portraitOptionsDraft.value = { ...settings.portraitOptions };
+  autoUpdateEnabledDraft.value = settings.autoUpdateEnabled;
 }
 
 function restorePortraitRewriteInstructions() {
@@ -1428,6 +1448,7 @@ function applySettings(): void {
     autoGeneratePortraits: autoGeneratePortraitsDraft.value,
     portraitRewriteInstructions: portraitRewriteInstructionsDraft.value,
     portraitOptions: portraitOptionsDraft.value,
+    autoUpdateEnabled: autoUpdateEnabledDraft.value,
   });
   replaceSettingsDraft(settings);
   settingsMessage.value = priorityNormalization.rejectedCount

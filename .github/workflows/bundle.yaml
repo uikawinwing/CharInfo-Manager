@@ -40,6 +40,7 @@ jobs:
           git fetch --tags
           existing=""
           for tag in $(git tag --list 'v*'); do
+            [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
             commit=$(git rev-list -n 1 "$tag")
             parent=$(git rev-parse "$commit^" 2>/dev/null || true)
             if [ "$commit" = "$GITHUB_SHA" ] || [ "$parent" = "$GITHUB_SHA" ]; then
@@ -79,11 +80,6 @@ jobs:
         run: npm run lint
         working-directory: ${{ env.PROJECT_DIR }}
 
-      - name: Build release dist
-        if: steps.released.outputs.tag == ''
-        run: npm run build
-        working-directory: ${{ env.PROJECT_DIR }}
-
       - name: Choose next version tag
         if: steps.released.outputs.tag == ''
         id: version
@@ -100,6 +96,15 @@ jobs:
           fi
           echo "tag=$next" >> "$GITHUB_OUTPUT"
           echo "Next release: $next"
+
+      - name: Embed version and build release dist
+        if: steps.released.outputs.tag == ''
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          node --experimental-strip-types scripts/prepare-release-version.ts "$TAG"
+          npm run build
+        working-directory: ${{ env.PROJECT_DIR }}
 
       - name: Freeze verified dist in release-only commit
         if: steps.released.outputs.tag == ''
