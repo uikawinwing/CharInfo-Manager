@@ -17,6 +17,7 @@ import {
   type NativeMessageMountDiagnostic,
 } from './nativeMessageMount';
 import { createPortraitRuntime, readStoryPortraits } from './portraitRuntime';
+import { createUpdateController, type UpdateController } from './selfUpdate';
 import {
   defaultRuntimeSettings,
   mergeRuntimeFloatingButtonPosition,
@@ -91,8 +92,9 @@ function readMessage(messageId: number): { message: ChatMessage; swipeId: number
   return { message, swipeId };
 }
 
-export function createCharInfoRuntime(): CharInfoRuntime {
+export function createCharInfoRuntime(updates: UpdateController = createUpdateController({ storage: window.parent.localStorage })): CharInfoRuntime {
   const state = reactive<RuntimeViewState>({
+    update: { ...updates.state },
     messages: [],
     visualRevision: 0,
     library: null,
@@ -393,6 +395,8 @@ export function createCharInfoRuntime(): CharInfoRuntime {
     state.settings.autoGeneratePortraits = nextSettings.autoGeneratePortraits;
     state.settings.portraitRewriteInstructions = nextSettings.portraitRewriteInstructions;
     state.settings.portraitOptions = nextSettings.portraitOptions;
+    state.settings.autoUpdateEnabled = nextSettings.autoUpdateEnabled;
+    updates.setAutoUpdate(nextSettings.autoUpdateEnabled);
     portraits.settingsChanged();
     replaceVariables(mergeRuntimeSettings(getVariables({ type: 'script' }), nextSettings), { type: 'script' });
     scanRecentFloors();
@@ -882,6 +886,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       if (started) return;
       started = true;
       const startRevision = ++lifecycleRevision;
+      eventStops.push(updates.subscribe(view => { state.update = view; }));
 
       initializeLibrary();
       portraits.updateAvailability();
@@ -892,6 +897,7 @@ export function createCharInfoRuntime(): CharInfoRuntime {
       destroyTeleportedStyle = teleportStyle().destroy;
       app = createApp(RuntimeRoot, {
         state,
+        updates,
         portraits,
         onCloseLibrary: closeLibrary,
         onCloseLibraryViewer: closeLibraryViewer,

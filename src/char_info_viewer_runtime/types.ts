@@ -3,6 +3,7 @@ import type { CharInfoFloatingButtonPosition, CharInfoUiSettings } from './runti
 import type { PortraitJobStatus } from './portraitJobs';
 import type { PortraitFormat } from './portraitPrompt';
 import type { StoryPortrait } from './portraitRuntime';
+import type { UpdateView } from './selfUpdate';
 
 export type RuntimeCardView = {
   key: string;
@@ -52,6 +53,7 @@ export type RuntimeMountDiagnosticEntry = {
 };
 
 export type RuntimeViewState = {
+  update: UpdateView;
   messages: RuntimeMessageView[];
   visualRevision: number;
   library: RuntimeLibraryView | null;

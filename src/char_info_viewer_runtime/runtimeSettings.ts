@@ -41,6 +41,7 @@ export type CharInfoUiSettings = {
   autoGeneratePortraits: boolean;
   portraitRewriteInstructions: string;
   portraitOptions: PortraitOptions;
+  autoUpdateEnabled: boolean;
 };
 
 export type CharInfoFloatingButtonPosition = {
@@ -68,6 +69,7 @@ const DEFAULT_SETTINGS: CharInfoUiSettings = {
   autoGeneratePortraits: false,
   portraitRewriteInstructions: DEFAULT_PORTRAIT_REWRITE_INSTRUCTIONS,
   portraitOptions: PortraitOptionsSchema.parse(undefined),
+  autoUpdateEnabled: true,
 };
 
 const CollapseRuleSchema = z.union([
@@ -121,6 +123,7 @@ const SettingsSchema = z
     portraitRewriteInstructions: z.string().trim().min(1).catch(DEFAULT_SETTINGS.portraitRewriteInstructions)
       .transform(value => LEGACY_PORTRAIT_REWRITE_INSTRUCTIONS.includes(value) ? DEFAULT_SETTINGS.portraitRewriteInstructions : value),
     portraitOptions: PortraitOptionsSchema.catch(DEFAULT_SETTINGS.portraitOptions),
+    autoUpdateEnabled: z.boolean().catch(DEFAULT_SETTINGS.autoUpdateEnabled),
   })
   .prefault(DEFAULT_SETTINGS);
 

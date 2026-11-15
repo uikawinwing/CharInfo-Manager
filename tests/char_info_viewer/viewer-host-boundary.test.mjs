@@ -4,7 +4,6 @@ import test from 'node:test';
 
 const repoRoot = new URL('../../', import.meta.url);
 const appSource = await readFile(new URL('src/char_info_viewer/App.vue', repoRoot), 'utf8');
-const runtimeEntrySource = await readFile(new URL('src/char_info_viewer_runtime/index.ts', repoRoot), 'utf8');
 const specialSheetSource = await readFile(
   new URL('src/char_info_viewer/components/illustrated/IllustratedCharacterSheet.vue', repoRoot),
   'utf8',
@@ -54,16 +53,20 @@ test('vNext runtime mounts cards through local displayed-text ranges', () => {
   assert.match(nativeMountSource, /const originalContent = range\.extractContents\(\)/);
   assert.match(nativeMountSource, /host\.replaceWith\(originalContent\)/);
   assert.match(nativeMountSource, /formatAsDisplayedMessage\(markedMessage/);
-  assert.doesNotMatch(nativeMountSource, /root\.replaceChildren\(|buildRawMessageWithCardSlots|injectCardHostsIntoDisplayedHtml|setChatMessages|setChatMessage/);
+  assert.doesNotMatch(
+    nativeMountSource,
+    /root\.replaceChildren\(|buildRawMessageWithCardSlots|injectCardHostsIntoDisplayedHtml|setChatMessages|setChatMessage/,
+  );
 });
 
-test('runtime replaces an older loaded instance without refreshing native messages', () => {
-  assert.match(
-    runtimeEntrySource,
-    /hostWindow\.CHAR_INFO_VIEWER_RUNTIME\?\.stop\(\{ restoreNativeMessages: false \}\)/,
+test('runtime replaces an older loaded instance without refreshing native messages', async () => {
+  const bootstrapSource = await readFile(
+    new URL('../../src/char_info_viewer_runtime/runtimeEntry.ts', import.meta.url),
+    'utf8',
   );
-  assert.match(runtimeEntrySource, /hostWindow\.CHAR_INFO_VIEWER_RUNTIME = nextRuntime/);
-  assert.match(runtimeEntrySource, /delete hostWindow\.CHAR_INFO_VIEWER_RUNTIME/);
+  assert.match(bootstrapSource, /activeRuntime\?\.stop\(\{ restoreNativeMessages: false \}\)/);
+  assert.match(bootstrapSource, /host\.CHAR_INFO_VIEWER_RUNTIME = runtime/);
+  assert.match(bootstrapSource, /delete host\.CHAR_INFO_VIEWER_RUNTIME/);
 });
 
 test('runtime mutation observer skips all mutation traversal until a card is mounted', () => {
@@ -104,7 +107,10 @@ test('runtime emits structured CharInfo mount diagnostics for race-condition rep
 
 test('runtime restores native message display only after a real script stop', () => {
   assert.match(runtimeSource, /stop\(options = \{\}\)/);
-  assert.match(runtimeSource, /options\.restoreNativeMessages === false \? \[\] : Array\.from\(mountedMessages\.keys\(\)\)/);
+  assert.match(
+    runtimeSource,
+    /options\.restoreNativeMessages === false \? \[\] : Array\.from\(mountedMessages\.keys\(\)\)/,
+  );
   assert.match(runtimeSource, /messageElement\.querySelector\('#curEditTextarea'\)/);
   assert.match(runtimeSource, /refreshOneMessage\(messageId, \$\(messageElement\)\)/);
   assert.match(runtimeSource, /destroyTeleportedStyle = null;\s*restoreNativeMessageDisplays\(mountedMessageIds\)/);
