@@ -8,7 +8,7 @@ import { projectCharInfoMessage } from '../char_info_viewer/runtime/charInfoMess
 import { selectRecentMessageIds } from '../char_info_viewer/runtime/recentMessages';
 import { preloadPortraitImages } from '../char_info_viewer/services/imagePreload';
 import { resolveRemoteGalleryPresentation } from '../char_info_viewer/services/remoteGalleryService';
-import { resolveCharacterVisualPreloadUrls } from '../char_info_viewer/services/themeService';
+import { resolveCharacterProfileMatch, resolveCharacterVisualPreloadUrls } from '../char_info_viewer/services/themeService';
 import RuntimeRoot from './RuntimeRoot.vue';
 import { collectChangedAffinityNames, collectCurrentCharacterSnapshots, updateInnerThoughtInbox } from './currentCharacterLibrary';
 import {
@@ -48,9 +48,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function resolveCharacterRemoteGalleryUrl(chatVariables: unknown, characterName: string): string {
   if (!isRecord(chatVariables) || !isRecord(chatVariables.char_info)) return '';
-  const profiles = chatVariables.char_info.profiles;
-  if (!isRecord(profiles)) return '';
-  const profile = profiles[characterName];
+  const match = resolveCharacterProfileMatch(characterName, chatVariables);
+  const profile = match.kind === 'matched' ? match.profile : undefined;
   if (!isRecord(profile) || typeof profile.gallery_pack_url !== 'string') return '';
   return profile.gallery_pack_url.trim();
 }

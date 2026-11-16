@@ -7,6 +7,15 @@ const require = createRequire(import.meta.url);
 const { runCharInfoDiagnostics } = require('../../src/char_info_viewer_runtime/diagnostics.ts');
 const card = '<char_info>\n姓名: 洛汐\n生命层级: 第一层级\n</char_info>';
 
+function mockPromptTemplateHost(t, host) {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: { parent: host } });
+  t.after(() => {
+    if (previous) Object.defineProperty(globalThis, 'window', previous);
+    else delete globalThis.window;
+  });
+}
+
 function diagnose(text, options = {}) {
   return runCharInfoDiagnostics({
     messageId: 7,
@@ -35,6 +44,31 @@ const galleryStep = await readFile(
   new URL('../../src/char_info_profile_editor/components/GalleryStep.vue', import.meta.url),
   'utf8',
 );
+
+test('诊断读取提示词模板总开关，重新检查时反映最新状态', async t => {
+  const features = { enabled: false };
+  mockPromptTemplateHost(t, { EjsTemplate: { getFeatures: () => features } });
+  const disabled = await diagnose(card);
+  const check = disabled.checks.find(item => item.code === 'PROMPT_TEMPLATE_DISABLED');
+  assert.equal(check?.status, 'warn');
+  assert.match(check.detail, /EJS.*char_info\.profiles/u);
+  assert.match(check.detail, /启用「提示词模板」/u);
+  features.enabled = true;
+  const enabled = await diagnose(card);
+  assert.equal(enabled.checks.find(item => item.code === 'PROMPT_TEMPLATE_ENABLED')?.status, 'pass');
+  assert.equal(enabled.checks.some(item => item.code === 'PROMPT_TEMPLATE_DISABLED'), false);
+});
+
+test('提示词模板设置可独立读取，未知状态不会当成已关闭', async t => {
+  const host = { SillyTavern: { extensionSettings: { EjsTemplate: { enabled: false } } } };
+  mockPromptTemplateHost(t, host);
+  const disabled = await diagnose(card);
+  assert.ok(disabled.checks.some(item => item.code === 'PROMPT_TEMPLATE_DISABLED'));
+  delete host.SillyTavern.extensionSettings.EjsTemplate;
+  const unknown = await diagnose(card);
+  assert.equal(unknown.checks.find(item => item.code === 'PROMPT_TEMPLATE_UNKNOWN')?.status, 'info');
+  assert.equal(unknown.checks.some(item => item.code === 'PROMPT_TEMPLATE_DISABLED'), false);
+});
 
 test('故障诊断复用 Viewer 当前消息投影、YAML 与视觉解析链', () => {
   assert.match(diagnostics, /projectCharInfoMessage/u);
@@ -83,15 +117,42 @@ test('Q1 诊断报告未闭合的推理区、楼层卡片上限与挂载失败',
   assert.ok(mount.checks.some(check => check.status === 'fail' && check.detail.includes('被外部 DOM 更新移除')));
 });
 
-test('Q2-Q4 诊断使用精确角色档案路径、旧变量提示与实际媒体探测', () => {
-  assert.match(diagnostics, /Object\.hasOwn\(profiles, name\)/u);
+test('Q2-Q4 诊断使用统一姓名匹配、旧变量提示与实际媒体探测', () => {
+  assert.match(diagnostics, /matchCharacterProfile\(name, profiles\)/u);
   assert.match(diagnostics, /char_info_visuals/u);
   assert.match(diagnostics, /char_info\.visual/u);
   assert.match(diagnostics, /char_info\.visuals/u);
-  assert.match(diagnostics, /Viewer 使用角色全名精确匹配/u);
+  assert.match(diagnostics, /PROFILE_NAME_AMBIGUOUS/u);
   assert.match(diagnostics, /图片来源实测/u);
   assert.match(diagnostics, /new Image\(\)/u);
   assert.match(diagnostics, /document\.createElement\('video'\)/u);
+});
+
+test('唯一符号或全形差异会报告实际命中的档案姓名', async () => {
+  for (const [inputName, key] of [['洛 · 汐', '洛汐'], ['Ａｌｉｃｅ', 'Alice']]) {
+    const report = await diagnose(`<gametxt>${card.replace('洛汐', inputName)}</gametxt>`, {
+      chatVariables: { char_info: { profiles: { [key]: {} } } },
+    });
+    const checks = report.characters[0].checks;
+    assert.ok(checks.some(check => check.status === 'pass' && check.title === '通过姓名归一化找到角色档案' && check.detail.includes(JSON.stringify(key))));
+    assert.equal(checks.some(check => check.code === 'PROFILE_NOT_CONFIGURED'), false);
+  }
+});
+
+test('归一化重名报告冲突，精确姓名仍优先命中', async () => {
+  const profiles = { '洛-汐': {}, 洛汐: {} };
+  const ambiguous = await diagnose(`<gametxt>${card.replace('洛汐', '洛 汐')}</gametxt>`, {
+    chatVariables: { char_info: { profiles } },
+  });
+  const conflict = ambiguous.characters[0].checks.find(check => check.code === 'PROFILE_NAME_AMBIGUOUS');
+  assert.equal(conflict.status, 'fail');
+  assert.match(conflict.detail, /洛-汐/);
+  assert.match(conflict.detail, /洛汐/);
+  const exact = await diagnose(`<gametxt>${card}</gametxt>`, {
+    chatVariables: { char_info: { profiles } },
+  });
+  assert.equal(exact.characters[0].checks.some(check => check.code === 'PROFILE_NAME_AMBIGUOUS'), false);
+  assert.ok(exact.characters[0].checks.some(check => check.title === '找到当前聊天角色档案'));
 });
 
 test('设置页提供只读故障诊断入口，不加入 Q5 缓存版本检查', () => {

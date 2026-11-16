@@ -8,6 +8,8 @@ import {
   type CharacterProfile,
 } from '../char_info_shared/characterProfile';
 
+import { matchCharacterProfile } from '../char_info_shared/characterName.ts';
+
 export const FLASH_PROFILE_ENTRY_PREFIX = '[DLC][角色]';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -35,7 +37,10 @@ export function readFlashProfileFromChatVariables(
 
   const charInfo = isRecord(chatVariables.char_info) ? chatVariables.char_info : null;
   const profiles = charInfo && isRecord(charInfo.profiles) ? charInfo.profiles : null;
-  const stored = profiles && isRecord(profiles[name]) ? profiles[name] : null;
+  const match = matchCharacterProfile(name, profiles);
+  if (match.kind === 'ambiguous') return null;
+  const stored = match.kind === 'matched' && isRecord(match.profile) ? match.profile : null;
+  const profileName = match.kind === 'matched' ? match.key : name;
   const statData = isRecord(chatVariables.stat_data) ? chatVariables.stat_data : null;
   const relationships = statData && isRecord(statData.关系列表) ? statData.关系列表 : null;
   const relationship = relationships && isRecord(relationships[name]) ? relationships[name] : null;
@@ -70,8 +75,8 @@ export function readFlashProfileFromChatVariables(
   };
 
   const profile = normalizeProfile({
-    characterName: name,
-    avatarUrl: readAvatarUrl(chatVariables, name),
+    characterName: profileName,
+    avatarUrl: readAvatarUrl(chatVariables, name) || readAvatarUrl(chatVariables, profileName),
     coverUrl: readString(stored?.cover_url),
     raceColor: readString(stored?.custom_racecolor),
     tierColor: readString(stored?.custom_tiercolor),
