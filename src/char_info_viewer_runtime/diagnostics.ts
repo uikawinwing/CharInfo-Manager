@@ -1,4 +1,5 @@
 import { projectCharInfoMessage } from '../char_info_viewer/runtime/charInfoMessage';
+import { matchCharacterProfile } from '../char_info_shared/characterName.ts';
 import { normalizePortraitMediaUrlForBrowser } from '../char_info_viewer/services/imageUrl';
 import { resolveRemoteGalleryPresentation } from '../char_info_viewer/services/remoteGalleryService';
 import {
@@ -310,10 +311,19 @@ async function diagnoseCharacter(
   checks.push({ status: 'pass', title: '读取到角色姓名', detail: name });
   const charInfo = asRecord(chatVariables.char_info);
   const profiles = asRecord(charInfo?.profiles);
-  const hasExactProfile = !!profiles && Object.hasOwn(profiles, name);
-  const rawProfile = hasExactProfile ? profiles[name] : undefined;
+  const profileMatch = matchCharacterProfile(name, profiles);
+  if (profileMatch.kind === 'ambiguous') {
+    checks.push({
+      status: 'fail',
+      code: 'PROFILE_NAME_AMBIGUOUS',
+      title: '姓名归一化后对应多个角色档案',
+      detail: `候选档案为 ${profileMatch.keys.map(key => JSON.stringify(key)).join('、')}。请将消息中的姓名改为目标档案的完整姓名。`,
+    });
+    return { name, checks, media };
+  }
+  const rawProfile = profileMatch.kind === 'matched' ? profileMatch.profile : undefined;
 
-  if (!hasExactProfile) {
+  if (profileMatch.kind === 'missing') {
     const legacyRoot = findLegacyProfileRoot(chatVariables, name);
     const similarName = findSimilarProfileName(profiles, name);
     checks.push({
@@ -321,7 +331,7 @@ async function diagnoseCharacter(
       code: 'PROFILE_NOT_CONFIGURED',
       title: `没有找到 char_info.profiles[${JSON.stringify(name)}]`,
       detail: similarName
-        ? `找到可能相关的档案 ${JSON.stringify(similarName)}；Viewer 使用角色全名精确匹配。`
+        ? `找到可能相关的档案 ${JSON.stringify(similarName)}；请核对姓名中的文字和数字。`
         : '当前聊天没有这个角色的新版视觉档案。',
     });
     if (legacyRoot) {
@@ -346,8 +356,8 @@ async function diagnoseCharacter(
   } else {
     checks.push({
       status: 'pass',
-      title: '找到当前聊天角色档案',
-      detail: `char_info.profiles[${JSON.stringify(name)}] 已存在。`,
+      title: profileMatch.mode === 'normalized' ? '通过姓名归一化找到角色档案' : '找到当前聊天角色档案',
+      detail: `char_info.profiles[${JSON.stringify(profileMatch.key)}] 对应消息姓名 ${JSON.stringify(name)}。`,
     });
   }
 

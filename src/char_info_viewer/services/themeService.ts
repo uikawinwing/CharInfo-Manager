@@ -1,4 +1,5 @@
 import type { CharacterData, ThemeResolved } from '../types';
+import { matchCharacterProfile, type CharacterProfileMatch } from '../../char_info_shared/characterName.ts';
 import {
   hasStatusPortrait,
   normalizeProfileMetadata,
@@ -282,6 +283,14 @@ type NamedProfileResolution = {
   profile: unknown;
 };
 
+export function resolveCharacterProfileMatch(
+  name: string,
+  chatVariables: Record<string, unknown>,
+): CharacterProfileMatch {
+  const charInfo = asRecord(chatVariables.char_info);
+  return matchCharacterProfile(name, asRecord(charInfo?.profiles));
+}
+
 function resolveNamedProfile(
   data: CharacterData,
   chatVariables: Record<string, unknown>,
@@ -289,10 +298,8 @@ function resolveNamedProfile(
   const name = resolveCharacterName(data);
   if (!name) return undefined;
 
-  const charInfo = asRecord(chatVariables.char_info);
-  const profiles = asRecord(charInfo?.profiles);
-  const profile = profiles && Object.hasOwn(profiles, name) ? profiles[name] : undefined;
-  return profile === undefined ? undefined : { profile };
+  const match = resolveCharacterProfileMatch(name, chatVariables);
+  return match.kind === 'matched' && match.profile !== undefined ? { profile: match.profile } : undefined;
 }
 
 export function resolveCharacterVisualPreloadUrls(

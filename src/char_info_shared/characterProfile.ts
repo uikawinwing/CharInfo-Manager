@@ -1,4 +1,5 @@
 import { isSupportedRemoteImageUrl, isSupportedRemoteMediaUrl } from './remoteMediaUrl.ts';
+import { matchCharacterProfile } from './characterName.ts';
 
 export interface GalleryImage {
   title: string;
@@ -104,8 +105,12 @@ export function hasStatusPortrait(variables: Record<string, unknown>, name: stri
   const status = record(variables.status);
   const avatars = record(record(status.externalAvatars).partners);
   const galleries = record(record(status.externalGalleries).partners);
-  const avatar = Object.hasOwn(avatars, name) ? record(avatars[name]).url : undefined;
-  const images = Object.hasOwn(galleries, name) ? record(galleries[name]).images : undefined;
+  const match = matchCharacterProfile(name, record(record(variables.char_info).profiles));
+  const profileName = match.kind === 'matched' ? match.key : name;
+  const avatarKey = Object.hasOwn(avatars, name) ? name : profileName;
+  const galleryKey = Object.hasOwn(galleries, name) ? name : profileName;
+  const avatar = Object.hasOwn(avatars, avatarKey) ? record(avatars[avatarKey]).url : undefined;
+  const images = Object.hasOwn(galleries, galleryKey) ? record(galleries[galleryKey]).images : undefined;
   if (typeof avatar === 'string' && /^https?:\/\//i.test(avatar.trim()) && URL.canParse(avatar)) return true;
   return Array.isArray(images) && images.some(image => {
     const url = record(image).url;

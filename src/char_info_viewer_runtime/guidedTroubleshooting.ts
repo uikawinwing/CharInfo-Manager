@@ -1,4 +1,5 @@
 import { parseCharacterYaml } from '../char_info_viewer/services/yamlParser';
+import { matchCharacterProfile } from '../char_info_shared/characterName.ts';
 import {
   hasDeprecatedVisualSyntax,
   isSpecialNpcVisualData,
@@ -190,17 +191,27 @@ export async function runWizardAnalysis(options: WizardOptions): Promise<WizardF
   evidence.push('角色姓名：' + name);
   const info = record(chatVariables.char_info);
   const profiles = record(info?.profiles) ?? {};
-  const profile = record(profiles[name]);
+  const profileMatch = matchCharacterProfile(name, profiles);
+  if (profileMatch.kind === 'ambiguous') {
+    return finding('PROFILE_NAME_AMBIGUOUS', 'confirmed', '姓名归一化后对应多个角色档案',
+      '这些档案忽略符号后的姓名相同，需要明确指定目标角色。',
+      ['将消息中的姓名改为目标档案的完整姓名，再重新检查。'],
+      [...evidence, '候选档案：' + profileMatch.keys.map(key => JSON.stringify(key)).join('、')]);
+  }
+  const profile = record(profileMatch.kind === 'matched' ? profileMatch.profile : undefined);
+  if (profileMatch.kind === 'matched' && profileMatch.mode === 'normalized') {
+    evidence.push('归一化匹配到档案：' + profileMatch.key);
+  }
   const avatar = record(record(record(chatVariables.status)?.externalAvatars)?.partners)?.[name];
   const avatarOnly = Boolean(record(avatar)?.url);
-  const similar = findSimilarName(profiles, name);
+  const similar = profileMatch.kind === 'missing' ? findSimilarName(profiles, name) : undefined;
   const oldRoot = legacyProfile(chatVariables, name);
 
   if (!profile) {
     if (avatarOnly) evidence.push('检测到状态栏头像；Viewer 立绘需要单独配置 gallery。');
     if (similar) {
       return finding('PROFILE_NAME_MISMATCH', 'suspected', '发现名称相近但不完全一致的图片档案',
-        'Viewer 按完整姓名匹配，名字不同不会自动使用对方图片。',
+        '姓名中的文字或数字与档案仍有差异，请核对目标角色。',
         ['确认正文的姓名是否正确。', '进入档案编辑器核对完整姓名并保存，不要直接覆盖其他角色。'],
         [...evidence, '聊天变量中的相近档案：' + similar]);
     }

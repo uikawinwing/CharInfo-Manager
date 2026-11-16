@@ -83,15 +83,42 @@ test('Q1 诊断报告未闭合的推理区、楼层卡片上限与挂载失败',
   assert.ok(mount.checks.some(check => check.status === 'fail' && check.detail.includes('被外部 DOM 更新移除')));
 });
 
-test('Q2-Q4 诊断使用精确角色档案路径、旧变量提示与实际媒体探测', () => {
-  assert.match(diagnostics, /Object\.hasOwn\(profiles, name\)/u);
+test('Q2-Q4 诊断使用统一姓名匹配、旧变量提示与实际媒体探测', () => {
+  assert.match(diagnostics, /matchCharacterProfile\(name, profiles\)/u);
   assert.match(diagnostics, /char_info_visuals/u);
   assert.match(diagnostics, /char_info\.visual/u);
   assert.match(diagnostics, /char_info\.visuals/u);
-  assert.match(diagnostics, /Viewer 使用角色全名精确匹配/u);
+  assert.match(diagnostics, /PROFILE_NAME_AMBIGUOUS/u);
   assert.match(diagnostics, /图片来源实测/u);
   assert.match(diagnostics, /new Image\(\)/u);
   assert.match(diagnostics, /document\.createElement\('video'\)/u);
+});
+
+test('唯一符号或全形差异会报告实际命中的档案姓名', async () => {
+  for (const [inputName, key] of [['洛 · 汐', '洛汐'], ['Ａｌｉｃｅ', 'Alice']]) {
+    const report = await diagnose(`<gametxt>${card.replace('洛汐', inputName)}</gametxt>`, {
+      chatVariables: { char_info: { profiles: { [key]: {} } } },
+    });
+    const checks = report.characters[0].checks;
+    assert.ok(checks.some(check => check.status === 'pass' && check.title === '通过姓名归一化找到角色档案' && check.detail.includes(JSON.stringify(key))));
+    assert.equal(checks.some(check => check.code === 'PROFILE_NOT_CONFIGURED'), false);
+  }
+});
+
+test('归一化重名报告冲突，精确姓名仍优先命中', async () => {
+  const profiles = { '洛-汐': {}, 洛汐: {} };
+  const ambiguous = await diagnose(`<gametxt>${card.replace('洛汐', '洛 汐')}</gametxt>`, {
+    chatVariables: { char_info: { profiles } },
+  });
+  const conflict = ambiguous.characters[0].checks.find(check => check.code === 'PROFILE_NAME_AMBIGUOUS');
+  assert.equal(conflict.status, 'fail');
+  assert.match(conflict.detail, /洛-汐/);
+  assert.match(conflict.detail, /洛汐/);
+  const exact = await diagnose(`<gametxt>${card}</gametxt>`, {
+    chatVariables: { char_info: { profiles } },
+  });
+  assert.equal(exact.characters[0].checks.some(check => check.code === 'PROFILE_NAME_AMBIGUOUS'), false);
+  assert.ok(exact.characters[0].checks.some(check => check.title === '找到当前聊天角色档案'));
 });
 
 test('设置页提供只读故障诊断入口，不加入 Q5 缓存版本检查', () => {
