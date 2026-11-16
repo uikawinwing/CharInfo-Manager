@@ -79,6 +79,9 @@
       <div v-if="deprecatedVisualSyntaxWarning" class="parse-warning-card">
         {{ deprecatedVisualSyntaxWarning }}
       </div>
+      <div v-if="nameMatchWarning" class="parse-warning-card" role="status">
+        {{ nameMatchWarning }}
+      </div>
 
       <IllustratedCharacterSheet
         v-if="shouldShowSpecialNpcLayout && vm"
@@ -589,6 +592,7 @@ import {
   cloneCharacterDataWithVisualOverrides,
   hasDeprecatedVisualSyntax,
   hasViewerPortrait,
+  resolveCharacterProfileMatch,
   resolveCharacterVisualConfigWithExtensions,
   resolveCharacterVisualPreview,
   resolveTheme,
@@ -656,6 +660,7 @@ const originalYamlText = ref('');
 const parseMode = ref<'strict' | 'loose'>('strict');
 const parseWarnings = ref<string[]>([]);
 const deprecatedVisualSyntaxWarning = ref('');
+const nameMatchWarning = ref('');
 const looseParsing = ref(false);
 const initializingViewer = ref(true);
 const theme = ref<ThemeResolved | null>(null);
@@ -923,6 +928,7 @@ async function initFromYaml() {
   parseError.value = null;
   parseMode.value = 'strict';
   parseWarnings.value = [];
+  nameMatchWarning.value = '';
   theme.value = null;
   previewBaseData = null;
 
@@ -970,6 +976,10 @@ async function applyParsedCharacterData(
     : await resolveCharacterVisualConfigWithExtensions(data, chatVariables, generatedUrl);
   if (updateId !== visualUpdateId) return;
   const name = typeof data.姓名 === 'string' ? data.姓名.trim() : '';
+  const profileMatch = props.previewMode ? null : resolveCharacterProfileMatch(name, chatVariables);
+  nameMatchWarning.value = profileMatch?.kind === 'ambiguous'
+    ? `姓名「${name}」忽略符号后对应多个档案（${profileMatch.keys.join('、')}），请将姓名填写为其中一个档案的完整姓名。`
+    : '';
   authoredPortrait.value = hasStatusPortrait(chatVariables, name) ||
     (resolvedData.角色图片 !== generatedUrl && hasViewerPortrait(resolvedData));
   const hasLegacyInlineImageSyntax = hasDeprecatedVisualSyntax(resolvedData);

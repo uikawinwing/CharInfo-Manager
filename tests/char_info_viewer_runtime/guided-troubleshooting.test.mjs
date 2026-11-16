@@ -19,18 +19,21 @@ function loadModule(relativePath, modules = {}) {
 }
 
 const projection = loadModule('src/char_info_viewer/runtime/charInfoMessage.ts');
+const names = loadModule('src/char_info_shared/characterName.ts');
 const parse = yaml => {
   const name = yaml.match(/(?:姓名|名字)\s*[:：]\s*(.+)/u)?.[1]?.trim() ?? '';
   return { success: true, data: { 姓名: name, 生命层级: '第一层级' } };
 };
 
 const diagnostic = loadModule('src/char_info_viewer_runtime/diagnostics.ts', {
+  '../char_info_shared/characterName.ts': names,
   '../char_info_viewer/runtime/charInfoMessage': projection,
   '../char_info_viewer/services/yamlParser': { parseCharacterYaml: parse },
 });
 const theme = {
   resolveCharacterVisualConfigWithExtensions: async (data, vars) => {
-    const profile = vars.char_info?.profiles?.[data.姓名];
+    const match = names.matchCharacterProfile(data.姓名, vars.char_info?.profiles);
+    const profile = match.kind === 'matched' ? match.profile : undefined;
     const urls = profile?.gallery?.flatMap(x => x.sources ?? []) ?? [];
     return { ...data, __char_info_image_source_groups: urls.map(url => [url]) };
   },
@@ -38,10 +41,12 @@ const theme = {
   hasDeprecatedVisualSyntax: () => false,
 };
 const guided = loadModule('src/char_info_viewer_runtime/guidedTroubleshooting.ts', {
+  '../char_info_shared/characterName.ts': names,
   '../char_info_viewer/runtime/charInfoMessage': projection,
   '../char_info_viewer/services/yamlParser': { parseCharacterYaml: parse },
   '../char_info_viewer/services/themeService': theme,
   './diagnostics': {
+    diagnosePromptTemplate: diagnostic.diagnosePromptTemplate,
     runCharInfoDiagnostics: diagnostic.runCharInfoDiagnostics,
     probeMediaSource: async url => ({ url, status: url.includes('ok.webp') ? 'pass' : 'fail', detail: '加载失败' }),
   },
@@ -89,12 +94,39 @@ test('AI-created NPC with no profile is normal and cannot imply automatic image 
   assert.match(result.reason, /不会自动生成图片/);
 });
 
-test('a name differing only in whitespace remains a suspected mismatch', async () => {
+test('a unique name differing only in whitespace resolves its stored profile', async () => {
   const result = await guided.runWizardAnalysis(opts({
     chatVariables: { char_info: { profiles: { 'Iris ': {} } } },
   }));
-  assert.equal(result.code, 'PROFILE_NAME_MISMATCH');
+  assert.equal(result.code, 'EMPTY_IMAGE_GALLERY');
   assert.ok(result.evidence.some(x => x.includes('Iris ')));
+});
+
+test('punctuation and fullwidth variants use the uniquely matched image profile', async () => {
+  for (const [name, key] of [['Iris ・ S', 'Iris·S'], ['Ｉｒｉｓ', 'Iris']]) {
+    const text = raw.replace('Iris', name);
+    const result = await guided.runWizardAnalysis(opts({
+      candidate: { ...candidate, name, yamlText: text, rawText: text },
+      chatVariables: { char_info: { profiles: { [key]: { gallery: [{ sources: ['https://img.example/ok.webp'] }] } } } },
+    }));
+    assert.equal(result.code, 'IMAGE_DATA_OK');
+    assert.ok(result.evidence.some(item => item.includes('归一化匹配到档案：' + key)));
+  }
+});
+
+test('ambiguous normalized names identify all candidates while exact names retain priority', async () => {
+  const profiles = { 'I-ris': {}, Iris: { gallery: [{ sources: ['https://img.example/ok.webp'] }] } };
+  const text = raw.replace('Iris', 'I ris');
+  const ambiguous = await guided.runWizardAnalysis(opts({
+    candidate: { ...candidate, name: 'I ris', yamlText: text, rawText: text },
+    chatVariables: { char_info: { profiles } },
+  }));
+  assert.equal(ambiguous.code, 'PROFILE_NAME_AMBIGUOUS');
+  assert.equal(ambiguous.severity, 'confirmed');
+  assert.ok(ambiguous.evidence.some(item => item.includes('I-ris') && item.includes('Iris')));
+  assert.ok(ambiguous.steps.some(item => item.includes('完整姓名')));
+  const exact = await guided.runWizardAnalysis(opts({ chatVariables: { char_info: { profiles } } }));
+  assert.equal(exact.code, 'IMAGE_DATA_OK');
 });
 
 test('status avatar alone does not count as Viewer illustration', async () => {
@@ -118,6 +150,36 @@ test('downloaded character expected to have a picture is asked to verify install
   const result = await guided.runWizardAnalysis(opts({ origin: 'downloaded', expectation: 'yes' }));
   assert.equal(result.severity, 'suspected');
   assert.ok(result.steps.some(x => x.includes('EJS')));
+});
+
+test('disabled prompt templates explain missing EJS profiles without blocking saved images', async t => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  const features = { enabled: false };
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true, value: { parent: { EjsTemplate: { getFeatures: () => features } } },
+  });
+  t.after(() => {
+    if (previous) Object.defineProperty(globalThis, 'window', previous);
+    else delete globalThis.window;
+  });
+  const missing = await guided.runWizardAnalysis(opts({ origin: 'downloaded', expectation: 'yes' }));
+  assert.equal(missing.code, 'PROMPT_TEMPLATE_DISABLED');
+  assert.equal(missing.severity, 'confirmed');
+  assert.match(missing.reason, /EJS.*char_info\.profiles/);
+  assert.ok(missing.steps.some(step => step.includes('重新生成')));
+  assert.ok(missing.evidence.some(item => item.includes('未找到匹配')));
+  const saved = await guided.runWizardAnalysis(opts({
+    origin: 'downloaded', expectation: 'yes',
+    chatVariables: { char_info: { profiles: { Iris: { gallery: [{ sources: ['https://img.example/ok.webp'] }] } } } },
+  }));
+  assert.equal(saved.code, 'IMAGE_DATA_OK');
+  const ordinary = await guided.runWizardAnalysis(opts({ origin: 'llm', expectation: 'no' }));
+  assert.equal(ordinary.code, 'NO_IMAGE_PROFILE');
+  const structural = await guided.runWizardAnalysis(opts({ symptom: 'viewer_missing' }));
+  assert.equal(structural.code, 'GENERAL_NOT_FOUND');
+  features.enabled = true;
+  const enabled = await guided.runWizardAnalysis(opts({ origin: 'downloaded', expectation: 'yes' }));
+  assert.equal(enabled.code, 'NO_IMAGE_PROFILE');
 });
 
 test('a similar but non-identical name is shown as a possible mismatch without renaming', async () => {

@@ -1,3 +1,5 @@
+import { matchCharacterProfile } from '../char_info_shared/characterName.ts';
+
 export type CurrentCharacterSnapshot = {
   name: string;
   race: string;
@@ -54,7 +56,12 @@ function resolveAvatarUrl(chatVariables: unknown, name: string): string {
   if (!isRecord(chatVariables) || !isRecord(chatVariables.status)) return '';
   const externalAvatars = chatVariables.status.externalAvatars;
   if (!isRecord(externalAvatars) || !isRecord(externalAvatars.partners)) return '';
-  const avatar = externalAvatars.partners[name];
+  const charInfo = isRecord(chatVariables.char_info) ? chatVariables.char_info : null;
+  const profiles = isRecord(charInfo?.profiles) ? charInfo.profiles : null;
+  const match = matchCharacterProfile(name, profiles);
+  const profileName = match.kind === 'matched' ? match.key : name;
+  const avatarKey = Object.hasOwn(externalAvatars.partners, name) ? name : profileName;
+  const avatar = externalAvatars.partners[avatarKey];
   if (!isRecord(avatar) || typeof avatar.url !== 'string') return '';
 
   const url = avatar.url.trim();
@@ -69,7 +76,8 @@ function resolveAvatarUrl(chatVariables: unknown, name: string): string {
 function hasProfileRecord(chatVariables: unknown, name: string): boolean {
   if (!isRecord(chatVariables) || !isRecord(chatVariables.char_info)) return false;
   const profiles = chatVariables.char_info.profiles;
-  return isRecord(profiles) && isRecord(profiles[name]);
+  const match = matchCharacterProfile(name, isRecord(profiles) ? profiles : null);
+  return match.kind === 'matched' && isRecord(match.profile);
 }
 
 export function collectCurrentCharacterSnapshots(

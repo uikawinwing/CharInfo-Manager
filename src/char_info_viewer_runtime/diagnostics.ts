@@ -1,4 +1,5 @@
 import { projectCharInfoMessage } from '../char_info_viewer/runtime/charInfoMessage';
+import { matchCharacterProfile } from '../char_info_shared/characterName.ts';
 import { normalizePortraitMediaUrlForBrowser } from '../char_info_viewer/services/imageUrl';
 import { resolveRemoteGalleryPresentation } from '../char_info_viewer/services/remoteGalleryService';
 import {
@@ -63,6 +64,37 @@ const MEDIA_PROBE_TIMEOUT_MS = 6_000;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+export function diagnosePromptTemplate(): DiagnosticCheck {
+  const host = typeof window === 'undefined' ? undefined : window.parent as Window & {
+    EjsTemplate?: { getFeatures?: () => { enabled?: boolean } };
+    SillyTavern?: { extensionSettings?: { EjsTemplate?: { enabled?: boolean } } };
+  };
+  const runtime = host?.EjsTemplate ?? (typeof EjsTemplate === 'undefined' ? undefined : EjsTemplate);
+  const features = runtime?.getFeatures?.() ?? host?.SillyTavern?.extensionSettings?.EjsTemplate;
+  if (features?.enabled === false) {
+    return {
+      status: 'warn',
+      code: 'PROMPT_TEMPLATE_DISABLED',
+      title: '提示词模板已关闭',
+      detail: '世界书中的 EJS 不会自动执行，依赖它的 char_info.profiles 无法自动写入或更新。当前聊天缺少角色档案时，CharInfo 无法从档案显示立绘。请在扩展设置中启用「提示词模板」，再按作者说明重新触发档案 EJS，并重新检查。',
+    };
+  }
+  if (features?.enabled === true) {
+    return {
+      status: 'pass',
+      code: 'PROMPT_TEMPLATE_ENABLED',
+      title: '提示词模板已启用',
+      detail: '提示词模板总开关已开启，档案是否成功写入还需结合当前聊天变量检查。',
+    };
+  }
+  return {
+    status: 'info',
+    code: 'PROMPT_TEMPLATE_UNKNOWN',
+    title: '无法确认提示词模板状态',
+    detail: '未读取到提示词模板的启用状态。若角色档案依赖 EJS，请在扩展设置中确认已安装并启用「提示词模板」。',
+  };
 }
 
 function collectMatches(pattern: RegExp, source: string): RegExpExecArray[] {
@@ -310,10 +342,19 @@ async function diagnoseCharacter(
   checks.push({ status: 'pass', title: '读取到角色姓名', detail: name });
   const charInfo = asRecord(chatVariables.char_info);
   const profiles = asRecord(charInfo?.profiles);
-  const hasExactProfile = !!profiles && Object.hasOwn(profiles, name);
-  const rawProfile = hasExactProfile ? profiles[name] : undefined;
+  const profileMatch = matchCharacterProfile(name, profiles);
+  if (profileMatch.kind === 'ambiguous') {
+    checks.push({
+      status: 'fail',
+      code: 'PROFILE_NAME_AMBIGUOUS',
+      title: '姓名归一化后对应多个角色档案',
+      detail: `候选档案为 ${profileMatch.keys.map(key => JSON.stringify(key)).join('、')}。请将消息中的姓名改为目标档案的完整姓名。`,
+    });
+    return { name, checks, media };
+  }
+  const rawProfile = profileMatch.kind === 'matched' ? profileMatch.profile : undefined;
 
-  if (!hasExactProfile) {
+  if (profileMatch.kind === 'missing') {
     const legacyRoot = findLegacyProfileRoot(chatVariables, name);
     const similarName = findSimilarProfileName(profiles, name);
     checks.push({
@@ -321,7 +362,7 @@ async function diagnoseCharacter(
       code: 'PROFILE_NOT_CONFIGURED',
       title: `没有找到 char_info.profiles[${JSON.stringify(name)}]`,
       detail: similarName
-        ? `找到可能相关的档案 ${JSON.stringify(similarName)}；Viewer 使用角色全名精确匹配。`
+        ? `找到可能相关的档案 ${JSON.stringify(similarName)}；请核对姓名中的文字和数字。`
         : '当前聊天没有这个角色的新版视觉档案。',
     });
     if (legacyRoot) {
@@ -346,8 +387,8 @@ async function diagnoseCharacter(
   } else {
     checks.push({
       status: 'pass',
-      title: '找到当前聊天角色档案',
-      detail: `char_info.profiles[${JSON.stringify(name)}] 已存在。`,
+      title: profileMatch.mode === 'normalized' ? '通过姓名归一化找到角色档案' : '找到当前聊天角色档案',
+      detail: `char_info.profiles[${JSON.stringify(profileMatch.key)}] 对应消息姓名 ${JSON.stringify(name)}。`,
     });
   }
 
@@ -427,6 +468,7 @@ export async function runCharInfoDiagnostics(options: RunDiagnosticOptions): Pro
     maxCards: options.maxCards,
   });
   const checks = diagnoseScope(options.text, projection.cards.length, projection.overflow);
+  checks.push(diagnosePromptTemplate());
 
   checks.push(
     options.active

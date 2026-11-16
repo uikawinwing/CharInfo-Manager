@@ -11,6 +11,23 @@ const {
 } = require('../../src/char_info_profile_editor/flashProfile.ts');
 const { extractManagedEjsBlock } = require('../../src/char_info_shared/characterProfile.ts');
 
+test('忽略符号打开已有档案时沿用保存姓名和图库，冲突时不任选档案', () => {
+  const variables = {
+    char_info: { profiles: { '伊莉丝·洛蕾塔': { gallery: [{ title: '原立绘', sources: ['https://img.example/iris.webp'] }] } } },
+    stat_data: { 关系列表: { '伊莉丝 ・ 洛蕾塔': { 种族: '人类' } } },
+  };
+  const before = JSON.stringify(variables);
+  const profile = readFlashProfileFromChatVariables('伊莉丝 ・ 洛蕾塔', variables);
+  assert.equal(profile.characterName, '伊莉丝·洛蕾塔');
+  assert.equal(profile.gallery[0].sources[0], 'https://img.example/iris.webp');
+  assert.equal(JSON.stringify(variables), before);
+  const block = buildFlashWorldbookEntry(profile).content;
+  assert.equal(extractManagedEjsBlock(block).profile.characterName, '伊莉丝·洛蕾塔');
+  assert.equal(readFlashProfileFromChatVariables('A B', {
+    char_info: { profiles: { 'A-B': {}, AB: {} } }, stat_data: { 关系列表: { 'A B': {} } },
+  }), null);
+});
+
 test('快速建立保留现有 CharInfo，并只从当前聊天关系资料补安全 metadata', () => {
   const profile = readFlashProfileFromChatVariables('奥琳科・乌尔芬', {
     char_info: {

@@ -1,10 +1,11 @@
 import { parseCharacterYaml } from '../char_info_viewer/services/yamlParser';
+import { matchCharacterProfile } from '../char_info_shared/characterName.ts';
 import {
   hasDeprecatedVisualSyntax,
   isSpecialNpcVisualData,
   resolveCharacterVisualConfigWithExtensions,
 } from '../char_info_viewer/services/themeService';
-import { probeMediaSource, runCharInfoDiagnostics, type DiagnosticCheck } from './diagnostics';
+import { diagnosePromptTemplate, probeMediaSource, runCharInfoDiagnostics, type DiagnosticCheck } from './diagnostics';
 import type { RuntimeMountDiagnosticEntry } from './types';
 
 export type WizardSymptom =
@@ -148,7 +149,7 @@ export async function runWizardAnalysis(options: WizardOptions): Promise<WizardF
     const relevant = report.checks.filter(check => check.status === 'fail' &&
       !check.title.startsWith('没有找到 char_info.profiles'));
     const first: DiagnosticCheck | undefined = relevant[0] ??
-      report.checks.find(check => check.status === 'warn');
+      report.checks.find(check => check.status === 'warn' && check.code !== 'PROMPT_TEMPLATE_DISABLED');
     const latestMount = [...options.mountDiagnostics]
       .filter(entry => entry.messageId === candidate.messageId)
       .sort((a, b) => b.time - a.time)
@@ -190,17 +191,35 @@ export async function runWizardAnalysis(options: WizardOptions): Promise<WizardF
   evidence.push('角色姓名：' + name);
   const info = record(chatVariables.char_info);
   const profiles = record(info?.profiles) ?? {};
-  const profile = record(profiles[name]);
+  const profileMatch = matchCharacterProfile(name, profiles);
+  if (profileMatch.kind === 'ambiguous') {
+    return finding('PROFILE_NAME_AMBIGUOUS', 'confirmed', '姓名归一化后对应多个角色档案',
+      '这些档案忽略符号后的姓名相同，需要明确指定目标角色。',
+      ['将消息中的姓名改为目标档案的完整姓名，再重新检查。'],
+      [...evidence, '候选档案：' + profileMatch.keys.map(key => JSON.stringify(key)).join('、')]);
+  }
+  const profile = record(profileMatch.kind === 'matched' ? profileMatch.profile : undefined);
+  if (profileMatch.kind === 'matched' && profileMatch.mode === 'normalized') {
+    evidence.push('归一化匹配到档案：' + profileMatch.key);
+  }
   const avatar = record(record(record(chatVariables.status)?.externalAvatars)?.partners)?.[name];
   const avatarOnly = Boolean(record(avatar)?.url);
-  const similar = findSimilarName(profiles, name);
+  const similar = profileMatch.kind === 'missing' ? findSimilarName(profiles, name) : undefined;
   const oldRoot = legacyProfile(chatVariables, name);
 
   if (!profile) {
+    const promptTemplate = diagnosePromptTemplate();
+    if (promptTemplate.code === 'PROMPT_TEMPLATE_DISABLED' && options.expectation !== 'no' &&
+      (options.origin !== 'llm' || options.expectation === 'yes')) {
+      return finding('PROMPT_TEMPLATE_DISABLED', 'confirmed', '提示词模板已关闭，当前聊天缺少角色图片档案',
+        '世界书中的 EJS 不会自动执行。若作者通过 EJS 写入 char_info.profiles，关闭提示词模板会阻断档案写入，使 CharInfo 无法从档案显示立绘。',
+        ['打开酒馆扩展设置，启用「提示词模板」。', '按作者说明重新触发档案 EJS，例如重新生成一条回复。', '在聊天变量中确认出现该角色的 char_info.profiles 档案，再重新检查。'],
+        [...evidence, '提示词模板总开关已关闭', '当前聊天未找到匹配的 char_info.profiles 档案']);
+    }
     if (avatarOnly) evidence.push('检测到状态栏头像；Viewer 立绘需要单独配置 gallery。');
     if (similar) {
       return finding('PROFILE_NAME_MISMATCH', 'suspected', '发现名称相近但不完全一致的图片档案',
-        'Viewer 按完整姓名匹配，名字不同不会自动使用对方图片。',
+        '姓名中的文字或数字与档案仍有差异，请核对目标角色。',
         ['确认正文的姓名是否正确。', '进入档案编辑器核对完整姓名并保存，不要直接覆盖其他角色。'],
         [...evidence, '聊天变量中的相近档案：' + similar]);
     }

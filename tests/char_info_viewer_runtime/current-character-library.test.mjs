@@ -9,6 +9,20 @@ import {
   updateInnerThoughtInbox,
 } from '../../src/char_info_viewer_runtime/currentCharacterLibrary.ts';
 
+test('当前角色姓名与 EJS 档案符号不同时仍显示已配置档案及其头像', () => {
+  const snapshots = collectCurrentCharacterSnapshots({ stat_data: { 关系列表: { 'Ａ ・ Ｂ': {} } } }, {
+    char_info: { profiles: { 'A-B': {} } },
+    status: { externalAvatars: { partners: { 'A-B': { url: 'https://img.example/avatar.webp' } } } },
+  });
+  assert.equal(snapshots[0].name, 'Ａ ・ Ｂ');
+  assert.equal(snapshots[0].hasProfileRecord, true);
+  assert.equal(snapshots[0].avatarUrl, 'https://img.example/avatar.webp');
+  const ambiguous = collectCurrentCharacterSnapshots({ stat_data: { 关系列表: { 'A B': {} } } }, {
+    char_info: { profiles: { 'A-B': {}, AB: {} } },
+  });
+  assert.equal(ambiguous[0].hasProfileRecord, false);
+});
+
 test('当前角色资料库只读取最新消息 MVU 的关系列表', () => {
   const result = collectCurrentCharacterSnapshots(
     {
