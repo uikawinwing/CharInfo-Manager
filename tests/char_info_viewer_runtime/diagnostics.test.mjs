@@ -7,6 +7,15 @@ const require = createRequire(import.meta.url);
 const { runCharInfoDiagnostics } = require('../../src/char_info_viewer_runtime/diagnostics.ts');
 const card = '<char_info>\n姓名: 洛汐\n生命层级: 第一层级\n</char_info>';
 
+function mockPromptTemplateHost(t, host) {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: { parent: host } });
+  t.after(() => {
+    if (previous) Object.defineProperty(globalThis, 'window', previous);
+    else delete globalThis.window;
+  });
+}
+
 function diagnose(text, options = {}) {
   return runCharInfoDiagnostics({
     messageId: 7,
@@ -35,6 +44,31 @@ const galleryStep = await readFile(
   new URL('../../src/char_info_profile_editor/components/GalleryStep.vue', import.meta.url),
   'utf8',
 );
+
+test('诊断读取提示词模板总开关，重新检查时反映最新状态', async t => {
+  const features = { enabled: false };
+  mockPromptTemplateHost(t, { EjsTemplate: { getFeatures: () => features } });
+  const disabled = await diagnose(card);
+  const check = disabled.checks.find(item => item.code === 'PROMPT_TEMPLATE_DISABLED');
+  assert.equal(check?.status, 'warn');
+  assert.match(check.detail, /EJS.*char_info\.profiles/u);
+  assert.match(check.detail, /启用「提示词模板」/u);
+  features.enabled = true;
+  const enabled = await diagnose(card);
+  assert.equal(enabled.checks.find(item => item.code === 'PROMPT_TEMPLATE_ENABLED')?.status, 'pass');
+  assert.equal(enabled.checks.some(item => item.code === 'PROMPT_TEMPLATE_DISABLED'), false);
+});
+
+test('提示词模板设置可独立读取，未知状态不会当成已关闭', async t => {
+  const host = { SillyTavern: { extensionSettings: { EjsTemplate: { enabled: false } } } };
+  mockPromptTemplateHost(t, host);
+  const disabled = await diagnose(card);
+  assert.ok(disabled.checks.some(item => item.code === 'PROMPT_TEMPLATE_DISABLED'));
+  delete host.SillyTavern.extensionSettings.EjsTemplate;
+  const unknown = await diagnose(card);
+  assert.equal(unknown.checks.find(item => item.code === 'PROMPT_TEMPLATE_UNKNOWN')?.status, 'info');
+  assert.equal(unknown.checks.some(item => item.code === 'PROMPT_TEMPLATE_DISABLED'), false);
+});
 
 test('故障诊断复用 Viewer 当前消息投影、YAML 与视觉解析链', () => {
   assert.match(diagnostics, /projectCharInfoMessage/u);

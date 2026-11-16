@@ -46,6 +46,7 @@ const guided = loadModule('src/char_info_viewer_runtime/guidedTroubleshooting.ts
   '../char_info_viewer/services/yamlParser': { parseCharacterYaml: parse },
   '../char_info_viewer/services/themeService': theme,
   './diagnostics': {
+    diagnosePromptTemplate: diagnostic.diagnosePromptTemplate,
     runCharInfoDiagnostics: diagnostic.runCharInfoDiagnostics,
     probeMediaSource: async url => ({ url, status: url.includes('ok.webp') ? 'pass' : 'fail', detail: '加载失败' }),
   },
@@ -149,6 +150,36 @@ test('downloaded character expected to have a picture is asked to verify install
   const result = await guided.runWizardAnalysis(opts({ origin: 'downloaded', expectation: 'yes' }));
   assert.equal(result.severity, 'suspected');
   assert.ok(result.steps.some(x => x.includes('EJS')));
+});
+
+test('disabled prompt templates explain missing EJS profiles without blocking saved images', async t => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  const features = { enabled: false };
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true, value: { parent: { EjsTemplate: { getFeatures: () => features } } },
+  });
+  t.after(() => {
+    if (previous) Object.defineProperty(globalThis, 'window', previous);
+    else delete globalThis.window;
+  });
+  const missing = await guided.runWizardAnalysis(opts({ origin: 'downloaded', expectation: 'yes' }));
+  assert.equal(missing.code, 'PROMPT_TEMPLATE_DISABLED');
+  assert.equal(missing.severity, 'confirmed');
+  assert.match(missing.reason, /EJS.*char_info\.profiles/);
+  assert.ok(missing.steps.some(step => step.includes('重新生成')));
+  assert.ok(missing.evidence.some(item => item.includes('未找到匹配')));
+  const saved = await guided.runWizardAnalysis(opts({
+    origin: 'downloaded', expectation: 'yes',
+    chatVariables: { char_info: { profiles: { Iris: { gallery: [{ sources: ['https://img.example/ok.webp'] }] } } } },
+  }));
+  assert.equal(saved.code, 'IMAGE_DATA_OK');
+  const ordinary = await guided.runWizardAnalysis(opts({ origin: 'llm', expectation: 'no' }));
+  assert.equal(ordinary.code, 'NO_IMAGE_PROFILE');
+  const structural = await guided.runWizardAnalysis(opts({ symptom: 'viewer_missing' }));
+  assert.equal(structural.code, 'GENERAL_NOT_FOUND');
+  features.enabled = true;
+  const enabled = await guided.runWizardAnalysis(opts({ origin: 'downloaded', expectation: 'yes' }));
+  assert.equal(enabled.code, 'NO_IMAGE_PROFILE');
 });
 
 test('a similar but non-identical name is shown as a possible mismatch without renaming', async () => {

@@ -5,7 +5,7 @@ import {
   isSpecialNpcVisualData,
   resolveCharacterVisualConfigWithExtensions,
 } from '../char_info_viewer/services/themeService';
-import { probeMediaSource, runCharInfoDiagnostics, type DiagnosticCheck } from './diagnostics';
+import { diagnosePromptTemplate, probeMediaSource, runCharInfoDiagnostics, type DiagnosticCheck } from './diagnostics';
 import type { RuntimeMountDiagnosticEntry } from './types';
 
 export type WizardSymptom =
@@ -149,7 +149,7 @@ export async function runWizardAnalysis(options: WizardOptions): Promise<WizardF
     const relevant = report.checks.filter(check => check.status === 'fail' &&
       !check.title.startsWith('没有找到 char_info.profiles'));
     const first: DiagnosticCheck | undefined = relevant[0] ??
-      report.checks.find(check => check.status === 'warn');
+      report.checks.find(check => check.status === 'warn' && check.code !== 'PROMPT_TEMPLATE_DISABLED');
     const latestMount = [...options.mountDiagnostics]
       .filter(entry => entry.messageId === candidate.messageId)
       .sort((a, b) => b.time - a.time)
@@ -208,6 +208,14 @@ export async function runWizardAnalysis(options: WizardOptions): Promise<WizardF
   const oldRoot = legacyProfile(chatVariables, name);
 
   if (!profile) {
+    const promptTemplate = diagnosePromptTemplate();
+    if (promptTemplate.code === 'PROMPT_TEMPLATE_DISABLED' && options.expectation !== 'no' &&
+      (options.origin !== 'llm' || options.expectation === 'yes')) {
+      return finding('PROMPT_TEMPLATE_DISABLED', 'confirmed', '提示词模板已关闭，当前聊天缺少角色图片档案',
+        '世界书中的 EJS 不会自动执行。若作者通过 EJS 写入 char_info.profiles，关闭提示词模板会阻断档案写入，使 CharInfo 无法从档案显示立绘。',
+        ['打开酒馆扩展设置，启用「提示词模板」。', '按作者说明重新触发档案 EJS，例如重新生成一条回复。', '在聊天变量中确认出现该角色的 char_info.profiles 档案，再重新检查。'],
+        [...evidence, '提示词模板总开关已关闭', '当前聊天未找到匹配的 char_info.profiles 档案']);
+    }
     if (avatarOnly) evidence.push('检测到状态栏头像；Viewer 立绘需要单独配置 gallery。');
     if (similar) {
       return finding('PROFILE_NAME_MISMATCH', 'suspected', '发现名称相近但不完全一致的图片档案',

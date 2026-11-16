@@ -66,6 +66,37 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
 
+export function diagnosePromptTemplate(): DiagnosticCheck {
+  const host = typeof window === 'undefined' ? undefined : window.parent as Window & {
+    EjsTemplate?: { getFeatures?: () => { enabled?: boolean } };
+    SillyTavern?: { extensionSettings?: { EjsTemplate?: { enabled?: boolean } } };
+  };
+  const runtime = host?.EjsTemplate ?? (typeof EjsTemplate === 'undefined' ? undefined : EjsTemplate);
+  const features = runtime?.getFeatures?.() ?? host?.SillyTavern?.extensionSettings?.EjsTemplate;
+  if (features?.enabled === false) {
+    return {
+      status: 'warn',
+      code: 'PROMPT_TEMPLATE_DISABLED',
+      title: '提示词模板已关闭',
+      detail: '世界书中的 EJS 不会自动执行，依赖它的 char_info.profiles 无法自动写入或更新。当前聊天缺少角色档案时，CharInfo 无法从档案显示立绘。请在扩展设置中启用「提示词模板」，再按作者说明重新触发档案 EJS，并重新检查。',
+    };
+  }
+  if (features?.enabled === true) {
+    return {
+      status: 'pass',
+      code: 'PROMPT_TEMPLATE_ENABLED',
+      title: '提示词模板已启用',
+      detail: '提示词模板总开关已开启，档案是否成功写入还需结合当前聊天变量检查。',
+    };
+  }
+  return {
+    status: 'info',
+    code: 'PROMPT_TEMPLATE_UNKNOWN',
+    title: '无法确认提示词模板状态',
+    detail: '未读取到提示词模板的启用状态。若角色档案依赖 EJS，请在扩展设置中确认已安装并启用「提示词模板」。',
+  };
+}
+
 function collectMatches(pattern: RegExp, source: string): RegExpExecArray[] {
   pattern.lastIndex = 0;
   const matches: RegExpExecArray[] = [];
@@ -437,6 +468,7 @@ export async function runCharInfoDiagnostics(options: RunDiagnosticOptions): Pro
     maxCards: options.maxCards,
   });
   const checks = diagnoseScope(options.text, projection.cards.length, projection.overflow);
+  checks.push(diagnosePromptTemplate());
 
   checks.push(
     options.active
